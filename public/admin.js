@@ -1,20 +1,141 @@
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
-const s = createClient(window.TECHNOROOM_SUPABASE.url, window.TECHNOROOM_SUPABASE.publishableKey);
-const money = n => new Intl.NumberFormat('uk-UA').format(n) + ' в‚ґ';
-const categories = {projector:'РџСЂРѕС”РєС‚РѕСЂРё',audio:'РђРєСѓСЃС‚РёРєР°',tv:'РўРµР»РµРІС–Р·РѕСЂРё'};
-const view = name => document.querySelectorAll('[data-view]').forEach(x=>x.hidden=x.dataset.view!==name);
-const notice = (text,error=false) => {const n=document.querySelector('#notice');n.textContent=text;n.hidden=false;n.classList.toggle('error',error)};
-async function dashboard(){
-  const {data:profile}=await s.from('profiles').select('full_name').single(); if(!profile){await s.auth.signOut();view('login');notice('Р”РѕСЃС‚СѓРї РґРѕ Р°РґРјС–РЅРєРё РІС–РґСЃСѓС‚РЅС–Р№',true);return}
-  view('app');document.querySelector('#adminName').textContent=profile.full_name||'РђРґРјС–РЅС–СЃС‚СЂР°С‚РѕСЂ';
-  const [{data:products,error:pe},{data:orders,error:oe}]=await Promise.all([s.from('products').select('*').order('created_at',{ascending:false}),s.from('orders').select('*,order_items(count)').order('created_at',{ascending:false})]);
-  if(pe||oe)return notice('РќРµ РІРґР°Р»РѕСЃСЏ РѕС‚СЂРёРјР°С‚Рё РґР°РЅС–',true);
-  document.querySelector('#productMetric').textContent=products.length;document.querySelector('#orderMetric').textContent=orders.length;document.querySelector('#revenueMetric').textContent=money(orders.reduce((a,o)=>a+Number(o.total),0));
-  document.querySelector('#adminProducts').innerHTML=products.map(p=>`<tr><td><b>${p.name}</b><small>${p.brand||'вЂ”'}</small></td><td>${categories[p.category]||p.category}</td><td>${money(p.price)}</td><td><button data-stock="${p.id}" class="stock-toggle ${p.in_stock?'in-stock':'out-stock'}">${p.in_stock?'Р’ РЅР°СЏРІРЅРѕСЃС‚С–':'РџС–Рґ Р·Р°РјРѕРІР»РµРЅРЅСЏ'}</button></td></tr>`).join('')||'<tr><td colspan="4">РўРѕРІР°СЂС–РІ РїРѕРєРё РЅРµРјР°С”</td></tr>';
-  document.querySelector('#adminOrders').innerHTML=orders.map(o=>`<tr><td>#${o.id}</td><td>${o.customer_name}<small>${o.customer_phone}</small></td><td>${o.order_items?.[0]?.count||0}</td><td>${money(o.total)}</td><td>${o.status}</td></tr>`).join('')||'<tr><td colspan="5">Р—Р°РјРѕРІР»РµРЅСЊ РїРѕРєРё РЅРµРјР°С”</td></tr>';
-  document.querySelectorAll('[data-stock]').forEach(b=>b.onclick=async()=>{const p=products.find(x=>x.id===Number(b.dataset.stock));const {error}=await s.from('products').update({in_stock:!p.in_stock}).eq('id',p.id);if(error)return notice('РќРµ РІРґР°Р»РѕСЃСЏ РѕРЅРѕРІРёС‚Рё С‚РѕРІР°СЂ',true);dashboard()});
+
+const supabase = createClient(window.TECHNOROOM_SUPABASE.url, window.TECHNOROOM_SUPABASE.publishableKey);
+const state = { products: [], orders: [] };
+const statusNames = { new: 'Нове', confirmed: 'Підтверджено', paid: 'Оплачено', shipped: 'Відправлено', completed: 'Виконано', cancelled: 'Скасовано' };
+const money = (value) => `${new Intl.NumberFormat('uk-UA', { maximumFractionDigits: 2 }).format(Number(value || 0))} ₴`;
+const date = (value) => new Intl.DateTimeFormat('uk-UA', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(value));
+const escape = (value = '') => String(value).replace(/[&<>'"]/g, (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[char]));
+const view = (name) => document.querySelectorAll('[data-view]').forEach((item) => { item.hidden = item.dataset.view !== name; });
+const notice = (text, error = false) => { const node = document.querySelector('#notice'); node.textContent = text; node.hidden = false; node.classList.toggle('error', error); };
+const lowStock = (product) => Number(product.stock_quantity ?? (product.in_stock ? 10 : 0)) <= 3;
+
+function renderMetrics() {
+  const active = state.products.filter((product) => product.is_active);
+  const newOrders = state.orders.filter((order) => order.status === 'new');
+  const revenue = state.orders.filter((order) => order.status !== 'cancelled').reduce((sum, order) => sum + Number(order.total), 0);
+  document.querySelector('#productMetric').textContent = active.length;
+  document.querySelector('#productMetricHint').textContent = `із ${state.products.length} усіх товарів`;
+  document.querySelector('#orderMetric').textContent = newOrders.length;
+  document.querySelector('#orderMetricHint').textContent = newOrders.length ? 'потребують уваги' : 'нових заявок немає';
+  document.querySelector('#revenueMetric').textContent = money(revenue);
+  document.querySelector('#lowStockMetric').textContent = state.products.filter(lowStock).length;
+  document.querySelector('#productsNavCount').textContent = state.products.length || '';
+  document.querySelector('#ordersNavCount').textContent = newOrders.length || '';
 }
-document.querySelector('#loginForm').onsubmit=async e=>{e.preventDefault();const d=Object.fromEntries(new FormData(e.currentTarget));const {error}=await s.auth.signInWithPassword({email:d.email,password:d.password});if(error)return notice('РќРµРІС–СЂРЅР° email-Р°РґСЂРµСЃР° Р°Р±Рѕ РїР°СЂРѕР»СЊ',true);document.querySelector('#notice').hidden=true;dashboard()};
-document.querySelector('#logout').onclick=async()=>{await s.auth.signOut();view('login')};
-s.auth.getSession().then(({data:{session}})=>session?dashboard():view('login'));
+
+function renderProducts() {
+  const term = document.querySelector('#productSearch').value.trim().toLowerCase();
+  const filter = document.querySelector('#productFilter').value;
+  const products = state.products.filter((product) => {
+    const haystack = [product.name, product.brand, product.sku, product.category].join(' ').toLowerCase();
+    if (term && !haystack.includes(term)) return false;
+    if (filter === 'active') return product.is_active;
+    if (filter === 'draft') return !product.is_active;
+    if (filter === 'low') return lowStock(product);
+    return true;
+  });
+  document.querySelector('#adminProducts').innerHTML = products.length ? products.map((product) => {
+    const quantity = Number(product.stock_quantity ?? (product.in_stock ? 10 : 0));
+    const stockClass = quantity === 0 ? 'stock-zero' : lowStock(product) ? 'stock-low' : 'stock-ok';
+    return `<tr><td><b>${escape(product.name)}</b><small>${escape(product.brand || 'Без бренду')}</small></td><td><b>${escape(product.sku || '—')}</b><small>${escape(product.category)}</small></td><td>${money(product.price)}</td><td><span class="stock-badge ${stockClass}">${quantity} шт.</span></td><td><span class="visibility ${product.is_active ? 'visible' : 'hidden-status'}">${product.is_active ? 'У каталозі' : 'Приховано'}</span></td><td class="table-actions"><button data-edit-product="${product.id}">Редагувати</button></td></tr>`;
+  }).join('') : '<tr><td class="empty-row" colspan="6">Товарів за цим фільтром немає</td></tr>';
+}
+
+function statusSelect(order) {
+  return `<select class="status-select status-${order.status}" data-status-order="${order.id}">${Object.entries(statusNames).map(([value, label]) => `<option value="${value}" ${order.status === value ? 'selected' : ''}>${label}</option>`).join('')}</select>`;
+}
+
+function renderOrders() {
+  const term = document.querySelector('#orderSearch').value.trim().toLowerCase();
+  const filter = document.querySelector('#orderFilter').value;
+  const orders = state.orders.filter((order) => {
+    const haystack = [order.id, order.customer_name, order.customer_phone, order.customer_email].join(' ').toLowerCase();
+    return (!term || haystack.includes(term)) && (filter === 'all' || order.status === filter);
+  });
+  document.querySelector('#adminOrders').innerHTML = orders.length ? orders.map((order) => `<tr><td><b>#${order.id}</b><small>${date(order.created_at)}</small></td><td><b>${escape(order.customer_name)}</b><small>${escape(order.customer_phone)}${order.customer_email ? ` · ${escape(order.customer_email)}` : ''}</small></td><td>${order.order_items?.[0]?.count || 0}</td><td><b>${money(order.total)}</b></td><td>${statusSelect(order)}</td><td class="table-actions"><button data-view-order="${order.id}">Деталі</button></td></tr>`).join('') : '<tr><td class="empty-row" colspan="6">Замовлень за цим фільтром немає</td></tr>';
+}
+
+function getCustomers() {
+  const customers = new Map();
+  state.orders.forEach((order) => {
+    const key = (order.customer_email || order.customer_phone || order.customer_name).toLowerCase();
+    const current = customers.get(key) || { name: order.customer_name, phone: order.customer_phone, email: order.customer_email, count: 0, total: 0, last: order.created_at };
+    current.count += 1; current.total += Number(order.total); if (new Date(order.created_at) > new Date(current.last)) current.last = order.created_at;
+    customers.set(key, current);
+  });
+  return [...customers.values()].sort((a, b) => new Date(b.last) - new Date(a.last));
+}
+
+function renderCustomers() {
+  const term = document.querySelector('#customerSearch').value.trim().toLowerCase();
+  const customers = getCustomers().filter((customer) => [customer.name, customer.phone, customer.email].join(' ').toLowerCase().includes(term));
+  document.querySelector('#adminCustomers').innerHTML = customers.length ? customers.map((customer) => `<tr><td><b>${escape(customer.name)}</b></td><td>${escape(customer.phone)}<small>${escape(customer.email || 'Email не вказано')}</small></td><td>${customer.count}</td><td><b>${money(customer.total)}</b></td><td>${date(customer.last)}</td></tr>`).join('') : '<tr><td class="empty-row" colspan="5">Клієнтів поки немає</td></tr>';
+}
+
+function renderAll() { renderMetrics(); renderProducts(); renderOrders(); renderCustomers(); }
+
+function productSlug(name) { return name.toLowerCase().trim().replace(/[^a-z0-9а-яіїєґ]+/gi, '-').replace(/^-|-$/g, ''); }
+function showProductDialog(product = null) {
+  const dialog = document.querySelector('#productDialog'); const form = document.querySelector('#productForm'); form.reset();
+  document.querySelector('#productFormMessage').hidden = true;
+  document.querySelector('#productDialogTitle').textContent = product ? 'Редагування товару' : 'Новий товар';
+  if (product) Object.entries(product).forEach(([key, value]) => { if (form.elements[key] && key !== 'is_active') form.elements[key].value = value ?? ''; });
+  form.elements.is_active.checked = product ? product.is_active : true;
+  form.elements.stock_quantity.value = product?.stock_quantity ?? (product?.in_stock ? 10 : 0);
+  dialog.showModal();
+}
+
+async function saveProduct(event) {
+  event.preventDefault();
+  const form = event.currentTarget; const raw = Object.fromEntries(new FormData(form));
+  const payload = { name: raw.name.trim(), slug: raw.slug.trim() || productSlug(raw.name), sku: raw.sku.trim() || null, brand: raw.brand.trim() || null, category: raw.category.trim(), price: Number(raw.price), stock_quantity: Number(raw.stock_quantity), image_path: raw.image_path.trim() || null, description: raw.description.trim() || null, is_active: form.elements.is_active.checked };
+  payload.in_stock = payload.stock_quantity > 0;
+  const query = raw.id ? supabase.from('products').update(payload).eq('id', raw.id) : supabase.from('products').insert(payload);
+  const { error } = await query;
+  if (error) { const message = document.querySelector('#productFormMessage'); message.textContent = error.code === '23505' ? 'SKU або slug уже використовується.' : 'Не вдалося зберегти товар. Перевірте дані.'; message.hidden = false; return; }
+  document.querySelector('#productDialog').close(); await loadData();
+}
+
+async function updateOrderStatus(orderId, status) {
+  const { error } = await supabase.from('orders').update({ status }).eq('id', orderId);
+  if (error) { alert('Не вдалося оновити статус замовлення.'); return; }
+  const order = state.orders.find((item) => item.id === Number(orderId)); if (order) order.status = status; renderAll();
+}
+
+async function showOrderDialog(orderId) {
+  const order = state.orders.find((item) => item.id === Number(orderId)); if (!order) return;
+  document.querySelector('#orderDialogNumber').textContent = `#${order.id}`;
+  const { data: items, error } = await supabase.from('order_items').select('*').eq('order_id', order.id);
+  const lines = error ? '<p>Не вдалося завантажити склад замовлення.</p>' : (items.length ? items.map((item) => `<li><span>${escape(item.product_name)} × ${item.quantity}</span><b>${money(Number(item.unit_price) * item.quantity)}</b></li>`).join('') : '<li>Товари відсутні</li>');
+  document.querySelector('#orderDetails').innerHTML = `<div class="order-detail-grid"><div><span>Клієнт</span><b>${escape(order.customer_name)}</b><p>${escape(order.customer_phone)}<br>${escape(order.customer_email || 'Email не вказано')}</p></div><div><span>Доставка</span><b>${escape(order.city || 'Не вказано')}</b><p>${escape(order.address || 'Адресу не вказано')}</p></div><div><span>Дата</span><b>${date(order.created_at)}</b><p>Коментар: ${escape(order.comment || 'немає')}</p></div></div><h3>Склад замовлення</h3><ul class="order-lines">${lines}</ul><div class="order-total"><span>Разом</span><b>${money(order.total)}</b></div><label class="status-editor">Статус ${statusSelect(order)}</label>`;
+  document.querySelector('#orderDialog').showModal();
+}
+
+async function loadData() {
+  const [{ data: products, error: productError }, { data: orders, error: orderError }] = await Promise.all([
+    supabase.from('products').select('*').order('created_at', { ascending: false }),
+    supabase.from('orders').select('*,order_items(count)').order('created_at', { ascending: false }),
+  ]);
+  if (productError || orderError) { notice('Не вдалося отримати дані. Перевірте права доступу та міграцію адмінки.', true); return; }
+  state.products = products || []; state.orders = orders || []; renderAll();
+}
+
+async function dashboard() {
+  const { data: profile } = await supabase.from('profiles').select('full_name,role').single();
+  if (!profile) { await supabase.auth.signOut(); view('login'); notice('Доступ до адмінки відсутній', true); return; }
+  view('app'); document.querySelector('#adminName').textContent = profile.full_name || 'Адміністраторе'; await loadData();
+}
+
+document.querySelector('#loginForm').onsubmit = async (event) => { event.preventDefault(); const data = Object.fromEntries(new FormData(event.currentTarget)); const { error } = await supabase.auth.signInWithPassword({ email: data.email, password: data.password }); if (error) { notice('Невірна email-адреса або пароль', true); return; } document.querySelector('#notice').hidden = true; dashboard(); };
+document.querySelector('#logout').onclick = async () => { await supabase.auth.signOut(); view('login'); };
+document.querySelectorAll('[data-add-product]').forEach((button) => { button.onclick = () => showProductDialog(); });
+document.querySelector('#productForm').onsubmit = saveProduct;
+document.querySelectorAll('[data-close-dialog]').forEach((button) => { button.onclick = () => button.closest('dialog').close(); });
+['#productSearch', '#productFilter'].forEach((selector) => document.querySelector(selector).addEventListener('input', renderProducts));
+['#orderSearch', '#orderFilter'].forEach((selector) => document.querySelector(selector).addEventListener('input', renderOrders));
+document.querySelector('#customerSearch').addEventListener('input', renderCustomers);
+document.addEventListener('click', (event) => { const edit = event.target.closest('[data-edit-product]'); const order = event.target.closest('[data-view-order]'); if (edit) showProductDialog(state.products.find((item) => item.id === Number(edit.dataset.editProduct))); if (order) showOrderDialog(order.dataset.viewOrder); });
+document.addEventListener('change', (event) => { if (event.target.matches('[data-status-order]')) updateOrderStatus(event.target.dataset.statusOrder, event.target.value); });
+supabase.auth.getSession().then(({ data: { session } }) => session ? dashboard() : view('login'));
 

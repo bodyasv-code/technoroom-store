@@ -11,6 +11,8 @@ const trustedHosts = new Set([
   'www.audiotrends.com.au',
   'static-ecapac.acer.com',
   'media4home.com.pl',
+  'media.sonos.com',
+  'images.samsung.com',
 ]);
 
 export default async function handler(request, response) {

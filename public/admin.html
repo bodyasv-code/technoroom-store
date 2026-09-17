@@ -24,6 +24,7 @@
       <a class="brand" href="index.html"><span>TECHNO</span>ROOM<i></i></a><p>Керування магазином</p>
       <a class="active" href="#overview" data-section="overview">Огляд</a>
       <a href="#products" data-section="products">Товари <span id="productsNavCount"></span></a>
+      <a href="#categories" data-section="categories">Категорії</a>
       <a href="#orders" data-section="orders">Замовлення <span id="ordersNavCount"></span></a>
       <a href="#customers" data-section="customers">Клієнти</a><a href="index.html">Відкрити магазин ↗</a><button id="logout">Вийти</button>
     </aside>
@@ -40,6 +41,10 @@
         <div class="admin-controls"><input id="productSearch" type="search" placeholder="Пошук за назвою, брендом або SKU"><select id="productFilter"><option value="all">Усі товари</option><option value="active">Активні</option><option value="draft">Приховані</option><option value="low">Низький залишок</option></select></div>
         <div class="admin-table-wrap"><table><thead><tr><th>Товар</th><th>SKU / категорія</th><th>Ціна</th><th>Залишок</th><th>Видимість</th><th></th></tr></thead><tbody id="adminProducts"></tbody></table></div>
       </section>
+      <section class="admin-section" id="categories">
+        <div class="admin-title"><div><h2>Категорії</h2><span>Структура каталогу та навігація</span></div><button class="button primary" id="addCategory">+ Додати категорію</button></div>
+        <div class="admin-table-wrap"><table><thead><tr><th>Назва</th><th>Slug</th><th>Статус</th><th>Товарів</th><th></th></tr></thead><tbody id="adminCategories"></tbody></table></div>
+      </section>
       <section class="admin-section" id="orders">
         <div class="admin-title"><div><h2>Замовлення</h2><span>Усі заявки з сайту</span></div></div>
         <div class="admin-controls"><input id="orderSearch" type="search" placeholder="Номер, ім’я, телефон або email"><select id="orderFilter"><option value="all">Усі статуси</option><option value="new">Нові</option><option value="confirmed">Підтверджені</option><option value="paid">Оплачені</option><option value="shipped">Відправлені</option><option value="completed">Виконані</option><option value="cancelled">Скасовані</option></select></div>
@@ -54,10 +59,11 @@
   </div>
   <dialog id="productDialog"><form id="productForm" method="dialog">
     <div class="dialog-heading"><h2 id="productDialogTitle">Новий товар</h2><button type="button" data-close-dialog>×</button></div><input type="hidden" name="id">
-    <div class="dialog-grid"><label>Назва товару<input name="name" required maxlength="180"></label><label>SKU<input name="sku" maxlength="80" placeholder="Напр. PJ-EPSON-01"></label><label>Slug / URL<input name="slug" required maxlength="180" placeholder="epson-eh-tw7100"></label><label>Бренд<input name="brand" maxlength="100"></label><label>Категорія<input name="category" required maxlength="100" placeholder="projector"></label><label>Ціна, ₴<input name="price" required type="number" min="0" step="0.01"></label><label>Залишок, шт.<input name="stock_quantity" required type="number" min="0" step="1" value="0"></label><label>Посилання на зображення<input name="image_path" type="url" placeholder="https://..."></label></div>
-    <label>Опис<textarea name="description" rows="4"></textarea></label><label class="check"><input type="checkbox" name="is_active" checked> Показувати товар у каталозі</label>
+    <div class="dialog-grid"><label>Назва товару<input name="name" required maxlength="180"></label><label>SKU<input name="sku" maxlength="80" placeholder="Напр. PJ-EPSON-01"></label><label>Slug / URL<input name="slug" required maxlength="180" placeholder="epson-eh-tw7100"></label><label>Бренд<input name="brand" maxlength="100"></label><label>Категорія<select name="category" required id="productCategory"></select></label><label>Ціна, ₴<input name="price" required type="number" min="0" step="0.01"></label><label>Залишок, шт.<input name="stock_quantity" required type="number" min="0" step="1" value="0"></label><label>Посилання на зображення<input name="image_path" type="url" placeholder="https://..."></label></div>
+    <label>Опис<textarea name="description" rows="4"></textarea></label><label>Характеристики <small>одна характеристика в рядку: Назва: значення</small><textarea name="specifications_text" rows="4" placeholder="Яскравість: 4000 лм&#10;Роздільна здатність: 4K"></textarea></label><label class="check"><input type="checkbox" name="is_active" checked> Показувати товар у каталозі</label>
     <div class="dialog-actions"><button class="button outline" type="button" data-close-dialog>Скасувати</button><button class="button primary" type="submit">Зберегти товар</button></div><p class="admin-message" id="productFormMessage" hidden></p>
   </form></dialog>
+  <dialog id="categoryDialog"><form id="categoryForm" method="dialog"><div class="dialog-heading"><h2 id="categoryDialogTitle">Нова категорія</h2><button type="button" data-close-dialog>×</button></div><input type="hidden" name="id"><label>Назва<input name="name" required maxlength="100"></label><label>Slug<input name="slug" required maxlength="100" placeholder="projector"></label><label class="check"><input name="is_active" type="checkbox" checked> Показувати в каталозі</label><div class="dialog-actions"><button class="button outline" type="button" data-close-dialog>Скасувати</button><button class="button primary" type="submit">Зберегти</button></div><p class="admin-message" id="categoryFormMessage" hidden></p></form></dialog>
   <dialog id="orderDialog"><div class="order-dialog"><div class="dialog-heading"><h2>Замовлення <span id="orderDialogNumber"></span></h2><button type="button" data-close-dialog>×</button></div><div id="orderDetails"></div></div></dialog>
   <script src="supabase-config.js"></script><script type="module" src="admin.js"></script>
 </body>

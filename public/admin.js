@@ -1,7 +1,7 @@
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
 
 const supabase = createClient(window.TECHNOROOM_SUPABASE.url, window.TECHNOROOM_SUPABASE.publishableKey);
-const state = { products: [], orders: [] };
+const state = { products: [], orders: [], categories: [] };
 const statusNames = { new: 'Нове', confirmed: 'Підтверджено', paid: 'Оплачено', shipped: 'Відправлено', completed: 'Виконано', cancelled: 'Скасовано' };
 const money = (value) => `${new Intl.NumberFormat('uk-UA', { maximumFractionDigits: 2 }).format(Number(value || 0))} ₴`;
 const date = (value) => new Intl.DateTimeFormat('uk-UA', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(value));
@@ -42,6 +42,14 @@ function renderProducts() {
   }).join('') : '<tr><td class="empty-row" colspan="6">Товарів за цим фільтром немає</td></tr>';
 }
 
+function renderCategories() {
+  const rows = state.categories.map((category) => {
+    const count = state.products.filter((product) => product.category === category.slug).length;
+    return `<tr><td><b>${escape(category.name)}</b></td><td>${escape(category.slug)}</td><td><span class="visibility ${category.is_active ? 'visible' : 'hidden-status'}">${category.is_active ? 'Активна' : 'Прихована'}</span></td><td>${count}</td><td class="table-actions"><button data-edit-category="${category.id}">Редагувати</button></td></tr>`;
+  });
+  document.querySelector('#adminCategories').innerHTML = rows.join('') || '<tr><td class="empty-row" colspan="5">Категорій поки немає</td></tr>';
+}
+
 function statusSelect(order) {
   return `<select class="status-select status-${order.status}" data-status-order="${order.id}">${Object.entries(statusNames).map(([value, label]) => `<option value="${value}" ${order.status === value ? 'selected' : ''}>${label}</option>`).join('')}</select>`;
 }
@@ -73,14 +81,17 @@ function renderCustomers() {
   document.querySelector('#adminCustomers').innerHTML = customers.length ? customers.map((customer) => `<tr><td><b>${escape(customer.name)}</b></td><td>${escape(customer.phone)}<small>${escape(customer.email || 'Email не вказано')}</small></td><td>${customer.count}</td><td><b>${money(customer.total)}</b></td><td>${date(customer.last)}</td></tr>`).join('') : '<tr><td class="empty-row" colspan="5">Клієнтів поки немає</td></tr>';
 }
 
-function renderAll() { renderMetrics(); renderProducts(); renderOrders(); renderCustomers(); }
+function renderAll() { renderMetrics(); renderProducts(); renderCategories(); renderOrders(); renderCustomers(); }
 
 function productSlug(name) { return name.toLowerCase().trim().replace(/[^a-z0-9а-яіїєґ]+/gi, '-').replace(/^-|-$/g, ''); }
 function showProductDialog(product = null) {
   const dialog = document.querySelector('#productDialog'); const form = document.querySelector('#productForm'); form.reset();
+  const categorySelect = form.elements.category;
+  categorySelect.innerHTML = state.categories.map((category) => `<option value="${escape(category.slug)}">${escape(category.name)}</option>`).join('') || '<option value="projector">Проєктори</option>';
   document.querySelector('#productFormMessage').hidden = true;
   document.querySelector('#productDialogTitle').textContent = product ? 'Редагування товару' : 'Новий товар';
   if (product) Object.entries(product).forEach(([key, value]) => { if (form.elements[key] && key !== 'is_active') form.elements[key].value = value ?? ''; });
+  if (product?.specifications) form.elements.specifications_text.value = Object.entries(product.specifications).map(([key, value]) => `${key}: ${value}`).join('\n');
   form.elements.is_active.checked = product ? product.is_active : true;
   form.elements.stock_quantity.value = product?.stock_quantity ?? (product?.in_stock ? 10 : 0);
   dialog.showModal();
@@ -89,12 +100,29 @@ function showProductDialog(product = null) {
 async function saveProduct(event) {
   event.preventDefault();
   const form = event.currentTarget; const raw = Object.fromEntries(new FormData(form));
-  const payload = { name: raw.name.trim(), slug: raw.slug.trim() || productSlug(raw.name), sku: raw.sku.trim() || null, brand: raw.brand.trim() || null, category: raw.category.trim(), price: Number(raw.price), stock_quantity: Number(raw.stock_quantity), image_path: raw.image_path.trim() || null, description: raw.description.trim() || null, is_active: form.elements.is_active.checked };
+  const specifications = raw.specifications_text.split('\n').reduce((all, line) => { const [key, ...values] = line.split(':'); if (key?.trim() && values.length) all[key.trim()] = values.join(':').trim(); return all; }, {});
+  const payload = { name: raw.name.trim(), slug: raw.slug.trim() || productSlug(raw.name), sku: raw.sku.trim() || null, brand: raw.brand.trim() || null, category: raw.category.trim(), price: Number(raw.price), stock_quantity: Number(raw.stock_quantity), image_path: raw.image_path.trim() || null, description: raw.description.trim() || null, specifications, is_active: form.elements.is_active.checked };
   payload.in_stock = payload.stock_quantity > 0;
   const query = raw.id ? supabase.from('products').update(payload).eq('id', raw.id) : supabase.from('products').insert(payload);
   const { error } = await query;
   if (error) { const message = document.querySelector('#productFormMessage'); message.textContent = error.code === '23505' ? 'SKU або slug уже використовується.' : 'Не вдалося зберегти товар. Перевірте дані.'; message.hidden = false; return; }
   document.querySelector('#productDialog').close(); await loadData();
+}
+
+function showCategoryDialog(category = null) {
+  const dialog = document.querySelector('#categoryDialog'); const form = document.querySelector('#categoryForm'); form.reset();
+  document.querySelector('#categoryFormMessage').hidden = true; document.querySelector('#categoryDialogTitle').textContent = category ? 'Редагування категорії' : 'Нова категорія';
+  if (category) { form.elements.id.value = category.id; form.elements.name.value = category.name; form.elements.slug.value = category.slug; form.elements.is_active.checked = category.is_active; }
+  dialog.showModal();
+}
+
+async function saveCategory(event) {
+  event.preventDefault(); const form = event.currentTarget; const raw = Object.fromEntries(new FormData(form));
+  const payload = { name: raw.name.trim(), slug: raw.slug.trim().toLowerCase().replace(/[^a-z0-9-]+/g, '-'), is_active: form.elements.is_active.checked };
+  const query = raw.id ? supabase.from('categories').update(payload).eq('id', raw.id) : supabase.from('categories').insert(payload);
+  const { error } = await query;
+  if (error) { const message = document.querySelector('#categoryFormMessage'); message.textContent = error.code === '23505' ? 'Такий slug уже існує.' : 'Не вдалося зберегти категорію.'; message.hidden = false; return; }
+  document.querySelector('#categoryDialog').close(); await loadData();
 }
 
 async function updateOrderStatus(orderId, status) {
@@ -108,17 +136,18 @@ async function showOrderDialog(orderId) {
   document.querySelector('#orderDialogNumber').textContent = `#${order.id}`;
   const { data: items, error } = await supabase.from('order_items').select('*').eq('order_id', order.id);
   const lines = error ? '<p>Не вдалося завантажити склад замовлення.</p>' : (items.length ? items.map((item) => `<li><span>${escape(item.product_name)} × ${item.quantity}</span><b>${money(Number(item.unit_price) * item.quantity)}</b></li>`).join('') : '<li>Товари відсутні</li>');
-  document.querySelector('#orderDetails').innerHTML = `<div class="order-detail-grid"><div><span>Клієнт</span><b>${escape(order.customer_name)}</b><p>${escape(order.customer_phone)}<br>${escape(order.customer_email || 'Email не вказано')}</p></div><div><span>Доставка</span><b>${escape(order.city || 'Не вказано')}</b><p>${escape(order.address || 'Адресу не вказано')}</p></div><div><span>Дата</span><b>${date(order.created_at)}</b><p>Коментар: ${escape(order.comment || 'немає')}</p></div></div><h3>Склад замовлення</h3><ul class="order-lines">${lines}</ul><div class="order-total"><span>Разом</span><b>${money(order.total)}</b></div><label class="status-editor">Статус ${statusSelect(order)}</label>`;
+  document.querySelector('#orderDetails').innerHTML = `<div class="order-detail-grid"><div><span>Клієнт</span><b>${escape(order.customer_name)}</b><p>${escape(order.customer_phone)}<br>${escape(order.customer_email || 'Email не вказано')}</p></div><div><span>Доставка</span><b>${escape(order.city || 'Не вказано')}</b><p>${escape(order.address || 'Адресу не вказано')}</p></div><div><span>Дата</span><b>${date(order.created_at)}</b><p>Коментар: ${escape(order.comment || 'немає')}</p></div></div><h3>Склад замовлення</h3><ul class="order-lines">${lines}</ul><div class="order-total"><span>Разом</span><b>${money(order.total)}</b></div><label class="status-editor">Статус ${statusSelect(order)}</label><label>Нотатка менеджера<textarea id="managerNote" rows="3" placeholder="Внутрішня нотатка, не видно покупцю">${escape(order.manager_note || '')}</textarea></label><button class="button outline" data-save-note="${order.id}">Зберегти нотатку</button>`;
   document.querySelector('#orderDialog').showModal();
 }
 
 async function loadData() {
-  const [{ data: products, error: productError }, { data: orders, error: orderError }] = await Promise.all([
+  const [{ data: products, error: productError }, { data: orders, error: orderError }, { data: categories, error: categoryError }] = await Promise.all([
     supabase.from('products').select('*').order('created_at', { ascending: false }),
     supabase.from('orders').select('*,order_items(count)').order('created_at', { ascending: false }),
+    supabase.from('categories').select('*').order('sort_order').order('name'),
   ]);
-  if (productError || orderError) { notice('Не вдалося отримати дані. Перевірте права доступу та міграцію адмінки.', true); return; }
-  state.products = products || []; state.orders = orders || []; renderAll();
+  if (productError || orderError || categoryError) { notice('Не вдалося отримати дані. Перевірте права доступу та міграцію адмінки.', true); return; }
+  state.products = products || []; state.orders = orders || []; state.categories = categories || []; renderAll();
 }
 
 async function dashboard() {
@@ -130,12 +159,14 @@ async function dashboard() {
 document.querySelector('#loginForm').onsubmit = async (event) => { event.preventDefault(); const data = Object.fromEntries(new FormData(event.currentTarget)); const { error } = await supabase.auth.signInWithPassword({ email: data.email, password: data.password }); if (error) { notice('Невірна email-адреса або пароль', true); return; } document.querySelector('#notice').hidden = true; dashboard(); };
 document.querySelector('#logout').onclick = async () => { await supabase.auth.signOut(); view('login'); };
 document.querySelectorAll('[data-add-product]').forEach((button) => { button.onclick = () => showProductDialog(); });
+document.querySelector('#addCategory').onclick = () => showCategoryDialog();
 document.querySelector('#productForm').onsubmit = saveProduct;
+document.querySelector('#categoryForm').onsubmit = saveCategory;
 document.querySelectorAll('[data-close-dialog]').forEach((button) => { button.onclick = () => button.closest('dialog').close(); });
 ['#productSearch', '#productFilter'].forEach((selector) => document.querySelector(selector).addEventListener('input', renderProducts));
 ['#orderSearch', '#orderFilter'].forEach((selector) => document.querySelector(selector).addEventListener('input', renderOrders));
 document.querySelector('#customerSearch').addEventListener('input', renderCustomers);
-document.addEventListener('click', (event) => { const edit = event.target.closest('[data-edit-product]'); const order = event.target.closest('[data-view-order]'); if (edit) showProductDialog(state.products.find((item) => item.id === Number(edit.dataset.editProduct))); if (order) showOrderDialog(order.dataset.viewOrder); });
+document.addEventListener('click', async (event) => { const edit = event.target.closest('[data-edit-product]'); const category = event.target.closest('[data-edit-category]'); const order = event.target.closest('[data-view-order]'); const note = event.target.closest('[data-save-note]'); if (edit) showProductDialog(state.products.find((item) => item.id === Number(edit.dataset.editProduct))); if (category) showCategoryDialog(state.categories.find((item) => item.id === Number(category.dataset.editCategory))); if (order) showOrderDialog(order.dataset.viewOrder); if (note) { const { error } = await supabase.from('orders').update({ manager_note: document.querySelector('#managerNote').value }).eq('id', note.dataset.saveNote); if (error) return alert('Не вдалося зберегти нотатку.'); const current = state.orders.find((item) => item.id === Number(note.dataset.saveNote)); if (current) current.manager_note = document.querySelector('#managerNote').value; note.textContent = 'Збережено'; } });
 document.addEventListener('change', (event) => { if (event.target.matches('[data-status-order]')) updateOrderStatus(event.target.dataset.statusOrder, event.target.value); });
 supabase.auth.getSession().then(({ data: { session } }) => session ? dashboard() : view('login'));
 

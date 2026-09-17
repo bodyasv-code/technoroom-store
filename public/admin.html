@@ -19,6 +19,16 @@
       <button class="button primary">Увійти</button><p id="notice" class="admin-message" hidden></p>
     </form>
   </main>
+  <main class="admin-login" data-view="recovery" hidden>
+    <form id="recoveryForm">
+      <a class="brand" href="index.html"><span>TECHNO</span>ROOM<i></i></a>
+      <p class="eyebrow">Безпечне відновлення</p><h1>Новий пароль</h1>
+      <p class="recovery-help">Створіть новий пароль для входу до адмінки.</p>
+      <label>Новий пароль<input name="password" type="password" autocomplete="new-password" minlength="10" required></label>
+      <label>Повторіть пароль<input name="confirmPassword" type="password" autocomplete="new-password" minlength="10" required></label>
+      <button class="button primary">Зберегти новий пароль</button><p id="recoveryNotice" class="admin-message" hidden></p>
+    </form>
+  </main>
   <div class="admin-shell" data-view="app" hidden>
     <aside class="admin-nav">
       <a class="brand" href="index.html"><span>TECHNO</span>ROOM<i></i></a><p>Керування магазином</p>

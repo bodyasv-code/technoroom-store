@@ -153,8 +153,9 @@ async function loadData() {
 }
 
 async function dashboard() {
-  const { data: profile } = await supabase.from('profiles').select('full_name,role').single();
-  if (!profile) { await supabase.auth.signOut(); view('login'); notice('Доступ до адмінки відсутній', true); return; }
+  const { data: { user } } = await supabase.auth.getUser();
+  const { data: profile, error: profileError } = await supabase.from('profiles').select('full_name,role').eq('id', user?.id || '').maybeSingle();
+  if (!profile) { await supabase.auth.signOut(); view('login'); notice(`Доступ відсутній для ${user?.email || 'цього користувача'}.${profileError ? ' Перевірте профіль у Supabase.' : ''}`, true); return; }
   view('app'); document.querySelector('#adminName').textContent = profile.full_name || 'Адміністраторе'; await loadData();
 }
 

@@ -103,9 +103,11 @@ async function saveProduct(event) {
   const specifications = raw.specifications_text.split('\n').reduce((all, line) => { const [key, ...values] = line.split(':'); if (key?.trim() && values.length) all[key.trim()] = values.join(':').trim(); return all; }, {});
   const payload = { name: raw.name.trim(), slug: raw.slug.trim() || productSlug(raw.name), sku: raw.sku.trim() || null, brand: raw.brand.trim() || null, category: raw.category.trim(), price: Number(raw.price), stock_quantity: Number(raw.stock_quantity), image_path: raw.image_path.trim() || null, description: raw.description.trim() || null, specifications, is_active: form.elements.is_active.checked };
   payload.in_stock = payload.stock_quantity > 0;
-  const query = raw.id ? supabase.from('products').update(payload).eq('id', raw.id) : supabase.from('products').insert(payload);
-  const { error } = await query;
+  const query = raw.id ? supabase.from('products').update(payload).eq('id', raw.id).select().single() : supabase.from('products').insert(payload).select().single();
+  const { data: product, error } = await query;
   if (error) { const message = document.querySelector('#productFormMessage'); message.textContent = error.code === '23505' ? 'SKU або slug уже використовується.' : 'Не вдалося зберегти товар. Перевірте дані.'; message.hidden = false; return; }
+  const imageFile = form.elements.image_file.files[0];
+  if (imageFile) { const extension = imageFile.name.split('.').pop().toLowerCase(); const path = `products/${product.id}-${Date.now()}.${extension}`; const { error: uploadError } = await supabase.storage.from('product-images').upload(path, imageFile, { upsert: false, contentType: imageFile.type }); if (uploadError || (await supabase.from('products').update({ image_path: path }).eq('id', product.id)).error) { const message = document.querySelector('#productFormMessage'); message.textContent = 'Товар збережено, але фото не завантажилось.'; message.hidden = false; return; } }
   document.querySelector('#productDialog').close(); await loadData();
 }
 

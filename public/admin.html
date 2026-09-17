@@ -1,2 +1,65 @@
-<!doctype html><html lang="uk"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>РђРґРјС–РЅРєР° вЂ” TECHNOROOM</title><link rel="stylesheet" href="styles.css"></head><body class="admin-body"><main class="admin-login" data-view="login" hidden><form id="loginForm"><a class="brand" href="index.html"><span>TECHNO</span>ROOM<i></i></a><p class="eyebrow">Р—Р°С…РёС‰РµРЅРёР№ РґРѕСЃС‚СѓРї</p><h1>Р’С…С–Рґ РґРѕ Р°РґРјС–РЅРєРё</h1><label>Email<input name="email" type="email" required></label><label>РџР°СЂРѕР»СЊ<input name="password" type="password" required></label><button class="button primary">РЈРІС–Р№С‚Рё</button><p id="notice" class="admin-message" hidden></p></form></main><div class="admin-shell" data-view="app" hidden><aside class="admin-nav"><a class="brand" href="index.html"><span>TECHNO</span>ROOM<i></i></a><p>РљРµСЂСѓРІР°РЅРЅСЏ РјР°РіР°Р·РёРЅРѕРј</p><a class="active" href="#overview">РћРіР»СЏРґ</a><a href="#products">РўРѕРІР°СЂРё</a><a href="#orders">Р—Р°РјРѕРІР»РµРЅРЅСЏ</a><a href="index.html">Р’С–РґРєСЂРёС‚Рё РјР°РіР°Р·РёРЅ в†—</a><button id="logout">Р’РёР№С‚Рё</button></aside><main class="admin-main"><header class="admin-top"><div><p class="eyebrow">РџР°РЅРµР»СЊ РєРµСЂСѓРІР°РЅРЅСЏ</p><h1>Р’С–С‚Р°С”РјРѕ, <span id="adminName"></span></h1></div></header><section class="admin-metrics" id="overview"><article><span>РўРѕРІР°СЂС–РІ</span><strong id="productMetric">0</strong></article><article><span>Р—Р°РјРѕРІР»РµРЅСЊ</span><strong id="orderMetric">0</strong></article><article><span>РЎСѓРјР° Р·Р°РјРѕРІР»РµРЅСЊ</span><strong id="revenueMetric">0 в‚ґ</strong></article></section><section class="admin-section" id="products"><div class="admin-title"><h2>РўРѕРІР°СЂРё</h2><span>Р”Р°РЅС– Р· Р±Р°Р·Рё</span></div><div class="admin-table-wrap"><table><thead><tr><th>РўРѕРІР°СЂ</th><th>РљР°С‚РµРіРѕСЂС–СЏ</th><th>Р¦С–РЅР°</th><th>РЎС‚Р°С‚СѓСЃ</th></tr></thead><tbody id="adminProducts"></tbody></table></div></section><section class="admin-section" id="orders"><div class="admin-title"><h2>Р—Р°РјРѕРІР»РµРЅРЅСЏ</h2><span>Р— СЃР°Р№С‚Сѓ</span></div><div class="admin-table-wrap"><table><thead><tr><th>в„–</th><th>РџРѕРєСѓРїРµС†СЊ</th><th>РўРѕРІР°СЂС–РІ</th><th>РЎСѓРјР°</th><th>РЎС‚Р°С‚СѓСЃ</th></tr></thead><tbody id="adminOrders"></tbody></table></div></section></main></div><script src="supabase-config.js"></script><script type="module" src="admin.js"></script></body></html>
+<!doctype html>
+<html lang="uk">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Адмінка — TECHNOROOM</title>
+  <link rel="stylesheet" href="styles.css">
+  <style>
+    .admin-nav a span{float:right;color:var(--acid);font-size:11px}.admin-metrics{grid-template-columns:repeat(4,1fr)}.admin-metrics small{display:block;color:var(--muted);font-size:10px;margin-top:8px}.admin-title>div span{font-size:11px;color:var(--muted);display:block;margin-top:4px}.admin-controls{display:flex;gap:10px;margin:0 0 14px}.admin-controls input,.admin-controls select{border:1px solid var(--line);background:#fff;padding:11px 12px;font:13px Manrope}.admin-controls input{width:min(430px,100%)}.admin-controls select{min-width:150px}.table-actions button{border:0;background:transparent;color:#405e00;font:700 11px Manrope;cursor:pointer;padding:4px}.stock-badge,.visibility{display:inline-block;padding:5px 8px;border-radius:99px;font-size:10px;font-weight:800}.stock-ok,.visible{background:#e4f7c8;color:#4e7200}.stock-low{background:#fff0c8;color:#8b5f00}.stock-zero,.hidden-status{background:#f6ded9;color:#943b2a}.status-select{border:0;border-radius:99px;padding:6px 25px 6px 9px;font:700 10px Manrope;cursor:pointer;background:#eff2eb;color:#30413d}.status-new{background:#fff0c8;color:#8b5f00}.status-confirmed,.status-paid{background:#ddecff;color:#215a9c}.status-shipped{background:#ebe2ff;color:#624099}.status-completed{background:#e4f7c8;color:#4e7200}.status-cancelled{background:#f6ded9;color:#943b2a}.dialog-grid{display:grid;grid-template-columns:1fr 1fr;gap:0 14px}.dialog-actions{display:flex;gap:10px;margin-top:20px}.dialog-actions .button{margin:0}.order-dialog{padding:28px;background:#fff;width:min(680px,calc(100vw - 32px))}.order-detail-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:20px;border-bottom:1px solid var(--line);padding:20px 0}.order-detail-grid span{display:block;color:var(--muted);font-size:10px;text-transform:uppercase;font-weight:800;margin-bottom:7px}.order-detail-grid b{font-size:13px}.order-detail-grid p{color:var(--muted);font-size:12px;line-height:1.5;margin:6px 0 0}.order-dialog h3{font:700 16px Manrope;letter-spacing:0;margin:24px 0 8px}.order-lines{list-style:none;margin:0;padding:0}.order-lines li{display:flex;justify-content:space-between;padding:11px 0;border-bottom:1px solid var(--line);font-size:13px}.order-total{display:flex;justify-content:space-between;padding:17px 0;font-size:17px}.status-editor{display:flex!important;align-items:center;gap:10px;font-size:11px!important}.status-editor .status-select{margin-top:0!important}@media(max-width:1000px){.admin-metrics{grid-template-columns:repeat(2,1fr)}}@media(max-width:800px){.admin-metrics{grid-template-columns:1fr}.admin-controls{flex-direction:column}.admin-controls input{width:100%}.dialog-grid,.order-detail-grid{grid-template-columns:1fr}.dialog-actions{flex-direction:column}.dialog-actions .button{width:100%}.admin-top>.button{display:none}}
+  </style>
+</head>
+<body class="admin-body">
+  <main class="admin-login" data-view="login" hidden>
+    <form id="loginForm">
+      <a class="brand" href="index.html"><span>TECHNO</span>ROOM<i></i></a>
+      <p class="eyebrow">Захищений доступ</p><h1>Вхід до адмінки</h1>
+      <label>Email<input name="email" type="email" autocomplete="email" required></label>
+      <label>Пароль<input name="password" type="password" autocomplete="current-password" required></label>
+      <button class="button primary">Увійти</button><p id="notice" class="admin-message" hidden></p>
+    </form>
+  </main>
+  <div class="admin-shell" data-view="app" hidden>
+    <aside class="admin-nav">
+      <a class="brand" href="index.html"><span>TECHNO</span>ROOM<i></i></a><p>Керування магазином</p>
+      <a class="active" href="#overview" data-section="overview">Огляд</a>
+      <a href="#products" data-section="products">Товари <span id="productsNavCount"></span></a>
+      <a href="#orders" data-section="orders">Замовлення <span id="ordersNavCount"></span></a>
+      <a href="#customers" data-section="customers">Клієнти</a><a href="index.html">Відкрити магазин ↗</a><button id="logout">Вийти</button>
+    </aside>
+    <main class="admin-main">
+      <header class="admin-top"><div><p class="eyebrow">Панель керування</p><h1>Вітаємо, <span id="adminName"></span></h1></div><button class="button primary" data-add-product>+ Додати товар</button></header>
+      <section class="admin-metrics" id="overview">
+        <article><span>Активні товари</span><strong id="productMetric">0</strong><small id="productMetricHint">в каталозі</small></article>
+        <article><span>Нові замовлення</span><strong id="orderMetric">0</strong><small id="orderMetricHint">потребують уваги</small></article>
+        <article><span>Виторг за всі замовлення</span><strong id="revenueMetric">0 ₴</strong><small>без скасованих</small></article>
+        <article><span>Потрібно поповнити</span><strong id="lowStockMetric">0</strong><small>товарів із низьким залишком</small></article>
+      </section>
+      <section class="admin-section" id="products">
+        <div class="admin-title"><div><h2>Товари</h2><span>Каталог, ціни та залишки</span></div><button class="button primary" data-add-product>+ Додати товар</button></div>
+        <div class="admin-controls"><input id="productSearch" type="search" placeholder="Пошук за назвою, брендом або SKU"><select id="productFilter"><option value="all">Усі товари</option><option value="active">Активні</option><option value="draft">Приховані</option><option value="low">Низький залишок</option></select></div>
+        <div class="admin-table-wrap"><table><thead><tr><th>Товар</th><th>SKU / категорія</th><th>Ціна</th><th>Залишок</th><th>Видимість</th><th></th></tr></thead><tbody id="adminProducts"></tbody></table></div>
+      </section>
+      <section class="admin-section" id="orders">
+        <div class="admin-title"><div><h2>Замовлення</h2><span>Усі заявки з сайту</span></div></div>
+        <div class="admin-controls"><input id="orderSearch" type="search" placeholder="Номер, ім’я, телефон або email"><select id="orderFilter"><option value="all">Усі статуси</option><option value="new">Нові</option><option value="confirmed">Підтверджені</option><option value="paid">Оплачені</option><option value="shipped">Відправлені</option><option value="completed">Виконані</option><option value="cancelled">Скасовані</option></select></div>
+        <div class="admin-table-wrap"><table><thead><tr><th>№ / дата</th><th>Покупець</th><th>Товарів</th><th>Сума</th><th>Статус</th><th></th></tr></thead><tbody id="adminOrders"></tbody></table></div>
+      </section>
+      <section class="admin-section" id="customers">
+        <div class="admin-title"><div><h2>Клієнти</h2><span>Автоматично формується із замовлень</span></div></div>
+        <div class="admin-controls"><input id="customerSearch" type="search" placeholder="Пошук клієнта"></div>
+        <div class="admin-table-wrap"><table><thead><tr><th>Клієнт</th><th>Контакти</th><th>Замовлень</th><th>Загальна сума</th><th>Останнє замовлення</th></tr></thead><tbody id="adminCustomers"></tbody></table></div>
+      </section>
+    </main>
+  </div>
+  <dialog id="productDialog"><form id="productForm" method="dialog">
+    <div class="dialog-heading"><h2 id="productDialogTitle">Новий товар</h2><button type="button" data-close-dialog>×</button></div><input type="hidden" name="id">
+    <div class="dialog-grid"><label>Назва товару<input name="name" required maxlength="180"></label><label>SKU<input name="sku" maxlength="80" placeholder="Напр. PJ-EPSON-01"></label><label>Slug / URL<input name="slug" required maxlength="180" placeholder="epson-eh-tw7100"></label><label>Бренд<input name="brand" maxlength="100"></label><label>Категорія<input name="category" required maxlength="100" placeholder="projector"></label><label>Ціна, ₴<input name="price" required type="number" min="0" step="0.01"></label><label>Залишок, шт.<input name="stock_quantity" required type="number" min="0" step="1" value="0"></label><label>Посилання на зображення<input name="image_path" type="url" placeholder="https://..."></label></div>
+    <label>Опис<textarea name="description" rows="4"></textarea></label><label class="check"><input type="checkbox" name="is_active" checked> Показувати товар у каталозі</label>
+    <div class="dialog-actions"><button class="button outline" type="button" data-close-dialog>Скасувати</button><button class="button primary" type="submit">Зберегти товар</button></div><p class="admin-message" id="productFormMessage" hidden></p>
+  </form></dialog>
+  <dialog id="orderDialog"><div class="order-dialog"><div class="dialog-heading"><h2>Замовлення <span id="orderDialogNumber"></span></h2><button type="button" data-close-dialog>×</button></div><div id="orderDetails"></div></div></dialog>
+  <script src="supabase-config.js"></script><script type="module" src="admin.js"></script>
+</body>
+</html>
 

@@ -17,29 +17,23 @@ export default async function handler(request, response) {
     return response.status(400).json({ error: 'Invalid order data' });
   }
 
-  const productIds = items.map((item) => item.productId);
-  const { data: products, error: productError } = await supabase
-    .from('products')
-    .select('id, name, price, in_stock')
-    .in('id', productIds)
-    .eq('is_active', true);
+  const normalizedItems = items.map((item) => ({ productId: Number(item.productId), quantity: Math.max(1, Number(item.quantity) || 1) }));
+  if (normalizedItems.some((item) => !Number.isInteger(item.productId))) return response.status(400).json({ error: 'Invalid product' });
 
-  if (productError || products.length !== productIds.length || products.some((product) => !product.in_stock)) {
-    return response.status(400).json({ error: 'One or more items are unavailable' });
+  const { data: orderId, error } = await supabase.rpc('create_store_order', {
+    p_customer_name: customer.name.trim(),
+    p_customer_phone: customer.phone.trim(),
+    p_customer_email: customer.email || '',
+    p_city: delivery?.city || '',
+    p_address: delivery?.address || '',
+    p_comment: delivery?.comment || '',
+    p_items: normalizedItems,
+  });
+
+  if (error) {
+    const unavailable = /unavailable/i.test(error.message || '');
+    return response.status(unavailable ? 409 : 500).json({ error: unavailable ? 'One or more items are unavailable' : 'Unable to create order' });
   }
-
-  const byId = new Map(products.map((product) => [product.id, product]));
-  const lines = items.map((item) => ({ product: byId.get(item.productId), quantity: Math.max(1, Number(item.quantity) || 1) }));
-  const total = lines.reduce((sum, line) => sum + Number(line.product.price) * line.quantity, 0);
-  const { data: order, error: orderError } = await supabase
-    .from('orders')
-    .insert({ customer_name: customer.name, customer_phone: customer.phone, customer_email: customer.email || null, city: delivery?.city || null, address: delivery?.address || null, comment: delivery?.comment || null, total })
-    .select('id')
-    .single();
-
-  if (orderError) return response.status(500).json({ error: 'Unable to create order' });
-  const { error: linesError } = await supabase.from('order_items').insert(lines.map((line) => ({ order_id: order.id, product_id: line.product.id, product_name: line.product.name, unit_price: line.product.price, quantity: line.quantity })));
-  if (linesError) return response.status(500).json({ error: 'Unable to create order items' });
-  return response.status(201).json({ orderId: order.id });
+  return response.status(201).json({ orderId });
 }
 

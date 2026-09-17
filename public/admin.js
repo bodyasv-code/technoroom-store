@@ -157,6 +157,7 @@ async function dashboard() {
 }
 
 document.querySelector('#loginForm').onsubmit = async (event) => { event.preventDefault(); const data = Object.fromEntries(new FormData(event.currentTarget)); const { error } = await supabase.auth.signInWithPassword({ email: data.email, password: data.password }); if (error) { notice('Невірна email-адреса або пароль', true); return; } document.querySelector('#notice').hidden = true; dashboard(); };
+document.querySelector('#recoveryForm').onsubmit = async (event) => { event.preventDefault(); const form = event.currentTarget; const data = Object.fromEntries(new FormData(form)); const message = document.querySelector('#recoveryNotice'); if (data.password !== data.confirmPassword) { message.textContent = 'Паролі не збігаються.'; message.hidden = false; return; } const { error } = await supabase.auth.updateUser({ password: data.password }); if (error) { message.textContent = 'Посилання недійсне або вже використане. Запросіть скидання пароля ще раз.'; message.hidden = false; return; } await supabase.auth.signOut(); history.replaceState({}, document.title, location.pathname); view('login'); notice('Пароль успішно оновлено. Увійдіть з новим паролем.'); };
 document.querySelector('#logout').onclick = async () => { await supabase.auth.signOut(); view('login'); };
 document.querySelectorAll('[data-add-product]').forEach((button) => { button.onclick = () => showProductDialog(); });
 document.querySelector('#addCategory').onclick = () => showCategoryDialog();
@@ -168,5 +169,7 @@ document.querySelectorAll('[data-close-dialog]').forEach((button) => { button.on
 document.querySelector('#customerSearch').addEventListener('input', renderCustomers);
 document.addEventListener('click', async (event) => { const edit = event.target.closest('[data-edit-product]'); const category = event.target.closest('[data-edit-category]'); const order = event.target.closest('[data-view-order]'); const note = event.target.closest('[data-save-note]'); if (edit) showProductDialog(state.products.find((item) => item.id === Number(edit.dataset.editProduct))); if (category) showCategoryDialog(state.categories.find((item) => item.id === Number(category.dataset.editCategory))); if (order) showOrderDialog(order.dataset.viewOrder); if (note) { const { error } = await supabase.from('orders').update({ manager_note: document.querySelector('#managerNote').value }).eq('id', note.dataset.saveNote); if (error) return alert('Не вдалося зберегти нотатку.'); const current = state.orders.find((item) => item.id === Number(note.dataset.saveNote)); if (current) current.manager_note = document.querySelector('#managerNote').value; note.textContent = 'Збережено'; } });
 document.addEventListener('change', (event) => { if (event.target.matches('[data-status-order]')) updateOrderStatus(event.target.dataset.statusOrder, event.target.value); });
-supabase.auth.getSession().then(({ data: { session } }) => session ? dashboard() : view('login'));
+supabase.auth.onAuthStateChange((event) => { if (event === 'PASSWORD_RECOVERY') view('recovery'); });
+const recoveryType = new URLSearchParams(location.hash.slice(1)).get('type');
+supabase.auth.getSession().then(({ data: { session } }) => recoveryType === 'recovery' ? view('recovery') : session ? dashboard() : view('login'));
 

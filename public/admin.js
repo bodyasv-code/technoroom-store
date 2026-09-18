@@ -346,3 +346,108 @@ categoryTreeStyle.textContent = `
   .category-tree-row code { color: var(--muted); font: 11px Manrope; }
 `;
 document.head.append(categoryTreeStyle);
+// Керування наявністю товарів: в наявності, під замовлення або відсутній.
+const inventoryLabels = {
+  in_stock: 'В наявності',
+  under_order: 'Під замовлення',
+  out_of_stock: 'Немає в наявності'
+};
+const inventoryStatus = (product) => product.availability_status || ((product.in_stock && Number(product.stock_quantity || 0) > 0) ? 'in_stock' : 'out_of_stock');
+const inventoryQuantity = (product) => Number(product.stock_quantity ?? (product.in_stock ? 10 : 0));
+const originalRenderMetricsForInventory = renderMetrics;
+renderMetrics = function () {
+  originalRenderMetricsForInventory();
+  document.querySelector('#lowStockMetric').textContent = state.products.filter((product) => inventoryStatus(product) === 'in_stock' && inventoryQuantity(product) <= 3).length;
+};
+const originalRenderProductsForInventory = renderProducts;
+renderProducts = function () {
+  const filterControl = document.querySelector('#productFilter');
+  if (!filterControl.querySelector('option[value="under_order"]')) {
+    filterControl.insertAdjacentHTML('beforeend', '<option value="under_order">Під замовлення</option><option value="out_of_stock">Немає в наявності</option>');
+  }
+  const header = document.querySelector('#adminProducts').closest('table').querySelector('thead tr');
+  if (header.children.length === 6) header.children[4].insertAdjacentHTML('beforebegin', '<th>Наявність</th>');
+  const term = document.querySelector('#productSearch').value.trim().toLowerCase();
+  const filter = filterControl.value;
+  const products = state.products.filter((product) => {
+    const haystack = [product.name, product.brand, product.sku, product.category].join(' ').toLowerCase();
+    if (term && !haystack.includes(term)) return false;
+    if (filter === 'active') return product.is_active;
+    if (filter === 'draft') return !product.is_active;
+    if (filter === 'low') return inventoryStatus(product) === 'in_stock' && inventoryQuantity(product) <= 3;
+    if (filter === 'under_order' || filter === 'out_of_stock') return inventoryStatus(product) === filter;
+    return true;
+  });
+  document.querySelector('#adminProducts').innerHTML = products.length ? products.map((product) => {
+    const quantity = inventoryQuantity(product);
+    const status = inventoryStatus(product);
+    const stockClass = status === 'under_order' ? 'stock-order' : quantity === 0 ? 'stock-zero' : quantity <= 3 ? 'stock-low' : 'stock-ok';
+    return '<tr><td><b>' + escape(product.name) + '</b><small>' + escape(product.brand || 'Без бренду') + '</small></td><td><b>' + escape(product.sku || '—') + '</b><small>' + escape(product.category) + '</small></td><td>' + money(product.price) + '</td><td><span class="stock-badge ' + stockClass + '">' + (status === 'under_order' ? 'під замовлення' : quantity + ' шт.') + '</span></td><td><span class="inventory-badge inventory-' + status + '">' + inventoryLabels[status] + '</span></td><td><span class="visibility ' + (product.is_active ? 'visible' : 'hidden-status') + '">' + (product.is_active ? 'У каталозі' : 'Приховано') + '</span></td><td class="table-actions"><button data-edit-product="' + product.id + '">Редагувати</button></td></tr>';
+  }).join('') : '<tr><td class="empty-row" colspan="7">Товарів за цим фільтром немає</td></tr>';
+};
+const originalShowProductForInventory = showProductDialog;
+showProductDialog = function (product = null) {
+  originalShowProductForInventory(product);
+  const form = document.querySelector('#productForm');
+  if (!document.querySelector('#availabilityStatusField')) {
+    const stockLabel = form.elements.stock_quantity.closest('label');
+    stockLabel.insertAdjacentHTML('beforebegin', '<label id="availabilityStatusField">Статус наявності<select name="availability_status"><option value="in_stock">В наявності</option><option value="under_order">Під замовлення</option><option value="out_of_stock">Немає в наявності</option></select></label>');
+  }
+  form.elements.availability_status.value = product ? inventoryStatus(product) : 'in_stock';
+};
+async function saveProductWithInventory(event) {
+  event.preventDefault();
+  const form = event.currentTarget;
+  const raw = Object.fromEntries(new FormData(form));
+  const specifications = raw.specifications_text.split('\n').reduce((all, line) => {
+    const [key, ...values] = line.split(':');
+    if (key?.trim() && values.length) all[key.trim()] = values.join(':').trim();
+    return all;
+  }, {});
+  const requestedStatus = raw.availability_status;
+  const requestedQuantity = Number(raw.stock_quantity);
+  const availability_status = requestedStatus === 'in_stock' && requestedQuantity === 0 ? 'out_of_stock' : requestedStatus;
+  const payload = {
+    name: raw.name.trim(),
+    slug: raw.slug.trim() || productSlug(raw.name),
+    sku: raw.sku.trim() || null,
+    brand: raw.brand.trim() || null,
+    category: raw.category.trim(),
+    price: Number(raw.price),
+    stock_quantity: availability_status === 'in_stock' ? requestedQuantity : 0,
+    image_path: raw.image_path.trim() || null,
+    description: raw.description.trim() || null,
+    specifications,
+    is_active: form.elements.is_active.checked,
+    availability_status,
+    in_stock: availability_status === 'in_stock' && requestedQuantity > 0
+  };
+  const query = raw.id ? supabase.from('products').update(payload).eq('id', raw.id).select().single() : supabase.from('products').insert(payload).select().single();
+  const { data: product, error } = await query;
+  if (error) {
+    const message = document.querySelector('#productFormMessage');
+    message.textContent = error.code === '23505' ? 'SKU або slug уже використовується.' : 'Не вдалося зберегти товар. Перевірте дані.';
+    message.hidden = false;
+    return;
+  }
+  const imageFile = form.elements.image_file.files[0];
+  if (imageFile) {
+    const extension = imageFile.name.split('.').pop().toLowerCase();
+    const path = 'products/' + product.id + '-' + Date.now() + '.' + extension;
+    const { error: uploadError } = await supabase.storage.from('product-images').upload(path, imageFile, { upsert: false, contentType: imageFile.type });
+    if (uploadError || (await supabase.from('products').update({ image_path: path }).eq('id', product.id)).error) {
+      const message = document.querySelector('#productFormMessage');
+      message.textContent = 'Товар збережено, але фото не завантажилось.';
+      message.hidden = false;
+      return;
+    }
+  }
+  document.querySelector('#productDialog').close();
+  await loadData();
+}
+document.querySelector('#productForm').onsubmit = saveProductWithInventory;
+const inventoryAdminStyle = document.createElement('style');
+inventoryAdminStyle.textContent =
+  '.inventory-badge{display:inline-block;padding:5px 8px;border-radius:99px;font-size:10px;font-weight:800}.inventory-in_stock{background:#e4f7c8;color:#4e7200}.inventory-under_order,.stock-order{background:#fff0c8;color:#8b5f00}.inventory-out_of_stock{background:#f6ded9;color:#943b2a}#availabilityStatusField select{display:block;width:100%;box-sizing:border-box;margin-top:7px;border:1px solid var(--line);background:#fff;padding:10px;font:13px Manrope}';
+document.head.append(inventoryAdminStyle);
+renderAll();

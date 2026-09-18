@@ -299,3 +299,50 @@ orderReadabilityStyle.textContent = `
   }
 `;
 document.head.append(orderReadabilityStyle);
+
+
+// Дерево категорій: батьківські та вкладені рівні.
+const originalRenderCategories = renderCategories;
+renderCategories = function () {
+  const byParent = new Map();
+  state.categories.forEach((category) => {
+    const key = category.parent_id || null;
+    const items = byParent.get(key) || [];
+    items.push(category);
+    byParent.set(key, items);
+  });
+
+  const ordered = [];
+  const visited = new Set();
+  const addBranch = (parentId = null, depth = 0) => {
+    (byParent.get(parentId) || [])
+      .sort((a, b) => a.name.localeCompare(b.name, 'uk'))
+      .forEach((category) => {
+        if (visited.has(category.id)) return;
+        visited.add(category.id);
+        ordered.push({ category, depth });
+        addBranch(category.id, depth + 1);
+      });
+  };
+  addBranch();
+  state.categories.filter((category) => !visited.has(category.id)).forEach((category) => ordered.push({ category, depth: 0 }));
+
+  document.querySelector('#adminCategories').innerHTML = ordered.map(({ category, depth }) => {
+    const parent = state.categories.find((item) => item.id === category.parent_id);
+    const count = state.products.filter((product) => product.category === category.slug).length;
+    const childCount = (byParent.get(category.id) || []).length;
+    const marker = depth ? '↳' : '◆';
+    const subtitle = parent ? `Підкатегорія · ${escape(parent.name)}` : 'Основна категорія';
+    return `<tr class="category-tree-row" style="--tree-depth:${depth}"><td><span class="category-tree-marker">${marker}</span><b>${escape(category.name)}</b><small>${subtitle}${childCount ? ` · ${childCount} підкатегор.` : ''}</small></td><td><code>${escape(category.slug)}</code></td><td><span class="visibility ${category.is_active ? 'visible' : 'hidden-status'}">${category.is_active ? 'Активна' : 'Прихована'}</span></td><td>${count}</td><td class="table-actions"><button data-edit-category="${category.id}">Редагувати</button></td></tr>`;
+  }).join('');
+};
+
+const categoryTreeStyle = document.createElement('style');
+categoryTreeStyle.textContent = `
+  .category-tree-row td:first-child { padding-left: calc(18px + var(--tree-depth) * 26px); position: relative; }
+  .category-tree-row small { display: block; margin-top: 5px; color: var(--muted); font-size: 10px; }
+  .category-tree-marker { display: inline-grid; place-items: center; width: 18px; height: 18px; margin-right: 7px; border-radius: 50%; background: #ecf1e8; color: #577400; font-size: 10px; vertical-align: middle; }
+  .category-tree-row[style*="--tree-depth:1"] .category-tree-marker { background: #ddff43; color: #0b2723; }
+  .category-tree-row code { color: var(--muted); font: 11px Manrope; }
+`;
+document.head.append(categoryTreeStyle);

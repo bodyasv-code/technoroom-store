@@ -245,3 +245,10 @@ async function refreshAvailabilityStatuses() {
   mount();
 }
 window.addEventListener('load', refreshAvailabilityStatuses, { once: true });
+
+
+// Категорії визначаються за прив’язкою товару, а не за словами в описі.
+categoryMatch = function (product, category) {
+  const categoryTree = { projector: ['projector', 'laser-proj'] };
+  return (categoryTree[category] || [category]).includes(product.type);
+};

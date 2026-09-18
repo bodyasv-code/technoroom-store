@@ -82,3 +82,56 @@ function mount() { renderCart(); home(); catalog(); product(); checkout(); const
 async function loadProducts() { try { const { data, error } = await supabase.from('products').select('*').eq('is_active', true).order('created_at', { ascending: false }); if (!error && data?.length) products = data.map((item) => ({ id: item.id, name: item.name, description: item.description, price: Number(item.price), type: item.category, brand: item.brand, specifications: item.specifications, stock: item.in_stock && Number(item.stock_quantity || 0) > 0, image: item.image_path })); } catch (error) { console.warn('Не вдалося завантажити каталог із Supabase', error); } finally { mount(); } }
 if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', loadProducts, { once: true });
 else loadProducts();
+
+
+// Живе меню підкатегорій: дані беруться з дерева категорій у Supabase.
+const subcategoryMenuStyle = document.createElement('style');
+subcategoryMenuStyle.textContent = `
+  .category-constellation { margin: 20px 0 8px; padding: 14px 0; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+  .category-constellation > span { display: block; margin-bottom: 9px; color: var(--muted); font: 800 10px Manrope; letter-spacing: .08em; text-transform: uppercase; }
+  .category-constellation button { display:flex; align-items:center; justify-content:space-between; width:100%; padding:8px 0 8px 14px; border:0; border-left:2px solid #d8ff37; background:transparent; color:var(--ink); text-align:left; font:700 12px Manrope; cursor:pointer; }
+  .category-constellation button:hover { background:#eff3eb; }
+  .category-constellation button b { color:#6d8c00; font-size:10px; }
+  .category-constellation .category-parent { color:var(--muted); font:600 10px Manrope; }
+`;
+document.head.append(subcategoryMenuStyle);
+
+async function mountSubcategoryMenu() {
+  const filters = document.querySelector('.filters');
+  const anchor = filters?.querySelector('.catalog-refine');
+  if (!filters || !anchor || filters.querySelector('.category-constellation')) return;
+
+  try {
+    const { data: categories, error } = await supabase
+      .from('categories')
+      .select('id,name,slug,parent_id')
+      .eq('is_active', true)
+      .order('name');
+    if (error || !categories?.length) return;
+
+    const byId = new Map(categories.map((category) => [category.id, category]));
+    const nested = categories.filter((category) => category.parent_id && byId.has(category.parent_id));
+    if (!nested.length) return;
+
+    const menu = document.createElement('div');
+    menu.className = 'category-constellation';
+    menu.innerHTML = `<span>Колекції</span>${nested.map((category) => {
+      const parent = byId.get(category.parent_id);
+      const count = products.filter((product) => product.type === category.slug).length;
+      return `<button type="button" data-subcategory="${category.slug}"><i>↳</i><span>${category.name}<small class="category-parent"> · ${parent.name}</small></span><b>${count || '0'}</b></button>`;
+    }).join('')}`;
+    anchor.before(menu);
+  } catch (error) {
+    console.warn('Не вдалося завантажити підкатегорії', error);
+  }
+}
+
+document.addEventListener('click', (event) => {
+  const button = event.target.closest('[data-subcategory]');
+  if (!button) return;
+  const url = new URL(location.href);
+  url.searchParams.set('category', button.dataset.subcategory);
+  location.href = url.toString();
+});
+
+mountSubcategoryMenu();

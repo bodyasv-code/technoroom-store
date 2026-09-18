@@ -177,3 +177,71 @@ document.addEventListener('change', (event) => { if (event.target.matches('[data
 supabase.auth.onAuthStateChange((event) => { if (event === 'PASSWORD_RECOVERY') view('recovery'); });
 const recoveryType = new URLSearchParams(location.hash.slice(1)).get('type');
 supabase.auth.getSession().then(({ data: { session } }) => recoveryType === 'recovery' ? view('recovery') : session ? dashboard() : view('login'));
+
+
+// Операційні поля замовлення: оплата, доставка та відстеження.
+const originalShowOrderDialog = showOrderDialog;
+showOrderDialog = async function (orderId) {
+  await originalShowOrderDialog(orderId);
+  const order = state.orders.find((item) => item.id === Number(orderId));
+  if (!order) return;
+
+  const paymentLabels = {
+    unpaid: 'Не оплачено',
+    pending: 'Очікує оплати',
+    paid: 'Оплачено',
+    refunded: 'Повернення коштів'
+  };
+
+  document.querySelector('#orderDetails').insertAdjacentHTML('beforeend', `
+    <h3>Оплата та доставка</h3>
+    <div class="order-detail-grid">
+      <label>Статус оплати
+        <select id="paymentStatus" class="status-select">
+          ${Object.entries(paymentLabels).map(([value, label]) => `<option value="${value}" ${(order.payment_status || 'unpaid') === value ? 'selected' : ''}>${label}</option>`).join('')}
+        </select>
+      </label>
+      <label>Спосіб оплати
+        <input id="paymentMethod" value="${escape(order.payment_method || '')}" placeholder="Наприклад: картка або післяплата">
+      </label>
+      <label>Спосіб доставки
+        <input id="deliveryMethod" value="${escape(order.delivery_method || '')}" placeholder="Наприклад: Нова пошта">
+      </label>
+      <label>Трек-номер
+        <input id="trackingNumber" value="${escape(order.tracking_number || '')}" placeholder="Номер відправлення">
+      </label>
+      <label>Очікувана дата доставки
+        <input id="expectedDelivery" type="date" value="${order.expected_delivery_at ? escape(order.expected_delivery_at.slice(0, 10)) : ''}">
+      </label>
+    </div>
+    <button class="button primary" data-save-operations="${order.id}">Зберегти оплату й доставку</button>
+  `);
+};
+
+document.addEventListener('click', async (event) => {
+  const button = event.target.closest('[data-save-operations]');
+  if (!button) return;
+
+  const expectedDate = document.querySelector('#expectedDelivery').value;
+  const payload = {
+    payment_status: document.querySelector('#paymentStatus').value,
+    payment_method: document.querySelector('#paymentMethod').value.trim() || null,
+    delivery_method: document.querySelector('#deliveryMethod').value.trim() || null,
+    tracking_number: document.querySelector('#trackingNumber').value.trim() || null,
+    expected_delivery_at: expectedDate ? `${expectedDate}T12:00:00+00:00` : null
+  };
+
+  const { error } = await supabase
+    .from('orders')
+    .update(payload)
+    .eq('id', Number(button.dataset.saveOperations));
+
+  if (error) {
+    alert('Не вдалося зберегти оплату та доставку.');
+    return;
+  }
+
+  const currentOrder = state.orders.find((item) => item.id === Number(button.dataset.saveOperations));
+  if (currentOrder) Object.assign(currentOrder, payload);
+  button.textContent = 'Збережено';
+});

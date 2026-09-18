@@ -252,3 +252,57 @@ categoryMatch = function (product, category) {
   const categoryTree = { projector: ['projector', 'laser-proj'] };
   return (categoryTree[category] || [category]).includes(product.type);
 };
+
+
+/* Галерея зображень у картці товару. */
+const productGalleryStyle = document.createElement('style');
+productGalleryStyle.textContent =   '.product-gallery-thumbs{display:flex;flex-wrap:wrap;gap:10px;margin-top:16px}.product-gallery-thumb{width:76px;height:64px;padding:3px;border:1px solid var(--line);background:#fff;cursor:pointer}.product-gallery-thumb.is-active{outline:2px solid var(--acid);outline-offset:2px}.product-gallery-thumb img{display:block;width:100%;height:100%;object-fit:contain}';
+document.head.append(productGalleryStyle);
+
+let galleryByProductId = new Map();
+const galleryEntriesFor = (item) => {
+  const row = galleryByProductId.get(Number(item.id));
+  const primary = row?.image_path || item.image;
+  const extra = Array.isArray(row?.image_paths) ? row.image_paths : [];
+  return [...new Set([primary, ...extra].filter(Boolean))];
+};
+const galleryImageUrl = (item, path) => {
+  if (!path) return '';
+  if (path === item.image) return imageUrl(item);
+  return String(path).startsWith('http')
+    ? path
+    : supabase.storage.from('product-images').getPublicUrl(path).data.publicUrl;
+};
+
+product = function () {
+  const root = document.getElementById('productView');
+  if (!root) return;
+  const id = Number(new URLSearchParams(location.search).get('id'));
+  const item = products.find((entry) => entry.id === id);
+  if (!item) {
+    root.innerHTML = '<p>Товар не знайдено.</p>';
+    return;
+  }
+  const paths = galleryEntriesFor(item);
+  const renderProductGallery = (activePath = paths[0]) => {
+    const source = galleryImageUrl(item, activePath);
+    const thumbs = paths.length > 1
+      ? '<div class="product-gallery-thumbs" aria-label="Інші фото товару">' + paths.map((path, index) =>           '<button class="product-gallery-thumb ' + (path === activePath ? 'is-active' : '') + '" type="button" data-gallery-path="' + encodeURIComponent(path) + '" aria-label="Фото ' + (index + 1) + '">' +             '<img src="' + galleryImageUrl(item, path) + '" alt="' + item.name + ' — фото ' + (index + 1) + '" draggable="false">' +           '</button>').join('') + '</div>'
+      : '';
+    root.innerHTML =       '<div class="product-detail-visual ' + item.type + '"><div class="product-image ' + item.type + '">' + (source ? '<img src="' + source + '" alt="' + item.name + '" draggable="false">' : '') + '</div>' + thumbs + '</div>' +       '<div class="product-detail-copy"><p class="eyebrow">' + item.brand + '</p><h1>' + item.name + '</h1><p class="product-detail-description">' + item.description + '</p><p class="stock ' + (item.inStock ? '' : 'out') + '">' + (item.inStock ? 'В наявності' : 'Під замовлення') + '</p><p class="product-price">' + money(item.price) + '</p><div class="product-actions"><button class="btn btn-primary" data-add="' + item.id + '">Додати в кошик</button><a class="btn btn-outline" href="catalog.html">До каталогу</a></div><dl class="specs">' + Object.entries(item.specs || {}).map(([key, value]) => '<div><dt>' + key + '</dt><dd>' + value + '</dd></div>').join('') + '</dl></div>';
+    bind(root);
+    root.querySelectorAll('[data-gallery-path]').forEach((button) => {
+      button.addEventListener('click', () => renderProductGallery(decodeURIComponent(button.dataset.galleryPath)));
+    });
+  };
+  renderProductGallery();
+};
+
+async function hydrateProductGallery() {
+  const { data, error } = await supabase.from('products').select('id,image_path,image_paths').eq('is_active', true);
+  if (!error && data) {
+    galleryByProductId = new Map(data.map((row) => [Number(row.id), row]));
+    product();
+  }
+}
+hydrateProductGallery();

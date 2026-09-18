@@ -245,3 +245,57 @@ document.addEventListener('click', async (event) => {
   if (currentOrder) Object.assign(currentOrder, payload);
   button.textContent = 'Збережено';
 });
+
+
+// Читабельна картка замовлення на великих і малих екранах.
+const orderReadabilityStyle = document.createElement('style');
+orderReadabilityStyle.textContent = `
+  #orderDialog {
+    width: min(920px, calc(100vw - 32px));
+    max-width: 920px;
+    max-height: calc(100vh - 32px);
+    padding: 0;
+    border: 0;
+    overflow: auto;
+  }
+  #orderDialog .order-dialog {
+    width: 100%;
+    padding: 32px;
+    box-sizing: border-box;
+  }
+  #orderDetails > h3:last-of-type + .order-detail-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 18px;
+    padding: 18px;
+    margin-top: 10px;
+    border: 1px solid var(--line);
+    background: #f7f8f5;
+  }
+  #orderDetails > h3:last-of-type + .order-detail-grid label {
+    display: block;
+    min-width: 0;
+    font: 800 11px Manrope;
+  }
+  #orderDetails > h3:last-of-type + .order-detail-grid input,
+  #orderDetails > h3:last-of-type + .order-detail-grid select {
+    width: 100%;
+    box-sizing: border-box;
+    margin-top: 7px;
+    border: 1px solid var(--line);
+    background: #fff;
+    border-radius: 0;
+    padding: 11px 12px;
+    font: 13px Manrope;
+  }
+  #orderDetails [data-save-operations] {
+    width: 100%;
+    margin-top: 14px;
+  }
+  @media (max-width: 700px) {
+    #orderDialog { width: calc(100vw - 20px); max-height: calc(100vh - 20px); }
+    #orderDialog .order-dialog { padding: 22px 18px; }
+    #orderDetails > .order-detail-grid,
+    #orderDetails > h3:last-of-type + .order-detail-grid { grid-template-columns: 1fr; }
+  }
+`;
+document.head.append(orderReadabilityStyle);

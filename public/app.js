@@ -204,3 +204,44 @@ categoryTypographyStyle.textContent = `
   .category-nest button b { font-size: 11px; }
 `;
 document.head.append(categoryTypographyStyle);
+
+
+/* Статус «Під замовлення»: товар можна оформити без складського залишку. */
+function availability(product) {
+  if (product.availabilityStatus === 'under_order') return { label: 'Під замовлення', button: 'Замовити', orderable: true };
+  if (product.stock) return { label: 'В наявності', button: 'У кошик', orderable: true };
+  return { label: 'Немає в наявності', button: 'Немає', orderable: false };
+}
+add = (id) => { const item = get(id); if (!item || !availability(item).orderable) return; cart.push(Number(id)); save(); renderCart(); };
+renderCart = () => {
+  const count = document.getElementById('cartCount'); if (count) count.textContent = cart.length;
+  const root = document.getElementById('cartItems'), total = document.getElementById('cartTotal'), checkoutButton = document.getElementById('checkoutButton');
+  if (!root) return;
+  const items = cart.map((id, index) => ({ product: get(id), index })).filter((item) => item.product);
+  root.innerHTML = items.length ? items.map(({ product, index }) => `<div class="cart-item"><b>${product.name}</b><strong>${money(product.price)}</strong><span>${availability(product).label}</span><button class="remove" data-remove="${index}">Прибрати</button></div>`).join('') : '<p class="empty-cart">Кошик поки порожній.</p>';
+  if (total) total.textContent = money(items.reduce((sum, item) => sum + item.product.price, 0));
+  if (checkoutButton) checkoutButton.disabled = !items.length;
+  root.querySelectorAll('[data-remove]').forEach((button) => button.onclick = () => { cart.splice(Number(button.dataset.remove), 1); save(); renderCart(); });
+};
+card = (product) => { const state = availability(product); return `<article class="product"><div class="product-image ${product.type}">${image(product)}</div><h3><a href="product.html?id=${product.id}">${product.name}</a></h3><p class="availability">${state.label}</p><p>${product.description || ''}</p><div class="product-footer"><strong class="price">${money(product.price)}</strong><button class="add-button" data-add="${product.id}" ${state.orderable ? '' : 'disabled'}>${state.button}</button></div></article>`; };
+product = () => {
+  const root = document.getElementById('productView'); if (!root) return;
+  const item = get(new URLSearchParams(location.search).get('id')) || products[0]; if (!item) return;
+  const state = availability(item);
+  const specs = item.specifications ? Object.entries(item.specifications).map(([key, value]) => `<div><dt>${key}</dt><dd>${value}</dd></div>`).join('') : `<div><dt>Характеристики</dt><dd>${item.details || 'Уточнюйте у менеджера'}</dd></div>`;
+  root.innerHTML = `<div class="product-detail-visual ${item.type}"><div class="product-image ${item.type}">${image(item)}</div></div><div class="product-detail-copy"><p class="eyebrow">${item.brand || ''}</p><h1>${item.name}</h1><p class="product-description">${item.description || ''}</p><p class="availability">${state.label}</p><strong class="detail-price">${money(item.price)}</strong><div class="detail-actions"><button class="button primary" data-add="${item.id}" ${state.orderable ? '' : 'disabled'}>${state.orderable ? (item.availabilityStatus === 'under_order' ? 'Замовити' : 'Додати в кошик') : 'Немає в наявності'}</button><a class="button outline" href="catalog.html">До каталогу</a></div><dl class="specs"><div><dt>Виробник</dt><dd>${item.brand || '—'}</dd></div>${specs}</dl></div>`;
+  bind(root);
+};
+checkout = () => {
+  const form = document.getElementById('checkoutForm'); if (!form) return;
+  const items = cart.map(get).filter(Boolean), total = items.reduce((sum, item) => sum + item.price, 0), root = document.getElementById('checkoutSummary');
+  root.innerHTML = items.length ? items.map((item) => `<div><span>${item.name}</span><strong>${money(item.price)}</strong></div>`).join('') + `<div class="checkout-total"><span>Разом</span><strong>${money(total)}</strong></div>` : '<p>Ваш кошик порожній. <a href="catalog.html">Перейти до каталогу</a></p>';
+  form.onsubmit = async (event) => { event.preventDefault(); if (items.some((item) => !availability(item).orderable)) return alert('У кошику є недоступний товар.'); const data = Object.fromEntries(new FormData(form)), button = form.querySelector('button'); button.disabled = true; try { const response = await fetch('/api/orders', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ customer: { name: data.name, phone: data.phone, email: data.email }, delivery: { city: data.city, address: data.address, comment: data.comment }, items: cart.map((productId) => ({ productId, quantity: 1 })) }) }); if (!response.ok) throw new Error(); localStorage.removeItem('technoroom-cart'); cart.length = 0; renderCart(); document.getElementById('checkoutNotice').hidden = false; button.textContent = 'Замовлення прийнято'; } catch { button.disabled = false; alert('Не вдалося створити замовлення. Спробуйте ще раз.'); } };
+};
+async function refreshAvailabilityStatuses() {
+  const { data, error } = await supabase.from('products').select('*').eq('is_active', true).order('created_at', { ascending: false });
+  if (error || !data?.length) return;
+  products = data.map((item) => ({ id: item.id, name: item.name, description: item.description, price: Number(item.price), type: item.category, brand: item.brand, specifications: item.specifications, availabilityStatus: item.availability_status || ((item.in_stock && Number(item.stock_quantity || 0) > 0) ? 'in_stock' : 'out_of_stock'), stock: item.in_stock && Number(item.stock_quantity || 0) > 0, image: item.image_path }));
+  mount();
+}
+window.addEventListener('load', refreshAvailabilityStatuses, { once: true });

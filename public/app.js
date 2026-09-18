@@ -192,3 +192,15 @@ async function mountNestedSubcategoryMenu() {
 
 if (document.readyState === 'complete') mountNestedSubcategoryMenu();
 else window.addEventListener('load', mountNestedSubcategoryMenu, { once: true });
+
+
+// Візуальна ієрархія категорій: більший шрифт та помітніший відступ вкладень.
+const categoryTypographyStyle = document.createElement('style');
+categoryTypographyStyle.textContent = `
+  .filters > button[data-category] { font-size: 14px; line-height: 1.35; padding: 11px 0; }
+  .category-nest { margin: -2px 0 12px 22px; padding: 6px 0 6px 18px; }
+  .category-nest button { font-size: 13px; line-height: 1.4; padding: 9px 0; }
+  .category-nest button span:first-child { margin-right: 9px; font-size: 14px; }
+  .category-nest button b { font-size: 11px; }
+`;
+document.head.append(categoryTypographyStyle);

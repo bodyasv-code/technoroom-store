@@ -451,3 +451,11 @@ inventoryAdminStyle.textContent =
   '.inventory-badge{display:inline-block;padding:5px 8px;border-radius:99px;font-size:10px;font-weight:800}.inventory-in_stock{background:#e4f7c8;color:#4e7200}.inventory-under_order,.stock-order{background:#fff0c8;color:#8b5f00}.inventory-out_of_stock{background:#f6ded9;color:#943b2a}#availabilityStatusField select{display:block;width:100%;box-sizing:border-box;margin-top:7px;border:1px solid var(--line);background:#fff;padding:10px;font:13px Manrope}';
 document.head.append(inventoryAdminStyle);
 renderAll();
+
+
+// Внутрішні шляхи Supabase Storage (products/...) не є зовнішніми URL.
+const productImageField = document.querySelector('#productForm [name="image_path"]');
+if (productImageField) {
+  productImageField.type = 'text';
+  productImageField.placeholder = 'https://... або products/назва-файлу.jpg';
+}

@@ -135,3 +135,60 @@ document.addEventListener('click', (event) => {
 });
 
 mountSubcategoryMenu();
+
+
+// Вкладені підкатегорії показуються безпосередньо під своєю батьківською категорією.
+const nestedCategoryStyle = document.createElement('style');
+nestedCategoryStyle.textContent = `
+  .category-constellation { display: none !important; }
+  .category-nest { margin: -3px 0 8px 14px; padding: 4px 0 4px 12px; border-left: 1px solid #d8ff37; }
+  .category-nest button { display: flex; align-items: center; justify-content: space-between; width: 100%; padding: 7px 0; border: 0; background: transparent; color: var(--muted); text-align: left; font: 700 11px Manrope; cursor: pointer; }
+  .category-nest button:hover { color: var(--ink); }
+  .category-nest button span:first-child { color: #799900; margin-right: 6px; }
+  .category-nest button b { color: #6d8c00; font-size: 10px; }
+`;
+document.head.append(nestedCategoryStyle);
+
+async function mountNestedSubcategoryMenu() {
+  const filters = document.querySelector('.filters');
+  if (!filters || filters.querySelector('.category-nest')) return;
+
+  try {
+    const { data: categories, error } = await supabase
+      .from('categories')
+      .select('id,name,slug,parent_id')
+      .eq('is_active', true)
+      .order('name');
+    if (error || !categories?.length) return;
+
+    const byId = new Map(categories.map((category) => [category.id, category]));
+    const groups = new Map();
+    categories.filter((category) => category.parent_id && byId.has(category.parent_id)).forEach((category) => {
+      const parent = byId.get(category.parent_id);
+      const items = groups.get(parent.id) || { parent, children: [] };
+      items.children.push(category);
+      groups.set(parent.id, items);
+    });
+
+    groups.forEach(({ parent, children }) => {
+      const parentButton = filters.querySelector(`[data-category="${CSS.escape(parent.slug)}"]`);
+      if (!parentButton) return;
+      const nest = document.createElement('div');
+      nest.className = 'category-nest';
+      children.sort((a, b) => a.name.localeCompare(b.name, 'uk')).forEach((category) => {
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.dataset.subcategory = category.slug;
+        const count = products.filter((product) => product.type === category.slug).length;
+        button.innerHTML = `<span>↳</span><span>${category.name}</span><b>${count || '0'}</b>`;
+        nest.append(button);
+      });
+      parentButton.insertAdjacentElement('afterend', nest);
+    });
+  } catch (error) {
+    console.warn('Не вдалося завантажити вкладені категорії', error);
+  }
+}
+
+if (document.readyState === 'complete') mountNestedSubcategoryMenu();
+else window.addEventListener('load', mountNestedSubcategoryMenu, { once: true });

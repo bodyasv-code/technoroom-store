@@ -1,2 +1,33 @@
-<!doctype html><html lang="uk"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Каталог — TECHNOROOM</title><link rel="stylesheet" href="styles.css"></head><body><header class="compact-header"><div class="container header-row"><a class="brand" href="index.html"><span>TECHNO</span>ROOM<i></i></a><nav><a href="index.html">Головна</a><a href="catalog.html">Каталог</a></nav><a class="cart-button" href="checkout.html">Кошик <b id="cartCount">0</b></a></div></header><main class="catalog-page"><div class="container"><p class="breadcrumbs"><a href="index.html">Головна</a> / Каталог</p><h1>Каталог техніки</h1><div class="catalog-layout"><aside class="filters"><p>Категорії</p><button data-category="all">Усі товари</button><button data-category="projector">Проєктори й екрани</button><button data-category="audio">Акустика й звук</button><button data-category="tv">Телевізори</button></aside><section><div class="catalog-toolbar"><span id="resultCount"></span><span>Сортування: популярні</span></div><div class="catalog-grid" id="catalogGrid"></div></section></div></div></main><script src="supabase-config.js"></script><script type="module" src="app.js"></script></body></html>
-
+<!doctype html>
+<html lang="uk">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Каталог — TECHNOROOM</title>
+  <link rel="stylesheet" href="styles.css">
+  <style>
+    .catalog-refine{margin-top:22px;border-top:1px solid var(--line);padding-top:14px}.catalog-refine label{display:block;margin:0 0 12px;font-size:11px;font-weight:800}.catalog-refine input,.catalog-refine select,.sort-label select{box-sizing:border-box;width:100%;margin-top:6px;padding:9px;border:1px solid var(--line);background:#fff;color:var(--ink);font:12px Manrope}.catalog-refine label.check{display:flex;align-items:center;gap:8px}.catalog-refine label.check input{width:auto;margin:0}.filters .clear-filters{padding:8px 0;color:var(--muted);font-size:11px}.sort-label{display:flex;align-items:center;gap:8px;font-weight:700}.sort-label select{width:auto;margin:0}@media(max-width:780px){.catalog-refine{min-width:210px;padding:12px;border:1px solid var(--line);background:#fff}.catalog-toolbar{align-items:flex-start;gap:12px}.sort-label{display:grid;gap:3px}}
+  </style>
+</head>
+<body>
+  <header class="compact-header"><div class="container header-row"><a class="brand" href="index.html"><span>TECHNO</span>ROOM<i></i></a><nav><a href="index.html">Головна</a><a href="catalog.html">Каталог</a></nav><a class="cart-button" href="checkout.html">Кошик <b id="cartCount">0</b></a></div></header>
+  <main class="catalog-page"><div class="container">
+    <p class="breadcrumbs"><a href="index.html">Головна</a> / Каталог</p><h1>Каталог техніки</h1>
+    <div class="catalog-layout">
+      <aside class="filters">
+        <p>Категорії</p>
+        <button data-category="all">Усі товари</button><button data-category="projector">Проєктори й екрани</button><button data-category="audio">Акустика й звук</button><button data-category="tv">Телевізори</button>
+        <div class="catalog-refine">
+          <label>Пошук<input id="catalogSearch" type="search" placeholder="Назва або бренд"></label>
+          <label>Бренд<select id="brandFilter"><option value="">Усі бренди</option></select></label>
+          <label>Ціна до, ₴<input id="priceFilter" type="number" min="0" placeholder="Без обмежень"></label>
+          <label class="check"><input id="stockFilter" type="checkbox"> Лише в наявності</label>
+          <button type="button" id="clearCatalogFilters" class="clear-filters">Скинути фільтри</button>
+        </div>
+      </aside>
+      <section><div class="catalog-toolbar"><span id="resultCount"></span><label class="sort-label">Сортування<select id="catalogSort"><option value="popular">Популярні</option><option value="price-asc">Ціна: від нижчої</option><option value="price-desc">Ціна: від вищої</option><option value="name">Назва: А–Я</option></select></label></div><div class="catalog-grid" id="catalogGrid"></div></section>
+    </div>
+  </div></main>
+  <script src="supabase-config.js"></script><script type="module" src="app.js"></script>
+</body>
+</html>

@@ -113,14 +113,16 @@ async function saveProduct(event) {
 
 function showCategoryDialog(category = null) {
   const dialog = document.querySelector('#categoryDialog'); const form = document.querySelector('#categoryForm'); form.reset();
+  const parentSelect = form.elements.parent_id;
+  parentSelect.innerHTML = `<option value="">— Без батьківської категорії —</option>${state.categories.filter((item) => item.id !== category?.id).map((item) => `<option value="${item.id}">${escape(item.parent_id ? '— ' : '')}${escape(item.name)}</option>`).join('')}`;
   document.querySelector('#categoryFormMessage').hidden = true; document.querySelector('#categoryDialogTitle').textContent = category ? 'Редагування категорії' : 'Нова категорія';
-  if (category) { form.elements.id.value = category.id; form.elements.name.value = category.name; form.elements.slug.value = category.slug; form.elements.is_active.checked = category.is_active; }
+  if (category) { form.elements.id.value = category.id; form.elements.name.value = category.name; form.elements.slug.value = category.slug; form.elements.parent_id.value = category.parent_id || ''; form.elements.is_active.checked = category.is_active; }
   dialog.showModal();
 }
 
 async function saveCategory(event) {
   event.preventDefault(); const form = event.currentTarget; const raw = Object.fromEntries(new FormData(form));
-  const payload = { name: raw.name.trim(), slug: raw.slug.trim().toLowerCase().replace(/[^a-z0-9-]+/g, '-'), is_active: form.elements.is_active.checked };
+  const payload = { name: raw.name.trim(), slug: raw.slug.trim().toLowerCase().replace(/[^a-z0-9-]+/g, '-'), parent_id: raw.parent_id ? Number(raw.parent_id) : null, is_active: form.elements.is_active.checked };
   const query = raw.id ? supabase.from('categories').update(payload).eq('id', raw.id) : supabase.from('categories').insert(payload);
   const { error } = await query;
   if (error) { const message = document.querySelector('#categoryFormMessage'); message.textContent = error.code === '23505' ? 'Такий slug уже існує.' : 'Не вдалося зберегти категорію.'; message.hidden = false; return; }
@@ -175,4 +177,3 @@ document.addEventListener('change', (event) => { if (event.target.matches('[data
 supabase.auth.onAuthStateChange((event) => { if (event === 'PASSWORD_RECOVERY') view('recovery'); });
 const recoveryType = new URLSearchParams(location.hash.slice(1)).get('type');
 supabase.auth.getSession().then(({ data: { session } }) => recoveryType === 'recovery' ? view('recovery') : session ? dashboard() : view('login'));
-

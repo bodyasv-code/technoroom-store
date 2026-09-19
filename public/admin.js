@@ -803,3 +803,57 @@ renderOrders = function () {
 };
 document.querySelector('#orderSearch').addEventListener('input', decorateOrderTable);
 document.querySelector('#orderFilter').addEventListener('input', decorateOrderTable);
+
+
+/* CRM-картка покупця з історією його замовлень. */
+const customerDialog = document.createElement('dialog');
+customerDialog.id = 'customerDialog';
+customerDialog.innerHTML = '<div class="customer-card-dialog"><div class="dialog-heading"><h2>Картка клієнта</h2><button type="button" aria-label="Закрити">×</button></div><div id="customerCardBody"></div></div>';
+document.body.append(customerDialog);
+const customerCardStyle = document.createElement('style');
+customerCardStyle.textContent = '.customer-card-dialog{width:min(680px,calc(100vw - 32px));padding:26px}.customer-summary{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:18px 0}.customer-summary div{padding:13px;background:#f0f3ec}.customer-summary b,.customer-summary span{display:block}.customer-summary span{font-size:12px;color:#66736d}.customer-order-list{display:grid;gap:8px}.customer-order-row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px;border:1px solid #e1e5de}.customer-order-row small{display:block;color:#66736d;margin-top:4px}.customer-order-row button{white-space:nowrap}@media(max-width:600px){.customer-summary{grid-template-columns:1fr}.customer-order-row{align-items:flex-start;flex-direction:column}}';
+document.head.append(customerCardStyle);
+const decorateCustomerTable = () => {
+  const table = document.querySelector('#adminCustomers').closest('table');
+  const header = table.querySelector('thead tr');
+  if (!header.querySelector('[data-customer-card-header]')) {
+    const heading = document.createElement('th');
+    heading.dataset.customerCardHeader = 'true';
+    heading.textContent = 'Картка';
+    header.append(heading);
+  }
+  table.querySelectorAll('tbody tr').forEach((row) => {
+    if (row.querySelector('[data-customer-card]')) return;
+    const contacts = row.cells[1]?.textContent || '';
+    const related = state.orders.find((order) => contacts.includes(order.customer_email || '__') || contacts.includes(order.customer_phone || '__'));
+    if (!related || row.cells.length < 5) return;
+    const key = related.customer_email || related.customer_phone || String(related.id);
+    const cell = document.createElement('td');
+    cell.innerHTML = '<button type="button" data-customer-card="' + encodeURIComponent(key) + '">Відкрити</button>';
+    row.append(cell);
+  });
+};
+const renderCustomersWithCards = renderCustomers;
+renderCustomers = function () {
+  renderCustomersWithCards();
+  decorateCustomerTable();
+};
+const showCustomerCard = (key) => {
+  const orders = state.orders.filter((order) => (order.customer_email || order.customer_phone || String(order.id)) === key);
+  if (!orders.length) return;
+  const customer = orders[0];
+  const total = orders.filter((order) => order.status !== 'cancelled').reduce((sum, order) => sum + Number(order.total || 0), 0);
+  document.querySelector('#customerCardBody').innerHTML = '<p><b>' + escape(customer.customer_name) + '</b><br>' + escape(customer.customer_phone || 'Телефон не вказано') + (customer.customer_email ? '<br>' + escape(customer.customer_email) : '') + '</p><div class="customer-summary"><div><b>' + orders.length + '</b><span>замовлень</span></div><div><b>' + money(total) + '</b><span>сума покупок</span></div><div><b>' + date(orders[0].created_at) + '</b><span>останнє замовлення</span></div></div><h3>Історія замовлень</h3><div class="customer-order-list">' + orders.map((order) => '<div class="customer-order-row"><div><b>Замовлення #' + order.id + ' · ' + money(order.total) + '</b><small>' + date(order.created_at) + ' · ' + escape(statusNames[order.status] || order.status) + '</small></div><button type="button" data-customer-order="' + order.id + '">Деталі</button></div>').join('') + '</div>';
+  customerDialog.showModal();
+};
+document.addEventListener('click', (event) => {
+  const card = event.target.closest('[data-customer-card]');
+  const close = event.target.closest('#customerDialog .dialog-heading button');
+  const order = event.target.closest('[data-customer-order]');
+  if (close) customerDialog.close();
+  if (card) showCustomerCard(decodeURIComponent(card.dataset.customerCard));
+  if (order) { customerDialog.close(); showOrderDialog(order.dataset.customerOrder); }
+});
+const customerTableBody = document.querySelector('#adminCustomers');
+new MutationObserver(decorateCustomerTable).observe(customerTableBody, { childList: true, subtree: true });
+decorateCustomerTable();

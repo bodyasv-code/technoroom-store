@@ -330,3 +330,65 @@ product = function () {
   };
   renderProductGallery();
 };
+
+
+// Product gallery lightbox navigation
+const productGalleryLightboxStyle = document.createElement('style');
+productGalleryLightboxStyle.textContent = '.image-lightbox .lightbox-close{top:20px;right:24px}.image-lightbox .lightbox-prev,.image-lightbox .lightbox-next{top:50%;right:auto;transform:translateY(-50%);width:52px;height:52px;font-size:32px}.image-lightbox .lightbox-prev{left:24px}.image-lightbox .lightbox-next{right:24px}.image-lightbox .lightbox-counter{position:absolute;bottom:18px;left:50%;transform:translateX(-50%);margin:0;padding:7px 12px;border-radius:999px;background:rgba(255,255,255,.92);color:#0b2723;font:600 14px/1.2 Arial,sans-serif}.image-lightbox .lightbox-prev[disabled],.image-lightbox .lightbox-next[disabled]{opacity:.38;cursor:default}@media(max-width:640px){.image-lightbox{padding:16px}.image-lightbox .lightbox-prev{left:10px}.image-lightbox .lightbox-next{right:10px}.image-lightbox .lightbox-prev,.image-lightbox .lightbox-next{width:44px;height:44px}}';
+document.head.append(productGalleryLightboxStyle);
+
+const productGalleryLightbox = { sources: [], index: 0, alt: '' };
+lightbox.innerHTML = '<button type="button" class="lightbox-close" aria-label="Закрити фото">×</button><button type="button" class="lightbox-prev" aria-label="Попереднє фото">←</button><img alt="Збільшене фото товару"><button type="button" class="lightbox-next" aria-label="Наступне фото">→</button><p class="lightbox-counter" aria-live="polite"></p>';
+const renderProductGalleryLightbox = () => {
+  const image = lightbox.querySelector('img');
+  const total = productGalleryLightbox.sources.length;
+  if (!total) return;
+  productGalleryLightbox.index = (productGalleryLightbox.index + total) % total;
+  image.src = productGalleryLightbox.sources[productGalleryLightbox.index];
+  image.alt = productGalleryLightbox.alt || 'Збільшене фото товару';
+  lightbox.querySelector('.lightbox-counter').textContent = total > 1 ? String(productGalleryLightbox.index + 1) + ' / ' + String(total) : '';
+  lightbox.querySelector('.lightbox-prev').disabled = total < 2;
+  lightbox.querySelector('.lightbox-next').disabled = total < 2;
+};
+const openProductGalleryLightbox = (sources, index, alt) => {
+  productGalleryLightbox.sources = sources.filter(Boolean);
+  productGalleryLightbox.index = Math.max(0, index || 0);
+  productGalleryLightbox.alt = alt;
+  renderProductGalleryLightbox();
+  lightbox.hidden = false;
+};
+const closeProductGalleryLightbox = () => {
+  lightbox.hidden = true;
+  lightbox.querySelector('img').removeAttribute('src');
+};
+const changeProductGalleryLightbox = (step) => {
+  if (productGalleryLightbox.sources.length < 2) return;
+  productGalleryLightbox.index += step;
+  renderProductGalleryLightbox();
+};
+lightbox.addEventListener('click', (event) => {
+  const control = event.target.closest('.lightbox-close,.lightbox-prev,.lightbox-next');
+  if (!control) return;
+  event.preventDefault();
+  event.stopImmediatePropagation();
+  if (control.classList.contains('lightbox-close')) closeProductGalleryLightbox();
+  if (control.classList.contains('lightbox-prev')) changeProductGalleryLightbox(-1);
+  if (control.classList.contains('lightbox-next')) changeProductGalleryLightbox(1);
+}, true);
+document.addEventListener('keydown', (event) => {
+  if (lightbox.hidden) return;
+  if (event.key === 'ArrowLeft') changeProductGalleryLightbox(-1);
+  if (event.key === 'ArrowRight') changeProductGalleryLightbox(1);
+});
+document.addEventListener('click', (event) => {
+  const image = event.target.closest('.product-detail-visual .product-image img');
+  if (!image) return;
+  const product = get(new URLSearchParams(location.search).get('id'));
+  const paths = product ? galleryEntriesFor(product) : [];
+  const sources = paths.map((path) => galleryImageUrl(product, path));
+  if (!sources.length) return;
+  event.preventDefault();
+  event.stopImmediatePropagation();
+  const selected = sources.findIndex((source) => source === (image.currentSrc || image.src));
+  openProductGalleryLightbox(sources, selected < 0 ? 0 : selected, product.name);
+}, true);

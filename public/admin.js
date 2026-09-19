@@ -1291,3 +1291,167 @@ document.addEventListener('click', event => {
     await Promise.all((products || []).filter(product => Boolean(product.is_active) === isActive).map(product => addProductEvent(product.id, 'visibility', isActive ? 'Опубліковано масово' : 'Приховано / архівовано масово')));
   }, 1300);
 });
+
+
+// ERC XML: локальний попередній перегляд та безпечний імпорт за SKU.
+(() => {
+  const ercState = { rows: [], selected: new Set() };
+  const clean = (value = '') => String(value).replace(/\s+/g, ' ').trim();
+  const sourceText = (node, tag) => node.querySelector(tag)?.textContent || '';
+  const decodeHtml = (value = '') => {
+    let text = String(value || '');
+    for (let index = 0; index < 2; index += 1) {
+      const area = document.createElement('textarea'); area.innerHTML = text;
+      if (area.value === text) break;
+      text = area.value;
+    }
+    return text;
+  };
+  const numeric = (value) => {
+    const number = Number(String(value || '').replace(/\s/g, '').replace(',', '.').replace(/[^0-9.]/g, ''));
+    return Number.isFinite(number) ? number : 0;
+  };
+  const stock = (value) => Number((String(value || '').match(/\d+/) || ['0'])[0]);
+  const compactDescription = (markup) => {
+    const documentMarkup = new DOMParser().parseFromString(decodeHtml(markup), 'text/html');
+    return clean(documentMarkup.body.textContent).slice(0, 1600);
+  };
+  const extractSpecs = (markup) => {
+    const documentMarkup = new DOMParser().parseFromString(decodeHtml(markup), 'text/html');
+    const specs = {};
+    documentMarkup.querySelectorAll('tr').forEach((row) => {
+      const cells = [...row.querySelectorAll('th,td')].map((cell) => clean(cell.textContent)).filter(Boolean);
+      if (cells.length >= 2 && cells[0].length < 120 && cells[1].length < 500) specs[cells[0]] = cells.slice(1).join(' ');
+    });
+    return specs;
+  };
+  const getImageLinks = (markup) => (decodeHtml(markup).match(/https?:\/\/[^\s"'<>]+?\.(?:jpg|jpeg|png|webp)(?:\?[^\s"'<>]+)?/gi) || []).filter((url) => !/ico-check|logo/i.test(url));
+  const normalizeSku = (value = '') => clean(value).replace(/\*+$/g, '').toUpperCase();
+  const displayName = (value = '') => clean(decodeHtml(value)).replace(/&quot;/g, '"');
+  const deriveBrand = (name, vendor) => {
+    const first = displayName(name).split(/\s+/)[0].replace(/[^\w&+.-]/g, '');
+    if (first.length > 1 && first.length <= 30) return first;
+    return clean(vendor).replace(/\s+(projectors|supplies|peripherals)$/i, '').slice(0, 100) || null;
+  };
+  const isAccessory = (value) => /(кріпл|ламп|оптик|аксесуар|модул|чохол|кабел|пульт)/i.test(value);
+  const classify = (value) => {
+    if (isAccessory(value)) return '';
+    if (/(проєктор|проектор|проекційн|projector)/i.test(value)) return /екран/i.test(value) ? 'screen' : 'projector';
+    if (/(акуст|саундбар|колонк|аудіо)/i.test(value)) return 'audio';
+    if (/телевізор/i.test(value)) return 'tv';
+    return '';
+  };
+  const mappedCategory = (row) => {
+    const haystack = (row.source + ' ' + row.name + ' ' + row.description).toLowerCase();
+    const bySlug = (slug) => state.categories.find((item) => item.slug === slug)?.slug;
+    const byName = (pattern) => state.categories.find((item) => pattern.test(item.name))?.slug;
+    if (row.kind === 'projector') return /лазер|laser/.test(haystack) ? (bySlug('laser-proj') || byName(/лазер/i)) : (bySlug('projector') || byName(/проєктор|проектор/i));
+    if (row.kind === 'screen') return byName(/екран/i) || bySlug('projector') || byName(/проєктор|проектор/i);
+    if (row.kind === 'audio') return bySlug('audio') || byName(/акуст|звук/i);
+    if (row.kind === 'tv') return bySlug('tv') || byName(/телевізор/i);
+    return null;
+  };
+  const scopes = { all: 'Усі підтримувані', projector: 'Проєктори та екрани', audio: 'Акустика й звук', tv: 'Телевізори' };
+  const currentScopeRows = () => {
+    const scope = document.querySelector('#ercImportScope')?.value || 'all';
+    return ercState.rows.filter((row) => scope === 'all' || (scope === 'projector' ? ['projector', 'screen'].includes(row.kind) : row.kind === scope));
+  };
+  const currentPageRows = () => currentScopeRows().slice(0, Math.max(1, Math.min(100, Number(document.querySelector('#ercImportLimit')?.value || 50))));
+  const importStatus = (message, error = false) => {
+    const node = document.querySelector('#ercImportMessage'); if (!node) return;
+    node.textContent = message; node.hidden = false; node.classList.toggle('error', error);
+  };
+  const existingBySku = () => new Map(state.products.filter((item) => item.sku).map((item) => [normalizeSku(item.sku), item]));
+  function renderErcPreview() {
+    const body = document.querySelector('#ercImportRows'); const summary = document.querySelector('#ercImportSummary');
+    if (!body || !summary) return;
+    const rows = currentPageRows(); const allRows = currentScopeRows(); const existing = existingBySku();
+    summary.textContent = ercState.rows.length ? 'У вибраній групі: ' + allRows.length + '. Показано: ' + rows.length + '. Позначено: ' + ercState.selected.size + '.' : 'Оберіть XML-файл, щоб побачити товари.';
+    body.innerHTML = rows.length ? rows.map((row) => {
+      const current = existing.get(row.sku); const status = current ? 'Оновлення ціни й залишку' : 'Нова чернетка';
+      const mapped = mappedCategory(row);
+      const disabled = !mapped || !row.sku || !row.price;
+      const detail = row.images.length ? 'У джерелі є фото: ' + row.images.length : 'Фото у джерелі не знайдено';
+      return '<tr><td><input type="checkbox" data-erc-select="' + escape(row.key) + '" ' + (ercState.selected.has(row.key) ? 'checked ' : '') + (disabled ? 'disabled' : '') + '></td><td><b>' + escape(row.name) + '</b><small>' + escape(row.vendor) + ' · ' + escape(row.sourceCategory) + '</small></td><td>' + escape(row.sku) + '</td><td>' + escape(mapped ? (state.categories.find((item) => item.slug === mapped)?.name || mapped) : 'Немає зіставлення') + '<small>' + escape(detail) + '</small></td><td>' + money(row.price) + '<small>залишок: ' + escape(row.stockRaw || '0') + '</small></td><td><span class="visibility ' + (current ? 'visible' : 'hidden-status') + '">' + status + '</span></td></tr>';
+    }).join('') : '<tr><td class="empty-row" colspan="6">За цим фільтром даних немає</td></tr>';
+  }
+  function parseErcFile(text) {
+    const xml = new DOMParser().parseFromString(text, 'application/xml');
+    if (xml.querySelector('parsererror')) throw new Error('XML має помилку структури.');
+    const rows = [];
+    xml.querySelectorAll('vendor > goods').forEach((goods, index) => {
+      const vendor = goods.parentElement?.getAttribute('name') || 'Постачальник ERC';
+      const name = displayName(sourceText(goods, 'gname')); const sku = normalizeSku(sourceText(goods, 'code'));
+      const sourceCategory = clean(sourceText(goods, 'category')); const subcategory = clean(sourceText(goods, 'subcategory'));
+      const source = sourceCategory + ' · ' + subcategory;
+      const comment = sourceText(goods, 'comment'); const shortDescription = sourceText(goods, 'a_desc');
+      const description = compactDescription(shortDescription) || compactDescription(comment);
+      const kind = classify(source + ' ' + name);
+      const price = numeric(sourceText(goods, 'rprice'));
+      if (!kind || !name || !sku || !price) return;
+      rows.push({ key: sku + '-' + index, vendor: clean(vendor), name, sku, source, sourceCategory, subcategory, kind, price, stockRaw: clean(sourceText(goods, 'stock')), stock: stock(sourceText(goods, 'stock')), description, specifications: extractSpecs(comment), images: getImageLinks(comment) });
+    });
+    ercState.rows = rows; ercState.selected.clear();
+  }
+  const uniqueSlug = (name, sku, used) => {
+    const root = productSlug(name) || 'erc-' + sku.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+    let slug = root; let number = 2;
+    while (used.has(slug)) { slug = root + '-' + number; number += 1; }
+    used.add(slug); return slug;
+  };
+  async function importSelected() {
+    const chosen = ercState.rows.filter((row) => ercState.selected.has(row.key));
+    if (!chosen.length) return importStatus('Позначте хоча б один товар для імпорту.', true);
+    if (chosen.length > 100) return importStatus('За один раз можна імпортувати до 100 товарів.', true);
+    const existing = existingBySku(); const usedSlugs = new Set(state.products.map((item) => item.slug).filter(Boolean));
+    const newRows = []; const updates = []; const content = document.querySelector('#ercImportContent').checked;
+    chosen.forEach((row) => {
+      const category = mappedCategory(row); if (!category) return;
+      const present = existing.get(row.sku);
+      if (present) {
+        const payload = { price: row.price, stock_quantity: row.stock, in_stock: row.stock > 0 };
+        if (content && (row.description || Object.keys(row.specifications).length)) { payload.description = row.description || present.description; payload.specifications = Object.keys(row.specifications).length ? row.specifications : present.specifications; }
+        updates.push({ id: present.id, payload });
+      } else {
+        newRows.push({ name: row.name, slug: uniqueSlug(row.name, row.sku, usedSlugs), sku: row.sku, brand: deriveBrand(row.name, row.vendor), category, price: row.price, stock_quantity: row.stock, in_stock: row.stock > 0, description: row.description || null, specifications: row.specifications, image_path: null, is_active: false });
+      }
+    });
+    if (!newRows.length && !updates.length) return importStatus('Не знайдено товарів із налаштованою категорією.', true);
+    const button = document.querySelector('#ercImportApply'); button.disabled = true; button.textContent = 'Імпорт…';
+    let created = 0; let updated = 0; const failures = [];
+    for (let start = 0; start < newRows.length; start += 25) {
+      const batch = newRows.slice(start, start + 25); const { error } = await supabase.from('products').insert(batch);
+      if (!error) { created += batch.length; continue; }
+      for (const product of batch) { const attempt = await supabase.from('products').insert(product); if (attempt.error) failures.push(product.sku); else created += 1; }
+    }
+    for (const item of updates) { const { error } = await supabase.from('products').update(item.payload).eq('id', item.id); if (error) failures.push('#' + item.id); else updated += 1; }
+    await loadData(); ercState.selected.clear(); renderErcPreview();
+    button.disabled = false; button.textContent = 'Імпортувати позначені';
+    importStatus('Готово: створено чернеток — ' + created + ', оновлено — ' + updated + (failures.length ? '. Не вдалося: ' + failures.join(', ') : '') + '. Фото не імпортувалися: зовнішні посилання залишилися лише у джерелі.', Boolean(failures.length));
+  }
+  function mountErcImport() {
+    const anchor = document.querySelector('#products'); if (!anchor || document.querySelector('#ercImport')) return;
+    anchor.insertAdjacentHTML('afterend', [
+      '<section class="admin-section" id="ercImport">',
+      '<div class="admin-title"><div><h2>Імпорт ERC XML</h2><span>Ціни, залишки, описи й характеристики за SKU</span></div></div>',
+      '<p class="recovery-help">Нові позиції створюються прихованими чернетками. Зовнішні фото не копіюються на сайт автоматично.</p>',
+      '<div class="admin-controls"><input id="ercImportFile" type="file" accept=".xml,application/xml,text/xml"><select id="ercImportScope"><option value="all">Усі підтримувані категорії</option><option value="projector">Проєктори та екрани</option><option value="audio">Акустика й звук</option><option value="tv">Телевізори</option></select><input id="ercImportLimit" type="number" min="1" max="100" value="50" title="Скільки товарів показати"></div>',
+      '<div class="admin-controls"><button class="button outline" type="button" id="ercImportSelectNew">Позначити нові на сторінці</button><button class="button outline" type="button" id="ercImportClear">Очистити вибір</button><label class="check"><input id="ercImportContent" type="checkbox"> Оновлювати опис і характеристики наявних товарів</label><button class="button primary" type="button" id="ercImportApply">Імпортувати позначені</button></div>',
+      '<p class="admin-message" id="ercImportMessage" hidden></p><p class="recovery-help" id="ercImportSummary">Оберіть XML-файл, щоб побачити товари.</p>',
+      '<div class="admin-table-wrap"><table><thead><tr><th></th><th>Товар / джерело</th><th>SKU</th><th>Категорія / медіа</th><th>Ціна / залишок</th><th>Дія</th></tr></thead><tbody id="ercImportRows"></tbody></table></div></section>'
+    ].join(''));
+    const section = document.querySelector('#ercImport');
+    document.querySelector('.admin-nav').insertAdjacentHTML('beforeend', '<a href="#ercImport">Імпорт ERC XML</a>');
+    document.querySelector('#ercImportFile').addEventListener('change', async (event) => {
+      const file = event.target.files?.[0]; if (!file) return;
+      importStatus('Читаю ' + file.name + ' (' + Math.round(file.size / 1024 / 1024) + ' МБ)…');
+      try { await new Promise((resolve) => setTimeout(resolve, 40)); parseErcFile(await file.text()); importStatus('Файл прочитано. Знайдено ' + ercState.rows.length + ' товарів у підтримуваних категоріях.'); renderErcPreview(); } catch (error) { ercState.rows = []; renderErcPreview(); importStatus(error.message || 'Не вдалося прочитати XML.', true); }
+    });
+    section.addEventListener('input', (event) => { if (event.target.matches('#ercImportLimit')) renderErcPreview(); });
+    section.addEventListener('change', (event) => { if (event.target.matches('#ercImportScope')) renderErcPreview(); if (event.target.matches('[data-erc-select]')) { event.target.checked ? ercState.selected.add(event.target.dataset.ercSelect) : ercState.selected.delete(event.target.dataset.ercSelect); renderErcPreview(); } });
+    document.querySelector('#ercImportSelectNew').onclick = () => { const existing = existingBySku(); currentPageRows().forEach((row) => { if (!existing.has(row.sku) && mappedCategory(row)) ercState.selected.add(row.key); }); renderErcPreview(); };
+    document.querySelector('#ercImportClear').onclick = () => { ercState.selected.clear(); renderErcPreview(); };
+    document.querySelector('#ercImportApply').onclick = importSelected;
+  }
+  mountErcImport();
+})();

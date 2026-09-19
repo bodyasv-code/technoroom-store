@@ -1197,3 +1197,97 @@ const bulkProductObserver = new MutationObserver(() => setTimeout(enhanceProduct
 const bulkProductTable = document.querySelector('#adminProducts');
 if (bulkProductTable) bulkProductObserver.observe(bulkProductTable, { childList: true });
 setTimeout(enhanceProductBulkSelection, 0);
+
+
+// Журнал змін товарів і контроль масової видимості.
+const productEventStyle = document.createElement('style');
+productEventStyle.textContent = '.product-events{margin:18px 0;padding:16px;border:1px solid #d9dfd6;background:#f8faf6}.product-events h3{margin:0 0 10px;font-size:16px}.product-events__row{display:grid;grid-template-columns:1fr auto;gap:8px;padding:10px 0;border-top:1px solid #e1e6de;font-size:14px}.product-events__row:first-of-type{border-top:0}.product-events__date,.product-events__empty{color:#6f7e75;font-size:12px}.product-events__empty{margin:0;font-size:14px}';
+document.head.append(productEventStyle);
+
+const productEventTime = value => {
+  try { return value ? new Intl.DateTimeFormat('uk-UA', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(value)) : ''; }
+  catch { return ''; }
+};
+const addProductEvent = async (productId, eventType, summary) => {
+  const { data: auth } = await supabase.auth.getUser();
+  if (!productId || !auth?.user?.id) return;
+  await supabase.from('product_events').insert({ product_id: Number(productId), event_type: eventType, summary, actor_id: auth.user.id });
+};
+const showProductEvents = async productId => {
+  const form = document.querySelector('#productForm');
+  if (!form || !productId) return;
+  let panel = form.querySelector('#productEvents');
+  if (!panel) {
+    panel = document.createElement('section');
+    panel.id = 'productEvents';
+    panel.className = 'product-events';
+    const actions = form.querySelector('.dialog-actions');
+    if (actions) actions.before(panel); else form.append(panel);
+  }
+  panel.innerHTML = '<h3>Історія товару</h3><p class="product-events__empty">Завантаження журналу…</p>';
+  const { data, error } = await supabase.from('product_events').select('summary,created_at').eq('product_id', Number(productId)).order('created_at', { ascending: false }).limit(12);
+  if (error) {
+    panel.innerHTML = '<h3>Історія товару</h3><p class="product-events__empty">Журнал буде доступний після запуску міграції <b>product-audit-upgrade.sql</b> у Supabase.</p>';
+    return;
+  }
+  panel.innerHTML = '<h3>Історія товару</h3>';
+  if (!data?.length) {
+    const empty = document.createElement('p');
+    empty.className = 'product-events__empty';
+    empty.textContent = 'Поки що немає зафіксованих змін.';
+    panel.append(empty);
+    return;
+  }
+  data.forEach(item => {
+    const row = document.createElement('div'); row.className = 'product-events__row';
+    const summary = document.createElement('b'); summary.textContent = item.summary;
+    const dateValue = document.createElement('span'); dateValue.className = 'product-events__date'; dateValue.textContent = productEventTime(item.created_at);
+    row.append(summary, dateValue); panel.append(row);
+  });
+};
+
+document.addEventListener('click', event => {
+  const edit = event.target.closest('[data-edit-product]');
+  if (edit) setTimeout(() => showProductEvents(edit.dataset.editProduct), 120);
+});
+
+document.addEventListener('submit', event => {
+  const form = event.target.closest('#productForm');
+  if (!form) return;
+  const fields = new FormData(form);
+  const id = String(fields.get('id') || '').trim();
+  const slug = String(fields.get('slug') || '').trim();
+  const name = String(fields.get('name') || '').trim();
+  const previous = id ? state.products.find(item => Number(item.id) === Number(id)) : null;
+  setTimeout(async () => {
+    let query = supabase.from('products').select('id,name,slug,is_active,category,price,availability_status,stock_quantity');
+    query = id ? query.eq('id', Number(id)) : query.eq('slug', slug);
+    const { data: saved } = await query.maybeSingle();
+    if (!saved || (slug && saved.slug !== slug) || (name && saved.name !== name)) return;
+    if (!previous) { await addProductEvent(saved.id, 'created', 'Створено товар'); return; }
+    const changed = [];
+    if (previous.name !== saved.name) changed.push('назву');
+    if (previous.slug !== saved.slug) changed.push('URL');
+    if (previous.category !== saved.category) changed.push('категорію');
+    if (Number(previous.price) !== Number(saved.price)) changed.push('ціну');
+    if (previous.availability_status !== saved.availability_status) changed.push('наявність');
+    if (Number(previous.stock_quantity) !== Number(saved.stock_quantity)) changed.push('залишок');
+    if (Boolean(previous.is_active) !== Boolean(saved.is_active)) changed.push('видимість');
+    await addProductEvent(saved.id, changed.length === 1 && changed[0] === 'видимість' ? 'visibility' : 'updated', changed.length ? 'Оновлено: ' + changed.join(', ') : 'Збережено дані товару');
+  }, 1300);
+}, true);
+
+document.addEventListener('click', event => {
+  const action = event.target.closest('[data-bulk-product-active]');
+  if (!action) return;
+  const isActive = action.dataset.bulkProductActive === 'true';
+  const ids = [...bulkProductIds].filter(id => {
+    const product = state.products.find(item => Number(item.id) === Number(id));
+    return product && Boolean(product.is_active) !== isActive;
+  });
+  if (!ids.length) return;
+  setTimeout(async () => {
+    const { data: products } = await supabase.from('products').select('id,is_active').in('id', ids);
+    await Promise.all((products || []).filter(product => Boolean(product.is_active) === isActive).map(product => addProductEvent(product.id, 'visibility', isActive ? 'Опубліковано масово' : 'Приховано / архівовано масово')));
+  }, 1300);
+});

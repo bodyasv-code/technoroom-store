@@ -596,3 +596,126 @@ async function saveProductGalleryWithProgress(event) {
   }
 }
 productGalleryForm.onsubmit = saveProductGalleryWithProgress;
+
+
+/* Зручні поля товару: slug, бренд і черга кількох фото. */
+const productNameInput = productGalleryForm.elements.name;
+const productSlugInput = productGalleryForm.elements.slug;
+const productBrandInput = productGalleryForm.elements.brand;
+let slugChangedManually = false;
+const brandOptions = document.createElement('datalist');
+brandOptions.id = 'productBrandOptions';
+document.body.append(brandOptions);
+productBrandInput.setAttribute('list', brandOptions.id);
+productBrandInput.setAttribute('placeholder', 'Оберіть або введіть бренд');
+const refreshBrandOptions = () => {
+  const brands = [...new Set(state.products.map((product) => String(product.brand || '').trim()).filter(Boolean))]
+    .sort((a, b) => a.localeCompare(b, 'uk'));
+  brandOptions.innerHTML = brands.map((brand) => '<option value="' + escape(brand) + '"></option>').join('');
+};
+productNameInput.addEventListener('input', () => {
+  if (!slugChangedManually) productSlugInput.value = productSlug(productNameInput.value);
+});
+productSlugInput.addEventListener('input', () => {
+  slugChangedManually = productSlugInput.value.trim() !== productSlug(productNameInput.value);
+});
+
+productGalleryState.pendingFiles = [];
+galleryFilesInput.addEventListener('change', () => {
+  const selected = Array.from(galleryFilesInput.files || []);
+  const known = new Set(productGalleryState.pendingFiles.map((file) => file.name + ':' + file.size + ':' + file.lastModified));
+  selected.forEach((file) => {
+    const key = file.name + ':' + file.size + ':' + file.lastModified;
+    if (!known.has(key)) productGalleryState.pendingFiles.push(file);
+  });
+  setTimeout(() => {
+    productGalleryState.pending = productGalleryState.pendingFiles.map((file) => file.name);
+    galleryFilesInput.value = '';
+    renderProductGalleryEditor();
+  }, 0);
+}, true);
+
+const galleryProductDialog = showProductDialog;
+showProductDialog = function (product = null) {
+  galleryProductDialog(product);
+  slugChangedManually = Boolean(product?.slug && product.slug !== productSlug(product.name));
+  productGalleryState.pendingFiles = [];
+  refreshBrandOptions();
+};
+
+async function saveProductGalleryQueued(event) {
+  event.preventDefault();
+  const form = event.currentTarget;
+  const raw = Object.fromEntries(new FormData(form));
+  const message = document.querySelector('#productFormMessage');
+  const submit = form.querySelector('[type="submit"]');
+  const files = [...(productGalleryState.pendingFiles || [])];
+  const specifications = raw.specifications_text.split('\n').reduce((all, line) => {
+    const [key, ...values] = line.split(':');
+    if (key?.trim() && values.length) all[key.trim()] = values.join(':').trim();
+    return all;
+  }, {});
+  const manual = raw.image_path.trim();
+  const paths = [...productGalleryState.paths];
+  if (manual && !paths.includes(manual)) paths.unshift(manual);
+  const payload = {
+    name: raw.name.trim(), slug: raw.slug.trim() || productSlug(raw.name),
+    sku: raw.sku.trim() || null, brand: raw.brand.trim() || null,
+    category: raw.category.trim(), price: Number(raw.price),
+    stock_quantity: Number(raw.stock_quantity), image_path: productGalleryState.primary || manual || paths[0] || null,
+    image_paths: paths, description: raw.description.trim() || null,
+    specifications, is_active: form.elements.is_active.checked
+  };
+  const status = form.elements.availability_status?.value;
+  payload.in_stock = status ? status === 'in_stock' : payload.stock_quantity > 0;
+  if (status) payload.availability_status = status;
+  const invalid = files.find((file) => !['image/jpeg', 'image/png', 'image/webp'].includes(file.type));
+  if (invalid) {
+    message.textContent = 'Файл «' + invalid.name + '» має непідтримуваний формат. Оберіть JPG, PNG або WebP.';
+    message.hidden = false;
+    return;
+  }
+  submit.disabled = true;
+  try {
+    message.hidden = false;
+    message.textContent = files.length ? 'Зберігаємо товар. У черзі ' + files.length + ' фото…' : 'Зберігаємо товар…';
+    const query = raw.id
+      ? supabase.from('products').update(payload).eq('id', raw.id).select().single()
+      : supabase.from('products').insert(payload).select().single();
+    const { data: saved, error } = await query;
+    if (error) throw new Error(error.code === '23505' ? 'SKU або slug уже використовується.' : 'Не вдалося зберегти товар: ' + error.message);
+    const uploaded = [];
+    for (const [index, file] of files.entries()) {
+      message.textContent = 'Завантажуємо фото ' + (index + 1) + ' з ' + files.length + ': ' + file.name;
+      const extension = (file.name.split('.').pop() || 'webp').toLowerCase();
+      const path = 'products/' + saved.id + '-' + Date.now() + '-' + index + '.' + extension;
+      const { error: uploadError } = await supabase.storage.from('product-images').upload(path, file, { upsert: false, contentType: file.type });
+      if (uploadError) throw new Error('Не вдалося завантажити «' + file.name + '»: ' + uploadError.message);
+      uploaded.push(path);
+    }
+    const allPaths = [...new Set([...paths, ...uploaded])];
+    const primary = productGalleryState.primary || manual || paths[0] || uploaded[0] || null;
+    const { data: finished, error: galleryError } = await supabase.from('products')
+      .update({ image_path: primary, image_paths: allPaths }).eq('id', saved.id).select().single();
+    if (galleryError) throw new Error('Фото завантажено, але не вдалося прив’язати до товару: ' + galleryError.message);
+    productGalleryState.paths = allPaths;
+    productGalleryState.primary = primary;
+    productGalleryState.pending = [];
+    productGalleryState.pendingFiles = [];
+    galleryFilesInput.value = '';
+    galleryImageInput.value = primary || '';
+    renderProductGalleryEditor();
+    const itemIndex = state.products.findIndex((item) => Number(item.id) === Number(finished.id));
+    if (itemIndex >= 0) state.products[itemIndex] = finished;
+    refreshBrandOptions();
+    message.textContent = uploaded.length
+      ? 'Готово: додано ' + uploaded.length + ' фото. Вони вже у галереї нижче.'
+      : 'Зміни товару збережено.';
+  } catch (error) {
+    message.textContent = error.message || 'Не вдалося зберегти товар.';
+  } finally {
+    message.hidden = false;
+    submit.disabled = false;
+  }
+}
+productGalleryForm.onsubmit = saveProductGalleryQueued;

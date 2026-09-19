@@ -1045,3 +1045,48 @@ document.addEventListener('click', event => {
 });
 
 mountCurrentOrderTimeline();
+
+
+// Швидкі дії менеджера у картці замовлення.
+const orderQuickActionStyles = document.createElement('style');
+orderQuickActionStyles.textContent = '.order-quick-actions{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 20px}.order-quick-actions .button{min-height:38px;padding:8px 12px;font-size:13px;text-decoration:none}.order-quick-actions .button.primary{background:#cfff2e;border-color:#cfff2e;color:#102b28}';
+document.head.append(orderQuickActionStyles);
+const renderOrderQuickActions = () => {
+  const details = document.querySelector('#orderDetails');
+  const orderId = currentOrderIdFromDialog();
+  const order = state.orders.find(item => Number(item.id) === orderId);
+  if (!details || !order || details.querySelector('#orderQuickActions')) return;
+  const phone = String(order.customer_phone || '').replace(/[^+\d]/g, '');
+  const email = String(order.customer_email || '').trim();
+  const emailLink = email ? '<a class="button outline" href="mailto:' + encodeURIComponent(email) + '?subject=' + encodeURIComponent('Замовлення TECHNOROOM #' + order.id) + '">Написати email</a>' : '';
+  const phoneLink = phone ? '<a class="button outline" href="tel:' + phone + '">Подзвонити</a>' : '';
+  details.insertAdjacentHTML('afterbegin', '<div class="order-quick-actions" id="orderQuickActions">' + phoneLink + emailLink + '<button class="button outline" type="button" data-copy-order-contact="' + order.id + '">Копіювати контакти</button><button class="button primary" type="button" data-print-order="' + order.id + '">Друк замовлення</button></div>');
+};
+const quickActionsObserver = new MutationObserver(() => setTimeout(renderOrderQuickActions, 0));
+if (document.querySelector('#orderDetails')) quickActionsObserver.observe(document.querySelector('#orderDetails'), { childList: true });
+
+document.addEventListener('click', async event => {
+  const copyButton = event.target.closest('[data-copy-order-contact]');
+  if (copyButton) {
+    const order = state.orders.find(item => Number(item.id) === Number(copyButton.dataset.copyOrderContact));
+    if (!order) return;
+    const contact = [order.customer_name, order.customer_phone, order.customer_email].filter(Boolean).join('\n');
+    try { await navigator.clipboard.writeText(contact); notice('Контакти скопійовано.'); } catch (_) { notice('Не вдалося скопіювати контакти.', true); }
+    return;
+  }
+  const printButton = event.target.closest('[data-print-order]');
+  if (!printButton) return;
+  const order = state.orders.find(item => Number(item.id) === Number(printButton.dataset.printOrder));
+  if (!order) return;
+  const printWindow = window.open('', '_blank', 'width=820,height=900');
+  if (!printWindow) { notice('Браузер заблокував вікно друку. Дозвольте спливні вікна для сайту.', true); return; }
+  printWindow.document.write('<!doctype html><title>Замовлення #' + order.id + '</title><style>body{font:15px/1.45 Arial,sans-serif;color:#172c29;padding:36px;max-width:740px;margin:auto}h1{font-size:30px;margin:0 0 8px}.muted{color:#63736e}table{border-collapse:collapse;width:100%;margin:24px 0}th,td{padding:10px;border-bottom:1px solid #dce2dc;text-align:left}th{text-transform:uppercase;font-size:12px;color:#63736e}.total{font-size:20px;font-weight:700;text-align:right}.grid{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin:28px 0}.box{padding:16px;background:#f2f5ef}@media print{body{padding:0}}</style><h1>TECHNOROOM · Замовлення #' + order.id + '</h1><p class="muted">' + escape(date(order.created_at)) + '</p><div class="grid"><div class="box"><b>Покупець</b><br>' + escape(order.customer_name) + '<br>' + escape(order.customer_phone || '') + '<br>' + escape(order.customer_email || '') + '</div><div class="box"><b>Доставка</b><br>' + escape(order.city || '—') + '<br>' + escape(order.address || '—') + '</div></div><table><thead><tr><th>Товар</th><th>К-сть</th><th>Сума</th></tr></thead><tbody id="printItems"></tbody></table><p class="total">Разом: ' + money(order.total) + '</p>');
+  const { data: items } = await supabase.from('order_items').select('product_name,quantity,unit_price').eq('order_id', order.id);
+  const lines = (items || []).map(item => '<tr><td>' + escape(item.product_name) + '</td><td>' + Number(item.quantity) + '</td><td>' + money(Number(item.unit_price) * Number(item.quantity)) + '</td></tr>').join('') || '<tr><td colspan="3">Товари не знайдено</td></tr>';
+  printWindow.document.querySelector('#printItems').innerHTML = lines;
+  printWindow.document.write('<p class="muted">Статус: ' + escape(statusNames[order.status] || order.status) + '</p>');
+  printWindow.document.close();
+  printWindow.focus();
+  setTimeout(() => printWindow.print(), 250);
+});
+renderOrderQuickActions();

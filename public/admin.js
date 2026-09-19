@@ -956,3 +956,92 @@ const mountAdminExports = () => {
   addExportButton(customerTitle, 'exportCustomersCsv', 'Експорт клієнтів CSV', exportCustomersCsv);
 };
 mountAdminExports();
+
+
+// Постійний журнал ключових змін у картці замовлення.
+const orderTimelineStyles = document.createElement('style');
+orderTimelineStyles.textContent = '.order-timeline{margin-top:28px;padding-top:22px;border-top:1px solid #d8ddd7}.order-timeline h3{margin:0 0 14px}.order-timeline-list{list-style:none;margin:0;padding:0;display:grid;gap:10px}.order-timeline-item{display:grid;grid-template-columns:10px minmax(0,1fr);gap:10px;padding:12px;background:#f4f6f1}.order-timeline-dot{width:10px;height:10px;margin-top:5px;border-radius:999px;background:#cfff2e}.order-timeline-item b{display:block;color:#102b28}.order-timeline-item p{margin:4px 0 0;color:#60706b;font-size:13px}.order-timeline-empty{margin:0;padding:14px;background:#f4f6f1;color:#60706b}';
+document.head.append(orderTimelineStyles);
+
+const paymentStatusNames = { unpaid: 'Не оплачено', pending: 'Очікує оплати', paid: 'Оплачено', refunded: 'Повернення коштів' };
+const currentOrderIdFromDialog = () => Number((document.querySelector('#orderDialogNumber')?.textContent || '').replace(/\D/g, '')) || null;
+const recordOrderEvent = async (orderId, eventType, previousValue, nextValue, summary) => {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return false;
+  const { error } = await supabase.from('order_events').insert({
+    order_id: Number(orderId), event_type: eventType, previous_value: previousValue || null,
+    next_value: nextValue, summary, actor_id: user.id
+  });
+  return !error;
+};
+const renderOrderTimeline = async orderId => {
+  const details = document.querySelector('#orderDetails');
+  if (!details || !orderId) return;
+  let section = details.querySelector('#orderTimeline');
+  if (!section) {
+    section = document.createElement('section');
+    section.id = 'orderTimeline';
+    section.className = 'order-timeline';
+    details.append(section);
+  }
+  section.innerHTML = '<h3>Історія обробки</h3><p class="order-timeline-empty">Завантажуємо події…</p>';
+  const { data: events, error } = await supabase.from('order_events').select('event_type,previous_value,next_value,summary,created_at').eq('order_id', Number(orderId)).order('created_at', { ascending: false });
+  if (error) {
+    section.innerHTML = '<h3>Історія обробки</h3><p class="order-timeline-empty">Журнал буде доступний після запуску міграції order-history-upgrade.sql.</p>';
+    return;
+  }
+  section.innerHTML = '<h3>Історія обробки</h3>' + (events.length
+    ? '<ul class="order-timeline-list">' + events.map(item => '<li class="order-timeline-item"><span class="order-timeline-dot"></span><div><b>' + escape(item.summary) + '</b><p>' + date(item.created_at) + ' · менеджер</p></div></li>').join('') + '</ul>'
+    : '<p class="order-timeline-empty">Поки що немає зафіксованих змін.</p>');
+};
+const mountCurrentOrderTimeline = () => renderOrderTimeline(currentOrderIdFromDialog());
+const orderDetailsObserver = new MutationObserver(() => {
+  const orderId = currentOrderIdFromDialog();
+  if (orderId) setTimeout(() => renderOrderTimeline(orderId), 0);
+});
+const orderDetailsNode = document.querySelector('#orderDetails');
+if (orderDetailsNode) orderDetailsObserver.observe(orderDetailsNode, { childList: true });
+
+// Фіксуємо зміну основного статусу лише після успішного оновлення в базі.
+document.addEventListener('change', event => {
+  const control = event.target.closest('[data-status-order]');
+  if (!control) return;
+  const orderId = Number(control.dataset.statusOrder);
+  const order = state.orders.find(item => Number(item.id) === orderId);
+  const previous = order?.status;
+  const next = control.value;
+  if (!previous || previous === next) return;
+  setTimeout(async () => {
+    const { data } = await supabase.from('orders').select('status').eq('id', orderId).maybeSingle();
+    if (!data || data.status !== next) return;
+    const saved = await recordOrderEvent(orderId, 'status', previous, next, 'Статус: ' + (statusNames[previous] || previous) + ' → ' + (statusNames[next] || next));
+    if (saved && currentOrderIdFromDialog() === orderId) renderOrderTimeline(orderId);
+  }, 900);
+});
+
+// Фіксуємо збережені реквізити оплати і доставки.
+document.addEventListener('click', event => {
+  const button = event.target.closest('[data-save-operations]');
+  if (!button) return;
+  const orderId = Number(button.dataset.saveOperations);
+  const before = state.orders.find(item => Number(item.id) === orderId) || {};
+  const requested = {
+    payment_status: document.querySelector('#paymentStatus')?.value || 'unpaid',
+    payment_method: document.querySelector('#paymentMethod')?.value.trim() || '',
+    delivery_method: document.querySelector('#deliveryMethod')?.value.trim() || '',
+    tracking_number: document.querySelector('#trackingNumber')?.value.trim() || '',
+    expected_delivery: document.querySelector('#expectedDelivery')?.value || ''
+  };
+  setTimeout(async () => {
+    const { data } = await supabase.from('orders').select('payment_status,payment_method,delivery_method,tracking_number,expected_delivery').eq('id', orderId).maybeSingle();
+    if (!data) return;
+    const labels = { payment_status: 'Статус оплати', payment_method: 'Спосіб оплати', delivery_method: 'Спосіб доставки', tracking_number: 'Трек-номер', expected_delivery: 'Дата доставки' };
+    const changes = Object.keys(requested).filter(key => String(data[key] || '') === String(requested[key] || '') && String(before[key] || '') !== String(data[key] || ''));
+    if (!changes.length) return;
+    const summary = changes.map(key => labels[key] + ': ' + (key === 'payment_status' ? (paymentStatusNames[data[key]] || data[key]) : data[key])).join('; ');
+    const saved = await recordOrderEvent(orderId, 'operations', '', JSON.stringify(requested), summary);
+    if (saved && currentOrderIdFromDialog() === orderId) renderOrderTimeline(orderId);
+  }, 1100);
+});
+
+mountCurrentOrderTimeline();

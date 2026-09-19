@@ -766,3 +766,40 @@ showProductDialog = function (product = null) {
   document.querySelectorAll('.clone-hint').forEach((hint) => hint.remove());
   duplicateAwareProductDialog(product);
 };
+
+
+/* Короткий операційний стан прямо у списку замовлень. */
+const orderTableOpsStyle = document.createElement('style');
+orderTableOpsStyle.textContent = '.order-ops{min-width:175px}.order-ops b,.order-ops small{display:block}.order-ops b{font-size:12px}.order-ops small{margin-top:4px;color:#66736d;font-size:11px}.order-payment-paid{color:#3c7100}.order-payment-pending{color:#9a6400}.order-payment-unpaid{color:#6c7672}';
+document.head.append(orderTableOpsStyle);
+const orderPaymentLabels = { unpaid: 'Не оплачено', pending: 'Очікує оплати', paid: 'Оплачено', refunded: 'Повернення' };
+const decorateOrderTable = () => {
+  const table = document.querySelector('#adminOrders').closest('table');
+  const header = table.querySelector('thead tr');
+  if (!header.querySelector('[data-order-ops-header]')) {
+    const heading = document.createElement('th');
+    heading.dataset.orderOpsHeader = 'true';
+    heading.textContent = 'Оплата / доставка';
+    header.children[4].insertAdjacentElement('beforebegin', heading);
+  }
+  table.querySelectorAll('tbody tr').forEach((row) => {
+    if (row.querySelector('.order-ops')) return;
+    const idMatch = row.cells[0]?.textContent.match(/#(\d+)/);
+    const order = idMatch && state.orders.find((item) => Number(item.id) === Number(idMatch[1]));
+    if (!order || row.cells.length < 5) return;
+    const payment = order.payment_status || 'unpaid';
+    const delivery = [order.delivery_method, order.tracking_number].filter(Boolean).join(' · ');
+    const planned = order.expected_delivery_date ? new Intl.DateTimeFormat('uk-UA', { dateStyle: 'medium' }).format(new Date(order.expected_delivery_date)) : '';
+    const cell = document.createElement('td');
+    cell.className = 'order-ops';
+    cell.innerHTML = '<b class="order-payment-' + escape(payment) + '">' + escape(orderPaymentLabels[payment] || 'Не оплачено') + '</b><small>' + escape(delivery || planned || 'Доставку ще не вказано') + '</small>';
+    row.children[4].insertAdjacentElement('beforebegin', cell);
+  });
+};
+const renderOrdersWithOperations = renderOrders;
+renderOrders = function () {
+  renderOrdersWithOperations();
+  decorateOrderTable();
+};
+document.querySelector('#orderSearch').addEventListener('input', decorateOrderTable);
+document.querySelector('#orderFilter').addEventListener('input', decorateOrderTable);

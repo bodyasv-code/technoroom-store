@@ -891,3 +891,68 @@ loadData = async function () {
   const { data: orderItems, error } = await supabase.from('order_items').select('product_name,quantity,unit_price');
   renderDashboardReports(error ? [] : (orderItems || []));
 };
+
+
+// Експорт замовлень і клієнтів у CSV для Excel.
+const exportAdminStyles = document.createElement('style');
+exportAdminStyles.textContent = '.admin-export-button{margin-left:auto;white-space:nowrap}.admin-title{display:flex;align-items:flex-start;gap:16px}.admin-title>div{min-width:0}@media(max-width:620px){.admin-title{flex-wrap:wrap}.admin-export-button{margin-left:0}}';
+document.head.append(exportAdminStyles);
+
+const csvValue = value => '"' + String(value ?? '').replace(/"/g, '""').replace(/\n/g, ' ') + '"';
+const downloadCsv = (filename, rows) => {
+  const content = '\uFEFF' + rows.map(row => row.map(csvValue).join(';')).join('\r\n');
+  const blob = new Blob([content], { type: 'text/csv;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url; link.download = filename; document.body.append(link); link.click(); link.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+};
+const filteredOrdersForExport = () => {
+  const term = document.querySelector('#orderSearch')?.value.trim().toLowerCase() || '';
+  const filter = document.querySelector('#orderFilter')?.value || 'all';
+  return state.orders.filter(order => {
+    const haystack = [order.id, order.customer_name, order.customer_phone, order.customer_email].join(' ').toLowerCase();
+    return (!term || haystack.includes(term)) && (filter === 'all' || order.status === filter);
+  });
+};
+const exportOrdersCsv = () => {
+  const orders = filteredOrdersForExport();
+  const rows = [['№ замовлення', 'Дата', 'Статус', 'Покупець', 'Телефон', 'Email', 'Місто', 'Адреса', 'Сума, ₴', 'Товарів', 'Коментар']];
+  orders.forEach(order => rows.push([
+    order.id, date(order.created_at), statusNames[order.status] || order.status, order.customer_name,
+    order.customer_phone, order.customer_email || '', order.city || '', order.address || '', Number(order.total || 0),
+    order.order_items?.[0]?.count || 0, order.comment || ''
+  ]));
+  downloadCsv('technoroom-zamovlennia-' + new Date().toISOString().slice(0, 10) + '.csv', rows);
+  notice('Експортовано замовлень: ' + orders.length + '.');
+};
+const exportCustomersCsv = () => {
+  const grouped = new Map();
+  state.orders.forEach(order => {
+    const key = (order.customer_email || order.customer_phone || String(order.id)).toLowerCase();
+    const current = grouped.get(key) || { name: order.customer_name, phone: order.customer_phone, email: order.customer_email || '', orders: 0, total: 0, last: order.created_at };
+    current.orders += 1; current.total += Number(order.total || 0);
+    if (new Date(order.created_at) > new Date(current.last)) current.last = order.created_at;
+    grouped.set(key, current);
+  });
+  const rows = [['Клієнт', 'Телефон', 'Email', 'Замовлень', 'Загальна сума, ₴', 'Останнє замовлення']];
+  [...grouped.values()].sort((a, b) => new Date(b.last) - new Date(a.last)).forEach(customer => rows.push([
+    customer.name, customer.phone, customer.email, customer.orders, customer.total, date(customer.last)
+  ]));
+  downloadCsv('technoroom-kliienty-' + new Date().toISOString().slice(0, 10) + '.csv', rows);
+  notice('Експортовано клієнтів: ' + grouped.size + '.');
+};
+const addExportButton = (heading, id, label, handler) => {
+  if (!heading || document.querySelector('#' + id)) return;
+  const button = document.createElement('button');
+  button.type = 'button'; button.id = id; button.className = 'button outline admin-export-button'; button.textContent = label;
+  button.addEventListener('click', handler); heading.append(button);
+};
+const mountAdminExports = () => {
+  const titles = [...document.querySelectorAll('.admin-title')];
+  const orderTitle = titles.find(title => title.querySelector('h2')?.textContent.trim() === 'Замовлення');
+  const customerTitle = titles.find(title => title.querySelector('h2')?.textContent.trim() === 'Клієнти');
+  addExportButton(orderTitle, 'exportOrdersCsv', 'Експорт замовлень CSV', exportOrdersCsv);
+  addExportButton(customerTitle, 'exportCustomersCsv', 'Експорт клієнтів CSV', exportCustomersCsv);
+};
+mountAdminExports();

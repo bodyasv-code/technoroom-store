@@ -719,3 +719,50 @@ async function saveProductGalleryQueued(event) {
   }
 }
 productGalleryForm.onsubmit = saveProductGalleryQueued;
+
+
+/* Швидке створення схожих товарів із наявної позиції. */
+const productCloneStyle = document.createElement('style');
+productCloneStyle.textContent = '.table-actions{white-space:nowrap}.table-actions [data-duplicate-product]{margin-left:10px}.clone-hint{margin:0 0 12px;color:#66736d;font-size:13px}';
+document.head.append(productCloneStyle);
+const appendDuplicateActions = () => {
+  document.querySelectorAll('#adminProducts [data-edit-product]').forEach((editButton) => {
+    const id = editButton.dataset.editProduct;
+    if (editButton.parentElement.querySelector('[data-duplicate-product="' + id + '"]')) return;
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.dataset.duplicateProduct = id;
+    button.textContent = 'Дублювати';
+    editButton.insertAdjacentElement('afterend', button);
+  });
+};
+new MutationObserver(appendDuplicateActions).observe(document.querySelector('#adminProducts'), { childList: true, subtree: true });
+appendDuplicateActions();
+document.addEventListener('click', (event) => {
+  const button = event.target.closest('[data-duplicate-product]');
+  if (!button) return;
+  const source = state.products.find((product) => Number(product.id) === Number(button.dataset.duplicateProduct));
+  if (!source) return;
+  const copyName = source.name + ' — копія';
+  const copy = {
+    ...source,
+    id: null,
+    name: copyName,
+    slug: productSlug(copyName),
+    sku: null,
+    is_active: false,
+    image_paths: Array.isArray(source.image_paths) ? [...source.image_paths] : []
+  };
+  showProductDialog(copy);
+  document.querySelector('#productDialogTitle').textContent = 'Дублювання товару';
+  const hint = document.createElement('p');
+  hint.className = 'clone-hint';
+  hint.textContent = 'Створено чернетку на основі «' + source.name + '». Змініть назву, SKU та за потреби фото, потім збережіть.';
+  document.querySelector('#productForm').prepend(hint);
+});
+
+const duplicateAwareProductDialog = showProductDialog;
+showProductDialog = function (product = null) {
+  document.querySelectorAll('.clone-hint').forEach((hint) => hint.remove());
+  duplicateAwareProductDialog(product);
+};

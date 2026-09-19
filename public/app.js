@@ -306,3 +306,27 @@ async function hydrateProductGallery() {
   }
 }
 hydrateProductGallery();
+
+
+/* Сумісна версія галереї з актуальними статусами та характеристиками. */
+product = function () {
+  const root = document.getElementById('productView');
+  if (!root) return;
+  const item = get(new URLSearchParams(location.search).get('id')) || products[0];
+  if (!item) return;
+  const state = availability(item);
+  const paths = galleryEntriesFor(item);
+  const specs = item.specifications
+    ? Object.entries(item.specifications).map(([key, value]) => '<div><dt>' + key + '</dt><dd>' + value + '</dd></div>').join('')
+    : '<div><dt>Характеристики</dt><dd>' + (item.details || 'Уточнюйте у менеджера') + '</dd></div>';
+  const renderProductGallery = (activePath = paths[0]) => {
+    const source = galleryImageUrl(item, activePath);
+    const thumbs = paths.length > 1
+      ? '<div class="product-gallery-thumbs" aria-label="Інші фото товару">' + paths.map((path, index) => '<button class="product-gallery-thumb ' + (path === activePath ? 'is-active' : '') + '" type="button" data-gallery-path="' + encodeURIComponent(path) + '" aria-label="Фото ' + (index + 1) + '"><img src="' + galleryImageUrl(item, path) + '" alt="' + item.name + ' — фото ' + (index + 1) + '" draggable="false"></button>').join('') + '</div>'
+      : '';
+    root.innerHTML = '<div class="product-detail-visual ' + item.type + '"><div class="product-image ' + item.type + '">' + (source ? '<img src="' + source + '" alt="' + item.name + '" draggable="false">' : '') + '</div>' + thumbs + '</div><div class="product-detail-copy"><p class="eyebrow">' + (item.brand || '') + '</p><h1>' + item.name + '</h1><p class="product-description">' + (item.description || '') + '</p><p class="availability">' + state.label + '</p><strong class="detail-price">' + money(item.price) + '</strong><div class="detail-actions"><button class="button primary" data-add="' + item.id + '" ' + (state.orderable ? '' : 'disabled') + '>' + (state.orderable ? (item.availabilityStatus === 'under_order' ? 'Замовити' : 'Додати в кошик') : 'Немає в наявності') + '</button><a class="button outline" href="catalog.html">До каталогу</a></div><dl class="specs"><div><dt>Виробник</dt><dd>' + (item.brand || '—') + '</dd></div>' + specs + '</dl></div>';
+    bind(root);
+    root.querySelectorAll('[data-gallery-path]').forEach((button) => button.addEventListener('click', () => renderProductGallery(decodeURIComponent(button.dataset.galleryPath))));
+  };
+  renderProductGallery();
+};

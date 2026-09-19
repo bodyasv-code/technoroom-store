@@ -392,3 +392,76 @@ document.addEventListener('click', (event) => {
   const selected = sources.findIndex((source) => source === (image.currentSrc || image.src));
   openProductGalleryLightbox(sources, selected < 0 ? 0 : selected, product.name);
 }, true);
+
+
+// Добірки товарів: популярне та нещодавно переглянуте у цьому браузері.
+const storefrontRecommendationStyles = document.createElement('style');
+storefrontRecommendationStyles.textContent = '.storefront-recommendations{max-width:1240px;margin:72px auto 0;padding:0 24px 72px}.storefront-recommendation-section{border-top:1px solid #d8ddd7;padding-top:28px;margin-top:48px}.storefront-recommendation-heading{display:flex;align-items:end;justify-content:space-between;gap:20px;margin-bottom:22px}.storefront-recommendation-heading h2{margin:0;font-size:clamp(28px,3vw,44px);line-height:1;color:#102b28}.storefront-recommendation-heading p{margin:0;color:#647470;max-width:420px;text-align:right}.storefront-recommendation-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:16px}.storefront-recommendation-card{display:flex;flex-direction:column;min-width:0;background:#fff;border:1px solid #e1e5df;transition:transform .2s ease,box-shadow .2s ease}.storefront-recommendation-card:hover{transform:translateY(-4px);box-shadow:0 12px 28px rgba(16,43,40,.12)}.storefront-recommendation-image{display:grid;place-items:center;height:210px;padding:18px;background:#f1f3ed;overflow:hidden}.storefront-recommendation-image img{width:100%;height:100%;object-fit:contain;user-select:none;-webkit-user-drag:none}.storefront-recommendation-image span{color:#71807b;font-size:14px;text-align:center}.storefront-recommendation-content{padding:18px}.storefront-recommendation-brand{margin:0 0 8px;color:#72817d;font-size:12px;text-transform:uppercase;letter-spacing:.08em}.storefront-recommendation-name{display:inline-block;margin:0 0 16px;color:#102b28;font-size:19px;line-height:1.15;font-weight:700;text-decoration:none}.storefront-recommendation-name:hover{text-decoration:underline}.storefront-recommendation-meta{display:flex;align-items:center;justify-content:space-between;gap:10px}.storefront-recommendation-price{color:#102b28;font-size:20px;font-weight:700}.storefront-recommendation-stock{color:#718e16;font-size:13px;font-weight:700}.storefront-recommendation-empty{margin:0;padding:22px;background:#f1f3ed;color:#61716c}@media(max-width:900px){.storefront-recommendation-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}@media(max-width:560px){.storefront-recommendations{padding:0 16px 48px;margin-top:48px}.storefront-recommendation-heading{align-items:start;flex-direction:column}.storefront-recommendation-heading p{text-align:left}.storefront-recommendation-grid{grid-template-columns:1fr}.storefront-recommendation-image{height:230px}}';
+document.head.append(storefrontRecommendationStyles);
+
+const recommendationEscape = value => String(value ?? '').replace(/[&<>\"]/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '\"': '&quot;' })[char]);
+const recentlyViewedKey = 'technoroom-recently-viewed';
+const readRecentlyViewed = () => {
+  try {
+    const saved = JSON.parse(localStorage.getItem(recentlyViewedKey) || '[]');
+    return Array.isArray(saved) ? saved.map(Number).filter(Number.isFinite) : [];
+  } catch (_) {
+    return [];
+  }
+};
+const saveRecentlyViewed = ids => {
+  try { localStorage.setItem(recentlyViewedKey, JSON.stringify(ids.slice(0, 8))); } catch (_) {}
+};
+const currentStoreProductId = () => Number(new URLSearchParams(location.search).get('id')) || null;
+const rememberCurrentProduct = () => {
+  const id = currentStoreProductId();
+  if (!id || !get(id)) return false;
+  saveRecentlyViewed([id, ...readRecentlyViewed().filter(savedId => savedId !== id)]);
+  return true;
+};
+const recommendationImage = product => {
+  const source = imageUrl(product);
+  return source
+    ? '<img src="' + source + '" alt="' + recommendationEscape(product.name) + '" loading="lazy" draggable="false">'
+    : '<span>Фото товару<br>з’явиться незабаром</span>';
+};
+const recommendationCard = product => {
+  const id = Number(product.id);
+  const name = recommendationEscape(product.name);
+  const brand = recommendationEscape(product.brand || 'TECHNOROOM');
+  const availability = product.stock === false ? 'Немає в наявності' : 'В наявності';
+  return '<article class="storefront-recommendation-card">'
+    + '<a class="storefront-recommendation-image" href="product.html?id=' + id + '" aria-label="Відкрити ' + name + '">' + recommendationImage(product) + '</a>'
+    + '<div class="storefront-recommendation-content">'
+    + '<p class="storefront-recommendation-brand">' + brand + '</p>'
+    + '<a class="storefront-recommendation-name" href="product.html?id=' + id + '">' + name + '</a>'
+    + '<div class="storefront-recommendation-meta"><span class="storefront-recommendation-price">' + money(product.price) + '</span><span class="storefront-recommendation-stock">' + availability + '</span></div>'
+    + '</div></article>';
+};
+const renderStorefrontRecommendations = () => {
+  const main = document.querySelector('main');
+  if (!main || !products.length) return;
+  let root = document.querySelector('#storefront-recommendations');
+  if (!root) {
+    root = document.createElement('section');
+    root.id = 'storefront-recommendations';
+    root.className = 'storefront-recommendations';
+    main.append(root);
+  }
+  const currentId = currentStoreProductId();
+  const available = products.filter(product => product.stock !== false);
+  const popular = available.filter(product => Number(product.id) !== currentId).slice(0, 4);
+  const recent = readRecentlyViewed().filter(id => id !== currentId).map(id => get(id)).filter(Boolean).slice(0, 4);
+  root.innerHTML = '<section class="storefront-recommendation-section">'
+    + '<div class="storefront-recommendation-heading"><h2>Популярні товари</h2><p>Добірка техніки, яку найчастіше обирають для сучасного дому та бізнесу.</p></div>'
+    + '<div class="storefront-recommendation-grid">' + (popular.length ? popular.map(recommendationCard).join('') : '<p class="storefront-recommendation-empty">Товари з’являться після оновлення каталогу.</p>') + '</div></section>'
+    + '<section class="storefront-recommendation-section">'
+    + '<div class="storefront-recommendation-heading"><h2>Нещодавно переглянуті</h2><p>Зберігаємо цю добірку лише у вашому браузері — щоб швидко повернутися до товарів.</p></div>'
+    + (recent.length ? '<div class="storefront-recommendation-grid">' + recent.map(recommendationCard).join('') + '</div>' : '<p class="storefront-recommendation-empty">Перегляньте будь-який товар — він одразу з’явиться у цій добірці.</p>')
+    + '</section>';
+};
+
+[0, 700, 1800].forEach(delay => setTimeout(() => {
+  rememberCurrentProduct();
+  renderStorefrontRecommendations();
+}, delay));

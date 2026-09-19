@@ -459,3 +459,59 @@ if (productImageField) {
   productImageField.type = 'text';
   productImageField.placeholder = 'https://... або products/назва-файлу.jpg';
 }
+
+
+/* Галерея зображень: кілька файлів і вибір головного фото. */
+const productGalleryForm = document.querySelector('#productForm');
+const galleryFilesInput = productGalleryForm.elements.image_file;
+const galleryImageInput = productGalleryForm.elements.image_path;
+const productGalleryState = { paths: [], primary: '', pending: [] };
+galleryFilesInput.multiple = true;
+const productGalleryPanel = document.createElement('section');
+productGalleryPanel.className = 'product-gallery-editor';
+galleryFilesInput.closest('label').insertAdjacentElement('afterend', productGalleryPanel);
+const productGalleryCss = document.createElement('style');
+productGalleryCss.textContent = '.product-gallery-editor{margin:4px 0 18px}.product-gallery-editor h4{margin:0 0 8px}.gallery-list{display:flex;flex-wrap:wrap;gap:8px}.gallery-card{width:92px;border:1px solid #d8ddd5;padding:5px;background:#fff}.gallery-card.is-main{outline:2px solid #d8ff37}.gallery-card img{display:block;width:80px;height:60px;object-fit:contain;background:#f2f4ee}.gallery-card button{display:block;width:100%;margin-top:5px;font-size:11px}.gallery-note{font-size:12px;color:#66736d}';
+document.head.append(productGalleryCss);
+const productGalleryUrl = (path) => String(path || '').startsWith('http') ? path : supabase.storage.from('product-images').getPublicUrl(path).data.publicUrl;
+function renderProductGalleryEditor() {
+  const cards = productGalleryState.paths.map((path, index) => '<div class="gallery-card ' + (path === productGalleryState.primary ? 'is-main' : '') + '"><img src="' + productGalleryUrl(path) + '" alt="Фото ' + (index + 1) + '"><button type="button" data-gallery-primary="' + encodeURIComponent(path) + '">' + (path === productGalleryState.primary ? 'Головне' : 'Зробити головним') + '</button><button type="button" data-gallery-delete="' + encodeURIComponent(path) + '">Прибрати</button></div>').join('');
+  productGalleryPanel.innerHTML = '<h4>Галерея товару</h4>' + (cards ? '<div class="gallery-list">' + cards + '</div>' : '<p class="gallery-note">Завантажте одне або кілька фото.</p>') + (productGalleryState.pending.length ? '<p class="gallery-note">Вибрані нові файли: ' + productGalleryState.pending.join(', ') + '.</p>' : '');
+}
+productGalleryPanel.addEventListener('click', (event) => {
+  const primary = event.target.closest('[data-gallery-primary]');
+  const remove = event.target.closest('[data-gallery-delete]');
+  if (primary) { productGalleryState.primary = decodeURIComponent(primary.dataset.galleryPrimary); galleryImageInput.value = productGalleryState.primary; renderProductGalleryEditor(); }
+  if (remove) { const path = decodeURIComponent(remove.dataset.galleryDelete); productGalleryState.paths = productGalleryState.paths.filter((entry) => entry !== path); if (productGalleryState.primary === path) productGalleryState.primary = productGalleryState.paths[0] || ''; galleryImageInput.value = productGalleryState.primary; renderProductGalleryEditor(); }
+});
+galleryImageInput.addEventListener('change', () => { const path = galleryImageInput.value.trim(); if (path && !productGalleryState.paths.includes(path)) productGalleryState.paths.unshift(path); if (path) productGalleryState.primary = path; renderProductGalleryEditor(); });
+galleryFilesInput.addEventListener('change', () => { productGalleryState.pending = Array.from(galleryFilesInput.files || []).map((file) => file.name); renderProductGalleryEditor(); });
+const baseProductDialog = showProductDialog;
+showProductDialog = function (product = null) {
+  baseProductDialog(product);
+  productGalleryState.paths = [...new Set([product?.image_path, ...(Array.isArray(product?.image_paths) ? product.image_paths : [])].filter(Boolean))];
+  productGalleryState.primary = product?.image_path || productGalleryState.paths[0] || '';
+  productGalleryState.pending = [];
+  galleryImageInput.value = productGalleryState.primary;
+  renderProductGalleryEditor();
+};
+async function saveProductGallery(event) {
+  event.preventDefault(); const form = event.currentTarget; const raw = Object.fromEntries(new FormData(form));
+  const specifications = raw.specifications_text.split('\n').reduce((all, line) => { const [key, ...values] = line.split(':'); if (key?.trim() && values.length) all[key.trim()] = values.join(':').trim(); return all; }, {});
+  const manual = raw.image_path.trim(); let paths = [...productGalleryState.paths]; if (manual && !paths.includes(manual)) paths.unshift(manual);
+  const payload = { name: raw.name.trim(), slug: raw.slug.trim() || productSlug(raw.name), sku: raw.sku.trim() || null, brand: raw.brand.trim() || null, category: raw.category.trim(), price: Number(raw.price), stock_quantity: Number(raw.stock_quantity), image_path: productGalleryState.primary || manual || paths[0] || null, image_paths: paths, description: raw.description.trim() || null, specifications, is_active: form.elements.is_active.checked };
+  const status = form.elements.availability_status?.value; payload.in_stock = status ? status === 'in_stock' : payload.stock_quantity > 0; if (status) payload.availability_status = status;
+  const query = raw.id ? supabase.from('products').update(payload).eq('id', raw.id).select().single() : supabase.from('products').insert(payload).select().single();
+  const { data: saved, error } = await query; const message = document.querySelector('#productFormMessage');
+  if (error) { message.textContent = error.code === '23505' ? 'SKU або slug уже використовується.' : 'Не вдалося зберегти товар. Перевірте дані.'; message.hidden = false; return; }
+  const uploaded = [];
+  for (const [index, file] of Array.from(galleryFilesInput.files || []).entries()) {
+    const ext = (file.name.split('.').pop() || 'webp').toLowerCase(); const path = 'products/' + saved.id + '-' + Date.now() + '-' + index + '.' + ext;
+    const { error: uploadError } = await supabase.storage.from('product-images').upload(path, file, { upsert: false, contentType: file.type });
+    if (uploadError) { message.textContent = 'Товар збережено, але одне з фото не завантажилось.'; message.hidden = false; return; }
+    uploaded.push(path);
+  }
+  if (uploaded.length) { const allPaths = [...new Set([...paths, ...uploaded])]; const { error: photoError } = await supabase.from('products').update({ image_path: payload.image_path || uploaded[0], image_paths: allPaths }).eq('id', saved.id); if (photoError) { message.textContent = 'Фото завантажено, але не вдалося прив’язати його до товару.'; message.hidden = false; return; } }
+  document.querySelector('#productDialog').close(); await loadData();
+}
+productGalleryForm.onsubmit = saveProductGallery;

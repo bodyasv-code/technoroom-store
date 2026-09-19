@@ -857,3 +857,37 @@ document.addEventListener('click', (event) => {
 const customerTableBody = document.querySelector('#adminCustomers');
 new MutationObserver(decorateCustomerTable).observe(customerTableBody, { childList: true, subtree: true });
 decorateCustomerTable();
+
+
+/* Операційні звіти для головної сторінки адмінки. */
+const dashboardReportStyle = document.createElement('style');
+dashboardReportStyle.textContent = '.dashboard-reports{display:grid;grid-template-columns:1.15fr .85fr;gap:18px;margin:24px 0}.dashboard-report{padding:22px;border:1px solid #dce2d9;background:#fff}.dashboard-report h2{margin:0 0 5px;font-size:19px}.dashboard-report>p{margin:0 0 14px;color:#66736d;font-size:12px}.report-list{display:grid;gap:9px}.report-row{display:flex;justify-content:space-between;gap:12px;padding:10px 0;border-top:1px solid #e7ebe4}.report-row:first-child{border-top:0}.report-row small{display:block;margin-top:3px;color:#66736d}.stock-overview{display:grid;grid-template-columns:repeat(3,1fr);gap:9px}.stock-overview div{padding:14px 10px;background:#f0f3ec}.stock-overview b,.stock-overview span{display:block}.stock-overview b{font-size:24px}.stock-overview span{margin-top:3px;font-size:11px;color:#66736d}@media(max-width:900px){.dashboard-reports{grid-template-columns:1fr}}';
+document.head.append(dashboardReportStyle);
+const renderDashboardReports = (items) => {
+  let section = document.querySelector('#dashboardReports');
+  if (!section) {
+    section = document.createElement('section');
+    section.id = 'dashboardReports';
+    section.className = 'dashboard-reports';
+    document.querySelector('#overview').insertAdjacentElement('afterend', section);
+  }
+  const totals = new Map();
+  items.forEach((item) => {
+    const name = item.product_name || 'Товар без назви';
+    const previous = totals.get(name) || { quantity: 0, revenue: 0 };
+    previous.quantity += Number(item.quantity || 0);
+    previous.revenue += Number(item.quantity || 0) * Number(item.unit_price || 0);
+    totals.set(name, previous);
+  });
+  const popular = [...totals.entries()].sort((a, b) => b[1].quantity - a[1].quantity).slice(0, 5);
+  const inStock = state.products.filter((product) => inventoryStatus(product) === 'in_stock').length;
+  const underOrder = state.products.filter((product) => inventoryStatus(product) === 'under_order').length;
+  const unavailable = state.products.filter((product) => inventoryStatus(product) === 'out_of_stock').length;
+  section.innerHTML = '<article class="dashboard-report"><h2>Популярні товари</h2><p>За всіма замовленнями в магазині</p><div class="report-list">' + (popular.length ? popular.map(([name, data], index) => '<div class="report-row"><div><b>' + (index + 1) + '. ' + escape(name) + '</b><small>' + data.quantity + ' шт. у замовленнях</small></div><strong>' + money(data.revenue) + '</strong></div>').join('') : '<p>Продажів для звіту поки немає.</p>') + '</div></article><article class="dashboard-report"><h2>Стан каталогу</h2><p>Швидкий контроль доступності товарів</p><div class="stock-overview"><div><b>' + inStock + '</b><span>в наявності</span></div><div><b>' + underOrder + '</b><span>під замовлення</span></div><div><b>' + unavailable + '</b><span>відсутні</span></div></div></article>';
+};
+const loadDataWithDashboardReports = loadData;
+loadData = async function () {
+  await loadDataWithDashboardReports();
+  const { data: orderItems, error } = await supabase.from('order_items').select('product_name,quantity,unit_price');
+  renderDashboardReports(error ? [] : (orderItems || []));
+};

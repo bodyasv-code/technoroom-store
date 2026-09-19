@@ -1090,3 +1090,110 @@ document.addEventListener('click', async event => {
   setTimeout(() => printWindow.print(), 250);
 });
 renderOrderQuickActions();
+
+
+// Масове керування товарами у каталозі.
+const bulkProductStyles = document.createElement('style');
+bulkProductStyles.textContent = '.bulk-product-toolbar{display:flex;align-items:center;flex-wrap:wrap;gap:8px;margin:12px 0 0;padding:12px;background:#f2f5ef;border:1px solid #dce3da}.bulk-product-toolbar strong{margin-right:6px;color:#102b28}.bulk-product-toolbar select{min-width:190px}.bulk-product-check{width:18px;height:18px;accent-color:#7b9e15;cursor:pointer}.bulk-product-header{width:42px}@media(max-width:700px){.bulk-product-toolbar{align-items:stretch}.bulk-product-toolbar button,.bulk-product-toolbar select{width:100%}}';
+document.head.append(bulkProductStyles);
+const bulkProductIds = new Set();
+const selectedBulkProductIds = () => [...bulkProductIds].map(Number).filter(Number.isFinite);
+const updateBulkProductToolbar = () => {
+  const count = selectedBulkProductIds().length;
+  const countNode = document.querySelector('#bulkProductCount');
+  if (countNode) countNode.textContent = 'Вибрано: ' + count;
+  const visibleChecks = [...document.querySelectorAll('[data-bulk-product-check]')];
+  const selectAll = document.querySelector('#bulkProductSelectAll');
+  if (selectAll) {
+    selectAll.checked = visibleChecks.length > 0 && visibleChecks.every(check => check.checked);
+    selectAll.indeterminate = visibleChecks.some(check => check.checked) && !selectAll.checked;
+  }
+};
+const mountBulkProductToolbar = () => {
+  if (document.querySelector('#bulkProductToolbar')) return;
+  const controls = document.querySelector('#productFilter')?.closest('.admin-controls');
+  if (!controls) return;
+  const toolbar = document.createElement('div');
+  toolbar.id = 'bulkProductToolbar';
+  toolbar.className = 'bulk-product-toolbar';
+  toolbar.innerHTML = '<strong id="bulkProductCount">Вибрано: 0</strong><button class="button outline" type="button" data-bulk-product-active="true">Опублікувати</button><button class="button outline" type="button" data-bulk-product-active="false">Приховати</button><select id="bulkProductCategory"><option value="">Перенести до категорії…</option></select><button class="button outline" type="button" data-bulk-product-category>Застосувати категорію</button>';
+  controls.insertAdjacentElement('afterend', toolbar);
+};
+const refreshBulkCategoryChoices = () => {
+  const select = document.querySelector('#bulkProductCategory');
+  if (!select) return;
+  const selected = select.value;
+  select.innerHTML = '<option value="">Перенести до категорії…</option>' + state.categories.filter(category => category.is_active).map(category => '<option value="' + escape(category.slug) + '">' + escape(category.parent_id ? '↳ ' : '') + escape(category.name) + '</option>').join('');
+  if ([...select.options].some(option => option.value === selected)) select.value = selected;
+};
+const enhanceProductBulkSelection = () => {
+  mountBulkProductToolbar();
+  refreshBulkCategoryChoices();
+  const tbody = document.querySelector('#adminProducts');
+  const table = tbody?.closest('table');
+  const heading = table?.querySelector('thead tr');
+  if (heading && !heading.querySelector('#bulkProductSelectAll')) {
+    const cell = document.createElement('th');
+    cell.className = 'bulk-product-header';
+    cell.innerHTML = '<input class="bulk-product-check" id="bulkProductSelectAll" type="checkbox" aria-label="Вибрати усі видимі товари">';
+    heading.prepend(cell);
+  }
+  if (!tbody) return;
+  [...tbody.querySelectorAll('tr')].forEach(row => {
+    if (row.querySelector('[data-bulk-product-check]')) return;
+    const productName = row.querySelector('td b')?.textContent.trim();
+    const product = state.products.find(item => item.name === productName);
+    if (!product) return;
+    const cell = document.createElement('td');
+    cell.innerHTML = '<input class="bulk-product-check" type="checkbox" data-bulk-product-check="' + product.id + '" aria-label="Вибрати ' + escape(product.name) + '">';
+    const check = cell.firstElementChild;
+    check.checked = bulkProductIds.has(Number(product.id));
+    row.prepend(cell);
+  });
+  updateBulkProductToolbar();
+};
+const applyBulkProductChange = async (payload, title) => {
+  const ids = selectedBulkProductIds();
+  if (!ids.length) { notice('Спочатку виберіть хоча б один товар.', true); return; }
+  const { error } = await supabase.from('products').update(payload).in('id', ids);
+  if (error) { notice('Не вдалося застосувати масову дію.', true); return; }
+  state.products = state.products.map(product => ids.includes(Number(product.id)) ? { ...product, ...payload } : product);
+  bulkProductIds.clear();
+  renderAll();
+  notice(title + ': ' + ids.length + '.');
+};
+
+document.addEventListener('change', event => {
+  const check = event.target.closest('[data-bulk-product-check]');
+  if (check) {
+    const id = Number(check.dataset.bulkProductCheck);
+    if (check.checked) bulkProductIds.add(id); else bulkProductIds.delete(id);
+    updateBulkProductToolbar();
+    return;
+  }
+  if (event.target.matches('#bulkProductSelectAll')) {
+    const checked = event.target.checked;
+    document.querySelectorAll('[data-bulk-product-check]').forEach(item => {
+      item.checked = checked;
+      const id = Number(item.dataset.bulkProductCheck);
+      if (checked) bulkProductIds.add(id); else bulkProductIds.delete(id);
+    });
+    updateBulkProductToolbar();
+  }
+});
+document.addEventListener('click', event => {
+  const statusButton = event.target.closest('[data-bulk-product-active]');
+  if (statusButton) {
+    applyBulkProductChange({ is_active: statusButton.dataset.bulkProductActive === 'true' }, statusButton.dataset.bulkProductActive === 'true' ? 'Опубліковано товарів' : 'Приховано товарів');
+    return;
+  }
+  if (event.target.closest('[data-bulk-product-category]')) {
+    const category = document.querySelector('#bulkProductCategory')?.value;
+    if (!category) { notice('Оберіть категорію для товарів.', true); return; }
+    applyBulkProductChange({ category }, 'Оновлено категорію для товарів');
+  }
+});
+const bulkProductObserver = new MutationObserver(() => setTimeout(enhanceProductBulkSelection, 0));
+const bulkProductTable = document.querySelector('#adminProducts');
+if (bulkProductTable) bulkProductObserver.observe(bulkProductTable, { childList: true });
+setTimeout(enhanceProductBulkSelection, 0);

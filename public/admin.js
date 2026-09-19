@@ -1345,8 +1345,16 @@ document.addEventListener('click', event => {
     const haystack = (row.source + ' ' + row.name + ' ' + row.description).toLowerCase();
     const bySlug = (slug) => state.categories.find((item) => item.slug === slug)?.slug;
     const byName = (pattern) => state.categories.find((item) => pattern.test(item.name))?.slug;
-    if (row.kind === 'projector') return /лазер|laser/.test(haystack) ? (bySlug('laser-proj') || byName(/лазер/i)) : (bySlug('projector') || byName(/проєктор|проектор/i));
-    if (row.kind === 'screen') return byName(/екран/i) || bySlug('projector') || byName(/проєктор|проектор/i);
+    const projectorRoot = () => bySlug('projector') || byName(/проєктор|проектор/i);
+    if (row.kind === 'projector') {
+      if (/лазер|laser/.test(haystack)) return bySlug('laser-proj') || byName(/лазер/i) || projectorRoot();
+      if (/короткофокус|short\s*throw/.test(haystack)) return bySlug('short-throw-projectors') || projectorRoot();
+      if (/домашн|home\s*(cinema|theater)/.test(haystack)) return bySlug('home-projectors') || projectorRoot();
+      if (/інсталяційн|installation/.test(haystack)) return bySlug('installation-projectors') || projectorRoot();
+      if (/універсальн|universal/.test(haystack)) return bySlug('universal-projectors') || projectorRoot();
+      return projectorRoot();
+    }
+    if (row.kind === 'screen') return bySlug('projection-screens') || byName(/екран/i) || projectorRoot();
     if (row.kind === 'audio') return bySlug('audio') || byName(/акуст|звук/i);
     if (row.kind === 'tv') return bySlug('tv') || byName(/телевізор/i);
     return null;
@@ -1368,7 +1376,7 @@ document.addEventListener('click', event => {
     const rows = currentPageRows(); const allRows = currentScopeRows(); const existing = existingBySku();
     summary.textContent = ercState.rows.length ? 'У вибраній групі: ' + allRows.length + '. Показано: ' + rows.length + '. Позначено: ' + ercState.selected.size + '.' : 'Оберіть XML-файл, щоб побачити товари.';
     body.innerHTML = rows.length ? rows.map((row) => {
-      const current = existing.get(row.sku); const status = current ? 'Оновлення ціни й залишку' : 'Нова чернетка';
+      const current = existing.get(row.sku); const status = current ? 'Оновлення ціни, залишку й категорії' : 'Нова чернетка';
       const mapped = mappedCategory(row);
       const disabled = !mapped || !row.sku || !row.price;
       const detail = row.images.length ? 'У джерелі є фото: ' + row.images.length : 'Фото у джерелі не знайдено';
@@ -1409,11 +1417,11 @@ document.addEventListener('click', event => {
       const category = mappedCategory(row); if (!category) return;
       const present = existing.get(row.sku);
       if (present) {
-        const payload = { price: row.price, stock_quantity: row.stock, in_stock: row.stock > 0 };
+        const payload = { category, price: row.price, stock_quantity: row.stock, in_stock: row.stock > 0, availability_status: row.stock > 0 ? 'in_stock' : 'out_of_stock' };
         if (content && (row.description || Object.keys(row.specifications).length)) { payload.description = row.description || present.description; payload.specifications = Object.keys(row.specifications).length ? row.specifications : present.specifications; }
         updates.push({ id: present.id, payload });
       } else {
-        newRows.push({ name: row.name, slug: uniqueSlug(row.name, row.sku, usedSlugs), sku: row.sku, brand: deriveBrand(row.name, row.vendor), category, price: row.price, stock_quantity: row.stock, in_stock: row.stock > 0, description: row.description || null, specifications: row.specifications, image_path: null, is_active: false });
+        newRows.push({ name: row.name, slug: uniqueSlug(row.name, row.sku, usedSlugs), sku: row.sku, brand: deriveBrand(row.name, row.vendor), category, price: row.price, stock_quantity: row.stock, in_stock: row.stock > 0, availability_status: row.stock > 0 ? 'in_stock' : 'out_of_stock', description: row.description || null, specifications: row.specifications, image_path: null, is_active: false });
       }
     });
     if (!newRows.length && !updates.length) return importStatus('Не знайдено товарів із налаштованою категорією.', true);

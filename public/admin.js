@@ -1092,8 +1092,8 @@ document.addEventListener('click', async event => {
 renderOrderQuickActions();
 
 
-// Масове керування товарами у каталозі.
-const bulkProductStyles = document.createElement('style');
+// Масове керування товарами у каталозі.const bulkProductStyles = document.createElement('style');
+
 bulkProductStyles.textContent = `
 .bulk-product-toolbar{
   display:flex;
@@ -1122,8 +1122,19 @@ bulkProductStyles.textContent = `
 .bulk-product-header{
   width:42px;
 }
+
+@media(max-width:700px){
+  .bulk-product-toolbar{
+    align-items:stretch;
+  }
+
+  .bulk-product-toolbar button,
+  .bulk-product-toolbar select{
+    width:100%;
+  }
+}
 `;
-@media(max-width:700px){.bulk-product-toolbar{align-items:stretch}.bulk-product-toolbar button,.bulk-product-toolbar select{width:100%}}';
+
 document.head.append(bulkProductStyles);
 const bulkProductIds = new Set();
 const selectedBulkProductIds = () => [...bulkProductIds].map(Number).filter(Number.isFinite);

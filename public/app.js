@@ -11,7 +11,13 @@ const fallbackProducts = [
   { id: 4, name: 'Samsung The Frame 65', description: 'QLED телевізор, 65 дюймів', price: 52999, type: 'tv', brand: 'Samsung', details: '65 дюймів · 4K UHD', stock: true },
 ];
 let products = fallbackProducts;
-const cart = JSON.parse(localStorage.getItem('technoroom-cart') || '[]');
+const cart = JSON.parse(
+  localStorage.getItem('technoroom-cart') || '[]'
+).map(item =>
+  typeof item === 'number'
+    ? { productId: item, quantity: 1 }
+    : item
+);
 const money = (value) => `${new Intl.NumberFormat('uk-UA').format(value)} ₴`;
 const get = (id) => products.find((product) => product.id === Number(id));
 const save = () => localStorage.setItem('technoroom-cart', JSON.stringify(cart));
@@ -28,8 +34,34 @@ lightbox.addEventListener('click', (event) => { if (event.target === lightbox ||
 document.addEventListener('keydown', (event) => { if (event.key === 'Escape') closeLightbox(); });
 document.addEventListener('contextmenu', (event) => { if (event.target.closest('.product-image,.image-lightbox,.product-detail-copy,.catalog-grid .product')) event.preventDefault(); });
 
-function add(id) { const product = get(id); if (!product?.stock) return; cart.push(Number(id)); save(); renderCart(); }
-function renderCart() { const count = document.getElementById('cartCount'); if (count) count.textContent = cart.length; const root = document.getElementById('cartItems'), total = document.getElementById('cartTotal'), checkoutButton = document.getElementById('checkoutButton'); if (!root) return; const items = cart.map((id, index) => ({ product: get(id), index })).filter((item) => item.product); root.innerHTML = items.length ? items.map(({ product, index }) => `<div class="cart-item"><b>${product.name}</b><strong>${money(product.price)}</strong><span>${product.stock ? 'В наявності' : 'Немає в наявності'}</span><button class="remove" data-remove="${index}">Прибрати</button></div>`).join('') : '<p class="empty-cart">Кошик поки порожній.</p>'; if (total) total.textContent = money(items.reduce((sum, item) => sum + item.product.price, 0)); if (checkoutButton) checkoutButton.disabled = !items.length; root.querySelectorAll('[data-remove]').forEach((button) => button.onclick = () => { cart.splice(Number(button.dataset.remove), 1); save(); renderCart(); }); }
+function add(id) {
+  const product = get(id);
+  if (!product?.stock) return;
+
+  const existingIndex = cart.findIndex(
+    item => item.productId === Number(id)
+  );
+
+  if (existingIndex >= 0) {
+    cart[existingIndex].quantity += 1;
+  } else {
+    cart.push({
+      productId: Number(id),
+      quantity: 1
+    });
+  }
+
+  save();
+  renderCart();
+}
+function renderCart() { const count = document.getElementById('cartCount'); if (count) count.textContent = cart.length; const root = document.getElementById('cartItems'), total = document.getElementById('cartTotal'), checkoutButton = document.getElementById('checkoutButton'); if (!root) return; const items = cart.map((item, index) => ({
+  product: get(item.productId),
+  quantity: item.quantity,
+  index
+})).filter((item) => item.product);
+ root.innerHTML = items.length ? items.map(({ product, index }) => `<div class="cart-item"><b>${product.name}</b>
+<small>Кількість: ${quantity}</small><strong>${money(product.price * quantity)}
+``</strong><span>${product.stock ? 'В наявності' : 'Немає в наявності'}</span><button class="remove" data-remove="${index}">Прибрати</button></div>`).join('') : '<p class="empty-cart">Кошик поки порожній.</p>'; if (total) total.textContent = money(items.reduce((sum, item) => sum + item.product.price, 0)); if (checkoutButton) checkoutButton.disabled = !items.length; root.querySelectorAll('[data-remove]').forEach((button) => button.onclick = () => { cart.splice(Number(button.dataset.remove), 1); save(); renderCart(); }); }
 function card(product) { return `<article class="product"><div class="product-image ${product.type}">${image(product)}</div><h3><a href="product.html?id=${product.id}">${product.name}</a></h3><p class="availability">${product.stock ? 'В наявності' : 'Немає в наявності'}</p><p>${product.description || ''}</p><div class="product-footer"><strong class="price">${money(product.price)}</strong><button class="add-button" data-add="${product.id}" ${product.stock ? '' : 'disabled'}>${product.stock ? 'У кошик' : 'Немає'}</button></div></article>`; }
 function bind(root = document) { root.querySelectorAll('[data-add]').forEach((button) => button.onclick = () => add(button.dataset.add)); root.querySelectorAll('.product-image img').forEach((image) => image.onclick = () => openLightbox(image.currentSrc || image.src, image.alt)); }
 function home() { const root = document.getElementById('productGrid'); if (root) { root.innerHTML = products.slice(0, 4).map(card).join(''); bind(root); } }
@@ -212,7 +244,24 @@ function availability(product) {
   if (product.stock) return { label: 'В наявності', button: 'У кошик', orderable: true };
   return { label: 'Немає в наявності', button: 'Немає', orderable: false };
 }
-add = (id) => { const item = get(id); if (!item || !availability(item).orderable) return; cart.push(Number(id)); save(); renderCart(); };
+add = (id) => {
+  const item = get(id);
+  if (!item || !availability(item).orderable) return;
+
+  const existing = cart.find(entry => entry.productId === Number(id));
+
+  if (existing) {
+    existing.quantity += 1;
+  } else {
+    cart.push({
+      productId: Number(id),
+      quantity: 1
+    });
+  }
+
+  save();
+  renderCart();
+};
 renderCart = () => {
   const count = document.getElementById('cartCount'); if (count) count.textContent = cart.length;
   const root = document.getElementById('cartItems'), total = document.getElementById('cartTotal'), checkoutButton = document.getElementById('checkoutButton');

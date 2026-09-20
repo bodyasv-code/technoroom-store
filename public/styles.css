@@ -14,6 +14,58 @@
   color:#6d7772;
   font-weight:600;
 }
+
+.checkout-item{
+  display:grid;
+  gap:8px;
+  padding:16px;
+  margin-bottom:12px;
+  border:1px solid var(--line);
+  background:#fff;
+}
+
+.checkout-item small{
+  color:var(--muted);
+}
+
+.checkout-qty{
+  display:flex;
+  align-items:center;
+  gap:10px;
+}
+
+.checkout-qty button{
+  width:36px;
+  height:36px;
+  border:1px solid var(--line);
+  background:#f3f5ef;
+  color:#102322;
+  cursor:pointer;
+  font-size:18px;
+  font-weight:700;
+}
+
+.checkout-qty button:hover{
+  background:var(--acid);
+}
+
+.checkout-qty strong{
+  min-width:32px;
+  text-align:center;
+}
+
+[data-remove-item]{
+  width:max-content;
+  padding:8px 12px;
+  border:0;
+  cursor:pointer;
+  background:#ffe5df;
+  color:#9a2b00;
+}
+
+[data-remove-item]:hover{
+  background:#ffd4c8;
+}
 /* Читабельні характеристики товару: стабільні колонки для довгих значень. */
 .specs > div {
   display: grid;

@@ -369,7 +369,27 @@ function availability(product) {
   if (product.stock) return { label: 'В наявності', button: 'У кошик', orderable: true };
   return { label: 'Немає в наявності', button: 'Немає', orderable: false };
 }
-add = (id) => { const item = get(id); if (!item || !availability(item).orderable) return; cart.push(Number(id)); save(); renderCart(); };
+add = (id) => {
+  const item = get(id);
+
+  if (!item || !availability(item).orderable) return;
+
+  const existing = cart.find(
+    entry => Number(entry.productId) === Number(id)
+  );
+
+  if (existing) {
+    existing.quantity += 1;
+  } else {
+    cart.push({
+      productId: Number(id),
+      quantity: 1
+    });
+  }
+
+  save();
+  renderCart();
+};
 renderCart = () => {
   const count = document.getElementById('cartCount');
 

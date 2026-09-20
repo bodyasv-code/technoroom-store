@@ -101,19 +101,7 @@ if (!canonical) {
   document.head.appendChild(canonical);
 }
 
-canonical.href = window.location.href; const setMetaProperty = (property, content) => {
-  let tag = document.querySelector(
-    `meta[property="${property}"]`
-  );
-
-  if (!tag) {
-    tag = document.createElement('meta');
-    tag.setAttribute('property', property);
-    document.head.appendChild(tag);
-  }
-
-  tag.content = content;
-};
+canonical.href = window.location.href; 
 
 setMetaProperty('og:title', item.name);
 

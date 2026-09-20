@@ -1,1 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="https://www.sitemaps.org/schemas/sitemap/0.9">
 
+  <url>
+    <loc>https://technoroom-store.vercel.app/</loc>
+  </url>
+
+  <url>
+    <loc>https://technoroom-store.vercel.app/catalog.html</loc>
+  </url>
+
+  <url>
+    <loc>https://technoroom-store.vercel.app/admin.html</loc>
+  </url>
+
+</urlset>

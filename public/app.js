@@ -101,7 +101,67 @@ if (!canonical) {
   document.head.appendChild(canonical);
 }
 
-canonical.href = window.location.href;
+canonical.href = window.location.href; const setMetaProperty = (property, content) => {
+  let tag = document.querySelector(
+    `meta[property="${property}"]`
+  );
+
+  if (!tag) {
+    tag = document.createElement('meta');
+    tag.setAttribute('property', property);
+    document.head.appendChild(tag);
+  }
+
+  tag.content = content;
+};
+
+setMetaProperty('og:title', item.name);
+
+setMetaProperty(
+  'og:description',
+  item.description || item.name
+);
+
+setMetaProperty('og:url', window.location.href);
+
+setMetaProperty('og:type', 'product');
+
+if (imageUrl(item)) {
+  setMetaProperty(
+    'og:image',
+    imageUrl(item)
+  );
+}const setMetaProperty = (property, content) => {
+  let tag = document.querySelector(
+    `meta[property="${property}"]`
+  );
+
+  if (!tag) {
+    tag = document.createElement('meta');
+    tag.setAttribute('property', property);
+    document.head.appendChild(tag);
+  }
+
+  tag.content = content;
+};
+
+setMetaProperty('og:title', item.name);
+
+setMetaProperty(
+  'og:description',
+  item.description || item.name
+);
+
+setMetaProperty('og:url', window.location.href);
+
+setMetaProperty('og:type', 'product');
+
+if (imageUrl(item)) {
+  setMetaProperty(
+    'og:image',
+    imageUrl(item)
+  );
+}
 
 const oldSchema =
   document.getElementById('product-schema');

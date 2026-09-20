@@ -16,7 +16,17 @@ const money = (value) => `${new Intl.NumberFormat('uk-UA').format(value)} ₴`;
 const get = (id) => products.find((product) => product.id === Number(id));
 const save = () => localStorage.setItem('technoroom-cart', JSON.stringify(cart));
 const imageUrl = (product) => product.image?.startsWith('http') ? `/api/product-image?id=${product.id}` : product.image ? supabase.storage.from('product-images').getPublicUrl(product.image).data.publicUrl : '';
-const image = (product) => product.image ? `<img src="${imageUrl(product)}" alt="${product.name}" draggable="false">` : '';
+const image = (product) => {
+  if (product.image) {
+    return `${imageUrl(product)}`;
+  }
+
+  return `
+    <div class="product-placeholder">
+      <span>Фото відсутнє</span>
+    </div>
+  `;
+};
 const lightbox = document.createElement('div');
 lightbox.className = 'image-lightbox';
 lightbox.hidden = true;

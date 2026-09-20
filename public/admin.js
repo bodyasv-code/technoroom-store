@@ -1094,6 +1094,8 @@ renderOrderQuickActions();
 
 // Масове керування товарами у каталозі.const bulkProductStyles = document.createElement('style');
 
+const bulkProductStyles = document.createElement('style');
+
 bulkProductStyles.textContent = `
 .bulk-product-toolbar{
   display:flex;

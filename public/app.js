@@ -481,8 +481,11 @@ const root =
 <div>
   <span>
     ${item.product.name}
-    × ${item.quantity}
   </span>
+
+  <small>
+    Кількість: ${item.quantity}
+  </small>
 
   <strong>
     ${money(

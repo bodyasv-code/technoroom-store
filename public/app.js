@@ -37,23 +37,6 @@ function categoryMatch(product, category) { const value = `${product.type || ''}
 function catalog() {
   document.title = 'Каталог товарів | TECHNOROOM';
 
-let metaDescription = document.querySelector(
-  'meta[name="description"]'
-);
-
-if (!metaDescription) {
-  metaDescription = document.createElement('meta');
-  metaDescription.name = 'description';
-  document.head.appendChild(metaDescription);
-}
-
-metaDescription.content =
-  'Проєктори, телевізори, акустика та мультимедійне обладнання TECHNOROOM.';
-``
-  const root = document.getElementById('catalogGrid');
-  if (!root) return; // SEO для каталогу
-document.title = 'Каталог проєкторів, телевізорів та аудіо | TECHNOROOM';
-
 let metaDescription =
   document.querySelector('meta[name="description"]');
 

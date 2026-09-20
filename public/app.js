@@ -11,13 +11,7 @@ const fallbackProducts = [
   { id: 4, name: 'Samsung The Frame 65', description: 'QLED телевізор, 65 дюймів', price: 52999, type: 'tv', brand: 'Samsung', details: '65 дюймів · 4K UHD', stock: true },
 ];
 let products = fallbackProducts;
-const cart = JSON.parse(
-  localStorage.getItem('technoroom-cart') || '[]'
-).map(item =>
-  typeof item === 'number'
-    ? { productId: item, quantity: 1 }
-    : item
-);
+const cart = JSON.parse(localStorage.getItem('technoroom-cart') || '[]');
 const money = (value) => `${new Intl.NumberFormat('uk-UA').format(value)} ₴`;
 const get = (id) => products.find((product) => product.id === Number(id));
 const save = () => localStorage.setItem('technoroom-cart', JSON.stringify(cart));

@@ -35,6 +35,21 @@ function bind(root = document) { root.querySelectorAll('[data-add]').forEach((bu
 function home() { const root = document.getElementById('productGrid'); if (root) { root.innerHTML = products.slice(0, 4).map(card).join(''); bind(root); } }
 function categoryMatch(product, category) { const value = `${product.type || ''} ${product.name || ''} ${product.description || ''}`.toLowerCase(); if (category === 'audio') return /audio|акуст|звук|саундбар|підлогов|колонк/.test(value); if (category === 'projector') return /projector|проєктор|екран/.test(value); if (category === 'tv') return /(^|\s)tv(\s|$)|телевіз|панел|qled/.test(value); return product.type === category; }
 function catalog() {
+  document.title = 'Каталог товарів | TECHNOROOM';
+
+let metaDescription = document.querySelector(
+  'meta[name="description"]'
+);
+
+if (!metaDescription) {
+  metaDescription = document.createElement('meta');
+  metaDescription.name = 'description';
+  document.head.appendChild(metaDescription);
+}
+
+metaDescription.content =
+  'Проєктори, телевізори, акустика та мультимедійне обладнання TECHNOROOM.';
+``
   const root = document.getElementById('catalogGrid');
   if (!root) return;
   const buttons = document.querySelectorAll('[data-category]');

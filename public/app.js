@@ -51,7 +51,57 @@ metaDescription.content =
   'Проєктори, телевізори, акустика та мультимедійне обладнання TECHNOROOM.';
 ``
   const root = document.getElementById('catalogGrid');
-  if (!root) return;
+  if (!root) return; // SEO для каталогу
+document.title = 'Каталог проєкторів, телевізорів та аудіо | TECHNOROOM';
+
+let metaDescription =
+  document.querySelector('meta[name="description"]');
+
+if (!metaDescription) {
+  metaDescription = document.createElement('meta');
+  metaDescription.name = 'description';
+  document.head.appendChild(metaDescription);
+}
+
+metaDescription.content =
+  'Каталог проєкторів, телевізорів, акустики та AV-рішень TECHNOROOM. Актуальні ціни, характеристики та наявність.';
+
+let canonical =
+  document.querySelector('link[rel="canonical"]');
+
+if (!canonical) {
+  canonical = document.createElement('link');
+  canonical.rel = 'canonical';
+  document.head.appendChild(canonical);
+}
+
+canonical.href =
+  location.origin + '/catalog.html';
+
+const oldCatalogSchema =
+  document.getElementById('catalog-schema');
+
+if (oldCatalogSchema) {
+  oldCatalogSchema.remove();
+}
+
+const catalogSchema =
+  document.createElement('script');
+
+catalogSchema.type = 'application/ld+json';
+catalogSchema.id = 'catalog-schema';
+
+catalogSchema.textContent =
+  JSON.stringify({
+    "@context": "https://schema.org",
+    "@type": "CollectionPage",
+    "name": "Каталог TECHNOROOM",
+    "description":
+      "Проєктори, телевізори, акустика та AV-рішення",
+    "url": canonical.href
+  });
+
+document.head.appendChild(catalogSchema);
   const buttons = document.querySelectorAll('[data-category]');
   const search = document.getElementById('catalogSearch');
   const brand = document.getElementById('brandFilter');

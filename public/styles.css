@@ -15,6 +15,8 @@
   padding:46px 55px;
   width:100%;
   max-width:none;
+}.admin-main{
+  width:calc(100% - 235px);
 }.admin-nav{
   width:235px;
   min-width:235px;

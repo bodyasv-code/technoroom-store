@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://technoroom-store.vercel.app/api/sitemap

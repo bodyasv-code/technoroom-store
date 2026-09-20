@@ -1094,7 +1094,16 @@ renderOrderQuickActions();
 
 // Масове керування товарами у каталозі.
 const bulkProductStyles = document.createElement('style');
-bulkProductStyles.textContent = '.bulk-product-toolbar{display:flex;align-items:center;flex-wrap:wrap;gap:8px;margin:12px 0 0;padding:12px;background:#f2f5ef;border:1px solid #dce3da}.bulk-product-toolbar strong{margin-right:6px;color:#102b28}.bulk-product-toolbar select{min-width:190px}.bulk-product-check{width:18px;height:18px;accent-color:#7b9e15;cursor:pointer}.bulk-product-header{width:42px}@media(max-width:700px){.bulk-product-toolbar{align-items:stretch}.bulk-product-toolbar button,.bulk-product-toolbar select{width:100%}}';
+bulkProductStyles.textContent = '.bulk-product-toolbar{
+  display:flex;
+  flex-wrap:wrap;
+  gap:8px;
+  margin:12px 0 16px;
+  padding:12px;
+  background:#f2f5ef;
+  border:1px solid #dce3da;
+  width:100%;
+}.bulk-product-toolbar strong{margin-right:6px;color:#102b28}.bulk-product-toolbar select{min-width:190px}.bulk-product-check{width:18px;height:18px;accent-color:#7b9e15;cursor:pointer}.bulk-product-header{width:42px}@media(max-width:700px){.bulk-product-toolbar{align-items:stretch}.bulk-product-toolbar button,.bulk-product-toolbar select{width:100%}}';
 document.head.append(bulkProductStyles);
 const bulkProductIds = new Set();
 const selectedBulkProductIds = () => [...bulkProductIds].map(Number).filter(Number.isFinite);

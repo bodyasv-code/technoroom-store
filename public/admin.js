@@ -1117,8 +1117,12 @@ const mountBulkProductToolbar = () => {
   toolbar.id = 'bulkProductToolbar';
   toolbar.className = 'bulk-product-toolbar';
   toolbar.innerHTML = '<strong id="bulkProductCount">Вибрано: 0</strong><button class="button outline" type="button" data-bulk-product-active="true">Опублікувати</button><button class="button outline" type="button" data-bulk-product-active="false">Приховати</button><select id="bulkProductCategory"><option value="">Перенести до категорії…</option></select><button class="button outline" type="button" data-bulk-product-category>Застосувати категорію</button>';
-  controls.insertAdjacentElement('afterend', toolbar);
-};
+  const productsSection =
+  document.querySelector('#products');
+
+if (productsSection) {
+  productsSection.prepend(toolbar);
+}
 const refreshBulkCategoryChoices = () => {
   const select = document.querySelector('#bulkProductCategory');
   if (!select) return;

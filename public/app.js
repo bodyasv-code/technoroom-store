@@ -384,14 +384,55 @@ function availability(product) {
 }
 add = (id) => { const item = get(id); if (!item || !availability(item).orderable) return; cart.push(Number(id)); save(); renderCart(); };
 renderCart = () => {
-  const count = document.getElementById('cartCount'); if (count) count.textContent = cart.length;
-  const root = document.getElementById('cartItems'), total = document.getElementById('cartTotal'), checkoutButton = document.getElementById('checkoutButton');
+  const count = document.getElementById('cartCount');
+
+  if (count) {
+    count.textContent = cart.length;
+  }
+
+  const root = document.getElementById('cartItems');
+  const total = document.getElementById('cartTotal');
+  const checkoutButton = document.getElementById('checkoutButton');
+
   if (!root) return;
-  const items = cart.map((id, index) => ({ product: get(id), index })).filter((item) => item.product);
-  root.innerHTML = items.length ? items.map(({ product, index }) => `<div class="cart-item"><b>${product.name}</b><strong>${money(product.price)}</strong><span>${availability(product).label}</span><button class="remove" data-remove="${index}">Прибрати</button></div>`).join('') : '<p class="empty-cart">Кошик поки порожній.</p>';
-  if (total) total.textContent = money(items.reduce((sum, item) => sum + item.product.price, 0));
-  if (checkoutButton) checkoutButton.disabled = !items.length;
-  root.querySelectorAll('[data-remove]').forEach((button) => button.onclick = () => { cart.splice(Number(button.dataset.remove), 1); save(); renderCart(); });
+
+  const grouped = {};
+
+  cart.forEach(id => {
+    grouped[id] = (grouped[id] || 0) + 1;
+  });
+
+  const items = Object.entries(grouped)
+    .map(([id, quantity]) => ({
+      product: get(Number(id)),
+      quantity
+    }))
+    .filter(item => item.product);
+
+  root.innerHTML = items.length
+    ? items.map(({ product, quantity }) => `
+      <div class="cart-item">
+        <b>${product.name}</b>
+        <strong>${money(product.price * quantity)}</strong>
+        <span>${availability(product).label}</span>
+        <small>Кількість: ${quantity}</small>
+      </div>
+    `).join('')
+    : '<p class="empty-cart">Кошик поки порожній.</p>';
+
+  if (total) {
+    total.textContent = money(
+      items.reduce(
+        (sum, item) =>
+          sum + item.product.price * item.quantity,
+        0
+      )
+    );
+  }
+
+  if (checkoutButton) {
+    checkoutButton.disabled = !items.length;
+  }
 };
 card = (product) => { const state = availability(product); return `<article class="product"><div class="product-image ${product.type}">${image(product)}</div><h3><a href="product.html?id=${product.id}">${product.name}</a></h3><p class="availability">${state.label}</p><p>${product.description || ''}</p><div class="product-footer"><strong class="price">${money(product.price)}</strong><button class="add-button" data-add="${product.id}" ${state.orderable ? '' : 'disabled'}>${state.button}</button></div></article>`; };
 product = () => {

@@ -462,9 +462,40 @@ product = () => {
 };
 checkout = () => {
   const form = document.getElementById('checkoutForm'); if (!form) return;
-  const items = cart.map(get).filter(Boolean), total = items.reduce((sum, item) => sum + item.price, 0), root = document.getElementById('checkoutSummary');
-  root.innerHTML = items.length ? items.map((item) => `<div><span>${item.name}</span><strong>${money(item.price)}</strong></div>`).join('') + `<div class="checkout-total"><span>Разом</span><strong>${money(total)}</strong></div>` : '<p>Ваш кошик порожній. <a href="catalog.html">Перейти до каталогу</a></p>';
-  form.onsubmit = async (event) => { event.preventDefault(); if (items.some((item) => !availability(item).orderable)) return alert('У кошику є недоступний товар.'); const data = Object.fromEntries(new FormData(form)), button = form.querySelector('button'); button.disabled = true; try { const response = await fetch('/api/orders', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ customer: { name: data.name, phone: data.phone, email: data.email }, delivery: { city: data.city, address: data.address, comment: data.comment }, items: cart.map((productId) => ({ productId, quantity: 1 })) }) }); if (!response.ok) throw new Error(); localStorage.removeItem('technoroom-cart'); cart.length = 0; renderCart(); document.getElementById('checkoutNotice').hidden = false; button.textContent = 'Замовлення прийнято'; } catch { button.disabled = false; alert('Не вдалося створити замовлення. Спробуйте ще раз.'); } };
+  const items = cart
+  .map(item => ({
+    product: get(item.productId),
+    quantity: item.quantity
+  }))
+  .filter(item => item.product);
+
+const total = items.reduce(
+  (sum, item) =>
+    sum + item.product.price * item.quantity,
+  0
+);
+
+const root =
+  document.getElementById('checkoutSummary');
+  root.innerHTML = items.length ? items.map((item) => `
+<div>
+  <span>
+    ${item.product.name}
+    × ${item.quantity}
+  </span>
+
+  <strong>
+    ${money(
+      item.product.price *
+      item.quantity
+    )}
+  </strong>
+</div>
+`).join('') + `<div class="checkout-total"><span>Разом</span><strong>${money(total)}</strong></div>` : '<p>Ваш кошик порожній. <a href="catalog.html">Перейти до каталогу</a></p>';
+  form.onsubmit = async (event) => { event.preventDefault(); if (items.some((item) => !availability(item).orderable)) return alert('У кошику є недоступний товар.'); const data = Object.fromEntries(new FormData(form)), button = form.querySelector('button'); button.disabled = true; try { const response = await fetch('/api/orders', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ customer: { name: data.name, phone: data.phone, email: data.email }, delivery: { city: data.city, address: data.address, comment: data.comment }, items: cart.map(item => ({
+  productId: item.productId,
+  quantity: item.quantity
+})) }) }); if (!response.ok) throw new Error(); localStorage.removeItem('technoroom-cart'); cart.length = 0; renderCart(); document.getElementById('checkoutNotice').hidden = false; button.textContent = 'Замовлення прийнято'; } catch { button.disabled = false; alert('Не вдалося створити замовлення. Спробуйте ще раз.'); } };
 };
 async function refreshAvailabilityStatuses() {
   const { data, error } = await supabase.from('products').select('*').eq('is_active', true).order('created_at', { ascending: false });

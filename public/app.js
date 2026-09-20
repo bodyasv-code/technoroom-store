@@ -38,18 +38,7 @@ function add(id) {
   const product = get(id);
   if (!product?.stock) return;
 
-  const existingIndex = cart.findIndex(
-    item => item.productId === Number(id)
-  );
-
-  if (existingIndex >= 0) {
-    cart[existingIndex].quantity += 1;
-  } else {
-    cart.push({
-      productId: Number(id),
-      quantity: 1
-    });
-  }
+  cart.push(Number(id));
 
   save();
   renderCart();

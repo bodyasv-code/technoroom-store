@@ -930,10 +930,10 @@ renderOrders = function () {
   decorateOrderTable();
 };
 document.querySelector('#orderSearch')
-  ?.addEventListener(...);
+  ?.addEventListener('input', decorateOrderTable);
 
 document.querySelector('#orderFilter')
-  ?.addEventListener(...);
+  ?.addEventListener('input', decorateOrderTable);
 
 
 /* CRM-картка покупця з історією його замовлень. */

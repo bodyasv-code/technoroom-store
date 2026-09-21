@@ -156,3 +156,6 @@
   .specs > div { grid-template-columns: 1fr; gap: 4px; }
   .specs dd { text-align: left; }
 }
+#pageSize{
+  min-width:140px;
+}

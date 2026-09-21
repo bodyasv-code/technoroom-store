@@ -150,11 +150,9 @@ function renderCategories() {
   });
   document.querySelector('#adminCategories').innerHTML = rows.join('') || '<tr><td class="empty-row" colspan="5">Категорій поки немає</td></tr>';
 }
-
 function statusSelect(order) {
   return `<select class="status-select status-${order.status}" data-status-order="${order.id}">${Object.entries(statusNames).map(([value, label]) => `<option value="${value}" ${order.status === value ? 'selected' : ''}>${label}</option>`).join('')}</select>`;
 }
-
 function renderOrders() {
   const term = document.querySelector('#orderSearch').value.trim().toLowerCase();
   const filter = document.querySelector('#orderFilter').value;
@@ -164,7 +162,6 @@ function renderOrders() {
   });
   document.querySelector('#adminOrders').innerHTML = orders.length ? orders.map((order) => `<tr><td><b>#${order.id}</b><small>${date(order.created_at)}</small></td><td><b>${escape(order.customer_name)}</b><small>${escape(order.customer_phone)}${order.customer_email ? ` · ${escape(order.customer_email)}` : ''}</small></td><td>${order.order_items?.[0]?.count || 0}</td><td><b>${money(order.total)}</b></td><td>${statusSelect(order)}</td><td class="table-actions"><button data-view-order="${order.id}">Деталі</button></td></tr>`).join('') : '<tr><td class="empty-row" colspan="6">Замовлень за цим фільтром немає</td></tr>';
 }
-
 function getCustomers() {
   const customers = new Map();
   state.orders.forEach((order) => {
@@ -175,15 +172,12 @@ function getCustomers() {
   });
   return [...customers.values()].sort((a, b) => new Date(b.last) - new Date(a.last));
 }
-
 function renderCustomers() {
   const term = document.querySelector('#customerSearch').value.trim().toLowerCase();
   const customers = getCustomers().filter((customer) => [customer.name, customer.phone, customer.email].join(' ').toLowerCase().includes(term));
   document.querySelector('#adminCustomers').innerHTML = customers.length ? customers.map((customer) => `<tr><td><b>${escape(customer.name)}</b></td><td>${escape(customer.phone)}<small>${escape(customer.email || 'Email не вказано')}</small></td><td>${customer.count}</td><td><b>${money(customer.total)}</b></td><td>${date(customer.last)}</td></tr>`).join('') : '<tr><td class="empty-row" colspan="5">Клієнтів поки немає</td></tr>';
 }
-
 function renderAll() { renderMetrics(); renderProducts(); renderCategories(); renderOrders(); renderCustomers(); }
-
 function productSlug(name) { return name.toLowerCase().trim().replace(/[^a-z0-9а-яіїєґ]+/gi, '-').replace(/^-|-$/g, ''); }
 function showProductDialog(product = null) {
   const dialog = document.querySelector('#productDialog'); const form = document.querySelector('#productForm'); form.reset();
@@ -197,7 +191,6 @@ function showProductDialog(product = null) {
   form.elements.stock_quantity.value = product?.stock_quantity ?? (product?.in_stock ? 10 : 0);
   dialog.showModal();
 }
-
 async function saveProduct(event) {
   event.preventDefault();
   const form = event.currentTarget; const raw = Object.fromEntries(new FormData(form));

@@ -153,18 +153,40 @@ function renderProducts() {
       </tr
 function renderCategories() {
   const rows = state.categories.map((category) => {
-    const count = state.products.filter((product) => product.category === category.slug).length;
-    return <tr><td><b>${escape(category.name)}</b></td><td>${escape(category.slug)}</td><td><span class="visibility ${category.is_active ? 'visible' : 'hidden-status'}">${category.is_active ? 'Активна' : 'Прихована'}</span></td><td>${count}</td><td class="table-actions"><button data-edit-category="${category.id}">Редагувати</button></td></tr>`;
-  };
-  document.querySelector('#adminCategories').innerHTML = rows.join('') || '<tr><td class="empty-row" colspan="5">Категорій поки немає</td></tr>';
+    const count = state.products.filter(
+      (product) => product.category === category.slug
+    ).length;
 
-function statusSelect(order) {
-  return `<select class="status-select status-${order.status}" data-status-order="${order.id}">${Object.entries(statusNames).map(([value, label]) => `<option value="${value}" ${order.status === value ? 'selected' : ''}>${label}</option>`).join('')}</select>`;
-}
+    return `
+      <tr>
+        <td>
+          <b>${escape(category.name)}</b>
+        </td>
+        <td>${escape(category.slug)}</td>
+        <td>
+          <span class="visibility ${
+            category.is_active
+              ? 'visible'
+              : 'hidden-status'
+          }">
+            ${
+              category.is_active
+                ? 'Активна'
+                : 'Прихована'
+            }
+          </span>
+        </td>
+        <td>${count}</td>
+        <td class="table-actions">
+          <button data-edit-category="${category.id}">
+            Редагувати
+          </button>
+        </td>
+      </tr>
+    `;
+  });
 
-  document.querySelector(
-    '#adminCategories'
-  ).innerHTML =
+  document.querySelector('#adminCategories').innerHTML =
     rows.join('') ||
     `
       <tr>
@@ -173,6 +195,7 @@ function statusSelect(order) {
         </td>
       </tr>
     `;
+}
 function renderOrders() {
   const term = document.querySelector('#orderSearch').value.trim().toLowerCase();
   const filter = document.querySelector('#orderFilter').value;

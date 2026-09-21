@@ -108,6 +108,24 @@
 [data-remove-item]:hover{
   background:#ffd4c8;
 }
+#productPagination{
+  display:flex;
+  gap:8px;
+  margin:16px 0;
+}
+
+#productPagination button{
+  min-width:36px;
+  height:36px;
+  border:1px solid var(--line);
+  background:#fff;
+  cursor:pointer;
+}
+
+#productPagination button.active{
+  background:#d9ff41;
+  font-weight:700;
+}
 /* Читабельні характеристики товару: стабільні колонки для довгих значень. */
 .specs > div {
   display: grid;

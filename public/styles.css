@@ -11,7 +11,10 @@
     margin: 0;
     padding: 0;
 }
-
+.admin-nav{
+   display:flex;
+   flex-direction:column;
+}
 .admin-nav {
     position: sticky;
     top: 0;

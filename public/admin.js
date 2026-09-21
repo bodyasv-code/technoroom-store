@@ -152,6 +152,7 @@ function renderProducts() {
         
       </tr
 function renderCategories() {
+
   const rows = state.categories.map((category) => {
 
     const count = state.products.filter(
@@ -159,17 +160,17 @@ function renderCategories() {
     ).length;
 
     return `
-      
-    
-        
-          ${escape(category.name)}
-        
+      <tr>
 
-        
+        <td>
+          <b>${escape(category.name)}</b>
+        </td>
+
+        <td>
           ${escape(category.slug)}
-        
+        </td>
 
-        
+        <td>
           <span class="visibility ${
             category.is_active
               ? 'visible'
@@ -181,30 +182,34 @@ function renderCategories() {
                 : 'Прихована'
             }
           </span>
-        
+        </td>
 
-        ${count}
+        <td>
+          ${count}
+        </td>
 
         <td class="table-actions">
-          <button data-edit-category="${category.id}">
+          <button
+            data-edit-category="${category.id}">
             Редагувати
           </button>
-        
-      
+        </td>
+
+      </tr>
     `;
+
   });
 
   document.querySelector('#adminCategories').innerHTML =
     rows.join('') ||
     `
-      
+      <tr>
         <td class="empty-row" colspan="5">
           Категорій поки немає
-        
-      
+        </td>
+      </tr>
     `;
-}
-function renderOrders() {
+}function renderOrders() {
   const term = document.querySelector('#orderSearch').value.trim().toLowerCase();
   const filter = document.querySelector('#orderFilter').value;
   const orders = state.orders.filter((order) => {

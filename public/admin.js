@@ -95,33 +95,33 @@ function renderProducts() {
                 : 'stock-ok';
 
           return `
-            <tr>
+            
 
-              <td>
+              
                 <b>${escape(product.name)}</b>
                 <small>
                   ${escape(product.brand || 'Без бренду')}
                 </small>
-              </td>
+              
 
-              <td>
+              
                 <b>${escape(product.sku || '—')}</b>
                 <small>
                   ${escape(product.category)}
                 </small>
-              </td>
+              
 
-              <td>
+              
                 ${money(product.price)}
-              </td>
+              
 
-              <td>
+              
                 <span class="stock-badge ${stockClass}">
                   ${quantity} шт.
                 </span>
-              </td>
+              
 
-              <td>
+              
                 <span class="visibility ${
                   product.is_active
                     ? 'visible'
@@ -133,23 +133,23 @@ function renderProducts() {
                       : 'Приховано'
                   }
                 </span>
-              </td>
+              
 
               <td class="table-actions">
                 <button
                   data-edit-product="${product.id}">
                           Редагувати
               </button>
-            </td>
-          </tr>
+            
+          
         `;
       }).join('')
 
     : `
-      <tr>
+      
         <td class="empty-row" colspan="6">
           Товарів за цим фільтром немає
-        </td>
+        
       </tr
 function renderCategories() {
   const rows = state.categories.map((category) => {
@@ -159,16 +159,17 @@ function renderCategories() {
     ).length;
 
     return `
-      <tr>
-        <td>
-          <b>${escape(category.name)}</b>
-        </td>
+      
+    
+        
+          <b>${escape(category.name)}
+        
 
-        <td>
+        
           ${escape(category.slug)}
-        </td>
+        
 
-        <td>
+        
           <span class="visibility ${
             category.is_active
               ? 'visible'
@@ -180,27 +181,27 @@ function renderCategories() {
                 : 'Прихована'
             }
           </span>
-        </td>
+        
 
-        <td>${count}</td>
+        ${count}
 
         <td class="table-actions">
           <button data-edit-category="${category.id}">
             Редагувати
           </button>
-        </td>
-      </tr>
+        
+      
     `;
   });
 
   document.querySelector('#adminCategories').innerHTML =
     rows.join('') ||
     `
-      <tr>
+      
         <td class="empty-row" colspan="5">
           Категорій поки немає
-        </td>
-      </tr>
+        
+      
     `;
 }
 function renderOrders() {
@@ -210,7 +211,7 @@ function renderOrders() {
     const haystack = [order.id, order.customer_name, order.customer_phone, order.customer_email].join(' ').toLowerCase();
     return (!term || haystack.includes(term)) && (filter === 'all' || order.status === filter);
   });
-  document.querySelector('#adminOrders').innerHTML = orders.length ? orders.map((order) => `<tr><td><b>#${order.id}</b><small>${date(order.created_at)}</small></td><td><b>${escape(order.customer_name)}</b><small>${escape(order.customer_phone)}${order.customer_email ? ` · ${escape(order.customer_email)}` : ''}</small></td><td>${order.order_items?.[0]?.count || 0}</td><td><b>${money(order.total)}</b></td><td>${statusSelect(order)}</td><td class="table-actions"><button data-view-order="${order.id}">Деталі</button></td></tr>`).join('') : '<tr><td class="empty-row" colspan="6">Замовлень за цим фільтром немає</td></tr>';
+  document.querySelector('#adminOrders').innerHTML = orders.length ? orders.map((order) => `<b>#${order.id}</b><small>${date(order.created_at)}</small><b>${escape(order.customer_name)}</b><small>${escape(order.customer_phone)}${order.customer_email ? ` · ${escape(order.customer_email)}` : ''}</small>${order.order_items?.[0]?.count || 0}<b>${money(order.total)}</b>${statusSelect(order)}<td class="table-actions"><button data-view-order="${order.id}">Деталі</button>`).join('') : '<td class="empty-row" colspan="6">Замовлень за цим фільтром немає';
 }
 function getCustomers() {
   const customers = new Map();
@@ -225,7 +226,7 @@ function getCustomers() {
 function renderCustomers() {
   const term = document.querySelector('#customerSearch').value.trim().toLowerCase();
   const customers = getCustomers().filter((customer) => [customer.name, customer.phone, customer.email].join(' ').toLowerCase().includes(term));
-  document.querySelector('#adminCustomers').innerHTML = customers.length ? customers.map((customer) => `<tr><td><b>${escape(customer.name)}</b></td><td>${escape(customer.phone)}<small>${escape(customer.email || 'Email не вказано')}</small></td><td>${customer.count}</td><td><b>${money(customer.total)}</b></td><td>${date(customer.last)}</td></tr>`).join('') : '<tr><td class="empty-row" colspan="5">Клієнтів поки немає</td></tr>';
+  document.querySelector('#adminCustomers').innerHTML = customers.length ? customers.map((customer) => `<b>${escape(customer.name)}</b>${escape(customer.phone)}<small>${escape(customer.email || 'Email не вказано')}</small>${customer.count}<b>${money(customer.total)}</b>${date(customer.last)}`).join('') : '<td class="empty-row" colspan="5">Клієнтів поки немає';
 }
 function renderAll() { renderMetrics(); renderProducts(); renderCategories(); renderOrders(); renderCustomers(); }
 function productSlug(name) { return name.toLowerCase().trim().replace(/[^a-z0-9а-яіїєґ]+/gi, '-').replace(/^-|-$/g, ''); }
@@ -491,7 +492,7 @@ renderCategories = function () {
     const childCount = (byParent.get(category.id) || []).length;
     const marker = depth ? '↳' : '◆';
     const subtitle = parent ? `Підкатегорія · ${escape(parent.name)}` : 'Основна категорія';
-    return `<tr class="category-tree-row" style="--tree-depth:${depth}"><td><span class="category-tree-marker">${marker}</span><b>${escape(category.name)}</b><small>${subtitle}${childCount ? ` · ${childCount} підкатегор.` : ''}</small></td><td><code>${escape(category.slug)}</code></td><td><span class="visibility ${category.is_active ? 'visible' : 'hidden-status'}">${category.is_active ? 'Активна' : 'Прихована'}</span></td><td>${count}</td><td class="table-actions"><button data-edit-category="${category.id}">Редагувати</button></td></tr>`;
+    return `<tr class="category-tree-row" style="--tree-depth:${depth}"><span class="category-tree-marker">${marker}</span><b>${escape(category.name)}</b><small>${subtitle}${childCount ? ` · ${childCount} підкатегор.` : ''}</small><code>${escape(category.slug)}</code><span class="visibility ${category.is_active ? 'visible' : 'hidden-status'}">${category.is_active ? 'Активна' : 'Прихована'}</span>${count}<td class="table-actions"><button data-edit-category="${category.id}">Редагувати</button>`;
   }).join('');
 };
 
@@ -540,8 +541,8 @@ renderProducts = function () {
     const quantity = inventoryQuantity(product);
     const status = inventoryStatus(product);
     const stockClass = status === 'under_order' ? 'stock-order' : quantity === 0 ? 'stock-zero' : quantity <= 3 ? 'stock-low' : 'stock-ok';
-    return '<tr><td><b>' + escape(product.name) + '</b><small>' + escape(product.brand || 'Без бренду') + '</small></td><td><b>' + escape(product.sku || '—') + '</b><small>' + escape(product.category) + '</small></td><td>' + money(product.price) + '</td><td><span class="stock-badge ' + stockClass + '">' + (status === 'under_order' ? 'під замовлення' : quantity + ' шт.') + '</span></td><td><span class="inventory-badge inventory-' + status + '">' + inventoryLabels[status] + '</span></td><td><span class="visibility ' + (product.is_active ? 'visible' : 'hidden-status') + '">' + (product.is_active ? 'У каталозі' : 'Приховано') + '</span></td><td class="table-actions"><button data-edit-product="' + product.id + '">Редагувати</button></td></tr>';
-  }).join('') : '<tr><td class="empty-row" colspan="7">Товарів за цим фільтром немає</td></tr>';
+    return '<b>' + escape(product.name) + '</b><small>' + escape(product.brand || 'Без бренду') + '</small><b>' + escape(product.sku || '—') + '</b><small>' + escape(product.category) + '</small>' + money(product.price) + '<span class="stock-badge ' + stockClass + '">' + (status === 'under_order' ? 'під замовлення' : quantity + ' шт.') + '</span><span class="inventory-badge inventory-' + status + '">' + inventoryLabels[status] + '</span><span class="visibility ' + (product.is_active ? 'visible' : 'hidden-status') + '">' + (product.is_active ? 'У каталозі' : 'Приховано') + '</span><td class="table-actions"><button data-edit-product="' + product.id + '">Редагувати</button>';
+  }).join('') : '<td class="empty-row" colspan="7">Товарів за цим фільтром немає';
 };
 const originalShowProductForInventory = showProductDialog;
 showProductDialog = function (product = null) {
@@ -1004,7 +1005,7 @@ const showCustomerCard = (key) => {
   if (!orders.length) return;
   const customer = orders[0];
   const total = orders.filter((order) => order.status !== 'cancelled').reduce((sum, order) => sum + Number(order.total || 0), 0);
-  document.querySelector('#customerCardBody').innerHTML = '<p><b>' + escape(customer.customer_name) + '</b><br>' + escape(customer.customer_phone || 'Телефон не вказано') + (customer.customer_email ? '<br>' + escape(customer.customer_email) : '') + '</p><div class="customer-summary"><div><b>' + orders.length + '</b><span>замовлень</span></div><div><b>' + money(total) + '</b><span>сума покупок</span></div><div><b>' + date(orders[0].created_at) + '</b><span>останнє замовлення</span></div></div><h3>Історія замовлень</h3><div class="customer-order-list">' + orders.map((order) => '<div class="customer-order-row"><div><b>Замовлення #' + order.id + ' · ' + money(order.total) + '</b><small>' + date(order.created_at) + ' · ' + escape(statusNames[order.status] || order.status) + '</small></div><button type="button" data-customer-order="' + order.id + '">Деталі</button></div>').join('') + '</div>';
+  document.querySelector('#customerCardBody').innerHTML = '<p><b>' + escape(customer.customer_name) + '</b>' + escape(customer.customer_phone || 'Телефон не вказано') + (customer.customer_email ? '' + escape(customer.customer_email) : '') + '</p><div class="customer-summary"><div><b>' + orders.length + '</b><span>замовлень</span></div><div><b>' + money(total) + '</b><span>сума покупок</span></div><div><b>' + date(orders[0].created_at) + '</b><span>останнє замовлення</span></div></div><h3>Історія замовлень</h3><div class="customer-order-list">' + orders.map((order) => '<div class="customer-order-row"><div><b>Замовлення #' + order.id + ' · ' + money(order.total) + '</b><small>' + date(order.created_at) + ' · ' + escape(statusNames[order.status] || order.status) + '</small></div><button type="button" data-customer-order="' + order.id + '">Деталі</button></div>').join('') + '</div>';
   customerDialog.showModal();
 };
 document.addEventListener('click', (event) => {
@@ -1241,9 +1242,9 @@ document.addEventListener('click', async event => {
   if (!order) return;
   const printWindow = window.open('', '_blank', 'width=820,height=900');
   if (!printWindow) { notice('Браузер заблокував вікно друку. Дозвольте спливні вікна для сайту.', true); return; }
-  printWindow.document.write('<!doctype html><title>Замовлення #' + order.id + '</title><style>body{font:15px/1.45 Arial,sans-serif;color:#172c29;padding:36px;max-width:740px;margin:auto}h1{font-size:30px;margin:0 0 8px}.muted{color:#63736e}table{border-collapse:collapse;width:100%;margin:24px 0}th,td{padding:10px;border-bottom:1px solid #dce2dc;text-align:left}th{text-transform:uppercase;font-size:12px;color:#63736e}.total{font-size:20px;font-weight:700;text-align:right}.grid{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin:28px 0}.box{padding:16px;background:#f2f5ef}@media print{body{padding:0}}</style><h1>TECHNOROOM · Замовлення #' + order.id + '</h1><p class="muted">' + escape(date(order.created_at)) + '</p><div class="grid"><div class="box"><b>Покупець</b><br>' + escape(order.customer_name) + '<br>' + escape(order.customer_phone || '') + '<br>' + escape(order.customer_email || '') + '</div><div class="box"><b>Доставка</b><br>' + escape(order.city || '—') + '<br>' + escape(order.address || '—') + '</div></div><table><thead><tr><th>Товар</th><th>К-сть</th><th>Сума</th></tr></thead><tbody id="printItems"></tbody></table><p class="total">Разом: ' + money(order.total) + '</p>');
+  printWindow.document.write('<!doctype html><title>Замовлення #' + order.id + '</title><style>body{font:15px/1.45 Arial,sans-serif;color:#172c29;padding:36px;max-width:740px;margin:auto}h1{font-size:30px;margin:0 0 8px}.muted{color:#63736e}table{border-collapse:collapse;width:100%;margin:24px 0}th,td{padding:10px;border-bottom:1px solid #dce2dc;text-align:left}th{text-transform:uppercase;font-size:12px;color:#63736e}.total{font-size:20px;font-weight:700;text-align:right}.grid{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin:28px 0}.box{padding:16px;background:#f2f5ef}@media print{body{padding:0}}</style><h1>TECHNOROOM · Замовлення #' + order.id + '</h1><p class="muted">' + escape(date(order.created_at)) + '</p><div class="grid"><div class="box"><b>Покупець</b>' + escape(order.customer_name) + '' + escape(order.customer_phone || '') + '' + escape(order.customer_email || '') + '</div><div class="box"><b>Доставка</b>' + escape(order.city || '—') + '' + escape(order.address || '—') + '</div></div><table><thead><th>Товар</th><th>К-сть</th><th>Сума</th></thead><tbody id="printItems"></tbody></table><p class="total">Разом: ' + money(order.total) + '</p>');
   const { data: items } = await supabase.from('order_items').select('product_name,quantity,unit_price').eq('order_id', order.id);
-  const lines = (items || []).map(item => '<tr><td>' + escape(item.product_name) + '</td><td>' + Number(item.quantity) + '</td><td>' + money(Number(item.unit_price) * Number(item.quantity)) + '</td></tr>').join('') || '<tr><td colspan="3">Товари не знайдено</td></tr>';
+  const lines = (items || []).map(item => '' + escape(item.product_name) + '' + Number(item.quantity) + '' + money(Number(item.unit_price) * Number(item.quantity)) + '').join('') || '<td colspan="3">Товари не знайдено';
   printWindow.document.querySelector('#printItems').innerHTML = lines;
   printWindow.document.write('<p class="muted">Статус: ' + escape(statusNames[order.status] || order.status) + '</p>');
   printWindow.document.close();
@@ -1599,8 +1600,8 @@ document.addEventListener('click', event => {
       const mapped = mappedCategory(row);
       const disabled = !mapped || !row.sku || !row.price;
       const detail = row.images.length ? 'У джерелі є фото: ' + row.images.length : 'Фото у джерелі не знайдено';
-      return '<tr><td><input type="checkbox" data-erc-select="' + escape(row.key) + '" ' + (ercState.selected.has(row.key) ? 'checked ' : '') + (disabled ? 'disabled' : '') + '></td><td><b>' + escape(row.name) + '</b><small>' + escape(row.vendor) + ' · ' + escape(row.sourceCategory) + '</small></td><td>' + escape(row.sku) + '</td><td>' + escape(mapped ? (state.categories.find((item) => item.slug === mapped)?.name || mapped) : 'Немає зіставлення') + '<small>' + escape(detail) + '</small></td><td>' + money(row.price) + '<small>залишок: ' + escape(row.stockRaw || '0') + '</small></td><td><span class="visibility ' + (current ? 'visible' : 'hidden-status') + '">' + status + '</span></td></tr>';
-    }).join('') : '<tr><td class="empty-row" colspan="6">За цим фільтром даних немає</td></tr>';
+      return '<input type="checkbox" data-erc-select="' + escape(row.key) + '" ' + (ercState.selected.has(row.key) ? 'checked ' : '') + (disabled ? 'disabled' : '') + '><b>' + escape(row.name) + '</b><small>' + escape(row.vendor) + ' · ' + escape(row.sourceCategory) + '</small>' + escape(row.sku) + '' + escape(mapped ? (state.categories.find((item) => item.slug === mapped)?.name || mapped) : 'Немає зіставлення') + '<small>' + escape(detail) + '</small>' + money(row.price) + '<small>залишок: ' + escape(row.stockRaw || '0') + '</small><span class="visibility ' + (current ? 'visible' : 'hidden-status') + '">' + status + '</span>';
+    }).join('') : '<td class="empty-row" colspan="6">За цим фільтром даних немає';
   }
   function parseErcFile(text) {
     const xml = new DOMParser().parseFromString(text, 'application/xml');
@@ -1665,7 +1666,7 @@ document.addEventListener('click', event => {
       '<div class="admin-controls"><input id="ercImportFile" type="file" accept=".xml,application/xml,text/xml"><select id="ercImportScope"><option value="all">Усі підтримувані категорії</option><option value="projector">Проєктори та екрани</option><option value="audio">Акустика й звук</option><option value="tv">Телевізори</option></select><input id="ercImportLimit" type="number" min="1" max="100" value="50" title="Скільки товарів показати"></div>',
       '<div class="admin-controls"><button class="button outline" type="button" id="ercImportSelectNew">Позначити нові на сторінці</button><button class="button outline" type="button" id="ercImportClear">Очистити вибір</button><label class="check"><input id="ercImportContent" type="checkbox"> Оновлювати опис і характеристики наявних товарів</label><button class="button primary" type="button" id="ercImportApply">Імпортувати позначені</button></div>',
       '<p class="admin-message" id="ercImportMessage" hidden></p><p class="recovery-help" id="ercImportSummary">Оберіть XML-файл, щоб побачити товари.</p>',
-      '<div class="admin-table-wrap"><table><thead><tr><th></th><th>Товар / джерело</th><th>SKU</th><th>Категорія / медіа</th><th>Ціна / залишок</th><th>Дія</th></tr></thead><tbody id="ercImportRows"></tbody></table></div></section>'
+      '<div class="admin-table-wrap"><table><thead><th></th><th>Товар / джерело</th><th>SKU</th><th>Категорія / медіа</th><th>Ціна / залишок</th><th>Дія</th></thead><tbody id="ercImportRows"></tbody></table></div></section>'
     ].join(''));
     const section = document.querySelector('#ercImport');
     document.querySelector('.admin-nav').insertAdjacentHTML('beforeend', '<a href="#ercImport">Імпорт ERC XML</a>');

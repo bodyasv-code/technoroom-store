@@ -79,97 +79,70 @@ function renderProducts() {
         );
 
   document.querySelector('#adminProducts').innerHTML =
-    visibleProducts.length
-      ? visibleProducts.map((product) => {
+  visibleProducts.length
+    ? visibleProducts.map((product) => {
 
-          const quantity = Number(
-            product.stock_quantity ??
-            (product.in_stock ? 10 : 0)
-          );
+        const quantity = Number(
+          product.stock_quantity ??
+          (product.in_stock ? 10 : 0)
+        );
 
-          const stockClass =
-            quantity === 0
-              ? 'stock-zero'
-              : lowStock(product)
-                ? 'stock-low'
-                : 'stock-ok';
+        const stockClass =
+          quantity === 0
+            ? 'stock-zero'
+            : lowStock(product)
+              ? 'stock-low'
+              : 'stock-ok';
 
-          return `
-            <tr>
+        return `
+          <tr>
+            <td>
+              <b>${escape(product.name)}</b>
+              <small>${escape(product.brand || 'Без бренду')}</small>
+            </td>
 
-              <td>
-                <b>${escape(product.name)}</b>
-                <small>
-                  ${escape(
-                    product.brand ||
-                    'Без бренду'
-                  )}
-                </small>
-              </td>
+            <td>
+              <b>${escape(product.sku || '—')}</b>
+              <small>${escape(product.category)}</small>
+            </td>
 
-              <td>
-                <b>
-                  ${escape(
-                    product.sku || '—'
-                  )}
-                </b>
+            <td>${money(product.price)}</td>
 
-                <small>
-                  ${escape(
-                    product.category
-                  )}
-                </small>
-              </td>
+            <td>
+              <span class="stock-badge ${stockClass}">
+                ${quantity} шт.
+              </span>
+            </td>
 
-              <td>
-                ${money(product.price)}
-              </td>
+            <td>
+              <span class="visibility ${
+                product.is_active
+                  ? 'visible'
+                  : 'hidden-status'
+              }">
+                ${
+                  product.is_active
+                    ? 'У каталозі'
+                    : 'Приховано'
+                }
+              </span>
+            </td>
 
-              <td>
-                <span
-                  class="stock-badge ${stockClass}">
-                  ${quantity} шт.
-                </span>
-              </td>
+            <td class="table-actions">
+              <button data-edit-product="${product.id}">
+                Редагувати
+              </button>
+            </td>
+          </tr>
+        `;
+      }).join('')
 
-              <td>
-                <span
-                  class="visibility ${
-                    product.is_active
-                      ? 'visible'
-                      : 'hidden-status'
-                  }">
-                  ${
-                    product.is_active
-                      ? 'У каталозі'
-                      : 'Приховано'
-                  }
-                </span>
-              </td>
-
-              <td class="table-actions">
-                <button
-                  data-edit-product="${product.id}">
-                  Редагувати
-                </button>
-              </td>
-
-            </tr>
-          `;
-        }).join('')
-
-      : `
-        <tr>
-          <td
-            class="empty-row"
-            colspan="6">
-
-            Товарів за цим фільтром немає
-
-          </td>
-        </tr>
-      `;
-}
+    : `
+      <tr>
+        <td class="empty-row" colspan="6">
+          Товарів за цим фільтром немає
+        </td>
+      </tr
 function renderCategories() {
   const rows = state.categories.map((category) => {
     const count = state.products.filter((product) => product.category === category.slug).length;

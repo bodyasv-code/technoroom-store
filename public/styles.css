@@ -12,20 +12,17 @@
   margin:0;
   padding:0;
 }
-
 .admin-shell{
   display:grid;
   grid-template-columns:235px 1fr;
   min-height:100vh;
 }
-
 .admin-nav{
   background:var(--dark);
   color:#d9e4df;
   padding:30px 24px;
   box-sizing:border-box;
 }
-
 .admin-nav a,
 .admin-nav button{
     display:block;

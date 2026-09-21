@@ -23,52 +23,85 @@ function renderMetrics() {
   document.querySelector('#productsNavCount').textContent = state.products.length || '';
   document.querySelector('#ordersNavCount').textContent = newOrders.length || '';
 }
-
 function renderProducts() {
   const term = document.querySelector('#productSearch').value.trim().toLowerCase();
   const filter = document.querySelector('#productFilter').value;
+
   const products = state.products.filter((product) => {
-    const haystack = [product.name, product.brand, product.sku, product.category].join(' ').toLowerCase();
+    const haystack = [
+      product.name,
+      product.brand,
+      product.sku,
+      product.category
+    ].join(' ').toLowerCase();
+
     if (term && !haystack.includes(term)) return false;
     if (filter === 'active') return product.is_active;
     if (filter === 'draft') return !product.is_active;
     if (filter === 'low') return lowStock(product);
+
     return true;
   });
-  const pageSize = 10;
 
-state.productPage =
-  state.productPage || 1;
+  document.querySelector('#adminProducts').innerHTML =
+    products.length
+      ? products.map((product) => {
+          const quantity = Number(
+            product.stock_quantity ??
+            (product.in_stock ? 10 : 0)
+          );
 
-const pageCount =
-  Math.ceil(products.length / pageSize);
+          const stockClass =
+            quantity === 0
+              ? 'stock-zero'
+              : lowStock(product)
+                ? 'stock-low'
+                : 'stock-ok';
 
-const pagedProducts =
-  products.slice(
-    (state.productPage - 1) * pageSize,
-    state.productPage * pageSize
-  );
-  document.querySelector('#adminProducts').innerHTML = products.length ? pagedProducts.map((product) =>
-    const pagination =
-  document.querySelector('#productPagination');
-
-if (pagination) {
-  pagination.innerHTML =
-    Array.from(
-      { length: pageCount },
-      (_, i) => `
-        <button
-          data-page="${i + 1}">
-          ${i + 1}
-        </button>
-      `
-    ).join('');
-}
-  {
-    const quantity = Number(product.stock_quantity ?? (product.in_stock ? 10 : 0));
-    const stockClass = quantity === 0 ? 'stock-zero' : lowStock(product) ? 'stock-low' : 'stock-ok';
-    return `<tr><td><b>${escape(product.name)}</b><small>${escape(product.brand || 'Без бренду')}</small></td><td><b>${escape(product.sku || '—')}</b><small>${escape(product.category)}</small></td><td>${money(product.price)}</td><td><span class="stock-badge ${stockClass}">${quantity} шт.</span></td><td><span class="visibility ${product.is_active ? 'visible' : 'hidden-status'}">${product.is_active ? 'У каталозі' : 'Приховано'}</span></td><td class="table-actions"><button data-edit-product="${product.id}">Редагувати</button></td></tr>`;
-  }).join('') : '<tr><td class="empty-row" colspan="6">Товарів за цим фільтром немає</td></tr>';
+          return `
+            <tr>
+              <td>
+                <b>${escape(product.name)}</b>
+                <small>${escape(product.brand || 'Без бренду')}</small>
+              </td>
+              <td>
+                <b>${escape(product.sku || '—')}</b>
+                <small>${escape(product.category)}</small>
+              </td>
+              <td>${money(product.price)}</td>
+              <td>
+                <span class="stock-badge ${stockClass}">
+                  ${quantity} шт.
+                </span>
+              </td>
+              <td>
+                <span class="visibility ${
+                  product.is_active
+                    ? 'visible'
+                    : 'hidden-status'
+                }">
+                  ${
+                    product.is_active
+                      ? 'У каталозі'
+                      : 'Приховано'
+                  }
+                </span>
+              </td>
+              <td class="table-actions">
+                <button data-edit-product="${product.id}">
+                  Редагувати
+                </button>
+              </td>
+            </tr>
+          `;
+        }).join('')
+      : `
+        <tr>
+          <td class="empty-row" colspan="6">
+            Товарів за цим фільтром немає
+          </td>
+        </tr>
+      `;
 }
 
 function renderCategories() {

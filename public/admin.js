@@ -151,6 +151,7 @@ function renderProducts() {
           Товарів за цим фільтром немає
         
       </tr
+}
 function renderCategories() {
 
   const rows = state.categories.map((category) => {

@@ -61,10 +61,26 @@ function renderProducts() {
 
     return true;
   });
+const pageSizeControl =
+  document.querySelector('#pageSize');
+
+const pageSize =
+  pageSizeControl
+    ? pageSizeControl.value
+    : '10';
+
+const visibleProducts =
+  pageSize === 'all'
+    ? products
+    : products.slice(
+        0,
+        Number(pageSize)
+      );
 
   document.querySelector('#adminProducts').innerHTML =
     products.length
-      ? products.map((product) => {
+      ? visibleProducts.map((product) =>
+` {
 
           const quantity = Number(
             product.stock_quantity ??

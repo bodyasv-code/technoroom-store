@@ -42,10 +42,68 @@ function renderProducts() {
 
     return true;
   });
+const pageSize = 10;
 
+const pageCount = Math.max(
+  1,
+  Math.ceil(products.length / pageSize)
+);
+
+if (state.productPage > pageCount) {
+  state.productPage = pageCount;
+}
+
+const visibleProducts = products.slice(
+  (state.productPage - 1) * pageSize,
+  state.productPage * pageSize
+);
   document.querySelector('#adminProducts').innerHTML =
+    let pagination =
+  document.querySelector('#productPagination');
+
+if (!pagination) {
+  pagination = document.createElement('div');
+  pagination.id = 'productPagination';
+
+  document
+    .querySelector('#adminProducts')
+    .closest('.admin-table-wrap')
+    .after(pagination);
+}
+
+pagination.innerHTML =
+  Array.from(
+    { length: pageCount },
+    (_, i) => `
+      <button
+        class="page-button ${
+          state.productPage === i + 1
+            ? 'active'
+            : ''
+        }"
+        data-page="${i + 1}">
+        ${i + 1}
+      </button>
+    `
+  ).join('');
+
+pagination
+  .querySelectorAll('[data-page]')
+  .forEach(button => {
+
+    button.onclick = () => {
+
+      state.productPage =
+        Number(button.dataset.page);
+
+      renderProducts();
+
+    };
+
+  });
+`
     products.length
-      ? products.map((product) => {
+      ? visibleProducts.map((product) => {
           const quantity = Number(
             product.stock_quantity ??
             (product.in_stock ? 10 : 0)

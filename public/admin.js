@@ -297,9 +297,23 @@ document.querySelector('#addCategory').onclick = () => showCategoryDialog();
 document.querySelector('#productForm').onsubmit = saveProduct;
 document.querySelector('#categoryForm').onsubmit = saveCategory;
 document.querySelectorAll('[data-close-dialog]').forEach((button) => { button.onclick = () => button.closest('dialog').close(); });
-['#productSearch', '#productFilter'].forEach((selector) => document.querySelector(selector).addEventListener('input', renderProducts));
+['#productSearch', '#productFilter']
+  .forEach(selector => {
+    const element = document.querySelector(selector);
+
+    if (!element) return;
+
+    element.addEventListener(
+      'input',
+      renderProducts
+    );
+  });
 ['#orderSearch', '#orderFilter'].forEach((selector) => document.querySelector(selector).addEventListener('input', renderOrders));
-document.querySelector('#customerSearch').addEventListener('input', renderCustomers);
+document.querySelector('#customerSearch')
+  ?.addEventListener(
+    'input',
+    renderCustomers
+  );
 document.addEventListener('click', async (event) => { const edit = event.target.closest('[data-edit-product]'); const category = event.target.closest('[data-edit-category]'); const order = event.target.closest('[data-view-order]'); const note = event.target.closest('[data-save-note]'); if (edit) showProductDialog(state.products.find((item) => item.id === Number(edit.dataset.editProduct))); if (category) showCategoryDialog(state.categories.find((item) => item.id === Number(category.dataset.editCategory))); if (order) showOrderDialog(order.dataset.viewOrder); if (note) { const { error } = await supabase.from('orders').update({ manager_note: document.querySelector('#managerNote').value }).eq('id', note.dataset.saveNote); if (error) return alert('Не вдалося зберегти нотатку.'); const current = state.orders.find((item) => item.id === Number(note.dataset.saveNote)); if (current) current.manager_note = document.querySelector('#managerNote').value; note.textContent = 'Збережено'; } });
 document.addEventListener('change', (event) => { if (event.target.matches('[data-status-order]')) updateOrderStatus(event.target.dataset.statusOrder, event.target.value); });
 supabase.auth.onAuthStateChange((event) => { if (event === 'PASSWORD_RECOVERY') view('recovery'); });
@@ -929,8 +943,11 @@ renderOrders = function () {
   renderOrdersWithOperations();
   decorateOrderTable();
 };
-document.querySelector('#orderSearch').addEventListener('input', decorateOrderTable);
-document.querySelector('#orderFilter').addEventListener('input', decorateOrderTable);
+document.querySelector('#orderSearch')
+  ?.addEventListener(...);
+
+document.querySelector('#orderFilter')
+  ?.addEventListener(...);
 
 
 /* CRM-картка покупця з історією його замовлень. */

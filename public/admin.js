@@ -153,6 +153,7 @@ function renderProducts() {
       </tr
 function renderCategories() {
   const rows = state.categories.map((category) => {
+
     const count = state.products.filter(
       (product) => product.category === category.slug
     ).length;
@@ -162,7 +163,11 @@ function renderCategories() {
         <td>
           <b>${escape(category.name)}</b>
         </td>
-        <td>${escape(category.slug)}</td>
+
+        <td>
+          ${escape(category.slug)}
+        </td>
+
         <td>
           <span class="visibility ${
             category.is_active
@@ -176,7 +181,9 @@ function renderCategories() {
             }
           </span>
         </td>
+
         <td>${count}</td>
+
         <td class="table-actions">
           <button data-edit-category="${category.id}">
             Редагувати

@@ -35,6 +35,19 @@ function renderProducts() {
     if (filter === 'low') return lowStock(product);
     return true;
   });
+  const pageSize = 10;
+
+state.productPage =
+  state.productPage || 1;
+
+const pageCount =
+  Math.ceil(products.length / pageSize);
+
+const pagedProducts =
+  products.slice(
+    (state.productPage - 1) * pageSize,
+    state.productPage * pageSize
+  );
   document.querySelector('#adminProducts').innerHTML = products.length ? products.map((product) => {
     const quantity = Number(product.stock_quantity ?? (product.in_stock ? 10 : 0));
     const stockClass = quantity === 0 ? 'stock-zero' : lowStock(product) ? 'stock-low' : 'stock-ok';

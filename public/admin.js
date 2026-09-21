@@ -24,86 +24,48 @@ function renderMetrics() {
   document.querySelector('#ordersNavCount').textContent = newOrders.length || '';
 }
 function renderProducts() {
-  const term = document.querySelector('#productSearch').value.trim().toLowerCase();
-  const filter = document.querySelector('#productFilter').value;
+  const term = document.querySelector('#productSearch')
+    .value
+    .trim()
+    .toLowerCase();
+
+  const filter =
+    document.querySelector('#productFilter').value;
 
   const products = state.products.filter((product) => {
+
     const haystack = [
       product.name,
       product.brand,
       product.sku,
       product.category
-    ].join(' ').toLowerCase();
+    ]
+      .join(' ')
+      .toLowerCase();
 
-    if (term && !haystack.includes(term)) return false;
-    if (filter === 'active') return product.is_active;
-    if (filter === 'draft') return !product.is_active;
-    if (filter === 'low') return lowStock(product);
+    if (term && !haystack.includes(term)) {
+      return false;
+    }
+
+    if (filter === 'active') {
+      return product.is_active;
+    }
+
+    if (filter === 'draft') {
+      return !product.is_active;
+    }
+
+    if (filter === 'low') {
+      return lowStock(product);
+    }
 
     return true;
   });
-const pageSize = 10;
 
-const pageCount = Math.max(
-  1,
-  Math.ceil(products.length / pageSize)
-);
-
-if (state.productPage > pageCount) {
-  state.productPage = pageCount;
-}
-
-const visibleProducts = products.slice(
-  (state.productPage - 1) * pageSize,
-  state.productPage * pageSize
-);
   document.querySelector('#adminProducts').innerHTML =
-    let pagination =
-  document.querySelector('#productPagination');
-
-if (!pagination) {
-  pagination = document.createElement('div');
-  pagination.id = 'productPagination';
-
-  document
-    .querySelector('#adminProducts')
-    .closest('.admin-table-wrap')
-    .after(pagination);
-}
-
-pagination.innerHTML =
-  Array.from(
-    { length: pageCount },
-    (_, i) => `
-      <button
-        class="page-button ${
-          state.productPage === i + 1
-            ? 'active'
-            : ''
-        }"
-        data-page="${i + 1}">
-        ${i + 1}
-      </button>
-    `
-  ).join('');
-
-pagination
-  .querySelectorAll('[data-page]')
-  .forEach(button => {
-
-    button.onclick = () => {
-
-      state.productPage =
-        Number(button.dataset.page);
-
-      renderProducts();
-
-    };
-
-  });
-`
     products.length
-      ? visibleProducts.map((product) => {
+      ? products.map((product) => {
+
           const quantity = Number(
             product.stock_quantity ??
             (product.in_stock ? 10 : 0)
@@ -122,16 +84,20 @@ pagination
                 <b>${escape(product.name)}</b>
                 <small>${escape(product.brand || 'Без бренду')}</small>
               </td>
+
               <td>
                 <b>${escape(product.sku || '—')}</b>
                 <small>${escape(product.category)}</small>
               </td>
+
               <td>${money(product.price)}</td>
+
               <td>
                 <span class="stock-badge ${stockClass}">
                   ${quantity} шт.
                 </span>
               </td>
+
               <td>
                 <span class="visibility ${
                   product.is_active
@@ -145,6 +111,7 @@ pagination
                   }
                 </span>
               </td>
+
               <td class="table-actions">
                 <button data-edit-product="${product.id}">
                   Редагувати
@@ -153,6 +120,7 @@ pagination
             </tr>
           `;
         }).join('')
+
       : `
         <tr>
           <td class="empty-row" colspan="6">
@@ -161,7 +129,6 @@ pagination
         </tr>
       `;
 }
-
 function renderCategories() {
   const rows = state.categories.map((category) => {
     const count = state.products.filter((product) => product.category === category.slug).length;

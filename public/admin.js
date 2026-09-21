@@ -48,7 +48,23 @@ const pagedProducts =
     (state.productPage - 1) * pageSize,
     state.productPage * pageSize
   );
-  document.querySelector('#adminProducts').innerHTML = products.length ? products.map((product) => {
+  document.querySelector('#adminProducts').innerHTML = products.length ? pagedProducts.map((product) =>
+    const pagination =
+  document.querySelector('#productPagination');
+
+if (pagination) {
+  pagination.innerHTML =
+    Array.from(
+      { length: pageCount },
+      (_, i) => `
+        <button
+          data-page="${i + 1}">
+          ${i + 1}
+        </button>
+      `
+    ).join('');
+}
+  {
     const quantity = Number(product.stock_quantity ?? (product.in_stock ? 10 : 0));
     const stockClass = quantity === 0 ? 'stock-zero' : lowStock(product) ? 'stock-low' : 'stock-ok';
     return `<tr><td><b>${escape(product.name)}</b><small>${escape(product.brand || 'Без бренду')}</small></td><td><b>${escape(product.sku || '—')}</b><small>${escape(product.category)}</small></td><td>${money(product.price)}</td><td><span class="stock-badge ${stockClass}">${quantity} шт.</span></td><td><span class="visibility ${product.is_active ? 'visible' : 'hidden-status'}">${product.is_active ? 'У каталозі' : 'Приховано'}</span></td><td class="table-actions"><button data-edit-product="${product.id}">Редагувати</button></td></tr>`;

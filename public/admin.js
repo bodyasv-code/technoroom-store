@@ -173,10 +173,6 @@ function statusSelect(order) {
         </td>
       </tr>
     `;
-
-function statusSelect(order) {
-  return `<select class="status-select status-${order.status}" data-status-order="${order.id}">${Object.entries(statusNames).map(([value, label]) => `<option value="${value}" ${order.status === value ? 'selected' : ''}>${label}</option>`).join('')}</select>`;
-}
 function renderOrders() {
   const term = document.querySelector('#orderSearch').value.trim().toLowerCase();
   const filter = document.querySelector('#orderFilter').value;

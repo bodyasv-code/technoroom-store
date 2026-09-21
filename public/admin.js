@@ -153,41 +153,14 @@ function renderProducts() {
       </tr
 function renderCategories() {
   const rows = state.categories.map((category) => {
-    const count = state.products.filter(
-      (product) => product.category === category.slug
-    ).length;
-
-    return `
-      <tr>
-        <td>
-          <b>${escape(category.name)}</b>
-        </td>
-        <td>
-          ${escape(category.slug)}
-        </td>
-        <td>
-          <span class="visibility ${
-            category.is_active
-              ? 'visible'
-              : 'hidden-status'
-          }">
-            ${
-              category.is_active
-                ? 'Активна'
-                : 'Прихована'
-            }
-          </span>
-        </td>
-        <td>${count}</td>
-        <td class="table-actions">
-          <button
-            data-edit-category="${category.id}">
-            Редагувати
-          </button>
-        </td>
-      </tr>
-    `;
+    const count = state.products.filter((product) => product.category === category.slug).length;
+    return <tr><td><b>${escape(category.name)}</b></td><td>${escape(category.slug)}</td><td><span class="visibility ${category.is_active ? 'visible' : 'hidden-status'}">${category.is_active ? 'Активна' : 'Прихована'}</span></td><td>${count}</td><td class="table-actions"><button data-edit-category="${category.id}">Редагувати</button></td></tr>`;
   });
+  document.querySelector('#adminCategories').innerHTML = rows.join('') || '<tr><td class="empty-row" colspan="5">Категорій поки немає</td></tr>';
+}
+function statusSelect(order) {
+  return `<select class="status-select status-${order.status}" data-status-order="${order.id}">${Object.entries(statusNames).map(([value, label]) => `<option value="${value}" ${order.status === value ? 'selected' : ''}>${label}</option>`).join('')}</select>`;
+}
 
   document.querySelector(
     '#adminCategories'

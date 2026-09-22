@@ -481,13 +481,14 @@ renderMetrics = function () {
 const originalRenderProductsForInventory = renderProducts;
 renderProducts = function () {
   const filterControl = document.querySelector('#productFilter');
-  if (!filterControl.querySelector('option[value="under_order"]')) {
+  if (filterControl && !filterControl.querySelector('option[value="under_order"]')) {
     filterControl.insertAdjacentHTML('beforeend', '<option value="under_order">Під замовлення</option><option value="out_of_stock">Немає в наявності</option>');
   }
-  const header = document.querySelector('#adminProducts').closest('table').querySelector('thead tr');
-  if (header.children.length === 6) header.children[4].insertAdjacentHTML('beforebegin', '<th>Наявність</th>');
+  const productTable = document.querySelector('#adminProducts')?.closest('table');
+  const header = productTable?.querySelector('thead tr');
+  if (header && header.children.length === 6) header.children[4].insertAdjacentHTML('beforebegin', '<th>Наявність</th>');
   const term = document.querySelector('#productSearch').value.trim().toLowerCase();
-  const filter = filterControl.value;
+  const filter = filterControl?.value || 'all';
   const products = state.products.filter((product) => {
     const haystack = [product.name, product.brand, product.sku, product.category].join(' ').toLowerCase();
     if (term && !haystack.includes(term)) return false;

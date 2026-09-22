@@ -1,0 +1,22 @@
+-- ERC catalog hierarchy for the 2026-09-22 supplier feed.
+-- Run after category-cleanup.sql. Safe to run repeatedly.
+
+alter table public.categories
+  add column if not exists parent_id bigint references public.categories(id) on delete set null;
+
+insert into public.categories (slug,name,is_active,sort_order,parent_id) values
+('erc-display','ТВ, засоби відображення інформації та оргтехніка',true,100,null),
+('erc-business','Продукція та комплексні рішення для підприємств',true,200,null),
+('erc-consumer','Споживчі товари і електроніка',true,300,null)
+on conflict (slug) do update set name=excluded.name,is_active=true,sort_order=excluded.sort_order,parent_id=null;
+
+with src(parent_slug,slug,name,sort_order) as (values
+('erc-display','erc-display-01','Монітори споживчі',101),('erc-display','erc-display-02','Дисплеї інформаційні',102),('erc-display','erc-display-03','Проєктори домашні',103),('erc-display','erc-display-04','Кріплення моніторів',104),('erc-display','erc-display-05','Кріплення телевізорів',105),('erc-display','erc-display-06','Екрани проєкційні',106),('erc-display','erc-display-07','Телевізори споживчі',107),('erc-display','erc-display-08','Аксесуари та опції проєкційного обладнання',108),('erc-display','erc-display-09','Дошки інтерактивні',109),('erc-display','erc-display-10','Кріплення проєкторів',110),('erc-display','erc-display-11','Проєктори інсталяційні',111),('erc-display','erc-display-12','Проєктори короткофокусні',112),('erc-display','erc-display-13','Проєктори універсальні',113),('erc-display','erc-display-14','Лампи проєкторів',114),('erc-display','erc-display-15','Оптика проєкторів',115),('erc-display','erc-display-16','Аксесуари та опції інформаційних дисплеїв',116),('erc-display','erc-display-17','Аксесуари та опції телевізорів',117),('erc-display','erc-display-18','Кріплення інформаційних дисплеїв',118),('erc-display','erc-display-19','Дисплеї інтерактивні',119),('erc-display','erc-display-20','Телевізори комерційні',120),
+('erc-business','erc-business-01','Акумулятори Li-ion промислові',201),('erc-business','erc-business-02','Акумулятори AGM',202),('erc-business','erc-business-03','ДБЖ серверів',203),('erc-business','erc-business-04','Батареї для систем БЖ',204),('erc-business','erc-business-05','Опції та комплектуючі для систем стабілізації і БЖ',205),('erc-business','erc-business-06','Системи розподілу живлення PDU',206),('erc-business','erc-business-07','Автоматичні вимикачі',207),('erc-business','erc-business-08','Електричні запобіжники',208),('erc-business','erc-business-09','Клеми електромонтажні',209),('erc-business','erc-business-10','Контактори електромонтажні',210),('erc-business','erc-business-11','Обмежувач напруги',211),('erc-business','erc-business-12','Реле й сигналізації електромонтажні',212),('erc-business','erc-business-13','Термотрубки та маркування',213),('erc-business','erc-business-14','Шини електромонтажні',214),('erc-business','erc-business-15','Щити розподільні електромонтажні',215),('erc-business','erc-business-16','Інвертори та контролери для альтернативної енергетики',216),('erc-business','erc-business-17','Сонячні панелі',217),('erc-business','erc-business-18','Лючки, башточки, колони електромонтажні',218),
+('erc-consumer','erc-consumer-01','Гарнітури ПК',301),('erc-consumer','erc-consumer-02','Аксесуари для гарнітур і навушників',302),('erc-consumer','erc-consumer-03','Акустичні системи для ПК',303),('erc-consumer','erc-consumer-04','Гарнітури накладні для мобільних пристроїв',304),('erc-consumer','erc-consumer-05','мікрофони',305),('erc-consumer','erc-consumer-06','Навушники TWS',306),('erc-consumer','erc-consumer-07','Портативні акустичні системи',307),('erc-consumer','erc-consumer-08','Гарнітури вставні для мобільних пристроїв',308),('erc-consumer','erc-consumer-09','Гарнітури ігрових консолей',309),('erc-consumer','erc-consumer-10','Навушники вставні',310),('erc-consumer','erc-consumer-11','Навушники накладні',311),('erc-consumer','erc-consumer-12','Саундбари, акустичні панелі',312),('erc-consumer','erc-consumer-13','Музичні центри',313),('erc-consumer','erc-consumer-14','Стаціонарна акустика для мобільних пристроїв',314)
+)
+insert into public.categories(slug,name,is_active,sort_order,parent_id)
+select s.slug,s.name,true,s.sort_order,p.id from src s join public.categories p on p.slug=s.parent_slug
+on conflict(slug) do update set name=excluded.name,is_active=true,sort_order=excluded.sort_order,parent_id=excluded.parent_id;
+
+create index if not exists categories_parent_id_idx on public.categories(parent_id);

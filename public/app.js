@@ -257,85 +257,11 @@ async function loadProducts() { try {
     if (data.length < pageSize) break;
   }
   if (all.length) products = all.map((item) => ({ id: item.id, name: item.name, description: item.description, price: Number(item.price), type: item.category, brand: item.brand, specifications: item.specifications, stock: item.in_stock && Number(item.stock_quantity || 0) > 0, image: item.image_path }));
-} catch (error) { console.warn('Не вдалося завантажити каталог із Supabase', error); } finally { mount(); await mountNestedSubcategoryMenu(); await mountMegaCatalog(); } }
+} catch (error) { console.warn('Не вдалося завантажити каталог із Supabase', error); } finally { mount(); await mountMegaCatalog(); } }
 if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', loadProducts, { once: true });
 else loadProducts();
 
 
-// Каталог категорій будується лише з актуального дерева Supabase після завантаження товарів.
-const nestedCategoryStyle = document.createElement('style');
-nestedCategoryStyle.textContent = `
-  .category-nest { display:none; margin:2px 0 8px 10px; padding:2px 0 2px 10px; border-left:1px solid var(--line); }
-  .category-nest.open { display:block; }
-  .category-nest button { display:flex; justify-content:space-between; gap:8px; width:100%; padding:6px 4px; border:0; background:transparent; text-align:left; cursor:pointer; color:var(--muted); font-size:12px; }
-  .category-nest button.selected { color:var(--ink); font-weight:800; }
-  .filters > button[data-category] { display:flex; align-items:center; justify-content:space-between; gap:8px; width:100%; padding:9px 6px; }
-  .filters > button.category-parent-button span:first-child { flex:1; text-align:left; }
-  .filters > button.category-parent-button i { font-style:normal; transition:transform .18s ease; }
-  .filters > button.category-parent-button.expanded i { transform:rotate(90deg); }
-`;
-document.head.append(nestedCategoryStyle);
-
-let categoryChildren = new Map();
-async function mountNestedSubcategoryMenu() {
-  const filters = document.querySelector('.filters');
-  const refine = filters?.querySelector('.catalog-refine');
-  if (!filters || !refine) return;
-
-  filters.querySelectorAll(':scope > button[data-category], .category-nest').forEach((node) => node.remove());
-
-  try {
-    const { data: categories, error } = await supabase.from('categories')
-      .select('id,name,slug,parent_id,sort_order').eq('is_active', true).order('sort_order');
-    if (error || !categories?.length) return;
-
-    const byId = new Map(categories.map((c) => [c.id, c]));
-    const roots = categories.filter((c) => !c.parent_id || !byId.has(c.parent_id));
-    categoryChildren = new Map();
-    const selected = new URLSearchParams(location.search).get('category') || 'all';
-
-    const addButton = (category, count, parentNode = filters) => {
-      const button = document.createElement('button');
-      button.type = 'button';
-      button.dataset.category = category.slug;
-      button.innerHTML = `<span>${category.name}</span><b>${count}</b>`;
-      button.classList.toggle('selected', selected === category.slug);
-      if (parentNode === filters) refine.before(button); else parentNode.append(button);
-    };
-
-    const all = document.createElement('button');
-    all.type='button'; all.dataset.category='all';
-    all.innerHTML=`<span>Усі товари</span><b>${products.length}</b>`;
-    all.classList.toggle('selected', selected === 'all');
-    refine.before(all);
-
-    roots.forEach((parent) => {
-      const children = categories.filter((c) => c.parent_id === parent.id);
-      const slugs = children.map((c) => c.slug);
-      categoryChildren.set(parent.slug, slugs);
-      const count = products.filter((p) => p.type === parent.slug || slugs.includes(p.type)).length;
-      addButton(parent, count);
-      const parentButton = refine.previousElementSibling;
-      if (!children.length) return;
-      parentButton.classList.add('category-parent-button');
-      parentButton.innerHTML = `<i>›</i><span>${parent.name}</span><b>${count}</b>`;
-      const nest = document.createElement('div'); nest.className='category-nest';
-      children.forEach((child) => addButton(child, products.filter((p) => p.type === child.slug).length, nest));
-      if (selected === parent.slug || children.some((child) => child.slug === selected)) {
-        nest.classList.add('open'); parentButton.classList.add('expanded');
-      }
-      parentButton.onclick = (event) => { event.preventDefault(); nest.classList.toggle('open'); parentButton.classList.toggle('expanded'); };
-      refine.before(nest);
-    });
-
-    filters.querySelectorAll('[data-category]:not(.category-parent-button)').forEach((button) => button.onclick = () => {
-      const url = new URL(location.href);
-      if (button.dataset.category === 'all') url.searchParams.delete('category');
-      else url.searchParams.set('category', button.dataset.category);
-      location.href = url.toString();
-    });
-  } catch (error) { console.warn('Не вдалося завантажити дерево категорій', error); }
-}
 async function mountMegaCatalog() {
   const mega=document.getElementById('catalogMega'), rootsEl=document.getElementById('megaRoots'), childrenEl=document.getElementById('megaChildren');
   if(!mega||!rootsEl||!childrenEl) return;

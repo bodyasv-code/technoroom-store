@@ -340,12 +340,15 @@ async function mountNestedSubcategoryMenu() {
     groups.forEach(({ parent, children }) => {
       const parentButton = filters.querySelector(`[data-category="${CSS.escape(parent.slug)}"]`);
       if (!parentButton) return;
+      const selectedCategory = new URLSearchParams(location.search).get('category') || 'all';
+      parentButton.classList.toggle('has-children', children.length > 0);
       const nest = document.createElement('div');
       nest.className = 'category-nest';
       children.sort((a, b) => a.name.localeCompare(b.name, 'uk')).forEach((category) => {
         const button = document.createElement('button');
         button.type = 'button';
         button.dataset.subcategory = category.slug;
+        button.classList.toggle('selected', category.slug === selectedCategory);
         const count = products.filter((product) => product.type === category.slug).length;
         button.innerHTML = `<span>↳</span><span>${category.name}</span><b>${count || '0'}</b>`;
         nest.append(button);
@@ -451,7 +454,25 @@ renderCart = () => {
     checkoutButton.disabled = !items.length;
   }
 };
-card = (product) => { const state = availability(product); return `<article class="product"><div class="product-image ${product.type}">${image(product)}</div><h3><a href="product.html?id=${product.id}">${product.name}</a></h3><p class="availability">${state.label}</p><p>${product.description || ''}</p><div class="product-footer"><strong class="price">${money(product.price)}</strong><button class="add-button" data-add="${product.id}" ${state.orderable ? '' : 'disabled'}>${state.button}</button></div></article>`; };
+const catalogCardEscape = (value) => String(value ?? '').replace(/[&<>\"]/g, (character) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[character]);
+card = (product) => {
+  const state = availability(product);
+  const name = catalogCardEscape(product.name);
+  const brand = catalogCardEscape(product.brand || 'TECHNOROOM');
+  const source = imageUrl(product);
+  const preview = source
+    ? `<img src="${source}" alt="${name}" loading="lazy" draggable="false">`
+    : '<div class="product-placeholder"><span>Фото товару<br>з’явиться незабаром</span></div>';
+
+  return `<article class="product product-card">
+    <a class="product-image ${product.type}" href="product.html?id=${product.id}" aria-label="Відкрити товар ${name}">${preview}</a>
+    <div class="product-card-content">
+      <div class="product-card-meta"><span>${brand}</span><span class="availability">${state.label}</span></div>
+      <h3><a href="product.html?id=${product.id}">${name}</a></h3>
+      <div class="product-footer"><strong class="price">${money(product.price)}</strong><button class="add-button" data-add="${product.id}" ${state.orderable ? '' : 'disabled'}>${state.button}</button></div>
+    </div>
+  </article>`;
+};
 product = () => {
   const root = document.getElementById('productView'); if (!root) return;
   const item = get(new URLSearchParams(location.search).get('id')) || products[0]; if (!item) return;

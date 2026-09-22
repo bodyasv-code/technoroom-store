@@ -143,6 +143,7 @@ document.head.appendChild(catalogSchema);
   const stock = document.getElementById('stockFilter');
   const sort = document.getElementById('catalogSort');
   let category = new URLSearchParams(location.search).get('category') || 'all';
+  const initialParams=new URLSearchParams(location.search); const initialSort=initialParams.get('sort'); if(initialSort==='new') sort.value='newest'; else if(initialSort==='popular'||initialSort==='recommended') sort.value='default';
   fillBrandSelect(brand,products);
   const maxPrice = Math.max(0, ...products.map((product) => Number(product.price) || 0));
   const rangeMax = Math.max(1000, Math.ceil(maxPrice / 1000) * 1000);

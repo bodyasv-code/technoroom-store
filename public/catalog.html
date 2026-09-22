@@ -21,7 +21,7 @@
         <div class="catalog-refine">
           <label>Пошук<input id="catalogSearch" type="search" placeholder="Назва або бренд"></label>
           <label>Бренд<select id="brandFilter"><option value="">Усі бренди</option></select></label>
-          <label class="price-range-label">Ціна, ₴<div class="price-values"><input id="priceMin" type="number" min="0" value="0"><input id="priceFilter" type="number" min="0"></div><input id="priceRange" class="price-range" type="range" min="0" max="100000" value="100000" step="100"><span class="price-range-caption" id="priceRangeCaption"></span></label>
+          <div class="price-range-label"><strong>Ціна, ₴</strong><div class="price-values"><input id="priceMin" type="number" min="0" value="0"><input id="priceFilter" type="number" min="0"></div><div class="dual-range"><input id="priceMinRange" type="range" min="0" max="100000" value="0" step="100"><input id="priceRange" type="range" min="0" max="100000" value="100000" step="100"></div><span class="price-range-caption" id="priceRangeCaption"></span><div class="price-presets"><button type="button" data-price-max="5000">До 5 000 ₴</button><button type="button" data-price-min="5000" data-price-max="15000">5 000 – 15 000 ₴</button><button type="button" data-price-min="15000" data-price-max="50000">15 000 – 50 000 ₴</button><button type="button" data-price-min="50000">Від 50 000 ₴</button></div></div>
           <label class="check"><input id="stockFilter" type="checkbox"> Лише в наявності</label>
           <button type="button" id="clearCatalogFilters" class="clear-filters">Скинути фільтри</button>
         </div>

@@ -257,7 +257,7 @@ async function loadProducts() { try {
     if (data.length < pageSize) break;
   }
   if (all.length) products = all.map((item) => ({ id: item.id, name: item.name, description: item.description, price: Number(item.price), type: item.category, brand: item.brand, specifications: item.specifications, stock: item.in_stock && Number(item.stock_quantity || 0) > 0, image: item.image_path }));
-} catch (error) { console.warn('Не вдалося завантажити каталог із Supabase', error); } finally { mount(); } }
+} catch (error) { console.warn('Не вдалося завантажити каталог із Supabase', error); } finally { mount(); await mountNestedSubcategoryMenu(); } }
 if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', loadProducts, { once: true });
 else loadProducts();
 
@@ -391,8 +391,7 @@ async function mountNestedSubcategoryMenu() {
     console.warn('Не вдалося завантажити дерево категорій', error);
   }
 }
-if (document.readyState === 'complete') mountNestedSubcategoryMenu();
-else window.addEventListener('load', mountNestedSubcategoryMenu, { once: true });
+// Category tree is mounted after all product pages are loaded.
 
 
 // Візуальна ієрархія категорій: більший шрифт та помітніший відступ вкладень.

@@ -65,7 +65,7 @@ async function home() {
     }
   } catch(e){ console.warn('Категорії головної',e); }
   const q=document.getElementById('homeSideSearch'), brand=document.getElementById('homeBrand'), minI=document.getElementById('homePriceMin'), maxI=document.getElementById('homePriceMax'), minR=document.getElementById('homePriceMinRange'), maxR=document.getElementById('homePriceMaxRange'), cap=document.getElementById('homePriceCaption'), stock=document.getElementById('homeStockOnly'), sort=document.getElementById('homeSort');
-  const brands=[...new Set(homeProducts.map(p=>p.brand).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'uk')); brand.innerHTML='<option value="">Усі бренди</option>'+brands.map(v=>`<option value="${escape(v)}">${escape(v)}</option>`).join('');
+  fillBrandSelect(brand,homeProducts);
   const rangeMax=Math.max(1000,Math.ceil(Math.max(0,...homeProducts.map(p=>Number(p.price)||0))/1000)*1000); [minR,maxR].forEach(x=>x.max=rangeMax); minR.value=0; maxR.value=rangeMax; minI.value=0; maxI.value=rangeMax;
   const sync=(source)=>{let lo=Math.max(0,Math.min(Number(source==='minI'?minI.value:minR.value)||0,rangeMax)), hi=Math.max(0,Math.min(Number(source==='maxI'?maxI.value:maxR.value)||rangeMax,rangeMax)); if(lo>hi){if(source.startsWith('min'))hi=lo;else lo=hi} minI.value=minR.value=lo; maxI.value=maxR.value=hi; cap.textContent=`Від ${lo.toLocaleString('uk-UA')} ₴ до ${hi.toLocaleString('uk-UA')} ₴`;};
   const render=()=>{sync('render'); const term=q.value.trim().toLowerCase(),lo=Number(minI.value||0),hi=Number(maxI.value||rangeMax); let rows=homeProducts.filter(p=>(!term||[p.name,p.brand,p.description].some(v=>String(v||'').toLowerCase().includes(term)))&&(!brand.value||p.brand===brand.value)&&p.price>=lo&&p.price<=hi&&(!stock.checked||p.stock)); if(sort.value==='price-asc')rows.sort((a,b)=>a.price-b.price);if(sort.value==='price-desc')rows.sort((a,b)=>b.price-a.price);if(sort.value==='name')rows.sort((a,b)=>a.name.localeCompare(b.name,'uk'));root.innerHTML=rows.slice(0,6).map(card).join('');bind(root);};
@@ -143,8 +143,7 @@ document.head.appendChild(catalogSchema);
   const stock = document.getElementById('stockFilter');
   const sort = document.getElementById('catalogSort');
   let category = new URLSearchParams(location.search).get('category') || 'all';
-  const brands = [...new Set(products.map((product) => product.brand).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'uk'));
-  brand.innerHTML = '<option value="">Усі бренди</option>' + brands.map((value) => `<option value="${escape(value)}">${escape(value)}</option>`).join('');
+  fillBrandSelect(brand,products);
   const maxPrice = Math.max(0, ...products.map((product) => Number(product.price) || 0));
   const rangeMax = Math.max(1000, Math.ceil(maxPrice / 1000) * 1000);
   priceRange.max = rangeMax; priceRange.value = rangeMax; priceMinRange.max = rangeMax; priceMinRange.value = 0; price.value = rangeMax;
@@ -391,6 +390,22 @@ renderCart = () => {
   root.querySelectorAll('[data-cart-qty]').forEach(input=>input.onchange=()=>updateQty(Number(input.dataset.cartQty),input.value));
   root.querySelectorAll('[data-cart-remove]').forEach(b=>b.onclick=()=>{cart.splice(Number(b.dataset.cartRemove),1);save();renderCart()});
   let tools=root.parentElement?.querySelector('.cart-tools'); if(items.length&&!tools){tools=document.createElement('div');tools.className='cart-tools';tools.innerHTML='<button type="button" id="cartClear">Очистити кошик</button><a href="catalog.html">+ Продовжити покупки</a>';root.after(tools);tools.querySelector('#cartClear').onclick=()=>{cart.length=0;save();renderCart();tools.remove()}} else if(!items.length&&tools)tools.remove();
+};
+const cleanBrand = (value) => {
+  let text=String(value??'').trim();
+  try { if(/%u[0-9a-f]{4}|%[0-9a-f]{2}/i.test(text)) text=unescape(text); } catch {}
+  try { if(/%[0-9a-f]{2}/i.test(text)) text=decodeURIComponent(text); } catch {}
+  text=text.replace(/%20/gi,' ').replace(/\s+/g,' ').trim();
+  const suffixes=/\s+(monitors?|accessories|displays?|energy(?:\s*ups)?|gaming|mounts?|multimedia|screens?|tv)$/i;
+  text=text.replace(suffixes,'').trim();
+  return text;
+};
+const fillBrandSelect = (select, source) => {
+  if(!select)return;
+  const map=new Map();
+  source.map(p=>cleanBrand(p.brand)).filter(Boolean).forEach(v=>{const key=v.toLocaleLowerCase('uk-UA');if(!map.has(key))map.set(key,v)});
+  const brands=[...map.values()].sort((a,b)=>a.localeCompare(b,'uk'));
+  select.replaceChildren(new Option('Усі бренди',''),...brands.map(v=>new Option(v,v)));
 };
 const catalogCardEscape = (value) => String(value ?? '').replace(/[&<>\"]/g, (character) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[character]);
 card = (product) => {

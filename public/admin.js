@@ -1658,7 +1658,11 @@ document.addEventListener('click', event => {
     if (!chosen.length) return importStatus('Позначте хоча б один товар для імпорту.', true);
     if (chosen.length > 100) return importStatus('За один раз можна імпортувати до 100 товарів.', true);
     const existing = existingBySku(); const usedSlugs = new Set(state.products.map((item) => item.slug).filter(Boolean));
-    const newRows = []; const updates = []; const content = document.querySelector('#ercImportContent').checked; const importImages = document.querySelector('#ercImportImages').checked;
+    const newRows = []; const updates = [];
+    const refreshExisting = async (sku) => {
+      const { data } = await supabase.from('products').select('*').eq('sku', sku).maybeSingle();
+      return data || null;
+    }; const content = document.querySelector('#ercImportContent').checked; const importImages = document.querySelector('#ercImportImages').checked;
     chosen.forEach((row) => {
       const category = mappedCategory(row); if (!category) return;
       const sourceImages = importImages ? row.images.filter((link) => {
@@ -1680,7 +1684,23 @@ document.addEventListener('click', event => {
     for (let start = 0; start < newRows.length; start += 25) {
       const batch = newRows.slice(start, start + 25); const { error } = await supabase.from('products').insert(batch);
       if (!error) { created += batch.length; continue; }
-      for (const product of batch) { const attempt = await supabase.from('products').insert(product); if (attempt.error) failures.push(product.sku + ': ' + (attempt.error.message || attempt.error.code || 'невідома помилка')); else created += 1; }
+      for (const product of batch) {
+        const attempt = await supabase.from('products').insert(product);
+        if (!attempt.error) { created += 1; continue; }
+        if (attempt.error.code === '23505' && /sku/i.test(attempt.error.message || '')) {
+          const present = await refreshExisting(product.sku);
+          if (present) {
+            const payload = { category: product.category, price: product.price, stock_quantity: product.stock_quantity, in_stock: product.in_stock, availability_status: product.availability_status };
+            if (content) { payload.description = product.description || present.description; payload.specifications = Object.keys(product.specifications || {}).length ? product.specifications : present.specifications; }
+            if (product.image_paths?.length) { payload.image_path = product.image_path; payload.image_paths = product.image_paths; }
+            const retry = await supabase.from('products').update(payload).eq('id', present.id);
+            if (!retry.error) { updated += 1; existing.set(normalizeSku(product.sku), { ...present, ...payload }); continue; }
+            failures.push(product.sku + ': ' + (retry.error.message || retry.error.code || 'невідома помилка'));
+            continue;
+          }
+        }
+        failures.push(product.sku + ': ' + (attempt.error.message || attempt.error.code || 'невідома помилка'));
+      }
     }
     for (const item of updates) { const { error } = await supabase.from('products').update(item.payload).eq('id', item.id); if (error) failures.push('#' + item.id + ': ' + (error.message || error.code || 'невідома помилка')); else updated += 1; }
     await loadData(); ercState.selected.clear(); renderErcPreview();

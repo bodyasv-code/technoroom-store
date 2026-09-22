@@ -1679,13 +1679,13 @@ document.addEventListener('click', event => {
     for (let start = 0; start < newRows.length; start += 25) {
       const batch = newRows.slice(start, start + 25); const { error } = await supabase.from('products').insert(batch);
       if (!error) { created += batch.length; continue; }
-      for (const product of batch) { const attempt = await supabase.from('products').insert(product); if (attempt.error) failures.push(product.sku); else created += 1; }
+      for (const product of batch) { const attempt = await supabase.from('products').insert(product); if (attempt.error) failures.push(product.sku + ': ' + (attempt.error.message || attempt.error.code || 'невідома помилка')); else created += 1; }
     }
-    for (const item of updates) { const { error } = await supabase.from('products').update(item.payload).eq('id', item.id); if (error) failures.push('#' + item.id); else updated += 1; }
+    for (const item of updates) { const { error } = await supabase.from('products').update(item.payload).eq('id', item.id); if (error) failures.push('#' + item.id + ': ' + (error.message || error.code || 'невідома помилка')); else updated += 1; }
     await loadData(); ercState.selected.clear(); renderErcPreview();
     button.disabled = false; button.textContent = 'Імпортувати позначені';
     const mediaNotice = importImages ? ' Фото з XML прив’язані до товарів і відображатимуться через сайт.' : ' Фото не імпортувалися.';
-    importStatus('Готово: створено чернеток — ' + created + ', оновлено — ' + updated + (failures.length ? '. Не вдалося: ' + failures.join(', ') : '') + '.' + mediaNotice, Boolean(failures.length));
+    importStatus('Готово: створено чернеток — ' + created + ', оновлено — ' + updated + (failures.length ? '. Не вдалося (' + failures.length + '): ' + failures.slice(0, 12).join(' | ') + (failures.length > 12 ? ' | … ще ' + (failures.length - 12) : '') : '') + '.' + mediaNotice, Boolean(failures.length));
   }
   function mountErcImport() {
     const anchor = document.querySelector('#products'); if (!anchor || document.querySelector('#ercImport')) return;

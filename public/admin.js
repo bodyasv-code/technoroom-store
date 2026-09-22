@@ -26,11 +26,9 @@ function renderMetrics() {
 }
 function renderProducts() {
 
-  const term =
-    document.querySelector('#productSearch')
-      .value
-      .trim()
-      .toLowerCase();
+  const term = searchText(
+    document.querySelector('#productSearch').value
+  );
 
   const filter =
     document.querySelector('#productFilter').value;
@@ -38,16 +36,22 @@ function renderProducts() {
   const products =
     state.products.filter((product) => {
 
-      const haystack = [
+      const fields = [
         product.name,
         product.brand,
         product.sku,
         product.category
-      ]
-        .join(' ')
-        .toLowerCase();
+      ].map(searchText);
 
-      if (term && !haystack.includes(term))
+      const words = document.querySelector('#productSearch').value
+        .trim()
+        .split(/\s+/)
+        .map(searchText)
+        .filter(Boolean);
+
+      const haystack = fields.join('');
+
+      if (term && !haystack.includes(term) && !words.every((word) => haystack.includes(word)))
         return false;
 
       if (filter === 'active')

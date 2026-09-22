@@ -395,7 +395,7 @@ const cleanBrand = (value) => {
   let text=String(value??'').trim();
   try { if(/%u[0-9a-f]{4}|%[0-9a-f]{2}/i.test(text)) text=unescape(text); } catch {}
   try { if(/%[0-9a-f]{2}/i.test(text)) text=decodeURIComponent(text); } catch {}
-  text=text.replace(/%20/gi,' ').replace(/\s+/g,' ').trim();
+  text=text.replace(/&amp;/gi,'&').replace(/&quot;/gi,'"').replace(/&#39;|&apos;/gi,"'").replace(/&nbsp;/gi,' ').replace(/%20/gi,' ').replace(/\s+/g,' ').trim();
   const suffixes=/\s+(monitors?|accessories|displays?|energy(?:\s*ups)?|gaming|mounts?|multimedia|screens?|tv)$/i;
   text=text.replace(suffixes,'').trim();
   return text;

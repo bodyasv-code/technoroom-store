@@ -1556,36 +1556,31 @@ document.addEventListener('click', event => {
     if (first.length > 1 && first.length <= 30) return first;
     return clean(vendor).replace(/\s+(projectors|supplies|peripherals)$/i, '').slice(0, 100) || null;
   };
-  const isAccessory = (value) => /(кріпл|ламп|оптик|аксесуар|модул|чохол|кабел|пульт)/i.test(value);
-  const classify = (value) => {
-    if (isAccessory(value)) return '';
-    if (/(проєктор|проектор|проекційн|projector)/i.test(value)) return /екран/i.test(value) ? 'screen' : 'projector';
-    if (/(акуст|саундбар|колонк|аудіо)/i.test(value)) return 'audio';
-    if (/телевізор/i.test(value)) return 'tv';
-    return '';
-  };
+  const normalizeCategoryName = (value = '') => clean(value).toLocaleLowerCase('uk-UA').replace(/[’ʼ']/g, '').replace(/\s+/g, ' ');
   const mappedCategory = (row) => {
-    const haystack = (row.source + ' ' + row.name + ' ' + row.description).toLowerCase();
-    const bySlug = (slug) => state.categories.find((item) => item.slug === slug)?.slug;
-    const byName = (pattern) => state.categories.find((item) => pattern.test(item.name))?.slug;
-    const projectorRoot = () => bySlug('projector') || byName(/проєктор|проектор/i);
-    if (row.kind === 'projector') {
-      if (/лазер|laser/.test(haystack)) return bySlug('laser-proj') || byName(/лазер/i) || projectorRoot();
-      if (/короткофокус|short\s*throw/.test(haystack)) return bySlug('short-throw-projectors') || projectorRoot();
-      if (/домашн|home\s*(cinema|theater)/.test(haystack)) return bySlug('home-projectors') || projectorRoot();
-      if (/інсталяційн|installation/.test(haystack)) return bySlug('installation-projectors') || projectorRoot();
-      if (/універсальн|universal/.test(haystack)) return bySlug('universal-projectors') || projectorRoot();
-      return projectorRoot();
-    }
-    if (row.kind === 'screen') return bySlug('projection-screens') || byName(/екран/i) || projectorRoot();
-    if (row.kind === 'audio') return bySlug('audio') || byName(/акуст|звук/i);
-    if (row.kind === 'tv') return bySlug('tv') || byName(/телевізор/i);
-    return null;
+    const wanted = normalizeCategoryName(row.subcategory);
+    const exact = state.categories.find((item) => normalizeCategoryName(item.name) === wanted);
+    if (exact) return exact.slug;
+    const legacy = [
+      [/екрани? про[єе]кц/i, 'projection-screens'],
+      [/про[єе]ктори? домаш/i, 'home-projectors'],
+      [/про[єе]ктори? короткофокус/i, 'short-throw-projectors'],
+      [/про[єе]ктори? інсталяц/i, 'installation-projectors'],
+      [/про[єе]ктори? універс/i, 'universal-projectors'],
+      [/телевізор/i, 'tv'],
+      [/акуст|саундбар|навуш|гарнітур|мікрофон/i, 'audio']
+    ].find(([pattern]) => pattern.test(row.subcategory));
+    return legacy ? state.categories.find((item) => item.slug === legacy[1])?.slug || null : null;
   };
-  const scopes = { all: 'Усі підтримувані', projector: 'Проєктори та екрани', audio: 'Акустика й звук', tv: 'Телевізори' };
+  const sourceGroup = (row) => {
+    if (/ТВ, ЗАСОБИ/i.test(row.sourceCategory)) return 'display';
+    if (/ПРОДУКЦІЯ ТА КОМПЛЕКСНІ/i.test(row.sourceCategory)) return 'business';
+    if (/СПОЖИВЧІ ТОВАРИ/i.test(row.sourceCategory)) return 'consumer';
+    return 'other';
+  };
   const currentScopeRows = () => {
     const scope = document.querySelector('#ercImportScope')?.value || 'all';
-    return ercState.rows.filter((row) => scope === 'all' || (scope === 'projector' ? ['projector', 'screen'].includes(row.kind) : row.kind === scope));
+    return ercState.rows.filter((row) => scope === 'all' || sourceGroup(row) === scope);
   };
   const pageLimit = () => Math.max(1, Math.min(100, Number(document.querySelector('#ercImportLimit')?.value || 100)));
   const currentPageRows = () => {
@@ -1635,13 +1630,13 @@ document.addEventListener('click', event => {
       const comment = sourceText(goods, 'comment') || sourceText(goods, 'description');
       const shortDescription = sourceText(goods, 'a_desc') || sourceText(goods, 'short_description');
       const description = compactDescription(shortDescription) || compactDescription(comment);
-      const kind = classify(source + ' ' + name);
+      const kind = sourceCategory || subcategory ? 'erc' : '';
       const price = numeric(sourceText(goods, 'rprice') || sourceText(goods, 'price'));
-      if (!kind || !name || !sku || !price) return;
+      if (!name || !sku || !price || !subcategory) return;
       rows.push({ key: sku + '-' + index, vendor: clean(vendor), name, sku, source, sourceCategory, subcategory, kind, price, stockRaw: clean(sourceText(goods, 'stock') || sourceText(goods, 'quantity') || sourceText(goods, 'qty')), stock: stock(sourceText(goods, 'stock') || sourceText(goods, 'quantity') || sourceText(goods, 'qty')), description, specifications: extractSpecs(comment), images: getImageLinks(comment) });
     });
     ercState.rows = rows; ercState.selected.clear(); ercState.page = 1;
-    if (!rows.length) throw new Error('XML прочитано, але підтримуваних товарів не знайдено. Перевірте, чи файл містить проєктори, проекційні екрани, аудіо або телевізори.');
+    if (!rows.length) throw new Error('XML прочитано, але товарів із підкатегоріями не знайдено.');
   }
   const uniqueSlug = (name, sku, used) => {
     const root = productSlug(name) || 'erc-' + sku.toLowerCase().replace(/[^a-z0-9]+/g, '-');
@@ -1690,7 +1685,7 @@ document.addEventListener('click', event => {
       '<section class="admin-section" id="ercImport">',
       '<div class="admin-title"><div><h2>Імпорт ERC XML</h2><span>Ціни, залишки, описи й характеристики за SKU</span></div></div>',
       '<p class="recovery-help">Нові позиції створюються прихованими чернетками. Для фото з XML використовуються лише перевірені HTTPS-джерела виробників.</p>',
-      '<div class="admin-controls"><input id="ercImportFile" type="file" accept=".xml,application/xml,text/xml"><select id="ercImportScope"><option value="all">Усі підтримувані категорії</option><option value="projector">Проєктори та екрани</option><option value="audio">Акустика й звук</option><option value="tv">Телевізори</option></select><input id="ercImportLimit" type="number" min="1" max="100" value="100" title="Максимум 100 товарів за один імпорт"></div>',
+      '<div class="admin-controls"><input id="ercImportFile" type="file" accept=".xml,application/xml,text/xml"><select id="ercImportScope"><option value="all">Усі категорії ERC</option><option value="display">ТВ, відображення та оргтехніка</option><option value="business">Рішення для підприємств</option><option value="consumer">Споживча електроніка</option></select><input id="ercImportLimit" type="number" min="1" max="100" value="100" title="Максимум 100 товарів за один імпорт"></div>',
       '<div class="admin-controls"><button class="button outline" type="button" id="ercImportSelectNew">Позначити нові на сторінці</button><button class="button outline" type="button" id="ercImportSelectVisible">Позначити всі показані</button><button class="button outline" type="button" id="ercImportClear">Очистити вибір</button><label class="check"><input id="ercImportContent" type="checkbox"> Оновлювати опис і характеристики наявних товарів</label><label class="check"><input id="ercImportImages" type="checkbox"> Додавати фото з XML</label><button class="button primary" type="button" id="ercImportApply">Імпортувати позначені</button></div>',
       '<p class="admin-message" id="ercImportMessage" hidden></p><p class="recovery-help" id="ercImportSummary">Оберіть XML-файл, щоб побачити товари.</p><div class="admin-controls" id="ercImportPagination" hidden></div>',
       '<div class="admin-table-wrap"><table><thead><tr><th></th><th>Товар / джерело</th><th>SKU</th><th>Категорія / медіа</th><th>Ціна / залишок</th><th>Дія</th></tr></thead><tbody id="ercImportRows"></tbody></table></div></section>'
@@ -1700,7 +1695,7 @@ document.addEventListener('click', event => {
     document.querySelector('#ercImportFile').addEventListener('change', async (event) => {
       const file = event.target.files?.[0]; if (!file) return;
       importStatus('Читаю ' + file.name + ' (' + Math.round(file.size / 1024 / 1024) + ' МБ)…');
-      try { await new Promise((resolve) => setTimeout(resolve, 40)); parseErcFile(await file.text()); importStatus('Файл прочитано. Знайдено ' + ercState.rows.length + ' товарів у підтримуваних категоріях.'); renderErcPreview(); } catch (error) { ercState.rows = []; renderErcPreview(); importStatus(error.message || 'Не вдалося прочитати XML.', true); }
+      try { await new Promise((resolve) => setTimeout(resolve, 40)); parseErcFile(await file.text()); importStatus('Файл прочитано. Знайдено ' + ercState.rows.length + ' товарів із підкатегоріями ERC.'); renderErcPreview(); } catch (error) { ercState.rows = []; renderErcPreview(); importStatus(error.message || 'Не вдалося прочитати XML.', true); }
     });
     section.addEventListener('input', (event) => { if (event.target.matches('#ercImportLimit')) { event.target.value = Math.min(100, Math.max(1, Number(event.target.value || 1))); ercState.page = 1; renderErcPreview(); } });
     section.addEventListener('change', (event) => { if (event.target.matches('#ercImportScope')) { ercState.page = 1; renderErcPreview(); } if (event.target.matches('[data-erc-select]')) { event.target.checked ? ercState.selected.add(event.target.dataset.ercSelect) : ercState.selected.delete(event.target.dataset.ercSelect); renderErcPreview(); } });

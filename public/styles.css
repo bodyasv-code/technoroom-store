@@ -266,3 +266,25 @@
 .product-detail,.checkout-layout{background:#fff;border:1px solid #e3eaf3;border-radius:10px;padding:24px}
 .product-detail .button.primary,.checkout-page .button.primary{background:#0875e9;color:#fff}
 @media(max-width:900px){.shared-store-top{display:none}.store-shared-header .home-logo{min-width:auto}.store-shared-header .header-row{height:auto;flex-wrap:wrap;padding:10px 0}.store-shared-header .header-search{order:3;flex-basis:100%}.product-page>.container,.checkout-page>.container{width:calc(100% - 28px)}}
+
+/* Storefront v2: consistent visual system */
+body:not(.admin-body){background:#f5f8fc;color:#081b38}
+.store-shared-header{box-shadow:0 2px 10px rgba(8,27,56,.04)}
+.shared-cart-button{height:50px;display:flex!important;align-items:center;gap:7px;padding:0 14px!important;border-left:1px solid #e5ebf2!important;border-radius:0!important;font-weight:800}
+.shared-cart-button b{display:grid;place-items:center;min-width:18px;height:18px;padding:0 4px;background:#0875e9;color:#fff;border-radius:12px;font-size:9px}
+.catalog-page{padding-top:34px}
+.catalog-page h1,.checkout-page h1{font-size:40px;letter-spacing:-1.4px;margin:12px 0 24px}
+.catalog-page .breadcrumbs,.product-page .breadcrumbs,.checkout-page .breadcrumbs{color:#708095;font-size:11px}
+.catalog-page .filters{background:#fff;border:1px solid #e3eaf3;border-radius:10px;padding:16px;box-shadow:0 4px 18px rgba(8,27,56,.03)}
+.catalog-page .catalog-refine{border:0;padding:0}
+.catalog-page .catalog-refine:before{content:"Фільтри";display:block;font-size:18px;font-weight:800;margin-bottom:18px}
+.catalog-page .catalog-grid .product{background:#fff;border:1px solid #e3eaf3;border-radius:10px;box-shadow:0 4px 16px rgba(8,27,56,.025);overflow:hidden}
+.catalog-page .catalog-grid .product:hover{border-color:#b9d7f7;box-shadow:0 8px 24px rgba(8,27,56,.08)}
+.catalog-page .add-button{background:#0875e9!important;color:#fff!important;border-color:#0875e9!important;border-radius:6px!important}
+.checkout-page form,.checkout-summary{background:#fff;border:1px solid #e3eaf3;border-radius:10px;padding:24px}
+.checkout-page .checkout-layout{background:transparent;border:0;padding:0;gap:22px}
+.checkout-page input,.checkout-page textarea{border-radius:6px;border:1px solid #d8e1ec;background:#fff}
+.checkout-page h2{color:#10243e}
+.product-page .product-detail{box-shadow:0 6px 24px rgba(8,27,56,.04)}
+.catalog-mega{z-index:1000}
+@media(max-width:700px){.shared-cart-button span{display:none}.catalog-page h1,.checkout-page h1{font-size:30px}.store-shared-header .catalog-menu-toggle{padding:0 14px}}

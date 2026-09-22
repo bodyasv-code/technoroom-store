@@ -1506,6 +1506,7 @@ document.addEventListener('click', event => {
 // ERC XML: локальний попередній перегляд та безпечний імпорт за SKU.
 (() => {
   const ercState = { rows: [], selected: new Set() };
+  const ercImageHosts = new Set(['assets2.razerzone.com', 'd7qztf2ityad6.cloudfront.net', 'hp.widen.net', 'img06.en25.com', 'koss.com.ua', 'ssl-product-images.www8-hp.com', 'www.3ona51.com', 'www.hp.com', 'www.koss.com', 'yugcontract.ua']);
   const clean = (value = '') => String(value).replace(/\s+/g, ' ').trim();
   const sourceText = (node, tag) => node.querySelector(tag)?.textContent || '';
   const decodeHtml = (value = '') => {
@@ -1622,16 +1623,20 @@ document.addEventListener('click', event => {
     if (!chosen.length) return importStatus('Позначте хоча б один товар для імпорту.', true);
     if (chosen.length > 100) return importStatus('За один раз можна імпортувати до 100 товарів.', true);
     const existing = existingBySku(); const usedSlugs = new Set(state.products.map((item) => item.slug).filter(Boolean));
-    const newRows = []; const updates = []; const content = document.querySelector('#ercImportContent').checked;
+    const newRows = []; const updates = []; const content = document.querySelector('#ercImportContent').checked; const importImages = document.querySelector('#ercImportImages').checked;
     chosen.forEach((row) => {
       const category = mappedCategory(row); if (!category) return;
+      const sourceImages = importImages ? row.images.filter((link) => {
+        try { const url = new URL(link); return url.protocol === 'https:' && ercImageHosts.has(url.hostname); } catch { return false; }
+      }).slice(0, 6) : [];
       const present = existing.get(row.sku);
       if (present) {
         const payload = { category, price: row.price, stock_quantity: row.stock, in_stock: row.stock > 0, availability_status: row.stock > 0 ? 'in_stock' : 'out_of_stock' };
         if (content && (row.description || Object.keys(row.specifications).length)) { payload.description = row.description || present.description; payload.specifications = Object.keys(row.specifications).length ? row.specifications : present.specifications; }
+        if (sourceImages.length) { payload.image_path = sourceImages[0]; payload.image_paths = sourceImages; }
         updates.push({ id: present.id, payload });
       } else {
-        newRows.push({ name: row.name, slug: uniqueSlug(row.name, row.sku, usedSlugs), sku: row.sku, brand: deriveBrand(row.name, row.vendor), category, price: row.price, stock_quantity: row.stock, in_stock: row.stock > 0, availability_status: row.stock > 0 ? 'in_stock' : 'out_of_stock', description: row.description || null, specifications: row.specifications, image_path: null, is_active: false });
+        newRows.push({ name: row.name, slug: uniqueSlug(row.name, row.sku, usedSlugs), sku: row.sku, brand: deriveBrand(row.name, row.vendor), category, price: row.price, stock_quantity: row.stock, in_stock: row.stock > 0, availability_status: row.stock > 0 ? 'in_stock' : 'out_of_stock', description: row.description || null, specifications: row.specifications, image_path: sourceImages[0] || null, image_paths: sourceImages, is_active: false });
       }
     });
     if (!newRows.length && !updates.length) return importStatus('Не знайдено товарів із налаштованою категорією.', true);
@@ -1645,16 +1650,17 @@ document.addEventListener('click', event => {
     for (const item of updates) { const { error } = await supabase.from('products').update(item.payload).eq('id', item.id); if (error) failures.push('#' + item.id); else updated += 1; }
     await loadData(); ercState.selected.clear(); renderErcPreview();
     button.disabled = false; button.textContent = 'Імпортувати позначені';
-    importStatus('Готово: створено чернеток — ' + created + ', оновлено — ' + updated + (failures.length ? '. Не вдалося: ' + failures.join(', ') : '') + '. Фото не імпортувалися: зовнішні посилання залишилися лише у джерелі.', Boolean(failures.length));
+    const mediaNotice = importImages ? ' Фото з XML прив’язані до товарів і відображатимуться через сайт.' : ' Фото не імпортувалися.';
+    importStatus('Готово: створено чернеток — ' + created + ', оновлено — ' + updated + (failures.length ? '. Не вдалося: ' + failures.join(', ') : '') + '.' + mediaNotice, Boolean(failures.length));
   }
   function mountErcImport() {
     const anchor = document.querySelector('#products'); if (!anchor || document.querySelector('#ercImport')) return;
     anchor.insertAdjacentHTML('afterend', [
       '<section class="admin-section" id="ercImport">',
       '<div class="admin-title"><div><h2>Імпорт ERC XML</h2><span>Ціни, залишки, описи й характеристики за SKU</span></div></div>',
-      '<p class="recovery-help">Нові позиції створюються прихованими чернетками. Зовнішні фото не копіюються на сайт автоматично.</p>',
+      '<p class="recovery-help">Нові позиції створюються прихованими чернетками. Для фото з XML використовуються лише перевірені HTTPS-джерела виробників.</p>',
       '<div class="admin-controls"><input id="ercImportFile" type="file" accept=".xml,application/xml,text/xml"><select id="ercImportScope"><option value="all">Усі підтримувані категорії</option><option value="projector">Проєктори та екрани</option><option value="audio">Акустика й звук</option><option value="tv">Телевізори</option></select><input id="ercImportLimit" type="number" min="1" max="100" value="50" title="Скільки товарів показати"></div>',
-      '<div class="admin-controls"><button class="button outline" type="button" id="ercImportSelectNew">Позначити нові на сторінці</button><button class="button outline" type="button" id="ercImportClear">Очистити вибір</button><label class="check"><input id="ercImportContent" type="checkbox"> Оновлювати опис і характеристики наявних товарів</label><button class="button primary" type="button" id="ercImportApply">Імпортувати позначені</button></div>',
+      '<div class="admin-controls"><button class="button outline" type="button" id="ercImportSelectNew">Позначити нові на сторінці</button><button class="button outline" type="button" id="ercImportClear">Очистити вибір</button><label class="check"><input id="ercImportContent" type="checkbox"> Оновлювати опис і характеристики наявних товарів</label><label class="check"><input id="ercImportImages" type="checkbox"> Додавати фото з XML</label><button class="button primary" type="button" id="ercImportApply">Імпортувати позначені</button></div>',
       '<p class="admin-message" id="ercImportMessage" hidden></p><p class="recovery-help" id="ercImportSummary">Оберіть XML-файл, щоб побачити товари.</p>',
       '<div class="admin-table-wrap"><table><thead><tr><th></th><th>Товар / джерело</th><th>SKU</th><th>Категорія / медіа</th><th>Ціна / залишок</th><th>Дія</th></tr></thead><tbody id="ercImportRows"></tbody></table></div></section>'
     ].join(''));

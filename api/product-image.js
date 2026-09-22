@@ -13,7 +13,33 @@ const trustedHosts = new Set([
   'media4home.com.pl',
   'media.sonos.com',
   'images.samsung.com',
+  'assets2.razerzone.com',
+  'd7qztf2ityad6.cloudfront.net',
+  'hp.widen.net',
+  'img06.en25.com',
+  'koss.com.ua',
+  'ssl-product-images.www8-hp.com',
+  'www.3ona51.com',
+  'www.hp.com',
+  'www.koss.com',
+  'yugcontract.ua',
 ]);
+
+const fetchTrustedImage = async (url, redirectsLeft = 2) => {
+  const upstream = await fetch(url, {
+    headers: { 'User-Agent': 'TECHNOROOM image service' },
+    redirect: 'manual',
+  });
+
+  if (![301, 302, 303, 307, 308].includes(upstream.status)) return upstream;
+  if (!redirectsLeft) return null;
+
+  const location = upstream.headers.get('location');
+  if (!location) return null;
+  const next = new URL(location, url);
+  if (next.protocol !== 'https:' || !trustedHosts.has(next.hostname)) return null;
+  return fetchTrustedImage(next, redirectsLeft - 1);
+};
 
 export default async function handler(request, response) {
   const id = Number(request.query.id);
@@ -30,10 +56,11 @@ export default async function handler(request, response) {
 
   let url;
   try { url = new URL(product.image_path); } catch { return response.status(404).end('Image not found'); }
-  if (!trustedHosts.has(url.hostname)) return response.status(403).end('Image source not allowed');
+  if (url.protocol !== 'https:' || !trustedHosts.has(url.hostname)) return response.status(403).end('Image source not allowed');
 
   try {
-    const upstream = await fetch(url, { headers: { 'User-Agent': 'TECHNOROOM image service' } });
+    const upstream = await fetchTrustedImage(url);
+    if (!upstream) return response.status(403).end('Image redirect not allowed');
     if (!upstream.ok) return response.status(upstream.status).end('Image unavailable');
     const type = upstream.headers.get('content-type') || 'image/jpeg';
     if (!type.startsWith('image/')) return response.status(415).end('Invalid image');

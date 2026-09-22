@@ -1621,19 +1621,27 @@ document.addEventListener('click', event => {
     const xml = new DOMParser().parseFromString(text, 'application/xml');
     if (xml.querySelector('parsererror')) throw new Error('XML має помилку структури.');
     const rows = [];
-    xml.querySelectorAll('vendor > goods').forEach((goods, index) => {
-      const vendor = goods.parentElement?.getAttribute('name') || 'Постачальник ERC';
-      const name = displayName(sourceText(goods, 'gname')); const sku = normalizeSku(sourceText(goods, 'code'));
-      const sourceCategory = clean(sourceText(goods, 'category')); const subcategory = clean(sourceText(goods, 'subcategory'));
+    const goodsNodes = [...xml.querySelectorAll('goods, good, offer, product, item')].filter((node) =>
+      sourceText(node, 'gname') || sourceText(node, 'name') || sourceText(node, 'model')
+    );
+    goodsNodes.forEach((goods, index) => {
+      const vendorNode = goods.closest('vendor');
+      const vendor = vendorNode?.getAttribute('name') || sourceText(goods, 'vendor') || sourceText(goods, 'brand') || 'Постачальник ERC';
+      const name = displayName(sourceText(goods, 'gname') || sourceText(goods, 'name') || sourceText(goods, 'model'));
+      const sku = normalizeSku(sourceText(goods, 'code') || sourceText(goods, 'sku') || sourceText(goods, 'article') || goods.getAttribute('id'));
+      const sourceCategory = clean(sourceText(goods, 'category') || sourceText(goods, 'category_name') || sourceText(goods, 'group'));
+      const subcategory = clean(sourceText(goods, 'subcategory') || sourceText(goods, 'subcategory_name') || sourceText(goods, 'subgroup'));
       const source = sourceCategory + ' · ' + subcategory;
-      const comment = sourceText(goods, 'comment'); const shortDescription = sourceText(goods, 'a_desc');
+      const comment = sourceText(goods, 'comment') || sourceText(goods, 'description');
+      const shortDescription = sourceText(goods, 'a_desc') || sourceText(goods, 'short_description');
       const description = compactDescription(shortDescription) || compactDescription(comment);
       const kind = classify(source + ' ' + name);
-      const price = numeric(sourceText(goods, 'rprice'));
+      const price = numeric(sourceText(goods, 'rprice') || sourceText(goods, 'price'));
       if (!kind || !name || !sku || !price) return;
-      rows.push({ key: sku + '-' + index, vendor: clean(vendor), name, sku, source, sourceCategory, subcategory, kind, price, stockRaw: clean(sourceText(goods, 'stock')), stock: stock(sourceText(goods, 'stock')), description, specifications: extractSpecs(comment), images: getImageLinks(comment) });
+      rows.push({ key: sku + '-' + index, vendor: clean(vendor), name, sku, source, sourceCategory, subcategory, kind, price, stockRaw: clean(sourceText(goods, 'stock') || sourceText(goods, 'quantity') || sourceText(goods, 'qty')), stock: stock(sourceText(goods, 'stock') || sourceText(goods, 'quantity') || sourceText(goods, 'qty')), description, specifications: extractSpecs(comment), images: getImageLinks(comment) });
     });
     ercState.rows = rows; ercState.selected.clear(); ercState.page = 1;
+    if (!rows.length) throw new Error('XML прочитано, але підтримуваних товарів не знайдено. Перевірте, чи файл містить проєктори, проекційні екрани, аудіо або телевізори.');
   }
   const uniqueSlug = (name, sku, used) => {
     const root = productSlug(name) || 'erc-' + sku.toLowerCase().replace(/[^a-z0-9]+/g, '-');

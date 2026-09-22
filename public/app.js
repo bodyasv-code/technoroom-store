@@ -257,7 +257,7 @@ async function loadProducts() { try {
     if (data.length < pageSize) break;
   }
   if (all.length) products = all.map((item) => ({ id: item.id, name: item.name, description: item.description, price: Number(item.price), type: item.category, brand: item.brand, specifications: item.specifications, stock: item.in_stock && Number(item.stock_quantity || 0) > 0, image: item.image_path }));
-} catch (error) { console.warn('Не вдалося завантажити каталог із Supabase', error); } finally { mount(); await mountNestedSubcategoryMenu(); } }
+} catch (error) { console.warn('Не вдалося завантажити каталог із Supabase', error); } finally { mount(); await mountNestedSubcategoryMenu(); await mountMegaCatalog(); } }
 if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', loadProducts, { once: true });
 else loadProducts();
 
@@ -335,6 +335,25 @@ async function mountNestedSubcategoryMenu() {
       location.href = url.toString();
     });
   } catch (error) { console.warn('Не вдалося завантажити дерево категорій', error); }
+}
+async function mountMegaCatalog() {
+  const mega=document.getElementById('catalogMega'), rootsEl=document.getElementById('megaRoots'), childrenEl=document.getElementById('megaChildren');
+  if(!mega||!rootsEl||!childrenEl) return;
+  const {data:cats,error}=await supabase.from('categories').select('id,name,slug,parent_id,sort_order').eq('is_active',true).order('sort_order');
+  if(error||!cats?.length) return;
+  const ids=new Set(cats.map(c=>c.id)), roots=cats.filter(c=>!c.parent_id||!ids.has(c.parent_id));
+  const show=(root)=>{
+    rootsEl.querySelectorAll('button').forEach(b=>b.classList.toggle('active',b.dataset.slug===root.slug));
+    const kids=cats.filter(c=>c.parent_id===root.id);
+    childrenEl.innerHTML=`<div class="mega-title"><h2>${root.name}</h2><a href="catalog.html?category=${encodeURIComponent(root.slug)}">Усі товари →</a></div><div class="mega-grid">${kids.map(c=>`<a href="catalog.html?category=${encodeURIComponent(c.slug)}"><strong>${c.name}</strong><span>${products.filter(p=>p.type===c.slug).length} товарів</span></a>`).join('')}</div>`;
+  };
+  rootsEl.innerHTML=roots.map(r=>`<button type="button" data-slug="${r.slug}"><span>${r.name}</span><b>›</b></button>`).join('');
+  rootsEl.querySelectorAll('button').forEach(b=>{b.onmouseenter=b.onclick=()=>show(roots.find(r=>r.slug===b.dataset.slug));});
+  if(roots[0]) show(roots[0]);
+  document.getElementById('catalogMenuToggle').onclick=()=>{mega.hidden=!mega.hidden;};
+  const search=document.getElementById('headerCatalogSearch'), go=document.getElementById('headerCatalogSearchGo');
+  const run=()=>{const q=search.value.trim(); if(q) location.href='catalog.html?search='+encodeURIComponent(q);};
+  go.onclick=run; search.onkeydown=e=>{if(e.key==='Enter') run();};
 }
 /* Статус «Під замовлення»: товар можна оформити без складського залишку. */
 function availability(product) {

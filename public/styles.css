@@ -215,3 +215,9 @@
 .compact-header{position:relative}
 @media(max-width:900px){.header-search{display:none}.catalog-mega-inner{grid-template-columns:1fr;max-height:72vh;overflow:auto}.mega-roots{border-right:0;border-bottom:1px solid var(--line);padding:0 0 10px}.mega-grid{grid-template-columns:1fr 1fr}}
 @media(max-width:560px){.mega-grid{grid-template-columns:1fr}.catalog-menu-toggle{padding:10px 12px}}
+
+/* Catalog navigation lives exclusively in the header mega-menu. */
+.catalog-layout-no-sidebar{grid-template-columns:220px minmax(0,1fr)}
+.filters-only>button[data-category],.filters-only>.category-nest,.filters-only>p{display:none!important}
+.filters-only .catalog-refine{margin-top:0;border-top:0;padding-top:0}
+@media(max-width:780px){.catalog-layout-no-sidebar{grid-template-columns:1fr}.filters-only{margin-bottom:8px}}

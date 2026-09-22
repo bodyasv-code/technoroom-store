@@ -277,14 +277,11 @@ document.querySelectorAll('[data-close-dialog]').forEach((button) => { button.on
 ['#productSearch', '#productFilter']
   .forEach(selector => {
     const element = document.querySelector(selector);
-
     if (!element) return;
-
-    element.addEventListener(
-      'input',
-      renderProducts
-    );
+    element.addEventListener('input', () => { state.productPage = 1; renderProducts(); });
+    element.addEventListener('change', () => { state.productPage = 1; renderProducts(); });
   });
+document.querySelector('#pageSize')?.addEventListener('change', () => { state.productPage = 1; renderProducts(); });
 ['#orderSearch', '#orderFilter'].forEach((selector) => document.querySelector(selector).addEventListener('input', renderOrders));
 document.querySelector('#customerSearch')
   ?.addEventListener(
@@ -293,6 +290,13 @@ document.querySelector('#customerSearch')
   );
 document.addEventListener('click', async (event) => { const edit = event.target.closest('[data-edit-product]'); const category = event.target.closest('[data-edit-category]'); const order = event.target.closest('[data-view-order]'); const note = event.target.closest('[data-save-note]'); if (edit) showProductDialog(state.products.find((item) => item.id === Number(edit.dataset.editProduct))); if (category) showCategoryDialog(state.categories.find((item) => item.id === Number(category.dataset.editCategory))); if (order) showOrderDialog(order.dataset.viewOrder); if (note) { const { error } = await supabase.from('orders').update({ manager_note: document.querySelector('#managerNote').value }).eq('id', note.dataset.saveNote); if (error) return alert('Не вдалося зберегти нотатку.'); const current = state.orders.find((item) => item.id === Number(note.dataset.saveNote)); if (current) current.manager_note = document.querySelector('#managerNote').value; note.textContent = 'Збережено'; } });
 document.addEventListener('change', (event) => { if (event.target.matches('[data-status-order]')) updateOrderStatus(event.target.dataset.statusOrder, event.target.value); });
+document.addEventListener('click', (event) => {
+  const button = event.target.closest('[data-product-page]');
+  if (!button || button.disabled) return;
+  event.preventDefault();
+  state.productPage = Number(button.dataset.productPage);
+  renderProducts();
+});
 supabase.auth.onAuthStateChange((event) => { if (event === 'PASSWORD_RECOVERY') view('recovery'); });
 const recoveryType = new URLSearchParams(location.hash.slice(1)).get('type');
 supabase.auth.getSession().then(({ data: { session } }) => recoveryType === 'recovery' ? view('recovery') : session ? dashboard() : view('login'));
@@ -498,7 +502,26 @@ renderProducts = function () {
     if (filter === 'under_order' || filter === 'out_of_stock') return inventoryStatus(product) === filter;
     return true;
   });
-  document.querySelector('#adminProducts').innerHTML = products.length ? products.map((product) => {
+  const pageSizeControl = document.querySelector('#pageSize');
+  const pageSize = pageSizeControl?.value || '10';
+  const hasPagination = pageSize !== 'all';
+  const itemsPerPage = hasPagination ? Number(pageSize) : Math.max(products.length, 1);
+  const totalPages = Math.max(1, Math.ceil(products.length / itemsPerPage));
+  state.productPage = Math.min(Math.max(state.productPage || 1, 1), totalPages);
+  const firstItem = (state.productPage - 1) * itemsPerPage;
+  const visibleProducts = products.slice(firstItem, firstItem + itemsPerPage);
+  const pagination = document.querySelector('#productPagination');
+
+  if (pagination) {
+    const start = products.length ? firstItem + 1 : 0;
+    const end = Math.min(firstItem + itemsPerPage, products.length);
+    pagination.hidden = !products.length;
+    pagination.innerHTML = hasPagination && totalPages > 1
+      ? '<span>Показано ' + start + '–' + end + ' з ' + products.length + '</span><div><button type="button" data-product-page="' + (state.productPage - 1) + '"' + (state.productPage === 1 ? ' disabled' : '') + '>← Попередні</button><span>Сторінка ' + state.productPage + ' з ' + totalPages + '</span><button type="button" data-product-page="' + (state.productPage + 1) + '"' + (state.productPage === totalPages ? ' disabled' : '') + '>Наступні →</button></div>'
+      : '<span>Показано ' + start + '–' + end + ' з ' + products.length + '</span>';
+  }
+
+  document.querySelector('#adminProducts').innerHTML = visibleProducts.length ? visibleProducts.map((product) => {
     const quantity = inventoryQuantity(product);
     const status = inventoryStatus(product);
     const stockClass = status === 'under_order' ? 'stock-order' : quantity === 0 ? 'stock-zero' : quantity <= 3 ? 'stock-low' : 'stock-ok';

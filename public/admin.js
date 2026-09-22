@@ -1604,6 +1604,14 @@ document.addEventListener('click', event => {
       pagination.hidden = !ercState.rows.length || pages <= 1;
       pagination.innerHTML = pages > 1 ? '<button class="button outline" type="button" data-erc-page="previous" ' + (ercState.page === 1 ? 'disabled' : '') + '>← Попередні</button><span>Сторінка ' + ercState.page + ' з ' + pages + '</span><button class="button outline" type="button" data-erc-page="next" ' + (ercState.page === pages ? 'disabled' : '') + '>Наступні →</button>' : '';
     }
+    const selectPage = document.querySelector('#ercSelectPage');
+    if (selectPage) {
+      const selectable = rows.filter((row) => mappedCategory(row) && row.sku && row.price);
+      const selectedCount = selectable.filter((row) => ercState.selected.has(row.key)).length;
+      selectPage.checked = selectable.length > 0 && selectedCount === selectable.length;
+      selectPage.indeterminate = selectedCount > 0 && selectedCount < selectable.length;
+      selectPage.disabled = !selectable.length;
+    }
     body.innerHTML = rows.length ? rows.map((row) => {
       const current = existing.get(row.sku); const status = current ? 'Оновлення ціни, залишку й категорії' : 'Нова чернетка';
       const mapped = mappedCategory(row);
@@ -1688,7 +1696,7 @@ document.addEventListener('click', event => {
       '<div class="admin-controls"><input id="ercImportFile" type="file" accept=".xml,application/xml,text/xml"><select id="ercImportScope"><option value="all">Усі категорії ERC</option><option value="display">ТВ, відображення та оргтехніка</option><option value="business">Рішення для підприємств</option><option value="consumer">Споживча електроніка</option></select><input id="ercImportLimit" type="number" min="1" max="100" value="100" title="Максимум 100 товарів за один імпорт"></div>',
       '<div class="admin-controls"><button class="button outline" type="button" id="ercImportSelectNew">Позначити нові на сторінці</button><button class="button outline" type="button" id="ercImportSelectVisible">Позначити всі показані</button><button class="button outline" type="button" id="ercImportClear">Очистити вибір</button><label class="check"><input id="ercImportContent" type="checkbox"> Оновлювати опис і характеристики наявних товарів</label><label class="check"><input id="ercImportImages" type="checkbox"> Додавати фото з XML</label><button class="button primary" type="button" id="ercImportApply">Імпортувати позначені</button></div>',
       '<p class="admin-message" id="ercImportMessage" hidden></p><p class="recovery-help" id="ercImportSummary">Оберіть XML-файл, щоб побачити товари.</p><div class="admin-controls" id="ercImportPagination" hidden></div>',
-      '<div class="admin-table-wrap"><table><thead><tr><th></th><th>Товар / джерело</th><th>SKU</th><th>Категорія / медіа</th><th>Ціна / залишок</th><th>Дія</th></tr></thead><tbody id="ercImportRows"></tbody></table></div></section>'
+      '<div class="admin-table-wrap"><table><thead><tr><th><input id="ercSelectPage" type="checkbox" title="Вибрати всі товари на цій сторінці" aria-label="Вибрати всі товари на цій сторінці"></th><th>Товар / джерело</th><th>SKU</th><th>Категорія / медіа</th><th>Ціна / залишок</th><th>Дія</th></tr></thead><tbody id="ercImportRows"></tbody></table></div></section>'
     ].join(''));
     const section = document.querySelector('#ercImport');
     document.querySelector('.admin-nav').insertAdjacentHTML('beforeend', '<a href="#ercImport">Імпорт ERC XML</a>');
@@ -1698,7 +1706,7 @@ document.addEventListener('click', event => {
       try { await new Promise((resolve) => setTimeout(resolve, 40)); parseErcFile(await file.text()); importStatus('Файл прочитано. Знайдено ' + ercState.rows.length + ' товарів із підкатегоріями ERC.'); renderErcPreview(); } catch (error) { ercState.rows = []; renderErcPreview(); importStatus(error.message || 'Не вдалося прочитати XML.', true); }
     });
     section.addEventListener('input', (event) => { if (event.target.matches('#ercImportLimit')) { event.target.value = Math.min(100, Math.max(1, Number(event.target.value || 1))); ercState.page = 1; renderErcPreview(); } });
-    section.addEventListener('change', (event) => { if (event.target.matches('#ercImportScope')) { ercState.page = 1; renderErcPreview(); } if (event.target.matches('[data-erc-select]')) { event.target.checked ? ercState.selected.add(event.target.dataset.ercSelect) : ercState.selected.delete(event.target.dataset.ercSelect); renderErcPreview(); } });
+    section.addEventListener('change', (event) => { if (event.target.matches('#ercImportScope')) { ercState.page = 1; renderErcPreview(); } if (event.target.matches('#ercSelectPage')) { currentPageRows().forEach((row) => { if (!mappedCategory(row) || !row.sku || !row.price) return; event.target.checked ? ercState.selected.add(row.key) : ercState.selected.delete(row.key); }); renderErcPreview(); } if (event.target.matches('[data-erc-select]')) { event.target.checked ? ercState.selected.add(event.target.dataset.ercSelect) : ercState.selected.delete(event.target.dataset.ercSelect); renderErcPreview(); } });
     section.addEventListener('click', (event) => { const button = event.target.closest('[data-erc-page]'); if (!button) return; ercState.page += button.dataset.ercPage === 'next' ? 1 : -1; renderErcPreview(); });
     document.querySelector('#ercImportSelectNew').onclick = () => { const existing = existingBySku(); currentPageRows().forEach((row) => { if (!existing.has(row.sku) && mappedCategory(row)) ercState.selected.add(row.key); }); renderErcPreview(); };
     document.querySelector('#ercImportSelectVisible').onclick = () => { currentPageRows().forEach((row) => { if (mappedCategory(row)) ercState.selected.add(row.key); }); renderErcPreview(); };

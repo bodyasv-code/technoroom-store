@@ -446,62 +446,21 @@ checkout = () => {
 
   if (!form) return;
 
-  const items = cart
-    .map(item => ({
-      product: get(item.productId),
-      quantity: item.quantity
-    }))
-    .filter(item => item.product);
-
-  const total = items.reduce(
-    (sum, item) =>
-      sum + item.product.price * item.quantity,
-    0
-  );
-
-  const root =
-    document.getElementById('checkoutSummary');
-
-  root.innerHTML = items.length
-    ? items.map(item => `
-      <div class="checkout-item">
-
-        <span>
-          ${item.product.name}
-        </span>
-
-        <small>
-          Ціна за одиницю:
-          ${money(item.product.price)}
-        </small>
-
-        <small>
-          Кількість:
-          ${item.quantity}
-        </small>
-
-        <strong>
-          ${money(
-            item.product.price *
-            item.quantity
-          )}
-        </strong>
-
-      </div>
-    `).join('') + `
-      <div class="checkout-total">
-        <span>Разом</span>
-        <strong>${money(total)}</strong>
-      </div>
-    `
-    : `
-      <p>
-        Ваш кошик порожній.
-        <a href="catalog.html">
-          Перейти до каталогу
-        </a>
-      </p>
-    `;
+  const root=document.getElementById('checkoutSummary');
+  const renderSummary=()=>{
+    const items=cart.map((entry,index)=>({product:get(Number(entry.productId)),quantity:Number(entry.quantity||1),index})).filter(x=>x.product);
+    const total=items.reduce((sum,x)=>sum+x.product.price*x.quantity,0);
+    root.innerHTML=items.length?items.map(({product,quantity,index})=>{const src=imageUrl(product);return `<div class="checkout-item checkout-item-editable">
+      <a class="checkout-item-thumb" href="product.html?id=${product.id}">${src?`<img src="${src}" alt="${catalogCardEscape(product.name)}">`:'<span>Фото</span>'}</a>
+      <div class="checkout-item-info"><a href="product.html?id=${product.id}">${catalogCardEscape(product.name)}</a><small>${money(product.price)} / шт.</small><div class="checkout-mini-qty"><button type="button" data-checkout-minus="${index}">−</button><b>${quantity}</b><button type="button" data-checkout-plus="${index}">+</button></div></div>
+      <div class="checkout-item-price"><strong>${money(product.price*quantity)}</strong><button type="button" data-checkout-remove="${index}" aria-label="Видалити">✕</button></div>
+    </div>`}).join('')+`<div class="checkout-summary-count"><span>Товари (${items.reduce((n,x)=>n+x.quantity,0)})</span><b>${money(total)}</b></div><div class="checkout-total"><span>До сплати</span><strong>${money(total)}</strong></div>`:'<div class="checkout-empty"><b>Кошик порожній</b><a href="catalog.html">Перейти до каталогу →</a></div>';
+    const setQty=(i,q)=>{if(!cart[i])return;cart[i].quantity=Math.max(1,Math.min(99,q));save();renderCart();renderSummary()};
+    root.querySelectorAll('[data-checkout-minus]').forEach(b=>b.onclick=()=>setQty(+b.dataset.checkoutMinus,Number(cart[+b.dataset.checkoutMinus].quantity||1)-1));
+    root.querySelectorAll('[data-checkout-plus]').forEach(b=>b.onclick=()=>setQty(+b.dataset.checkoutPlus,Number(cart[+b.dataset.checkoutPlus].quantity||1)+1));
+    root.querySelectorAll('[data-checkout-remove]').forEach(b=>b.onclick=()=>{cart.splice(+b.dataset.checkoutRemove,1);save();renderCart();renderSummary()});
+  };
+  renderSummary();
 
   const deliveryRadios=form.querySelectorAll('[name="deliveryMethod"]'), addressLabel=document.getElementById('deliveryAddressLabel'), companyToggle=document.getElementById('companyOrder'), companyFields=document.getElementById('companyFields');
   const updateDelivery=()=>{const method=form.querySelector('[name="deliveryMethod"]:checked')?.value; const input=addressLabel?.querySelector('input'); if(!addressLabel||!input)return; if(method==='nova_poshta'){addressLabel.firstChild.textContent='Відділення / поштомат';input.placeholder='№ відділення або поштомату';input.required=true}else if(method==='courier'){addressLabel.firstChild.textContent='Адреса доставки';input.placeholder='Вулиця, будинок, квартира';input.required=true}else{addressLabel.firstChild.textContent='Деталі самовивозу';input.placeholder='Необов’язково';input.required=false}};
@@ -511,16 +470,9 @@ checkout = () => {
 
     event.preventDefault();
 
-    if (
-      items.some(
-        item =>
-          !availability(item.product).orderable
-      )
-    ) {
-      return alert(
-        'У кошику є недоступний товар.'
-      );
-    }
+    const currentItems=cart.map(entry=>({product:get(Number(entry.productId)),quantity:Number(entry.quantity||1)})).filter(x=>x.product);
+    if (!currentItems.length) return alert('Кошик порожній.');
+    if (currentItems.some(item=>!availability(item.product).orderable)) return alert('У кошику є недоступний товар.');
 
     const data =
       Object.fromEntries(

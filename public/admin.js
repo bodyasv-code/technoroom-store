@@ -1647,7 +1647,8 @@ document.addEventListener('click', event => {
     if (!rows.length) throw new Error('XML прочитано, але товарів із підкатегоріями не знайдено.');
   }
   const uniqueSlug = (name, sku, used) => {
-    const root = productSlug(name) || 'erc-' + sku.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+    const safeSku = sku.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+    const root = (productSlug(name) || 'erc') + '-' + (safeSku || 'item');
     let slug = root; let number = 2;
     while (used.has(slug)) { slug = root + '-' + number; number += 1; }
     used.add(slug); return slug;

@@ -375,55 +375,22 @@ add = (id) => {
   renderCart();
 };
 renderCart = () => {
-  const count = document.getElementById('cartCount');
-
-  if (count) {
-    count.textContent = cart.length;
-  }
-
-  const root = document.getElementById('cartItems');
-  const total = document.getElementById('cartTotal');
-  const checkoutButton = document.getElementById('checkoutButton');
-
-  if (!root) return;
-
-  const grouped = {};
-
-  cart.forEach(id => {
-    grouped[id] = (grouped[id] || 0) + 1;
-  });
-
-  const items = Object.entries(grouped)
-    .map(([id, quantity]) => ({
-      product: get(Number(id)),
-      quantity
-    }))
-    .filter(item => item.product);
-
-  root.innerHTML = items.length
-    ? items.map(({ product, quantity }) => `
-      <div class="cart-item">
-        <b>${product.name}</b>
-        <strong>${money(product.price * quantity)}</strong>
-        <span>${availability(product).label}</span>
-        <small>Кількість: ${quantity}</small>
-      </div>
-    `).join('')
-    : '<p class="empty-cart">Кошик поки порожній.</p>';
-
-  if (total) {
-    total.textContent = money(
-      items.reduce(
-        (sum, item) =>
-          sum + item.product.price * item.quantity,
-        0
-      )
-    );
-  }
-
-  if (checkoutButton) {
-    checkoutButton.disabled = !items.length;
-  }
+  const count=document.getElementById('cartCount'),root=document.getElementById('cartItems'),total=document.getElementById('cartTotal'),checkoutButton=document.getElementById('checkoutButton');
+  const quantityTotal=cart.reduce((sum,e)=>sum+Number(e.quantity||1),0); if(count)count.textContent=quantityTotal; if(!root)return;
+  const items=cart.map((entry,index)=>({product:get(Number(entry.productId??entry)),quantity:Number(entry.quantity||1),index})).filter(x=>x.product);
+  root.innerHTML=items.length?items.map(({product,quantity,index})=>{const state=availability(product),src=imageUrl(product);return `
+    <div class="cart-item cart-item-rich">
+      <a class="cart-thumb" href="product.html?id=${product.id}">${src?`<img src="${src}" alt="${catalogCardEscape(product.name)}">`:'<span>Фото</span>'}</a>
+      <div class="cart-item-main"><a href="product.html?id=${product.id}" class="cart-item-name">${catalogCardEscape(product.name)}</a><span class="cart-item-stock">${state.label}</span><div class="cart-qty"><button type="button" data-cart-minus="${index}" aria-label="Зменшити">−</button><input type="number" min="1" max="99" value="${quantity}" data-cart-qty="${index}"><button type="button" data-cart-plus="${index}" aria-label="Збільшити">+</button></div></div>
+      <div class="cart-item-side"><strong>${money(product.price*quantity)}</strong><small>${money(product.price)} / шт.</small><button type="button" class="cart-remove" data-cart-remove="${index}">Видалити</button></div>
+    </div>`}).join(''):'<div class="cart-empty-state"><b>Кошик порожній</b><span>Додайте товари з каталогу</span><a href="catalog.html">Перейти до каталогу →</a></div>';
+  const sum=items.reduce((acc,x)=>acc+x.product.price*x.quantity,0); if(total)total.textContent=money(sum); if(checkoutButton)checkoutButton.disabled=!items.length;
+  const updateQty=(i,q)=>{if(!cart[i])return;cart[i].quantity=Math.max(1,Math.min(99,Number(q)||1));save();renderCart()};
+  root.querySelectorAll('[data-cart-minus]').forEach(b=>b.onclick=()=>updateQty(Number(b.dataset.cartMinus),Number(cart[Number(b.dataset.cartMinus)]?.quantity||1)-1));
+  root.querySelectorAll('[data-cart-plus]').forEach(b=>b.onclick=()=>updateQty(Number(b.dataset.cartPlus),Number(cart[Number(b.dataset.cartPlus)]?.quantity||1)+1));
+  root.querySelectorAll('[data-cart-qty]').forEach(input=>input.onchange=()=>updateQty(Number(input.dataset.cartQty),input.value));
+  root.querySelectorAll('[data-cart-remove]').forEach(b=>b.onclick=()=>{cart.splice(Number(b.dataset.cartRemove),1);save();renderCart()});
+  let tools=root.parentElement?.querySelector('.cart-tools'); if(items.length&&!tools){tools=document.createElement('div');tools.className='cart-tools';tools.innerHTML='<button type="button" id="cartClear">Очистити кошик</button><a href="catalog.html">+ Продовжити покупки</a>';root.after(tools);tools.querySelector('#cartClear').onclick=()=>{cart.length=0;save();renderCart();tools.remove()}} else if(!items.length&&tools)tools.remove();
 };
 const catalogCardEscape = (value) => String(value ?? '').replace(/[&<>\"]/g, (character) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[character]);
 card = (product) => {

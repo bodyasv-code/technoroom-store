@@ -503,6 +503,10 @@ checkout = () => {
       </p>
     `;
 
+  const deliveryRadios=form.querySelectorAll('[name="deliveryMethod"]'), addressLabel=document.getElementById('deliveryAddressLabel'), companyToggle=document.getElementById('companyOrder'), companyFields=document.getElementById('companyFields');
+  const updateDelivery=()=>{const method=form.querySelector('[name="deliveryMethod"]:checked')?.value; const input=addressLabel?.querySelector('input'); if(!addressLabel||!input)return; if(method==='nova_poshta'){addressLabel.firstChild.textContent='Відділення / поштомат';input.placeholder='№ відділення або поштомату';input.required=true}else if(method==='courier'){addressLabel.firstChild.textContent='Адреса доставки';input.placeholder='Вулиця, будинок, квартира';input.required=true}else{addressLabel.firstChild.textContent='Деталі самовивозу';input.placeholder='Необов’язково';input.required=false}};
+  deliveryRadios.forEach(r=>r.onchange=updateDelivery); updateDelivery();
+  if(companyToggle)companyToggle.onchange=()=>{companyFields.hidden=!companyToggle.checked;companyFields.querySelectorAll('input').forEach(i=>i.required=companyToggle.checked)};
   form.onsubmit = async (event) => {
 
     event.preventDefault();
@@ -549,10 +553,13 @@ checkout = () => {
             },
 
             delivery: {
+              method: data.deliveryMethod,
               city: data.city,
               address: data.address,
               comment: data.comment
             },
+            payment: { method: data.paymentMethod },
+            company: data.companyOrder ? { name: data.companyName, code: data.companyCode } : null,
 
             items: cart.map(item => ({
               productId: item.productId,

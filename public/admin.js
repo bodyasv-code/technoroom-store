@@ -6,6 +6,7 @@ const statusNames = { new: 'Нове', confirmed: 'Підтверджено', pa
 const money = (value) => `${new Intl.NumberFormat('uk-UA', { maximumFractionDigits: 2 }).format(Number(value || 0))} ₴`;
 const date = (value) => new Intl.DateTimeFormat('uk-UA', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(value));
 const escape = (value = '') => String(value).replace(/[&<>'"]/g, (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[char]));
+const searchText = (value = '') => String(value ?? '').toLocaleLowerCase('uk-UA').replace(/[ʼ'’`]/g, '').replace(/[\s_\-–—/.,]+/g, '');
 const view = (name) => document.querySelectorAll('[data-view]').forEach((item) => { item.hidden = item.dataset.view !== name; });
 const notice = (text, error = false) => { const node = document.querySelector('#notice'); node.textContent = text; node.hidden = false; node.classList.toggle('error', error); };
 const lowStock = (product) => Number(product.stock_quantity ?? (product.in_stock ? 10 : 0)) <= 3;
@@ -280,6 +281,7 @@ document.querySelectorAll('[data-close-dialog]').forEach((button) => { button.on
     if (!element) return;
     element.addEventListener('input', () => { state.productPage = 1; renderProducts(); });
     element.addEventListener('change', () => { state.productPage = 1; renderProducts(); });
+    element.addEventListener('search', () => { state.productPage = 1; renderProducts(); });
   });
 document.querySelector('#pageSize')?.addEventListener('change', () => { state.productPage = 1; renderProducts(); });
 ['#orderSearch', '#orderFilter'].forEach((selector) => document.querySelector(selector).addEventListener('input', renderOrders));
@@ -494,10 +496,12 @@ renderProducts = function () {
   const productTable = document.querySelector('#adminProducts')?.closest('table');
   const header = productTable?.querySelector('thead tr');
   if (header && header.children.length === 6) header.children[4].insertAdjacentHTML('beforebegin', '<th>Наявність</th>');
-  const term = document.querySelector('#productSearch').value.trim().toLowerCase();
+  const searchInput = document.querySelector('#productSearch');
+  const searchValue = searchInput.value.trim();
+  const term = searchText(searchValue);
   const filter = filterControl?.value || 'all';
   const products = state.products.filter((product) => {
-    const haystack = [product.name, product.brand, product.sku, product.category].join(' ').toLowerCase();
+    const haystack = searchText([product.id, product.name, product.brand, product.sku, product.slug, product.category].join(' '));
     if (term && !haystack.includes(term)) return false;
     if (filter === 'active') return product.is_active;
     if (filter === 'draft') return !product.is_active;
@@ -527,12 +531,16 @@ renderProducts = function () {
       : '<span>Показано ' + start + '–' + end + ' з ' + products.length + '</span>';
   }
 
+  const filterName = filterControl?.selectedOptions?.[0]?.textContent?.trim() || 'поточному фільтрі';
+  const emptyMessage = searchValue
+    ? 'За запитом «' + escape(searchValue) + '» у фільтрі «' + escape(filterName) + '» товарів не знайдено.'
+    : 'Товарів за цим фільтром немає';
   document.querySelector('#adminProducts').innerHTML = visibleProducts.length ? visibleProducts.map((product) => {
     const quantity = inventoryQuantity(product);
     const status = inventoryStatus(product);
     const stockClass = status === 'under_order' ? 'stock-order' : quantity === 0 ? 'stock-zero' : quantity <= 3 ? 'stock-low' : 'stock-ok';
     return '<tr><td><b>' + escape(product.name) + '</b><small>' + escape(product.brand || 'Без бренду') + '</small></td><td><b>' + escape(product.sku || '—') + '</b><small>' + escape(product.category) + '</small></td><td>' + money(product.price) + '</td><td><span class="stock-badge ' + stockClass + '">' + (status === 'under_order' ? 'під замовлення' : quantity + ' шт.') + '</span></td><td><span class="inventory-badge inventory-' + status + '">' + inventoryLabels[status] + '</span></td><td><span class="visibility ' + (product.is_active ? 'visible' : 'hidden-status') + '">' + (product.is_active ? 'У каталозі' : 'Приховано') + '</span></td><td class="table-actions"><button data-edit-product="' + product.id + '">Редагувати</button></td></tr>';
-  }).join('') : '<tr><td class="empty-row" colspan="7">Товарів за цим фільтром немає</td></tr>';
+  }).join('') : '<tr><td class="empty-row" colspan="7">' + emptyMessage + '</td></tr>';
 };
 const originalShowProductForInventory = showProductDialog;
 showProductDialog = function (product = null) {

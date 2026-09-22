@@ -21,7 +21,7 @@
         <div class="catalog-refine">
           <label>Пошук<input id="catalogSearch" type="search" placeholder="Назва або бренд"></label>
           <label>Бренд<select id="brandFilter"><option value="">Усі бренди</option></select></label>
-          <label>Ціна до, ₴<input id="priceFilter" type="number" min="0" placeholder="Без обмежень"></label>
+          <label class="price-range-label">Ціна, ₴<div class="price-values"><input id="priceMin" type="number" min="0" value="0"><input id="priceFilter" type="number" min="0"></div><input id="priceRange" class="price-range" type="range" min="0" max="100000" value="100000" step="100"><span class="price-range-caption" id="priceRangeCaption"></span></label>
           <label class="check"><input id="stockFilter" type="checkbox"> Лише в наявності</label>
           <button type="button" id="clearCatalogFilters" class="clear-filters">Скинути фільтри</button>
         </div>

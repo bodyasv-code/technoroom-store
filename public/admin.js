@@ -477,6 +477,9 @@ const inventoryLabels = {
 };
 const inventoryStatus = (product) => product.availability_status || ((product.in_stock && Number(product.stock_quantity || 0) > 0) ? 'in_stock' : 'out_of_stock');
 const inventoryQuantity = (product) => Number(product.stock_quantity ?? (product.in_stock ? 10 : 0));
+const hasProductImage = (product) => Boolean(String(product.image_path || '').trim() || (Array.isArray(product.image_paths) && product.image_paths.length));
+const hasProductDescription = (product) => Boolean(String(product.description || '').trim());
+const hasProductSpecifications = (product) => Boolean(product.specifications && typeof product.specifications === 'object' && Object.keys(product.specifications).length);
 const originalRenderMetricsForInventory = renderMetrics;
 renderMetrics = function () {
   originalRenderMetricsForInventory();
@@ -500,6 +503,9 @@ renderProducts = function () {
     if (filter === 'draft') return !product.is_active;
     if (filter === 'low') return inventoryStatus(product) === 'in_stock' && inventoryQuantity(product) <= 3;
     if (filter === 'under_order' || filter === 'out_of_stock') return inventoryStatus(product) === filter;
+    if (filter === 'no_image') return !hasProductImage(product);
+    if (filter === 'no_description') return !hasProductDescription(product);
+    if (filter === 'no_specifications') return !hasProductSpecifications(product);
     return true;
   });
   const pageSizeControl = document.querySelector('#pageSize');
@@ -1667,3 +1673,37 @@ document.addEventListener('click', event => {
   }
   mountErcImport();
 })();
+
+/* Черга заповнення каталогу: швидкий шлях до товарів, яким бракує контенту. */
+const catalogReadinessStyle = document.createElement('style');
+catalogReadinessStyle.textContent = '.catalog-readiness{grid-column:1/-1}.catalog-readiness__checks{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}.catalog-readiness__check{display:flex;align-items:center;justify-content:space-between;gap:10px;width:100%;padding:12px;border:1px solid #e0e6dc;background:#f5f7f2;color:#102b28;text-align:left;font:700 12px Manrope;cursor:pointer;transition:background .18s,border-color .18s}.catalog-readiness__check:hover{border-color:#b8c79f;background:#eff6de}.catalog-readiness__check b{display:block;font:700 22px/1 "Space Grotesk"}.catalog-readiness__check span{display:block;margin-top:4px;color:#68766f;font-size:11px;font-weight:600}.catalog-readiness__check i{font-style:normal;color:#688400;font-size:18px}@media(max-width:700px){.catalog-readiness__checks{grid-template-columns:1fr}.catalog-readiness__check{padding:13px}}';
+document.head.append(catalogReadinessStyle);
+
+const renderDashboardReportsWithReadiness = renderDashboardReports;
+renderDashboardReports = (items) => {
+  renderDashboardReportsWithReadiness(items);
+  const section = document.querySelector('#dashboardReports');
+  if (!section) return;
+
+  const checks = [
+    { filter: 'no_image', label: 'Без фото', count: state.products.filter((product) => !hasProductImage(product)).length },
+    { filter: 'no_description', label: 'Без опису', count: state.products.filter((product) => !hasProductDescription(product)).length },
+    { filter: 'no_specifications', label: 'Без характеристик', count: state.products.filter((product) => !hasProductSpecifications(product)).length }
+  ];
+
+  const card = document.createElement('article');
+  card.className = 'dashboard-report catalog-readiness';
+  card.innerHTML = '<h2>Заповнення каталогу</h2><p>Оберіть пункт, щоб одразу відкрити список товарів для доопрацювання.</p><div class="catalog-readiness__checks">' + checks.map((check) => '<button class="catalog-readiness__check" type="button" data-catalog-readiness="' + check.filter + '"><span><b>' + check.count + '</b><span>' + check.label + '</span></span><i>→</i></button>').join('') + '</div>';
+  section.append(card);
+};
+
+document.addEventListener('click', (event) => {
+  const action = event.target.closest('[data-catalog-readiness]');
+  if (!action) return;
+  const filter = document.querySelector('#productFilter');
+  if (!filter) return;
+  filter.value = action.dataset.catalogReadiness;
+  state.productPage = 1;
+  renderProducts();
+  location.hash = 'products';
+});

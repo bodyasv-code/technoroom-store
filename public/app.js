@@ -45,21 +45,34 @@ function card(product) { return `<article class="product"><div class="product-im
 function bind(root = document) { root.querySelectorAll('[data-add]').forEach((button) => button.onclick = () => add(button.dataset.add)); root.querySelectorAll('.product-image img').forEach((image) => image.onclick = () => openLightbox(image.currentSrc || image.src, image.alt)); }
 async function home() {
   const root=document.getElementById('productGrid'); if(!root) return;
-  root.innerHTML=products.slice(0,6).map(card).join(''); bind(root);
-  const list=document.getElementById('homeCategoryList'), cards=document.getElementById('homeCategoryCards');
+  let homeProducts=[...products];
+  const cards=document.getElementById('homeCategoryCards');
   try {
     const {data:cats}=await supabase.from('categories').select('id,name,slug,parent_id,sort_order').eq('is_active',true).order('sort_order');
     if(cats?.length){
       const ids=new Set(cats.map(c=>c.id)), roots=cats.filter(c=>!c.parent_id||!ids.has(c.parent_id));
-      list.innerHTML=roots.slice(0,12).map(c=>`<a href="catalog.html?category=${encodeURIComponent(c.slug)}"><span>▣</span><b>${escapeHtml(c.name)}</b><i>›</i></a>`).join('');
-      cards.innerHTML=roots.slice(0,8).map(c=>`<a href="catalog.html?category=${encodeURIComponent(c.slug)}"><div class="home-cat-visual">▣</div><b>${escapeHtml(c.name)}</b><span>Переглянути →</span></a>`).join('');
+      if(cards) cards.innerHTML=roots.slice(0,8).map(c=>`<a href="catalog.html?category=${encodeURIComponent(c.slug)}"><div class="home-cat-visual">▣</div><b>${escapeHtml(c.name)}</b><span>Переглянути →</span></a>`).join('');
     }
   } catch(e){ console.warn('Категорії головної',e); }
-  const toggle=document.getElementById('homeCatalogToggle'), panel=document.getElementById('homeCatPanel');
-  if(toggle&&panel) toggle.onclick=()=>panel.classList.toggle('mobile-open');
+  const renderHome=()=>{
+    const q=(document.getElementById('homeSideSearch')?.value||'').trim().toLowerCase();
+    const max=Number(document.getElementById('homePriceMax')?.value||0);
+    const stockOnly=document.getElementById('homeStockOnly')?.checked;
+    const sort=document.getElementById('homeSort')?.value||'popular';
+    let rows=homeProducts.filter(p=>(!q||[p.name,p.brand,p.description].some(v=>String(v||'').toLowerCase().includes(q)))&&(!max||p.price<=max)&&(!stockOnly||p.stock));
+    if(sort==='price-asc') rows.sort((a,b)=>a.price-b.price);
+    if(sort==='price-desc') rows.sort((a,b)=>b.price-a.price);
+    if(sort==='name') rows.sort((a,b)=>a.name.localeCompare(b.name,'uk'));
+    root.innerHTML=rows.slice(0,6).map(card).join(''); bind(root);
+  };
+  renderHome();
+  const side=document.getElementById('homeSideSearch'), sideGo=document.getElementById('homeSideSearchGo'), apply=document.getElementById('homeApplyFilters');
+  if(sideGo) sideGo.onclick=renderHome; if(apply) apply.onclick=renderHome; if(side) side.onkeydown=e=>{if(e.key==='Enter')renderHome();};
   const search=document.getElementById('homeSearch'), go=document.getElementById('homeSearchGo');
-  const run=()=>{const q=search?.value.trim(); if(q) location.href='catalog.html?search='+encodeURIComponent(q);};
+  const run=()=>{const q=search?.value.trim(); location.href='catalog.html'+(q?'?search='+encodeURIComponent(q):'');};
   if(go) go.onclick=run; if(search) search.onkeydown=e=>{if(e.key==='Enter')run();};
+  const toggle=document.getElementById('homeCatalogToggle');
+  if(toggle) toggle.onclick=()=>{ location.href='catalog.html?menu=open'; };
 }
 function categoryMatch(product, category) { return product.type === category || (categoryChildren.get(category) || []).includes(product.type); }
 function catalog() {

@@ -42,7 +42,24 @@ function add(id) { const product = get(id); if (!product?.stock) return; cart.pu
 function renderCart() { const count = document.getElementById('cartCount'); if (count) count.textContent = cart.length; const root = document.getElementById('cartItems'), total = document.getElementById('cartTotal'), checkoutButton = document.getElementById('checkoutButton'); if (!root) return; const items = cart.map((id, index) => ({ product: get(id), index })).filter((item) => item.product); root.innerHTML = items.length ? items.map(({ product, index }) => `<div class="cart-item"><b>${product.name}</b><strong>${money(product.price)}</strong><span>${product.stock ? 'В наявності' : 'Немає в наявності'}</span><button class="remove" data-remove="${index}">Прибрати</button></div>`).join('') : '<p class="empty-cart">Кошик поки порожній.</p>'; if (total) total.textContent = money(items.reduce((sum, item) => sum + item.product.price, 0)); if (checkoutButton) checkoutButton.disabled = !items.length; root.querySelectorAll('[data-remove]').forEach((button) => button.onclick = () => { cart.splice(Number(button.dataset.remove), 1); save(); renderCart(); }); }
 function card(product) { return `<article class="product"><div class="product-image ${product.type}">${image(product)}</div><h3><a href="product.html?id=${product.id}">${product.name}</a></h3><p class="availability">${product.stock ? 'В наявності' : 'Немає в наявності'}</p><p>${product.description || ''}</p><div class="product-footer"><strong class="price">${money(product.price)}</strong><button class="add-button" data-add="${product.id}" ${product.stock ? '' : 'disabled'}>${product.stock ? 'У кошик' : 'Немає'}</button></div></article>`; }
 function bind(root = document) { root.querySelectorAll('[data-add]').forEach((button) => button.onclick = () => add(button.dataset.add)); root.querySelectorAll('.product-image img').forEach((image) => image.onclick = () => openLightbox(image.currentSrc || image.src, image.alt)); }
-function home() { const root = document.getElementById('productGrid'); if (root) { root.innerHTML = products.slice(0, 4).map(card).join(''); bind(root); } }
+async function home() {
+  const root=document.getElementById('productGrid'); if(!root) return;
+  root.innerHTML=products.slice(0,6).map(card).join(''); bind(root);
+  const list=document.getElementById('homeCategoryList'), cards=document.getElementById('homeCategoryCards');
+  try {
+    const {data:cats}=await supabase.from('categories').select('id,name,slug,parent_id,sort_order').eq('is_active',true).order('sort_order');
+    if(cats?.length){
+      const ids=new Set(cats.map(c=>c.id)), roots=cats.filter(c=>!c.parent_id||!ids.has(c.parent_id));
+      list.innerHTML=roots.slice(0,12).map(c=>`<a href="catalog.html?category=${encodeURIComponent(c.slug)}"><span>▣</span><b>${escape(c.name)}</b><i>›</i></a>`).join('');
+      cards.innerHTML=roots.slice(0,8).map(c=>`<a href="catalog.html?category=${encodeURIComponent(c.slug)}"><div class="home-cat-visual">▣</div><b>${escape(c.name)}</b><span>Переглянути →</span></a>`).join('');
+    }
+  } catch(e){ console.warn('Категорії головної',e); }
+  const toggle=document.getElementById('homeCatalogToggle'), panel=document.getElementById('homeCatPanel');
+  if(toggle&&panel) toggle.onclick=()=>panel.classList.toggle('mobile-open');
+  const search=document.getElementById('homeSearch'), go=document.getElementById('homeSearchGo');
+  const run=()=>{const q=search?.value.trim(); if(q) location.href='catalog.html?search='+encodeURIComponent(q);};
+  if(go) go.onclick=run; if(search) search.onkeydown=e=>{if(e.key==='Enter')run();};
+}
 function categoryMatch(product, category) { return product.type === category || (categoryChildren.get(category) || []).includes(product.type); }
 function catalog() {
 

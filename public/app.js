@@ -45,34 +45,36 @@ function card(product) { return `<article class="product"><div class="product-im
 function bind(root = document) { root.querySelectorAll('[data-add]').forEach((button) => button.onclick = () => add(button.dataset.add)); root.querySelectorAll('.product-image img').forEach((image) => image.onclick = () => openLightbox(image.currentSrc || image.src, image.alt)); }
 async function home() {
   const root=document.getElementById('productGrid'); if(!root) return;
-  let homeProducts=[...products];
+  let homeProducts=[...products], cats=[];
   const cards=document.getElementById('homeCategoryCards');
   try {
-    const {data:cats}=await supabase.from('categories').select('id,name,slug,parent_id,sort_order').eq('is_active',true).order('sort_order');
-    if(cats?.length){
+    const res=await supabase.from('categories').select('id,name,slug,parent_id,sort_order').eq('is_active',true).order('sort_order');
+    cats=res.data||[];
+    if(cats.length){
       const ids=new Set(cats.map(c=>c.id)), roots=cats.filter(c=>!c.parent_id||!ids.has(c.parent_id));
       if(cards) cards.innerHTML=roots.slice(0,8).map(c=>`<a href="catalog.html?category=${encodeURIComponent(c.slug)}"><div class="home-cat-visual">▣</div><b>${escapeHtml(c.name)}</b><span>Переглянути →</span></a>`).join('');
+      const mega=document.getElementById('homeCatalogMega'), rootsEl=document.getElementById('homeMegaRoots'), childrenEl=document.getElementById('homeMegaChildren'), toggle=document.getElementById('homeCatalogToggle');
+      if(mega&&rootsEl&&childrenEl&&toggle){
+        const show=r=>{rootsEl.querySelectorAll('button').forEach(b=>b.classList.toggle('active',b.dataset.slug===r.slug)); const kids=cats.filter(c=>c.parent_id===r.id); childrenEl.innerHTML=`<div class="mega-title"><h2>${escapeHtml(r.name)}</h2><a href="catalog.html?category=${encodeURIComponent(r.slug)}">Усі товари →</a></div><div class="mega-grid">${kids.map(c=>`<a href="catalog.html?category=${encodeURIComponent(c.slug)}"><strong>${escapeHtml(c.name)}</strong><span>${homeProducts.filter(p=>p.type===c.slug).length} товарів</span></a>`).join('')}</div>`;};
+        rootsEl.innerHTML=roots.map(r=>`<button type="button" data-slug="${r.slug}"><span>${escapeHtml(r.name)}</span><b>›</b></button>`).join('');
+        rootsEl.querySelectorAll('button').forEach(b=>b.onmouseenter=b.onclick=()=>show(roots.find(r=>r.slug===b.dataset.slug)));
+        if(roots[0]) show(roots[0]);
+        let timer; const open=()=>{clearTimeout(timer);mega.hidden=false;toggle.setAttribute('aria-expanded','true')}, close=()=>{timer=setTimeout(()=>{mega.hidden=true;toggle.setAttribute('aria-expanded','false')},180)};
+        toggle.onclick=()=>mega.hidden?open():(mega.hidden=true,toggle.setAttribute('aria-expanded','false')); toggle.onmouseenter=open; toggle.onmouseleave=close; mega.onmouseenter=()=>clearTimeout(timer); mega.onmouseleave=close;
+      }
     }
   } catch(e){ console.warn('Категорії головної',e); }
-  const renderHome=()=>{
-    const q=(document.getElementById('homeSideSearch')?.value||'').trim().toLowerCase();
-    const max=Number(document.getElementById('homePriceMax')?.value||0);
-    const stockOnly=document.getElementById('homeStockOnly')?.checked;
-    const sort=document.getElementById('homeSort')?.value||'popular';
-    let rows=homeProducts.filter(p=>(!q||[p.name,p.brand,p.description].some(v=>String(v||'').toLowerCase().includes(q)))&&(!max||p.price<=max)&&(!stockOnly||p.stock));
-    if(sort==='price-asc') rows.sort((a,b)=>a.price-b.price);
-    if(sort==='price-desc') rows.sort((a,b)=>b.price-a.price);
-    if(sort==='name') rows.sort((a,b)=>a.name.localeCompare(b.name,'uk'));
-    root.innerHTML=rows.slice(0,6).map(card).join(''); bind(root);
-  };
-  renderHome();
-  const side=document.getElementById('homeSideSearch'), sideGo=document.getElementById('homeSideSearchGo'), apply=document.getElementById('homeApplyFilters');
-  if(sideGo) sideGo.onclick=renderHome; if(apply) apply.onclick=renderHome; if(side) side.onkeydown=e=>{if(e.key==='Enter')renderHome();};
-  const search=document.getElementById('homeSearch'), go=document.getElementById('homeSearchGo');
-  const run=()=>{const q=search?.value.trim(); location.href='catalog.html'+(q?'?search='+encodeURIComponent(q):'');};
-  if(go) go.onclick=run; if(search) search.onkeydown=e=>{if(e.key==='Enter')run();};
-  const toggle=document.getElementById('homeCatalogToggle');
-  if(toggle) toggle.onclick=()=>{ location.href='catalog.html?menu=open'; };
+  const q=document.getElementById('homeSideSearch'), brand=document.getElementById('homeBrand'), minI=document.getElementById('homePriceMin'), maxI=document.getElementById('homePriceMax'), minR=document.getElementById('homePriceMinRange'), maxR=document.getElementById('homePriceMaxRange'), cap=document.getElementById('homePriceCaption'), stock=document.getElementById('homeStockOnly'), sort=document.getElementById('homeSort');
+  const brands=[...new Set(homeProducts.map(p=>p.brand).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'uk')); brand.innerHTML='<option value="">Усі бренди</option>'+brands.map(v=>`<option value="${escape(v)}">${escape(v)}</option>`).join('');
+  const rangeMax=Math.max(1000,Math.ceil(Math.max(0,...homeProducts.map(p=>Number(p.price)||0))/1000)*1000); [minR,maxR].forEach(x=>x.max=rangeMax); minR.value=0; maxR.value=rangeMax; minI.value=0; maxI.value=rangeMax;
+  const sync=(source)=>{let lo=Math.max(0,Math.min(Number(source==='minI'?minI.value:minR.value)||0,rangeMax)), hi=Math.max(0,Math.min(Number(source==='maxI'?maxI.value:maxR.value)||rangeMax,rangeMax)); if(lo>hi){if(source.startsWith('min'))hi=lo;else lo=hi} minI.value=minR.value=lo; maxI.value=maxR.value=hi; cap.textContent=`Від ${lo.toLocaleString('uk-UA')} ₴ до ${hi.toLocaleString('uk-UA')} ₴`;};
+  const render=()=>{sync('render'); const term=q.value.trim().toLowerCase(),lo=Number(minI.value||0),hi=Number(maxI.value||rangeMax); let rows=homeProducts.filter(p=>(!term||[p.name,p.brand,p.description].some(v=>String(v||'').toLowerCase().includes(term)))&&(!brand.value||p.brand===brand.value)&&p.price>=lo&&p.price<=hi&&(!stock.checked||p.stock)); if(sort.value==='price-asc')rows.sort((a,b)=>a.price-b.price);if(sort.value==='price-desc')rows.sort((a,b)=>b.price-a.price);if(sort.value==='name')rows.sort((a,b)=>a.name.localeCompare(b.name,'uk'));root.innerHTML=rows.slice(0,6).map(card).join('');bind(root);};
+  minR.oninput=()=>{sync('minR');render()};maxR.oninput=()=>{sync('maxR');render()};minI.oninput=()=>{sync('minI');render()};maxI.oninput=()=>{sync('maxI');render()};
+  document.querySelectorAll('.home-price-presets button').forEach(b=>b.onclick=()=>{minI.value=minR.value=Number(b.dataset.min||0);maxI.value=maxR.value=Math.min(Number(b.dataset.max||rangeMax),rangeMax);render()});
+  document.getElementById('homeApplyFilters').onclick=render; document.getElementById('homeSideSearchGo').onclick=render; q.onkeydown=e=>{if(e.key==='Enter')render()}; [brand,stock,sort].forEach(x=>x.onchange=render);
+  document.getElementById('homeClearFilters').onclick=()=>{q.value='';brand.value='';minI.value=minR.value=0;maxI.value=maxR.value=rangeMax;stock.checked=false;sort.value='popular';render()};
+  sync('render');render();
+  const search=document.getElementById('homeSearch'),go=document.getElementById('homeSearchGo'),run=()=>{const term=search?.value.trim();location.href='catalog.html'+(term?'?search='+encodeURIComponent(term):'')};if(go)go.onclick=run;if(search)search.onkeydown=e=>{if(e.key==='Enter')run()};
 }
 function categoryMatch(product, category) { return product.type === category || (categoryChildren.get(category) || []).includes(product.type); }
 function catalog() {

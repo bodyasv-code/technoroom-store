@@ -103,11 +103,18 @@ document.head.appendChild(catalogSchema);
   const search = document.getElementById('catalogSearch');
   const brand = document.getElementById('brandFilter');
   const price = document.getElementById('priceFilter');
+  const priceMin = document.getElementById('priceMin');
+  const priceRange = document.getElementById('priceRange');
+  const priceCaption = document.getElementById('priceRangeCaption');
   const stock = document.getElementById('stockFilter');
   const sort = document.getElementById('catalogSort');
   let category = new URLSearchParams(location.search).get('category') || 'all';
   const brands = [...new Set(products.map((product) => product.brand).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'uk'));
   brand.innerHTML = '<option value="">Усі бренди</option>' + brands.map((value) => `<option value="${escape(value)}">${escape(value)}</option>`).join('');
+  const maxPrice = Math.max(0, ...products.map((product) => Number(product.price) || 0));
+  const rangeMax = Math.max(1000, Math.ceil(maxPrice / 1000) * 1000);
+  priceRange.max = rangeMax; priceRange.value = rangeMax; price.value = rangeMax;
+  const updatePriceCaption = () => { priceCaption.textContent = `Від ${Number(priceMin.value || 0).toLocaleString('uk-UA')} ₴ до ${Number(price.value || rangeMax).toLocaleString('uk-UA')} ₴`; }; updatePriceCaption();
   const draw = () => {
     buttons.forEach((button) => button.classList.toggle('selected', button.dataset.category === category));
     const term = search.value.trim().toLowerCase();
@@ -115,6 +122,7 @@ document.head.appendChild(catalogSchema);
       (category === 'all' || categoryMatch(product, category)) &&
       (!term || `${product.name} ${product.brand || ''} ${product.description || ''}`.toLowerCase().includes(term)) &&
       (!brand.value || product.brand === brand.value) &&
+      Number(product.price) >= Number(priceMin.value || 0) &&
       (!price.value || Number(product.price) <= Number(price.value)) &&
       (!stock.checked || product.stock)
     );
@@ -132,9 +140,12 @@ document.head.appendChild(catalogSchema);
     history.replaceState({}, '', url);
     draw();
   });
-  [search, brand, price, stock, sort].forEach((field) => field.addEventListener(field === stock || field === brand || field === sort ? 'change' : 'input', draw));
+  priceRange.addEventListener('input', () => { price.value = priceRange.value; updatePriceCaption(); draw(); });
+  price.addEventListener('input', () => { priceRange.value = Math.min(Number(price.value || rangeMax), rangeMax); updatePriceCaption(); draw(); });
+  priceMin.addEventListener('input', () => { updatePriceCaption(); draw(); });
+  [search, brand, stock, sort].forEach((field) => field.addEventListener(field === stock || field === brand || field === sort ? 'change' : 'input', draw));
   document.getElementById('clearCatalogFilters').onclick = () => {
-    search.value = ''; brand.value = ''; price.value = ''; stock.checked = false; sort.value = 'popular'; draw();
+    search.value = ''; brand.value = ''; priceMin.value = 0; price.value = rangeMax; priceRange.value = rangeMax; updatePriceCaption(); stock.checked = false; sort.value = 'popular'; draw();
   };
   draw();
 }

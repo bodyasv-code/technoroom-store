@@ -276,7 +276,15 @@ async function mountMegaCatalog() {
   rootsEl.innerHTML=roots.map(r=>`<button type="button" data-slug="${r.slug}"><span>${r.name}</span><b>›</b></button>`).join('');
   rootsEl.querySelectorAll('button').forEach(b=>{b.onmouseenter=b.onclick=()=>show(roots.find(r=>r.slug===b.dataset.slug));});
   if(roots[0]) show(roots[0]);
-  document.getElementById('catalogMenuToggle').onclick=()=>{mega.hidden=!mega.hidden;};
+  const toggle=document.getElementById('catalogMenuToggle');
+  let closeTimer;
+  const cancelClose=()=>clearTimeout(closeTimer);
+  const scheduleClose=()=>{ clearTimeout(closeTimer); closeTimer=setTimeout(()=>{ mega.hidden=true; },180); };
+  toggle.onclick=()=>{ mega.hidden=!mega.hidden; };
+  toggle.onmouseenter=()=>{ cancelClose(); mega.hidden=false; };
+  toggle.onmouseleave=scheduleClose;
+  mega.onmouseenter=cancelClose;
+  mega.onmouseleave=scheduleClose;
   const search=document.getElementById('headerCatalogSearch'), go=document.getElementById('headerCatalogSearchGo');
   const run=()=>{const q=search.value.trim(); if(q) location.href='catalog.html?search='+encodeURIComponent(q);};
   go.onclick=run; search.onkeydown=e=>{if(e.key==='Enter') run();};

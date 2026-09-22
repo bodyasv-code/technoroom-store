@@ -105,6 +105,7 @@ document.head.appendChild(catalogSchema);
   const price = document.getElementById('priceFilter');
   const priceMin = document.getElementById('priceMin');
   const priceRange = document.getElementById('priceRange');
+  const priceMinRange = document.getElementById('priceMinRange');
   const priceCaption = document.getElementById('priceRangeCaption');
   const stock = document.getElementById('stockFilter');
   const sort = document.getElementById('catalogSort');
@@ -113,7 +114,7 @@ document.head.appendChild(catalogSchema);
   brand.innerHTML = '<option value="">Усі бренди</option>' + brands.map((value) => `<option value="${escape(value)}">${escape(value)}</option>`).join('');
   const maxPrice = Math.max(0, ...products.map((product) => Number(product.price) || 0));
   const rangeMax = Math.max(1000, Math.ceil(maxPrice / 1000) * 1000);
-  priceRange.max = rangeMax; priceRange.value = rangeMax; price.value = rangeMax;
+  priceRange.max = rangeMax; priceRange.value = rangeMax; priceMinRange.max = rangeMax; priceMinRange.value = 0; price.value = rangeMax;
   const updatePriceCaption = () => { priceCaption.textContent = `Від ${Number(priceMin.value || 0).toLocaleString('uk-UA')} ₴ до ${Number(price.value || rangeMax).toLocaleString('uk-UA')} ₴`; }; updatePriceCaption();
   const draw = () => {
     buttons.forEach((button) => button.classList.toggle('selected', button.dataset.category === category));
@@ -140,12 +141,25 @@ document.head.appendChild(catalogSchema);
     history.replaceState({}, '', url);
     draw();
   });
-  priceRange.addEventListener('input', () => { price.value = priceRange.value; updatePriceCaption(); draw(); });
-  price.addEventListener('input', () => { priceRange.value = Math.min(Number(price.value || rangeMax), rangeMax); updatePriceCaption(); draw(); });
-  priceMin.addEventListener('input', () => { updatePriceCaption(); draw(); });
+  const syncRanges = (source) => {
+    let min = Math.max(0, Math.min(Number(priceMinRange.value), rangeMax));
+    let max = Math.max(0, Math.min(Number(priceRange.value), rangeMax));
+    if (min > max) { if (source === 'min') max = min; else min = max; }
+    priceMinRange.value = min; priceRange.value = max; priceMin.value = min; price.value = max;
+    updatePriceCaption(); draw();
+  };
+  priceMinRange.addEventListener('input', () => syncRanges('min'));
+  priceRange.addEventListener('input', () => syncRanges('max'));
+  price.addEventListener('input', () => { priceRange.value = Math.min(Math.max(Number(price.value || 0), 0), rangeMax); syncRanges('max'); });
+  priceMin.addEventListener('input', () => { priceMinRange.value = Math.min(Math.max(Number(priceMin.value || 0), 0), rangeMax); syncRanges('min'); });
+  document.querySelectorAll('.price-presets button').forEach((button) => button.onclick = () => {
+    priceMinRange.value = Number(button.dataset.priceMin || 0);
+    priceRange.value = Math.min(Number(button.dataset.priceMax || rangeMax), rangeMax);
+    syncRanges('min');
+  });
   [search, brand, stock, sort].forEach((field) => field.addEventListener(field === stock || field === brand || field === sort ? 'change' : 'input', draw));
   document.getElementById('clearCatalogFilters').onclick = () => {
-    search.value = ''; brand.value = ''; priceMin.value = 0; price.value = rangeMax; priceRange.value = rangeMax; updatePriceCaption(); stock.checked = false; sort.value = 'popular'; draw();
+    search.value = ''; brand.value = ''; priceMin.value = 0; price.value = rangeMax; priceMinRange.value = 0; priceRange.value = rangeMax; updatePriceCaption(); stock.checked = false; sort.value = 'popular'; draw();
   };
   draw();
 }

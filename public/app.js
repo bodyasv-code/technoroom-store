@@ -13,6 +13,7 @@ const fallbackProducts = [
 let products = fallbackProducts;
 const cart = JSON.parse(localStorage.getItem('technoroom-cart') || '[]');
 const money = (value) => `${new Intl.NumberFormat('uk-UA').format(value)} ₴`;
+const escapeHtml = (value = '') => String(value).replace(/[&<>"']/g, (char) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
 const get = (id) => products.find((product) => product.id === Number(id));
 const save = () => localStorage.setItem('technoroom-cart', JSON.stringify(cart));
 const imageUrl = (product) => product.image?.startsWith('http') ? `/api/product-image?id=${product.id}` : product.image ? supabase.storage.from('product-images').getPublicUrl(product.image).data.publicUrl : '';
@@ -50,8 +51,8 @@ async function home() {
     const {data:cats}=await supabase.from('categories').select('id,name,slug,parent_id,sort_order').eq('is_active',true).order('sort_order');
     if(cats?.length){
       const ids=new Set(cats.map(c=>c.id)), roots=cats.filter(c=>!c.parent_id||!ids.has(c.parent_id));
-      list.innerHTML=roots.slice(0,12).map(c=>`<a href="catalog.html?category=${encodeURIComponent(c.slug)}"><span>▣</span><b>${escape(c.name)}</b><i>›</i></a>`).join('');
-      cards.innerHTML=roots.slice(0,8).map(c=>`<a href="catalog.html?category=${encodeURIComponent(c.slug)}"><div class="home-cat-visual">▣</div><b>${escape(c.name)}</b><span>Переглянути →</span></a>`).join('');
+      list.innerHTML=roots.slice(0,12).map(c=>`<a href="catalog.html?category=${encodeURIComponent(c.slug)}"><span>▣</span><b>${escapeHtml(c.name)}</b><i>›</i></a>`).join('');
+      cards.innerHTML=roots.slice(0,8).map(c=>`<a href="catalog.html?category=${encodeURIComponent(c.slug)}"><div class="home-cat-visual">▣</div><b>${escapeHtml(c.name)}</b><span>Переглянути →</span></a>`).join('');
     }
   } catch(e){ console.warn('Категорії головної',e); }
   const toggle=document.getElementById('homeCatalogToggle'), panel=document.getElementById('homeCatPanel');

@@ -43,7 +43,7 @@ function renderCart() { const count = document.getElementById('cartCount'); if (
 function card(product) { return `<article class="product"><div class="product-image ${product.type}">${image(product)}</div><h3><a href="product.html?id=${product.id}">${product.name}</a></h3><p class="availability">${product.stock ? 'В наявності' : 'Немає в наявності'}</p><p>${product.description || ''}</p><div class="product-footer"><strong class="price">${money(product.price)}</strong><button class="add-button" data-add="${product.id}" ${product.stock ? '' : 'disabled'}>${product.stock ? 'У кошик' : 'Немає'}</button></div></article>`; }
 function bind(root = document) { root.querySelectorAll('[data-add]').forEach((button) => button.onclick = () => add(button.dataset.add)); root.querySelectorAll('.product-image img').forEach((image) => image.onclick = () => openLightbox(image.currentSrc || image.src, image.alt)); }
 function home() { const root = document.getElementById('productGrid'); if (root) { root.innerHTML = products.slice(0, 4).map(card).join(''); bind(root); } }
-function categoryMatch(product, category) { if (product.type === category) return true; const button = document.querySelector(`[data-category="${CSS.escape(category)}"]`); const children = (button?.dataset.childCategories || '').split(',').filter(Boolean); return children.includes(product.type); }
+function categoryMatch(product, category) { return product.type === category || (categoryChildren.get(category) || []).includes(product.type); }
 function catalog() {
 
   const root = document.getElementById('catalogGrid');
@@ -262,71 +262,17 @@ if (document.readyState === 'loading') document.addEventListener('DOMContentLoad
 else loadProducts();
 
 
-// Живе меню підкатегорій: дані беруться з дерева категорій у Supabase.
-const subcategoryMenuStyle = document.createElement('style');
-subcategoryMenuStyle.textContent = `
-  .category-constellation { margin: 20px 0 8px; padding: 14px 0; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
-  .category-constellation > span { display: block; margin-bottom: 9px; color: var(--muted); font: 800 10px Manrope; letter-spacing: .08em; text-transform: uppercase; }
-  .category-constellation button { display:flex; align-items:center; justify-content:space-between; width:100%; padding:8px 0 8px 14px; border:0; border-left:2px solid #d8ff37; background:transparent; color:var(--ink); text-align:left; font:700 12px Manrope; cursor:pointer; }
-  .category-constellation button:hover { background:#eff3eb; }
-  .category-constellation button b { color:#6d8c00; font-size:10px; }
-  .category-constellation .category-parent { color:var(--muted); font:600 10px Manrope; }
-`;
-document.head.append(subcategoryMenuStyle);
-
-async function mountSubcategoryMenu() {
-  const filters = document.querySelector('.filters');
-  const anchor = filters?.querySelector('.catalog-refine');
-  if (!filters || !anchor || filters.querySelector('.category-constellation')) return;
-
-  try {
-    const { data: categories, error } = await supabase
-      .from('categories')
-      .select('id,name,slug,parent_id')
-      .eq('is_active', true)
-      .order('name');
-    if (error || !categories?.length) return;
-
-    const byId = new Map(categories.map((category) => [category.id, category]));
-    const nested = categories.filter((category) => category.parent_id && byId.has(category.parent_id));
-    if (!nested.length) return;
-
-    const menu = document.createElement('div');
-    menu.className = 'category-constellation';
-    menu.innerHTML = `<span>Колекції</span>${nested.map((category) => {
-      const parent = byId.get(category.parent_id);
-      const count = products.filter((product) => product.type === category.slug).length;
-      return `<button type="button" data-subcategory="${category.slug}"><i>↳</i><span>${category.name}<small class="category-parent"> · ${parent.name}</small></span><b>${count || '0'}</b></button>`;
-    }).join('')}`;
-    anchor.before(menu);
-  } catch (error) {
-    console.warn('Не вдалося завантажити підкатегорії', error);
-  }
-}
-
-document.addEventListener('click', (event) => {
-  const button = event.target.closest('[data-subcategory]');
-  if (!button) return;
-  const url = new URL(location.href);
-  url.searchParams.set('category', button.dataset.subcategory);
-  location.href = url.toString();
-});
-
-mountSubcategoryMenu();
-
-
-// Вкладені підкатегорії показуються безпосередньо під своєю батьківською категорією.
+// Каталог категорій будується лише з актуального дерева Supabase після завантаження товарів.
 const nestedCategoryStyle = document.createElement('style');
 nestedCategoryStyle.textContent = `
-  .category-constellation { display: none !important; }
-  .category-nest { margin: -3px 0 8px 14px; padding: 4px 0 4px 12px; border-left: 1px solid #d8ff37; }
-  .category-nest button { display: flex; align-items: center; justify-content: space-between; width: 100%; padding: 7px 0; border: 0; background: transparent; color: var(--muted); text-align: left; font: 700 11px Manrope; cursor: pointer; }
-  .category-nest button:hover { color: var(--ink); }
-  .category-nest button span:first-child { color: #799900; margin-right: 6px; }
-  .category-nest button b { color: #6d8c00; font-size: 10px; }
+  .category-nest { margin: 0 0 10px 12px; padding-left: 10px; border-left: 1px solid var(--line); }
+  .category-nest button { display:flex; justify-content:space-between; gap:8px; width:100%; padding:7px 4px; border:0; background:transparent; text-align:left; cursor:pointer; color:var(--muted); }
+  .category-nest button.selected { color:var(--ink); font-weight:800; }
+  .filters > button[data-category] { display:flex; justify-content:space-between; gap:8px; width:100%; }
 `;
 document.head.append(nestedCategoryStyle);
 
+let categoryChildren = new Map();
 async function mountNestedSubcategoryMenu() {
   const filters = document.querySelector('.filters');
   const refine = filters?.querySelector('.catalog-refine');
@@ -335,77 +281,50 @@ async function mountNestedSubcategoryMenu() {
   filters.querySelectorAll(':scope > button[data-category], .category-nest').forEach((node) => node.remove());
 
   try {
-    const { data: categories, error } = await supabase
-      .from('categories')
-      .select('id,name,slug,parent_id,sort_order')
-      .eq('is_active', true)
-      .order('sort_order');
+    const { data: categories, error } = await supabase.from('categories')
+      .select('id,name,slug,parent_id,sort_order').eq('is_active', true).order('sort_order');
     if (error || !categories?.length) return;
 
-    const byId = new Map(categories.map((category) => [category.id, category]));
-    const roots = categories.filter((category) => !category.parent_id || !byId.has(category.parent_id));
-    const selectedCategory = new URLSearchParams(location.search).get('category') || 'all';
+    const byId = new Map(categories.map((c) => [c.id, c]));
+    const roots = categories.filter((c) => !c.parent_id || !byId.has(c.parent_id));
+    categoryChildren = new Map();
+    const selected = new URLSearchParams(location.search).get('category') || 'all';
 
-    const allButton = document.createElement('button');
-    allButton.type = 'button';
-    allButton.dataset.category = 'all';
-    allButton.textContent = 'Усі товари';
-    allButton.classList.toggle('selected', selectedCategory === 'all');
-    refine.before(allButton);
+    const addButton = (category, count, parentNode = filters) => {
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.dataset.category = category.slug;
+      button.innerHTML = `<span>${category.name}</span><b>${count}</b>`;
+      button.classList.toggle('selected', selected === category.slug);
+      if (parentNode === filters) refine.before(button); else parentNode.append(button);
+    };
+
+    const all = document.createElement('button');
+    all.type='button'; all.dataset.category='all';
+    all.innerHTML=`<span>Усі товари</span><b>${products.length}</b>`;
+    all.classList.toggle('selected', selected === 'all');
+    refine.before(all);
 
     roots.forEach((parent) => {
-      const children = categories.filter((category) => category.parent_id === parent.id);
-      const childSlugs = new Set(children.map((child) => child.slug));
-      const count = products.filter((product) => product.type === parent.slug || childSlugs.has(product.type)).length;
-      const parentButton = document.createElement('button');
-      parentButton.type = 'button';
-      parentButton.dataset.category = parent.slug;
-      parentButton.dataset.childCategories = [...childSlugs].join(',');
-      parentButton.innerHTML = `<span>${parent.name}</span> <b>${count}</b>`;
-      parentButton.classList.toggle('selected', selectedCategory === parent.slug);
-      refine.before(parentButton);
-
-      if (children.length) {
-        const nest = document.createElement('div');
-        nest.className = 'category-nest';
-        children.forEach((category) => {
-          const button = document.createElement('button');
-          button.type = 'button';
-          button.dataset.category = category.slug;
-          button.classList.toggle('selected', category.slug === selectedCategory);
-          const childCount = products.filter((product) => product.type === category.slug).length;
-          button.innerHTML = `<span>↳ ${category.name}</span><b>${childCount}</b>`;
-          nest.append(button);
-        });
-        refine.before(nest);
-      }
+      const children = categories.filter((c) => c.parent_id === parent.id);
+      const slugs = children.map((c) => c.slug);
+      categoryChildren.set(parent.slug, slugs);
+      const count = products.filter((p) => p.type === parent.slug || slugs.includes(p.type)).length;
+      addButton(parent, count);
+      if (!children.length) return;
+      const nest = document.createElement('div'); nest.className='category-nest';
+      children.forEach((child) => addButton(child, products.filter((p) => p.type === child.slug).length, nest));
+      refine.before(nest);
     });
 
-    filters.querySelectorAll('[data-category]').forEach((button) => button.addEventListener('click', () => {
+    filters.querySelectorAll('[data-category]').forEach((button) => button.onclick = () => {
       const url = new URL(location.href);
       if (button.dataset.category === 'all') url.searchParams.delete('category');
       else url.searchParams.set('category', button.dataset.category);
       location.href = url.toString();
-    }));
-  } catch (error) {
-    console.warn('Не вдалося завантажити дерево категорій', error);
-  }
+    });
+  } catch (error) { console.warn('Не вдалося завантажити дерево категорій', error); }
 }
-// Category tree is mounted after all product pages are loaded.
-
-
-// Візуальна ієрархія категорій: більший шрифт та помітніший відступ вкладень.
-const categoryTypographyStyle = document.createElement('style');
-categoryTypographyStyle.textContent = `
-  .filters > button[data-category] { font-size: 14px; line-height: 1.35; padding: 11px 0; }
-  .category-nest { margin: -2px 0 12px 22px; padding: 6px 0 6px 18px; }
-  .category-nest button { font-size: 13px; line-height: 1.4; padding: 9px 0; }
-  .category-nest button span:first-child { margin-right: 9px; font-size: 14px; }
-  .category-nest button b { font-size: 11px; }
-`;
-document.head.append(categoryTypographyStyle);
-
-
 /* Статус «Під замовлення»: товар можна оформити без складського залишку. */
 function availability(product) {
   if (product.availabilityStatus === 'under_order') return { label: 'Під замовлення', button: 'Замовити', orderable: true };

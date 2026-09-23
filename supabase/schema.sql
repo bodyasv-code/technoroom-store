@@ -80,3 +80,26 @@ grant select, insert, update, delete on public.products to authenticated;
 grant select, update on public.orders to authenticated;
 grant select on public.order_items to authenticated;
 
+
+
+-- Brand directory for logos, SEO pages and centralized brand management.
+create table if not exists public.brands (
+  id bigint generated always as identity primary key,
+  name text not null,
+  slug text not null unique,
+  description text,
+  logo_path text,
+  website text,
+  is_active boolean not null default true,
+  sort_order integer not null default 0,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+create unique index if not exists brands_name_lower_idx on public.brands (lower(name));
+alter table public.brands enable row level security;
+drop policy if exists "public can read active brands" on public.brands;
+create policy "public can read active brands" on public.brands for select to anon, authenticated using (is_active = true or public.is_admin());
+drop policy if exists "admins manage brands" on public.brands;
+create policy "admins manage brands" on public.brands for all to authenticated using (public.is_admin()) with check (public.is_admin());
+grant select on public.brands to anon, authenticated;
+grant insert, update, delete on public.brands to authenticated;

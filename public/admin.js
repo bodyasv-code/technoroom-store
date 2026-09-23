@@ -254,9 +254,20 @@ async function showOrderDialog(orderId) {
   document.querySelector('#orderDialog').showModal();
 }
 
+async function loadAllProducts() {
+  const pageSize = 1000;
+  const all = [];
+  for (let from = 0; ; from += pageSize) {
+    const { data, error } = await supabase.from('products').select('*').order('created_at', { ascending: false }).range(from, from + pageSize - 1);
+    if (error) return { data: null, error };
+    all.push(...(data || []));
+    if (!data || data.length < pageSize) break;
+  }
+  return { data: all, error: null };
+}
 async function loadData() {
   const [{ data: products, error: productError }, { data: orders, error: orderError }, { data: categories, error: categoryError }] = await Promise.all([
-    supabase.from('products').select('*').order('created_at', { ascending: false }),
+    loadAllProducts(),
     supabase.from('orders').select('*,order_items(count)').order('created_at', { ascending: false }),
     supabase.from('categories').select('*').order('sort_order').order('name'),
   ]);

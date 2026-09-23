@@ -72,12 +72,12 @@
         <div class="admin-table-wrap"><table><thead><tr><th>Назва</th><th>Slug</th><th>Статус</th><th>Товарів</th><th>Дії</th></tr></thead><tbody id="adminCategories"></tbody></table></div>
       </section>
       <section class="admin-section" id="orders">
-        <div class="admin-title"><div><h2>Замовлення</h2><span>Усі заявки з сайту</span></div></div>
+        <div class="admin-title"><div><h2>Замовлення</h2><span>Усі заявки з сайту</span></div></div><div class="brand-summary"><b id="ordersCountMetric">0 замовлень</b><span id="ordersTotalMetric">0 ₴</span></div>
         <div class="admin-controls"><input id="orderSearch" type="search" placeholder="Номер, ім’я, телефон або email"><select id="orderFilter"><option value="all">Усі статуси</option><option value="new">Нові</option><option value="confirmed">Підтверджені</option><option value="paid">Оплачені</option><option value="shipped">Відправлені</option><option value="completed">Виконані</option><option value="cancelled">Скасовані</option></select></div>
         <div class="admin-table-wrap"><table><thead><tr><th>№ / дата</th><th>Покупець</th><th>Товарів</th><th>Сума</th><th>Статус</th><th></th></tr></thead><tbody id="adminOrders"></tbody></table></div>
       </section>
       <section class="admin-section" id="customers">
-        <div class="admin-title"><div><h2>Клієнти</h2><span>Автоматично формується із замовлень</span></div></div>
+        <div class="admin-title"><div><h2>Клієнти</h2><span>Автоматично формується із замовлень</span></div></div><div class="brand-summary"><b id="customersCountMetric">0 клієнтів</b><span id="repeatCustomersMetric">0 повторних</span></div>
         <div class="admin-controls"><input id="customerSearch" type="search" placeholder="Пошук клієнта"></div>
         <div class="admin-table-wrap"><table><thead><tr><th>Клієнт</th><th>Контакти</th><th>Замовлень</th><th>Загальна сума</th><th>Останнє замовлення</th></tr></thead><tbody id="adminCustomers"></tbody></table></div>
       </section>
@@ -90,7 +90,7 @@
     <div class="dialog-actions"><button class="button outline" type="button" data-close-dialog>Скасувати</button><button class="button primary" type="submit">Зберегти товар</button></div><p class="admin-message" id="productFormMessage" hidden></p>
   </form></dialog>
   <dialog id="categoryDialog"><form id="categoryForm" method="dialog"><div class="dialog-heading"><h2 id="categoryDialogTitle">Нова категорія</h2><button type="button" data-close-dialog>×</button></div><input type="hidden" name="id"><label>Назва<input name="name" required maxlength="100"></label><label>Slug<input name="slug" required maxlength="100" placeholder="projector"></label><label>Батьківська категорія<select name="parent_id"></select><small>Без батьківської = головна категорія</small></label><label>Порядок сортування<input name="sort_order" type="number" min="0" step="1" value="0"></label><label class="check"><input name="is_active" type="checkbox" checked> Показувати в каталозі</label><div class="dialog-actions"><button class="button outline" type="button" data-close-dialog>Скасувати</button><button class="button primary" type="submit">Зберегти</button></div><p class="admin-message" id="categoryFormMessage" hidden></p></form></dialog>
-  <dialog id="orderDialog"><div class="order-dialog"><div class="dialog-heading"><h2>Замовлення <span id="orderDialogNumber"></span></h2><button type="button" data-close-dialog>×</button></div><div id="orderDetails"></div></div></dialog>
-  <script src="supabase-config.js"></script><script type="module" src="admin.js?v=20260923-clean7"></script>
+  <dialog id="orderDialog"><div class="order-dialog"><div class="dialog-heading"><h2>Замовлення <span id="orderDialogNumber"></span></h2><button type="button" data-close-dialog>×</button></div><div id="orderDetails"></div><div class="dialog-actions"><select id="orderStatusEdit"><option value="new">Нове</option><option value="confirmed">Підтверджене</option><option value="paid">Оплачене</option><option value="shipped">Відправлене</option><option value="completed">Виконане</option><option value="cancelled">Скасоване</option></select><button class="button primary" id="saveOrderStatus" type="button">Зберегти статус</button></div></div></dialog>
+  <script src="supabase-config.js"></script><script type="module" src="admin.js?v=20260923-clean8"></script>
 </body>
 </html>

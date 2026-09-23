@@ -1897,176 +1897,50 @@ const productTableObserver=new MutationObserver(decorateAdminProductTable);
 productTableObserver.observe(document.querySelector('#adminProducts'),{childList:true,subtree:true});
 decorateAdminProductTable();
 
-/* Повноцінне керування брендами через значення brand у товарах. */
-const normalizedBrandName = value => String(value || '').replace(/&amp;/gi,'&').replace(/\s+/g,' ').trim();
-function renderBrandsAdmin(){
-  const body=document.querySelector('#adminBrands'); if(!body)return;
-  const term=searchText(document.querySelector('#brandAdminSearch')?.value||'');
-  const map=new Map();
-  state.products.forEach(p=>{const name=normalizedBrandName(p.brand);if(!name)return;const key=searchText(name);if(!map.has(key))map.set(key,{name,count:0});map.get(key).count++;});
-  let rows=[...map.values()].filter(x=>!term||searchText(x.name).includes(term)); const sort=document.querySelector('#brandSort')?.value||'name'; rows.sort(sort==='count'?(a,b)=>b.count-a.count||a.name.localeCompare(b.name,'uk'):(a,b)=>a.name.localeCompare(b.name,'uk')); const brandCount=document.querySelector('#brandCountMetric'), productCount=document.querySelector('#brandProductMetric'); if(brandCount)brandCount.textContent=map.size+' брендів'; if(productCount)productCount.textContent=state.products.filter(p=>normalizedBrandName(p.brand)).length+' товарів із брендом';
-  body.innerHTML=rows.length?rows.map(x=>'<tr><td><b>'+escape(x.name)+'</b></td><td>'+x.count+'</td><td class="table-actions"><button type="button" data-brand-rename="'+escape(x.name)+'">Редагувати</button><button type="button" data-brand-merge="'+escape(x.name)+'">Об’єднати</button><button type="button" data-brand-clear="'+escape(x.name)+'">Прибрати</button></td></tr>').join(''):'<tr><td colspan="3" class="empty-row">Брендів не знайдено</td></tr>';
-}
-document.querySelector('#brandAdminSearch')?.addEventListener('input',renderBrandsAdmin); document.querySelector('#brandSort')?.addEventListener('change',renderBrandsAdmin);
-document.querySelector('#addBrand')?.addEventListener('click',()=>{
-  const name=normalizedBrandName(prompt('Назва нового бренду:')||''); if(!name)return;
-  const exists=state.products.some(p=>searchText(normalizedBrandName(p.brand))===searchText(name));
-  alert(exists?'Такий бренд уже є.':'Бренд «'+name+'» підготовлено. Призначте його товару через редагування товару — після збереження він з’явиться у списку.');
-});
-document.querySelector('#normalizeBrands')?.addEventListener('click',async()=>{
-  const groups=new Map();
-  state.products.forEach(p=>{const n=normalizedBrandName(p.brand);if(!n)return;const key=searchText(n);if(!groups.has(key))groups.set(key,[]);groups.get(key).push(p);});
-  const changes=[];
-  groups.forEach(items=>{const canonical=items.map(p=>normalizedBrandName(p.brand)).sort((a,b)=>a.localeCompare(b,'uk'))[0];items.forEach(p=>{if(p.brand!==canonical)changes.push({id:p.id,brand:canonical});});});
-  if(!changes.length){notice('Назви брендів уже нормалізовані.');return;}
-  if(!confirm('Нормалізувати '+changes.length+' товарів із дубльованими варіантами назв брендів?'))return;
-  const button=document.querySelector('#normalizeBrands');button.disabled=true;
-  let failed=0;
-  for(const change of changes){const {error}=await supabase.from('products').update({brand:change.brand}).eq('id',change.id);if(error)failed++;else{const p=state.products.find(x=>Number(x.id)===Number(change.id));if(p)p.brand=change.brand;}}
-  button.disabled=false;renderAll();renderBrandsAdmin();refreshAdminProductFilters();notice(failed?'Оновлено '+(changes.length-failed)+'; помилок: '+failed:'Нормалізовано '+changes.length+' товарів.',!!failed);
-});
-document.addEventListener('click',async event=>{
-  const rename=event.target.closest('[data-brand-rename]'), merge=event.target.closest('[data-brand-merge]'), clear=event.target.closest('[data-brand-clear]');
-  const button=rename||merge||clear;if(!button)return;
-  const oldName=normalizedBrandName(rename?.dataset.brandRename||merge?.dataset.brandMerge||clear?.dataset.brandClear);
-  let nextName=null;
-  if(rename) nextName=normalizedBrandName(prompt('Нова назва бренду:',oldName));
-  if(merge) nextName=normalizedBrandName(prompt('З яким брендом об’єднати «'+oldName+'»? Введіть точну назву:',oldName));
-  if(clear && !confirm('Прибрати бренд «'+oldName+'» у всіх товарів цього бренду?'))return;
-  if((rename||merge)&&(!nextName||nextName===oldName))return;
-  button.disabled=true;
-  const ids=state.products.filter(p=>normalizedBrandName(p.brand)===oldName).map(p=>p.id);
-  if(!ids.length){button.disabled=false;return;}
-  const {error}=await supabase.from('products').update({brand:clear?null:nextName}).in('id',ids);
-  if(error){button.disabled=false;notice('Не вдалося оновити бренд.',true);return;}
-  state.products=state.products.map(p=>ids.includes(p.id)?{...p,brand:clear?null:nextName}:p);
-  renderAll();renderBrandsAdmin();refreshAdminProductFilters();notice(clear?'Бренд прибрано з '+ids.length+' товарів.':'Бренд оновлено у '+ids.length+' товарах.');
-});
-const renderAllWithBrands=renderAll;
-renderAll=function(){renderAllWithBrands();renderBrandsAdmin();};
-
-
-/* Каталог брендів: якщо SQL brands виконано, адмінка автоматично переходить на окрему таблицю. */
-let brandDirectory=[];
+/* Стабільний модуль дій товарів і брендів. */
+const normalizedBrandName=value=>String(value||'').replace(/&amp;/gi,'&').replace(/\s+/g,' ').trim();
 const brandSlug=value=>normalizedBrandName(value).toLocaleLowerCase('uk-UA').normalize('NFKD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9а-яіїєґ]+/gi,'-').replace(/^-|-$/g,'');
-async function loadBrandDirectory(){
-  const {data,error}=await supabase.from('brands').select('*').order('sort_order').order('name');
-  if(error)return false; brandDirectory=data||[]; renderBrandDirectory(); return true;
-}
-function renderBrandDirectory(){
-  const body=document.querySelector('#adminBrands'), term=searchText(document.querySelector('#brandAdminSearch')?.value||'');if(!body)return;
+let brandDirectory=[];
+
+async function refreshBrands(){
+  const {data,error}=await supabase.from('brands').select('*').order('name');
+  if(error){notice('Помилка брендів: '+error.message,true);return false;}
+  brandDirectory=data||[];
+  const body=document.querySelector('#adminBrands');if(!body)return true;
+  const term=searchText(document.querySelector('#brandAdminSearch')?.value||'');
   const counts=new Map();state.products.forEach(p=>{const k=searchText(normalizedBrandName(p.brand));if(k)counts.set(k,(counts.get(k)||0)+1);});
-  let rows=brandDirectory.filter(b=>!term||searchText(b.name).includes(term));const sort=document.querySelector('#brandSort')?.value||'name';
-  rows.sort(sort==='count'?(a,b)=>(counts.get(searchText(b.name))||0)-(counts.get(searchText(a.name))||0): (a,b)=>a.name.localeCompare(b.name,'uk'));
-  body.innerHTML=rows.map(b=>'<tr><td><b>'+escape(b.name)+'</b></td><td>'+escape(b.slug)+'</td><td>'+(counts.get(searchText(b.name))||0)+'</td><td><span class="visibility '+(b.is_active?'visible':'hidden-status')+'">'+(b.is_active?'Активний':'Прихований')+'</span></td><td class="table-actions"><button data-brand-edit-id="'+b.id+'">Редагувати</button><button data-brand-merge="'+escape(b.name)+'">Об’єднати</button><button data-brand-clear="'+escape(b.name)+'">Прибрати</button></td></tr>').join('');
-  document.querySelector('#brandCountMetric').textContent=brandDirectory.length+' брендів';
+  const rows=brandDirectory.filter(b=>!term||searchText(b.name).includes(term));
+  body.innerHTML=rows.length?rows.map(b=>'<tr><td><b>'+escape(b.name)+'</b></td><td>'+escape(b.slug)+'</td><td>'+(counts.get(searchText(b.name))||0)+'</td><td><span class="visibility '+(b.is_active?'visible':'hidden-status')+'">'+(b.is_active?'Активний':'Прихований')+'</span></td><td class="table-actions"><button type="button" data-brand-edit-id="'+b.id+'">Редагувати</button></td></tr>').join(''):'<tr><td colspan="5" class="empty-row">Брендів поки немає</td></tr>';
+  const m=document.querySelector('#brandCountMetric');if(m)m.textContent=brandDirectory.length+' брендів';
+  const pm=document.querySelector('#brandProductMetric');if(pm)pm.textContent=state.products.filter(p=>normalizedBrandName(p.brand)).length+' товарів із брендом';
+  return true;
 }
 function openBrandEditor(brand=null){
- const d=document.querySelector('#brandDialog');document.querySelector('#brandId').value=brand?.id||'';document.querySelector('#brandName').value=brand?.name||'';document.querySelector('#brandSlug').value=brand?.slug||'';document.querySelector('#brandDescription').value=brand?.description||'';document.querySelector('#brandLogo').value=brand?.logo_path||'';document.querySelector('#brandWebsite').value=brand?.website||'';document.querySelector('#brandActive').checked=brand?.is_active!==false;document.querySelector('#brandDialogTitle').textContent=brand?'Редагування бренду':'Новий бренд';d.showModal();
+  const d=document.querySelector('#brandDialog');if(!d)return;
+  document.querySelector('#brandId').value=brand?.id||'';document.querySelector('#brandName').value=brand?.name||'';document.querySelector('#brandSlug').value=brand?.slug||'';document.querySelector('#brandDescription').value=brand?.description||'';document.querySelector('#brandLogo').value=brand?.logo_path||'';document.querySelector('#brandWebsite').value=brand?.website||'';document.querySelector('#brandActive').checked=brand?.is_active!==false;d.showModal();
 }
+document.querySelector('#addBrand')?.addEventListener('click',()=>openBrandEditor());
+document.querySelector('#closeBrandDialog')?.addEventListener('click',()=>document.querySelector('#brandDialog')?.close());
 document.querySelector('#brandName')?.addEventListener('input',e=>{if(!document.querySelector('#brandId').value)document.querySelector('#brandSlug').value=brandSlug(e.target.value);});
-document.querySelector('#closeBrandDialog')?.addEventListener('click',()=>document.querySelector('#brandDialog').close());
-document.addEventListener('click',e=>{const b=e.target.closest('[data-brand-edit-id]');if(b)openBrandEditor(brandDirectory.find(x=>Number(x.id)===Number(b.dataset.brandEditId)));});
+document.querySelector('#brandAdminSearch')?.addEventListener('input',refreshBrands);
 document.querySelector('#brandForm')?.addEventListener('submit',async e=>{
- e.preventDefault();const id=document.querySelector('#brandId').value;const payload={name:normalizedBrandName(document.querySelector('#brandName').value),slug:brandSlug(document.querySelector('#brandSlug').value),description:document.querySelector('#brandDescription').value.trim()||null,logo_path:document.querySelector('#brandLogo').value.trim()||null,website:document.querySelector('#brandWebsite').value.trim()||null,is_active:document.querySelector('#brandActive').checked,updated_at:new Date().toISOString()};
- if(!payload.name||!payload.slug)return;const q=id?supabase.from('brands').update(payload).eq('id',id):supabase.from('brands').insert(payload);const {error}=await q;if(error){notice('Не вдалося зберегти бренд: '+error.message,true);return;}document.querySelector('#brandDialog').close();await loadBrandDirectory();notice('Бренд збережено.');
+  e.preventDefault();const id=document.querySelector('#brandId').value,name=normalizedBrandName(document.querySelector('#brandName').value),slug=brandSlug(document.querySelector('#brandSlug').value||name);if(!name||!slug)return;
+  const payload={name,slug,description:document.querySelector('#brandDescription').value.trim()||null,logo_path:document.querySelector('#brandLogo').value.trim()||null,website:document.querySelector('#brandWebsite').value.trim()||null,is_active:document.querySelector('#brandActive').checked,updated_at:new Date().toISOString()};
+  const {error}=id?await supabase.from('brands').update(payload).eq('id',id):await supabase.from('brands').insert(payload);
+  if(error){notice('Помилка збереження бренду: '+error.message,true);return;}document.querySelector('#brandDialog').close();await refreshBrands();notice('Бренд збережено.');
 });
-document.querySelector('#addBrand')?.addEventListener('click',async e=>{if(await loadBrandDirectory()){e.stopImmediatePropagation();openBrandEditor();}},true);
-loadBrandDirectory();
-
-
-/* Імпорт існуючих текстових брендів у довідник brands. */
-async function syncBrandsFromProducts(){
-  const unique=new Map();
-  state.products.forEach(p=>{const name=normalizedBrandName(p.brand);if(!name)return;const key=searchText(name);if(!unique.has(key))unique.set(key,name);});
-  const existing=new Set(brandDirectory.map(b=>searchText(b.name)));
-  const missing=[...unique.values()].filter(name=>!existing.has(searchText(name)));
-  if(!missing.length)return 0;
-  const rows=missing.map((name,index)=>({name,slug:brandSlug(name)||('brand-'+Date.now()+'-'+index),is_active:true,sort_order:0}));
-  const {error}=await supabase.from('brands').insert(rows);
-  if(error){notice('Не вдалося перенести бренди у довідник: '+error.message,true);return -1;}
-  const {data:refreshed}=await supabase.from('brands').select('*').order('sort_order').order('name'); brandDirectory=refreshed||brandDirectory; renderBrandDirectory(); return rows.length;
-}
-const originalLoadBrandDirectory=loadBrandDirectory;
-loadBrandDirectory=async function(){
-  const ok=await originalLoadBrandDirectory();if(!ok)return false;
-  if(state.products.length){const added=await syncBrandsFromProducts();if(added>0)notice('До довідника брендів додано '+added+' брендів із товарів.');}
-  return true;
-};
-setTimeout(()=>loadBrandDirectory(),0);
-
-
-/* Централізована прив'язка product.brand_id -> brands.id (після виконання SQL). */
-async function syncProductBrandRelations(){
-  if(!brandDirectory.length||!state.products.length)return;
-  const byName=new Map(brandDirectory.map(b=>[searchText(normalizedBrandName(b.name)),b]));
-  const pending=state.products.filter(p=>!p.brand_id&&normalizedBrandName(p.brand)&&byName.has(searchText(normalizedBrandName(p.brand))));
-  if(!pending.length)return;
-  let linked=0,failed=0;
-  for(const p of pending){
-    const brand=byName.get(searchText(normalizedBrandName(p.brand)));
-    const {error}=await supabase.from('products').update({brand_id:brand.id,brand:brand.name}).eq('id',p.id);
-    if(error){failed++;continue;}p.brand_id=brand.id;p.brand=brand.name;linked++;
-  }
-  if(linked)notice('Прив’язано '+linked+' товарів до централізованого довідника брендів.'+(failed?' Помилок: '+failed:''));
-}
-const loadBrandDirectoryWithRelations=loadBrandDirectory;
-loadBrandDirectory=async function(){const ok=await loadBrandDirectoryWithRelations();if(ok&&state.products.length)await syncProductBrandRelations();return ok;};
-
-
-/* Гарантовано видимі дії товару: не покладаємось на попередні MutationObserver. */
-const ensureProductRowActions=()=>{
-  document.querySelectorAll('#adminProducts tr').forEach(row=>{
-    const edit=row.querySelector('[data-edit-product]');if(!edit)return;
-    const id=edit.dataset.editProduct;
-    let actions=edit.closest('.table-actions')||edit.parentElement;
-    actions.classList.add('table-actions');
-    if(!actions.querySelector('[data-duplicate-product="'+id+'"]')){
-      const b=document.createElement('button');b.type='button';b.dataset.duplicateProduct=id;b.textContent='Дублювати';actions.append(b);
-    }
-    if(!actions.querySelector('[data-delete-product="'+id+'"]')){
-      const b=document.createElement('button');b.type='button';b.dataset.deleteProduct=id;b.textContent='Видалити';b.className='danger-action';actions.append(b);
-    }
-  });
-};
-const productActionsObserver=new MutationObserver(ensureProductRowActions);
-productActionsObserver.observe(document.querySelector('#adminProducts'),{childList:true,subtree:true});
-ensureProductRowActions();
-
-
-/* Надійна синхронізація довідника брендів: один конфлікт slug не блокує решту. */
-async function repairBrandDirectory(){
-  const {data:existing,error}=await supabase.from('brands').select('*');
-  if(error){console.error('brands read',error);return;}
-  brandDirectory=existing||[];
-  const names=[...new Map(state.products.map(p=>normalizedBrandName(p.brand)).filter(Boolean).map(n=>[searchText(n),n])).values()];
-  const known=new Set(brandDirectory.map(b=>searchText(b.name))),usedSlugs=new Set(brandDirectory.map(b=>b.slug));
-  let added=0;
-  for(const name of names){
-    if(known.has(searchText(name)))continue;
-    let base=brandSlug(name)||'brand',slug=base,n=2;
-    while(usedSlugs.has(slug))slug=base+'-'+n++;
-    const {data,error:insertError}=await supabase.from('brands').insert({name,slug,is_active:true,sort_order:0}).select().single();
-    if(insertError){console.error('brand insert',name,insertError);continue;}
-    brandDirectory.push(data);known.add(searchText(name));usedSlugs.add(slug);added++;
-  }
-  renderBrandDirectory();
-  if(added)notice('Довідник брендів відновлено: додано '+added+' брендів.');
-  await syncProductBrandRelations();
-}
-setTimeout(repairBrandDirectory,800);
-
-
-/* Єдиний делегований обробник критичних дій адмінки. */
-document.addEventListener('click',async event=>{
-  const del=event.target.closest('#adminProducts [data-delete-product]');
-  if(del){
-    event.preventDefault();event.stopImmediatePropagation();
-    const id=Number(del.dataset.deleteProduct),product=state.products.find(p=>Number(p.id)===id);if(!product)return;
-    if(!confirm('Видалити товар «'+product.name+'»?\n\nЦю дію не можна скасувати.'))return;
-    del.disabled=true;del.textContent='Видалення…';
-    const {error}=await supabase.from('products').delete().eq('id',id);
-    if(error){del.disabled=false;del.textContent='Видалити';notice('Помилка видалення: '+error.message,true);return;}
-    state.products=state.products.filter(p=>Number(p.id)!==id);renderAll();notice('Товар «'+product.name+'» видалено.');return;
-  }
-},true);
+document.addEventListener('click',async e=>{
+  const editBrand=e.target.closest('[data-brand-edit-id]');if(editBrand){openBrandEditor(brandDirectory.find(b=>Number(b.id)===Number(editBrand.dataset.brandEditId)));return;}
+  const del=e.target.closest('[data-delete-product]');if(!del)return;
+  const id=Number(del.dataset.deleteProduct),product=state.products.find(p=>Number(p.id)===id);if(!product)return;
+  if(!confirm('Видалити товар «'+product.name+'»?'))return;
+  const {error}=await supabase.from('products').delete().eq('id',id);
+  if(error){notice('Помилка видалення: '+error.message,true);return;}
+  state.products=state.products.filter(p=>Number(p.id)!==id);renderAll();notice('Товар видалено.');
+});
+const stableActionsObserver=new MutationObserver(()=>document.querySelectorAll('#adminProducts [data-edit-product]').forEach(edit=>{
+  const id=edit.dataset.editProduct,box=edit.closest('.table-actions')||edit.parentElement;
+  if(!box.querySelector('[data-delete-product="'+id+'"]'))box.insertAdjacentHTML('beforeend','<button type="button" class="danger-action" data-delete-product="'+id+'">Видалити</button>');
+}));
+stableActionsObserver.observe(document.querySelector('#adminProducts'),{childList:true,subtree:true});
+refreshBrands();

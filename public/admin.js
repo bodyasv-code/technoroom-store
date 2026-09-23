@@ -2013,3 +2013,23 @@ async function syncProductBrandRelations(){
 }
 const loadBrandDirectoryWithRelations=loadBrandDirectory;
 loadBrandDirectory=async function(){const ok=await loadBrandDirectoryWithRelations();if(ok&&state.products.length)await syncProductBrandRelations();return ok;};
+
+
+/* Гарантовано видимі дії товару: не покладаємось на попередні MutationObserver. */
+const ensureProductRowActions=()=>{
+  document.querySelectorAll('#adminProducts tr').forEach(row=>{
+    const edit=row.querySelector('[data-edit-product]');if(!edit)return;
+    const id=edit.dataset.editProduct;
+    let actions=edit.closest('.table-actions')||edit.parentElement;
+    actions.classList.add('table-actions');
+    if(!actions.querySelector('[data-duplicate-product="'+id+'"]')){
+      const b=document.createElement('button');b.type='button';b.dataset.duplicateProduct=id;b.textContent='Дублювати';actions.append(b);
+    }
+    if(!actions.querySelector('[data-delete-product="'+id+'"]')){
+      const b=document.createElement('button');b.type='button';b.dataset.deleteProduct=id;b.textContent='Видалити';b.className='danger-action';actions.append(b);
+    }
+  });
+};
+const productActionsObserver=new MutationObserver(ensureProductRowActions);
+productActionsObserver.observe(document.querySelector('#adminProducts'),{childList:true,subtree:true});
+ensureProductRowActions();

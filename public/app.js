@@ -108,7 +108,7 @@ function catalog() {
   const saleOnly=new URLSearchParams(location.search).get('promo')==='sale';
   if (!root) return;
 
-  document.title = 'Каталог товарів | TECHNOROOM';
+  document.title = saleOnly ? 'Акційні товари | TECHNOROOM' : 'Каталог товарів | TECHNOROOM';
 
   let metaDescription =
     document.querySelector('meta[name="description"]');
@@ -179,6 +179,7 @@ document.head.appendChild(catalogSchema);
     buttons.forEach((button) => button.classList.toggle('selected', button.dataset.category === category));
     const term = search.value.trim().toLowerCase();
     let shown = products.filter((product) =>
+      (!saleOnly || !!promotionFor(product)) &&
       (category === 'all' || categoryMatch(product, category)) &&
       (!term || `${product.name} ${product.brand || ''} ${product.description || ''}`.toLowerCase().includes(term)) &&
       (!brand.value || product.brand === brand.value) &&

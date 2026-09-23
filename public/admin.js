@@ -1871,3 +1871,36 @@ document.addEventListener('click', async (event) => {
   renderAll();
   notice('Товар «' + product.name + '» видалено.');
 });
+
+
+/* Повноцінне керування брендами через значення brand у товарах. */
+const normalizedBrandName = value => String(value || '').replace(/&amp;/gi,'&').replace(/\s+/g,' ').trim();
+function renderBrandsAdmin(){
+  const body=document.querySelector('#adminBrands'); if(!body)return;
+  const term=searchText(document.querySelector('#brandAdminSearch')?.value||'');
+  const map=new Map();
+  state.products.forEach(p=>{const name=normalizedBrandName(p.brand);if(!name)return;const key=searchText(name);if(!map.has(key))map.set(key,{name,count:0});map.get(key).count++;});
+  const rows=[...map.values()].filter(x=>!term||searchText(x.name).includes(term)).sort((a,b)=>a.name.localeCompare(b.name,'uk'));
+  body.innerHTML=rows.length?rows.map(x=>'<tr><td><b>'+escape(x.name)+'</b></td><td>'+x.count+'</td><td class="table-actions"><button type="button" data-brand-rename="'+escape(x.name)+'">Редагувати</button><button type="button" data-brand-merge="'+escape(x.name)+'">Об’єднати</button><button type="button" data-brand-clear="'+escape(x.name)+'">Прибрати</button></td></tr>').join(''):'<tr><td colspan="3" class="empty-row">Брендів не знайдено</td></tr>';
+}
+document.querySelector('#brandAdminSearch')?.addEventListener('input',renderBrandsAdmin);
+document.querySelector('#addBrand')?.addEventListener('click',()=>alert('Новий бренд з’явиться після призначення його товару. Відкрийте товар і вкажіть назву бренду.'));
+document.addEventListener('click',async event=>{
+  const rename=event.target.closest('[data-brand-rename]'), merge=event.target.closest('[data-brand-merge]'), clear=event.target.closest('[data-brand-clear]');
+  const button=rename||merge||clear;if(!button)return;
+  const oldName=normalizedBrandName(rename?.dataset.brandRename||merge?.dataset.brandMerge||clear?.dataset.brandClear);
+  let nextName=null;
+  if(rename) nextName=normalizedBrandName(prompt('Нова назва бренду:',oldName));
+  if(merge) nextName=normalizedBrandName(prompt('З яким брендом об’єднати «'+oldName+'»? Введіть точну назву:',oldName));
+  if(clear && !confirm('Прибрати бренд «'+oldName+'» у всіх товарів цього бренду?'))return;
+  if((rename||merge)&&(!nextName||nextName===oldName))return;
+  button.disabled=true;
+  const ids=state.products.filter(p=>normalizedBrandName(p.brand)===oldName).map(p=>p.id);
+  if(!ids.length){button.disabled=false;return;}
+  const {error}=await supabase.from('products').update({brand:clear?null:nextName}).in('id',ids);
+  if(error){button.disabled=false;notice('Не вдалося оновити бренд.',true);return;}
+  state.products=state.products.map(p=>ids.includes(p.id)?{...p,brand:clear?null:nextName}:p);
+  renderAll();renderBrandsAdmin();refreshAdminProductFilters();notice(clear?'Бренд прибрано з '+ids.length+' товарів.':'Бренд оновлено у '+ids.length+' товарах.');
+});
+const renderAllWithBrands=renderAll;
+renderAll=function(){renderAllWithBrands();renderBrandsAdmin();};

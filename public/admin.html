@@ -26,7 +26,7 @@
       <label>Пароль<input name="password" type="password" autocomplete="current-password" required></label>
       <button class="button primary">Увійти</button><p id="notice" class="admin-message" hidden></p>
     </form>
-  </main>
+  </main><dialog id="brandDialog" class="product-dialog"><form id="brandForm" method="dialog"><h2 id="brandDialogTitle">Бренд</h2><input type="hidden" id="brandId"><label>Назва<input id="brandName" required></label><label>Slug<input id="brandSlug" required></label><label>Опис<textarea id="brandDescription" rows="4"></textarea></label><div class="dialog-grid"><label>Логотип / URL<input id="brandLogo"></label><label>Сайт бренду<input id="brandWebsite" type="url" placeholder="https://"></label></div><label class="checkbox-line"><input id="brandActive" type="checkbox" checked> Активний бренд</label><div class="dialog-actions"><button class="button primary" type="submit">Зберегти</button><button class="button" type="button" id="closeBrandDialog">Скасувати</button></div></form></dialog>
   <main class="admin-login" data-view="recovery" hidden>
     <form id="recoveryForm">
       <a class="brand" href="index.html"><span>TECHNO</span>ROOM<i></i></a>
@@ -63,9 +63,9 @@
 <div id="productPagination"></div>
       </section>
       <section class="admin-section" id="brands">
-        <div class="admin-title"><div><h2>Бренди</h2><span>Керування назвами брендів у каталозі</span></div><button class="button primary" id="addBrand">+ Додати бренд</button></div>
+        <div class="admin-title"><div><h2>Бренди</h2><span>Логотипи, описи, сторінки брендів і прив’язка товарів</span></div><button class="button primary" id="addBrand">+ Додати бренд</button></div>
         <div class="admin-controls brand-admin-tools"><input id="brandAdminSearch" type="search" placeholder="Пошук бренду"><select id="brandSort"><option value="name">За назвою</option><option value="count">За кількістю товарів</option></select><button class="button" id="normalizeBrands" type="button">Нормалізувати назви</button></div><div class="brand-summary"><b id="brandCountMetric">0 брендів</b><span id="brandProductMetric">0 товарів із брендом</span></div>
-        <div class="admin-table-wrap"><table><thead><tr><th>Бренд</th><th>Товарів</th><th>Дії</th></tr></thead><tbody id="adminBrands"></tbody></table></div>
+        <div class="admin-table-wrap"><table><thead><tr><th>Бренд</th><th>Slug</th><th>Товарів</th><th>Статус</th><th>Дії</th></tr></thead><tbody id="adminBrands"></tbody></table></div>
       </section>
       <section class="admin-section" id="categories">
         <div class="admin-title"><div><h2>Категорії</h2><span>Структура каталогу та навігація</span></div><button class="button primary" id="addCategory">+ Додати категорію</button></div>

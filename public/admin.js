@@ -1873,6 +1873,30 @@ document.addEventListener('click', async (event) => {
 });
 
 
+/* Візуальне оформлення рядків таблиці товарів за затвердженим макетом. */
+const adminProductImageUrl = product => {
+  const path=product?.image_path || (Array.isArray(product?.image_paths)?product.image_paths[0]:null);
+  if(!path)return '';
+  if(/^https?:\/\//i.test(path))return path;
+  try{return supabase.storage.from('product-images').getPublicUrl(path).data.publicUrl||'';}catch{return '';}
+};
+const decorateAdminProductTable = () => {
+  document.querySelectorAll('#adminProducts tr').forEach(row=>{
+    const edit=row.querySelector('[data-edit-product]');if(!edit)return;
+    const product=state.products.find(p=>Number(p.id)===Number(edit.dataset.editProduct));if(!product||row.dataset.productDecorated==='1')return;
+    const cells=row.children;if(cells.length<7)return;
+    const image=adminProductImageUrl(product);
+    cells[0].innerHTML='<div class="product-cell"><span class="product-thumb">'+(image?'<img src="'+escape(image)+'" alt="">':'<span>Фото</span>')+'</span><span class="product-main"><b>'+escape(product.name)+'</b><small>SKU: '+escape(product.sku||'—')+' · '+escape(product.brand||'Без бренду')+'</small></span></div>';
+    cells[1].classList.add('category-cell');
+    const category=state.categories.find(c=>c.slug===product.category);
+    cells[1].innerHTML='<b>'+escape(category?.name||product.category||'Без категорії')+'</b><small>'+escape(product.category||'—')+'</small>';
+    row.dataset.productDecorated='1';
+  });
+};
+const productTableObserver=new MutationObserver(decorateAdminProductTable);
+productTableObserver.observe(document.querySelector('#adminProducts'),{childList:true,subtree:true});
+decorateAdminProductTable();
+
 /* Повноцінне керування брендами через значення brand у товарах. */
 const normalizedBrandName = value => String(value || '').replace(/&amp;/gi,'&').replace(/\s+/g,' ').trim();
 function renderBrandsAdmin(){

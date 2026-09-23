@@ -386,3 +386,6 @@ body:not(.admin-body){background:#f5f8fc;color:#081b38}
 
 /* Approved TECHNOROOM brand logo */
 .home-logo{display:block!important;width:360px!important;min-width:360px!important;height:100px!important;background:url('technoroom-logo.svg') center/contain no-repeat!important;font-size:0!important;line-height:0!important}.home-logo>b,.home-logo>span{display:none!important}@media(max-width:900px){.home-logo{width:245px!important;min-width:245px!important;height:74px!important}}@media(max-width:600px){.home-logo{width:190px!important;min-width:190px!important;height:62px!important}}
+
+/* Strong visible promotion label */
+.product .promotion-name{display:block!important;width:max-content!important;max-width:calc(100% - 16px)!important;margin:8px 8px 5px!important;padding:7px 10px!important;border:1px solid #9dccff!important;border-radius:7px!important;background:#e8f3ff!important;color:#0069d9!important;font-size:12px!important;font-weight:700!important;line-height:1.25!important;position:relative!important;z-index:5!important}.product .promotion-name b{color:#0055b3!important}

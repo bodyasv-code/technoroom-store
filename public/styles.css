@@ -404,3 +404,9 @@ body:not(.admin-body){background:#f5f8fc;color:#081b38}
 
 /* Header visibility hotfix */
 body{overflow-x:hidden}.store-shared-header{position:sticky!important;top:0!important;z-index:99999!important}.store-shared-header .header-row{background:#fff!important}.store-shared-header .header-search{display:flex!important;flex:1 1 420px!important}
+
+/* Unified sticky storefront chrome */
+.shared-store-top{position:sticky!important;top:0!important;z-index:100001!important;background:#081b38!important}
+.store-shared-header,.compact-header.store-shared-header{position:sticky!important;top:var(--store-top-height,32px)!important;z-index:100000!important;background:#fff!important;box-shadow:0 3px 14px rgba(16,36,62,.10)!important}
+.store-shared-header .header-row{background:#fff!important}
+@media(max-width:700px){.store-shared-header,.compact-header.store-shared-header{top:0!important}.shared-store-top{display:none!important}}

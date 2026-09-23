@@ -2055,3 +2055,18 @@ async function repairBrandDirectory(){
   await syncProductBrandRelations();
 }
 setTimeout(repairBrandDirectory,800);
+
+
+/* Єдиний делегований обробник критичних дій адмінки. */
+document.addEventListener('click',async event=>{
+  const del=event.target.closest('#adminProducts [data-delete-product]');
+  if(del){
+    event.preventDefault();event.stopImmediatePropagation();
+    const id=Number(del.dataset.deleteProduct),product=state.products.find(p=>Number(p.id)===id);if(!product)return;
+    if(!confirm('Видалити товар «'+product.name+'»?\n\nЦю дію не можна скасувати.'))return;
+    del.disabled=true;del.textContent='Видалення…';
+    const {error}=await supabase.from('products').delete().eq('id',id);
+    if(error){del.disabled=false;del.textContent='Видалити';notice('Помилка видалення: '+error.message,true);return;}
+    state.products=state.products.filter(p=>Number(p.id)!==id);renderAll();notice('Товар «'+product.name+'» видалено.');return;
+  }
+},true);

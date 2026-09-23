@@ -42,7 +42,7 @@
       <a class="brand" href="index.html"><span>TECHNO</span>ROOM<i></i></a><p>Керування магазином</p>
       <a class="active" href="#overview" data-section="overview">Огляд</a>
       <a href="#products" data-section="products">Товари <span id="productsNavCount"></span></a>
-      <a href="#categories" data-section="categories">Категорії</a>
+      <a href="#categories" data-section="categories">Категорії</a><a href="#brands" data-section="brands">Бренди</a>
       <a href="#orders" data-section="orders">Замовлення <span id="ordersNavCount"></span></a>
       <a href="#customers" data-section="customers">Клієнти</a><a href="index.html">Відкрити магазин ↗</a><button id="logout">Вийти</button>
     </aside>
@@ -61,6 +61,11 @@
 </div>
 
 <div id="productPagination"></div>
+      </section>
+      <section class="admin-section" id="brands">
+        <div class="admin-title"><div><h2>Бренди</h2><span>Керування назвами брендів у каталозі</span></div><button class="button primary" id="addBrand">+ Додати бренд</button></div>
+        <div class="admin-controls"><input id="brandAdminSearch" type="search" placeholder="Пошук бренду"></div>
+        <div class="admin-table-wrap"><table><thead><tr><th>Бренд</th><th>Товарів</th><th>Дії</th></tr></thead><tbody id="adminBrands"></tbody></table></div>
       </section>
       <section class="admin-section" id="categories">
         <div class="admin-title"><div><h2>Категорії</h2><span>Структура каталогу та навігація</span></div><button class="button primary" id="addCategory">+ Додати категорію</button></div>

@@ -1995,3 +1995,21 @@ loadBrandDirectory=async function(){
   return true;
 };
 setTimeout(()=>loadBrandDirectory(),0);
+
+
+/* Централізована прив'язка product.brand_id -> brands.id (після виконання SQL). */
+async function syncProductBrandRelations(){
+  if(!brandDirectory.length||!state.products.length)return;
+  const byName=new Map(brandDirectory.map(b=>[searchText(normalizedBrandName(b.name)),b]));
+  const pending=state.products.filter(p=>!p.brand_id&&normalizedBrandName(p.brand)&&byName.has(searchText(normalizedBrandName(p.brand))));
+  if(!pending.length)return;
+  let linked=0,failed=0;
+  for(const p of pending){
+    const brand=byName.get(searchText(normalizedBrandName(p.brand)));
+    const {error}=await supabase.from('products').update({brand_id:brand.id,brand:brand.name}).eq('id',p.id);
+    if(error){failed++;continue;}p.brand_id=brand.id;p.brand=brand.name;linked++;
+  }
+  if(linked)notice('Прив’язано '+linked+' товарів до централізованого довідника брендів.'+(failed?' Помилок: '+failed:''));
+}
+const loadBrandDirectoryWithRelations=loadBrandDirectory;
+loadBrandDirectory=async function(){const ok=await loadBrandDirectoryWithRelations();if(ok&&state.products.length)await syncProductBrandRelations();return ok;};

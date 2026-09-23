@@ -107,6 +107,7 @@ async function home() {
   sync('render');render();
   const search=document.getElementById('homeSearch'),go=document.getElementById('homeSearchGo'),run=()=>{const term=search?.value.trim();location.href='catalog.html'+(term?'?search='+encodeURIComponent(term):'')};if(go)go.onclick=run;if(search)search.onkeydown=e=>{if(e.key==='Enter')run()};
 }
+const normalizeStoreSearch=(v='')=>String(v).toLowerCase().replace(/['’\-_/.,()]+/g,' ').replace(/\s+/g,' ').trim();
 function categoryMatch(product, category) { return product.type === category || (categoryChildren.get(category) || []).includes(product.type); }
 function catalog() {
 
@@ -183,12 +184,13 @@ document.head.appendChild(catalogSchema);
   const updatePriceCaption = () => { priceCaption.textContent = `Від ${Number(priceMin.value || 0).toLocaleString('uk-UA')} ₴ до ${Number(price.value || rangeMax).toLocaleString('uk-UA')} ₴`; }; updatePriceCaption();
   const draw = () => {
     buttons.forEach((button) => button.classList.toggle('selected', button.dataset.category === category));
-    const term = search.value.trim().toLowerCase();
+    const term = (new URLSearchParams(location.search).get('search') || search.value || '').trim();
+    if(search.value!==term) search.value=term;
     let shown = products.filter((product) =>
       (!saleOnly || !!promotionFor(product)) &&
       (!promotionOnly || Number(promotionFor(product)?.id)===promotionOnly) &&
       (category === 'all' || categoryMatch(product, category)) &&
-      (!term || `${product.name} ${product.brand || ''} ${product.description || ''}`.toLowerCase().includes(term)) &&
+      (!term || normalizeStoreSearch(`${product.name} ${product.brand||''} ${product.sku||''} ${product.description||''}`).includes(normalizeStoreSearch(term).split(' ').join(' ')) || normalizeStoreSearch(term).split(' ').every(w=>normalizeStoreSearch(`${product.name} ${product.brand||''} ${product.sku||''} ${product.description||''}`).includes(w))) &&
       (!brand.value || product.brand === brand.value) &&
       Number(product.price) >= Number(priceMin.value || 0) &&
       (!price.value || Number(product.price) <= Number(price.value)) &&
@@ -379,8 +381,11 @@ async function mountMegaCatalog() {
   mega.onmouseenter=cancelClose;
   mega.onmouseleave=scheduleClose;
   const search=document.getElementById('headerCatalogSearch'), go=document.getElementById('headerCatalogSearchGo');
-  const run=()=>{const q=search.value.trim(); if(q) location.href='catalog.html?search='+encodeURIComponent(q);};
-  go.onclick=run; search.onkeydown=e=>{if(e.key==='Enter') run();};
+  const normalizeSearch=v=>String(v||'').toLowerCase().replace(/['’\-_/.,()]+/g,' ').replace(/\s+/g,' ').trim();
+  const score=(p,q)=>{const words=normalizeSearch(q).split(' ').filter(Boolean),name=normalizeSearch(p.name),brand=normalizeSearch(p.brand),sku=normalizeSearch(p.sku),desc=normalizeSearch(p.description),hay=[name,brand,sku,desc].join(' ');if(!words.every(w=>hay.includes(w)))return-1;let n=0;words.forEach(w=>{if(name===w)n+=100;else if(name.startsWith(w))n+=60;else if(name.includes(w))n+=40;if(brand===w)n+=30;if(sku===w)n+=50});return n};
+  const run=()=>{const q=search.value.trim();const url=new URL('catalog.html',location.href);if(q)url.searchParams.set('search',q);location.href=url.href;};
+  if(search){const q=new URLSearchParams(location.search).get('search');if(q)search.value=q;search.onkeydown=e=>{if(e.key==='Enter')run()};}
+  if(go)go.onclick=run;
 }
 /* Статус «Під замовлення»: товар можна оформити без складського залишку. */
 function availability(product) {

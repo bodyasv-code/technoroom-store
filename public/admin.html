@@ -64,8 +64,8 @@
       </section>
       <section class="admin-section" id="brands">
         <div class="admin-title"><div><h2>Бренди</h2><span>Логотипи, описи, сторінки брендів і прив’язка товарів</span></div><button class="button primary" id="addBrand">+ Додати бренд</button></div>
-        <div class="admin-controls brand-admin-tools"><input id="brandAdminSearch" type="search" placeholder="Пошук бренду"><select id="brandSort"><option value="name">За назвою</option><option value="count">За кількістю товарів</option></select><button class="button" id="normalizeBrands" type="button">Нормалізувати назви</button></div><div class="brand-summary"><b id="brandCountMetric">0 брендів</b><span id="brandProductMetric">0 товарів із брендом</span></div>
-        <div class="admin-table-wrap"><table><thead><tr><th>Бренд</th><th>Slug</th><th>Товарів</th><th>Статус</th><th>Дії</th></tr></thead><tbody id="adminBrands"></tbody></table></div>
+        <div class="admin-controls admin-product-filters brand-admin-tools"><input id="brandAdminSearch" type="search" placeholder="Пошук брендів..."><select id="brandSort"><option value="name">За назвою</option><option value="count">За кількістю товарів</option></select><select id="brandStatusFilter"><option value="all">Усі бренди</option><option value="active">Активні</option><option value="hidden">Приховані</option></select><button class="button" id="normalizeBrands" type="button">Нормалізувати назви</button></div><div class="brand-summary"><b id="brandCountMetric">0 брендів</b><span id="brandProductMetric">0 товарів із брендом</span></div>
+        <div class="admin-table-wrap"><table class="products-admin-table brands-admin-table"><thead><tr><th>Бренд</th><th>Slug</th><th>Товарів</th><th>Статус</th><th>Дії</th></tr></thead><tbody id="adminBrands"></tbody></table></div><div id="brandPagination"></div>
       </section>
       <section class="admin-section" id="categories">
         <div class="admin-title"><div><h2>Категорії</h2><span>Структура каталогу та навігація</span></div><button class="button primary" id="addCategory">+ Додати категорію</button></div>
@@ -91,6 +91,6 @@
   </form></dialog>
   <dialog id="categoryDialog"><form id="categoryForm" method="dialog"><div class="dialog-heading"><h2 id="categoryDialogTitle">Нова категорія</h2><button type="button" data-close-dialog>×</button></div><input type="hidden" name="id"><label>Назва<input name="name" required maxlength="100"></label><label>Slug<input name="slug" required maxlength="100" placeholder="projector"></label><label>Батьківська категорія<select name="parent_id"></select></label><label class="check"><input name="is_active" type="checkbox" checked> Показувати в каталозі</label><div class="dialog-actions"><button class="button outline" type="button" data-close-dialog>Скасувати</button><button class="button primary" type="submit">Зберегти</button></div><p class="admin-message" id="categoryFormMessage" hidden></p></form></dialog>
   <dialog id="orderDialog"><div class="order-dialog"><div class="dialog-heading"><h2>Замовлення <span id="orderDialogNumber"></span></h2><button type="button" data-close-dialog>×</button></div><div id="orderDetails"></div></div></dialog>
-  <script src="supabase-config.js"></script><script type="module" src="admin.js?v=20260923-clean3"></script>
+  <script src="supabase-config.js"></script><script type="module" src="admin.js?v=20260923-clean4"></script>
 </body>
 </html>

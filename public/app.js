@@ -46,7 +46,7 @@ function add(id) { const product = get(id); if (!product?.stock) return; cart.pu
 function renderCart() { const count = document.getElementById('cartCount'); if (count) count.textContent = cart.length; const root = document.getElementById('cartItems'), total = document.getElementById('cartTotal'), checkoutButton = document.getElementById('checkoutButton'); if (!root) return; const items = cart.map((id, index) => ({ product: get(id), index })).filter((item) => item.product); root.innerHTML = items.length ? items.map(({ product, index }) => `<div class="cart-item"><b>${product.name}</b><strong>${money(product.price)}</strong><span>${product.stock ? 'В наявності' : 'Немає в наявності'}</span><button class="remove" data-remove="${index}">Прибрати</button></div>`).join('') : '<p class="empty-cart">Кошик поки порожній.</p>'; if (total) total.textContent = money(items.reduce((sum, item) => sum + item.product.price, 0)); if (checkoutButton) checkoutButton.disabled = !items.length; root.querySelectorAll('[data-remove]').forEach((button) => button.onclick = () => { cart.splice(Number(button.dataset.remove), 1); save(); renderCart(); }); }
 function promotionFor(product){return activePromotions.find(p=>p.target_type==='all'||(p.target_type==='category'&&p.target_value===product.type)||(p.target_type==='brand'&&Number(p.target_value)===Number(product.brand_id))||(p.target_type==='products'&&promotionProductIds.get(Number(p.id))?.has(Number(product.id))))}
 function salePrice(product){const p=promotionFor(product);if(!p)return Number(product.price);return Math.max(0,p.discount_type==='percent'?Number(product.price)*(1-Number(p.discount_value)/100):Number(product.price)-Number(p.discount_value))}
-function card(product) { const promo=promotionFor(product),price=salePrice(product),badge=promo?'<span class="sale-badge">'+(promo.discount_type==='percent'?'-'+Number(promo.discount_value)+'%':'АКЦІЯ')+'</span>':''; return `<article class="product">${badge}<div class="product-image ${product.type}">${image(product)}</div><h3><a href="product.html?id=${product.id}">${product.name}</a></h3><p class="availability">${product.stock ? 'В наявності' : 'Немає в наявності'}</p><p>${product.description || ''}</p><div class="product-footer"><div>${promo?'<del class="old-price">'+money(product.price)+'</del>':''}<strong class="price">${money(price)}</strong></div><button class="add-button" data-add="${product.id}" ${product.stock ? '' : 'disabled'}>${product.stock ? 'У кошик' : 'Немає'}</button></div></article>`; }
+function card(product) { const promo=promotionFor(product),price=salePrice(product),badge=promo?'<span class="sale-badge">'+(promo.discount_type==='percent'?'-'+Number(promo.discount_value)+'%':'АКЦІЯ')+'</span>':'',promoName=promo?'<a class="promotion-name" href="catalog.html?promo=sale&promotion='+encodeURIComponent(promo.id)+'">Акція: '+escapeHtml(promo.name||'Спеціальна пропозиція')+'</a>':''; return `<article class="product">${badge}<div class="product-image ${product.type}">${image(product)}</div>${promoName}<h3><a href="product.html?id=${product.id}">${product.name}</a></h3><p class="availability">${product.stock ? 'В наявності' : 'Немає в наявності'}</p><p>${product.description || ''}</p><div class="product-footer"><div>${promo?'<del class="old-price">'+money(product.price)+'</del>':''}<strong class="price">${money(price)}</strong></div><button class="add-button" data-add="${product.id}" ${product.stock ? '' : 'disabled'}>${product.stock ? 'У кошик' : 'Немає'}</button></div></article>`; }
 function bind(root = document) { root.querySelectorAll('[data-add]').forEach((button) => button.onclick = () => add(button.dataset.add)); root.querySelectorAll('.product-image img').forEach((image) => image.onclick = () => openLightbox(image.currentSrc || image.src, image.alt)); }
 async function home() {
   const root=document.getElementById('productGrid'); if(!root) return;
@@ -105,7 +105,7 @@ function categoryMatch(product, category) { return product.type === category || 
 function catalog() {
 
   const root = document.getElementById('catalogGrid');
-  const saleOnly=new URLSearchParams(location.search).get('promo')==='sale';
+  const catalogParams=new URLSearchParams(location.search),saleOnly=catalogParams.get('promo')==='sale',promotionOnly=Number(catalogParams.get('promotion')||0);
   if (!root) return;
 
   document.title = saleOnly ? 'Акційні товари | TECHNOROOM' : 'Каталог товарів | TECHNOROOM';
@@ -180,6 +180,7 @@ document.head.appendChild(catalogSchema);
     const term = search.value.trim().toLowerCase();
     let shown = products.filter((product) =>
       (!saleOnly || !!promotionFor(product)) &&
+      (!promotionOnly || Number(promotionFor(product)?.id)===promotionOnly) &&
       (category === 'all' || categoryMatch(product, category)) &&
       (!term || `${product.name} ${product.brand || ''} ${product.description || ''}`.toLowerCase().includes(term)) &&
       (!brand.value || product.brand === brand.value) &&

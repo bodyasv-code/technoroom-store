@@ -1783,6 +1783,23 @@ document.addEventListener('click', (event) => {
 });
 
 
+/* Підсумок стану каталогу для нового інтерфейсу. */
+const catalogStatusPanel = document.createElement('section');
+catalogStatusPanel.className = 'admin-metrics catalog-status-metrics';
+catalogStatusPanel.innerHTML = '<article><span>Всього товарів</span><strong id="catalogTotalMetric">0</strong><small>у базі магазину</small></article><article><span>В наявності</span><strong id="catalogInStockMetric">0</strong><small>готові до продажу</small></article><article><span>Під замовленням</span><strong id="catalogOrderMetric">0</strong><small>можна замовити</small></article><article><span>Відсутні</span><strong id="catalogOutMetric">0</strong><small>немає в наявності</small></article>';
+document.querySelector('#products')?.insertAdjacentElement('afterbegin', catalogStatusPanel);
+const updateCatalogStatusMetrics = () => {
+  const total=state.products.length;
+  const inStock=state.products.filter(p=>inventoryStatus(p)==='in_stock').length;
+  const underOrder=state.products.filter(p=>inventoryStatus(p)==='under_order').length;
+  document.querySelector('#catalogTotalMetric').textContent=total;
+  document.querySelector('#catalogInStockMetric').textContent=inStock;
+  document.querySelector('#catalogOrderMetric').textContent=underOrder;
+  document.querySelector('#catalogOutMetric').textContent=Math.max(0,total-inStock-underOrder);
+};
+const renderMetricsWithCatalog = renderMetrics;
+renderMetrics = function(){ renderMetricsWithCatalog(); updateCatalogStatusMetrics(); };
+
 /* Видалення товарів з адмінки. */
 const deleteProductStyle = document.createElement('style');
 deleteProductStyle.textContent = '.table-actions [data-delete-product]{margin-left:8px;color:#b42318}.product-delete-warning{font-size:12px;color:#8a2d25}';

@@ -1974,3 +1974,24 @@ document.querySelector('#brandForm')?.addEventListener('submit',async e=>{
 });
 document.querySelector('#addBrand')?.addEventListener('click',async e=>{if(await loadBrandDirectory()){e.stopImmediatePropagation();openBrandEditor();}},true);
 loadBrandDirectory();
+
+
+/* Імпорт існуючих текстових брендів у довідник brands. */
+async function syncBrandsFromProducts(){
+  const unique=new Map();
+  state.products.forEach(p=>{const name=normalizedBrandName(p.brand);if(!name)return;const key=searchText(name);if(!unique.has(key))unique.set(key,name);});
+  const existing=new Set(brandDirectory.map(b=>searchText(b.name)));
+  const missing=[...unique.values()].filter(name=>!existing.has(searchText(name)));
+  if(!missing.length)return 0;
+  const rows=missing.map((name,index)=>({name,slug:brandSlug(name)||('brand-'+Date.now()+'-'+index),is_active:true,sort_order:0}));
+  const {error}=await supabase.from('brands').insert(rows);
+  if(error){notice('Не вдалося перенести бренди у довідник: '+error.message,true);return -1;}
+  await loadBrandDirectory();return rows.length;
+}
+const originalLoadBrandDirectory=loadBrandDirectory;
+loadBrandDirectory=async function(){
+  const ok=await originalLoadBrandDirectory();if(!ok)return false;
+  if(state.products.length){const added=await syncBrandsFromProducts();if(added>0)notice('До довідника брендів додано '+added+' брендів із товарів.');}
+  return true;
+};
+setTimeout(()=>loadBrandDirectory(),0);

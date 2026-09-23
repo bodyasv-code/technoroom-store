@@ -1944,3 +1944,33 @@ document.addEventListener('click',async event=>{
 });
 const renderAllWithBrands=renderAll;
 renderAll=function(){renderAllWithBrands();renderBrandsAdmin();};
+
+
+/* Каталог брендів: якщо SQL brands виконано, адмінка автоматично переходить на окрему таблицю. */
+let brandDirectory=[];
+const brandSlug=value=>normalizedBrandName(value).toLocaleLowerCase('uk-UA').normalize('NFKD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9а-яіїєґ]+/gi,'-').replace(/^-|-$/g,'');
+async function loadBrandDirectory(){
+  const {data,error}=await supabase.from('brands').select('*').order('sort_order').order('name');
+  if(error)return false; brandDirectory=data||[]; renderBrandDirectory(); return true;
+}
+function renderBrandDirectory(){
+  if(!brandDirectory.length)return;
+  const body=document.querySelector('#adminBrands'), term=searchText(document.querySelector('#brandAdminSearch')?.value||'');if(!body)return;
+  const counts=new Map();state.products.forEach(p=>{const k=searchText(normalizedBrandName(p.brand));if(k)counts.set(k,(counts.get(k)||0)+1);});
+  let rows=brandDirectory.filter(b=>!term||searchText(b.name).includes(term));const sort=document.querySelector('#brandSort')?.value||'name';
+  rows.sort(sort==='count'?(a,b)=>(counts.get(searchText(b.name))||0)-(counts.get(searchText(a.name))||0): (a,b)=>a.name.localeCompare(b.name,'uk'));
+  body.innerHTML=rows.map(b=>'<tr><td><b>'+escape(b.name)+'</b></td><td>'+escape(b.slug)+'</td><td>'+(counts.get(searchText(b.name))||0)+'</td><td><span class="visibility '+(b.is_active?'visible':'hidden-status')+'">'+(b.is_active?'Активний':'Прихований')+'</span></td><td class="table-actions"><button data-brand-edit-id="'+b.id+'">Редагувати</button><button data-brand-merge="'+escape(b.name)+'">Об’єднати</button><button data-brand-clear="'+escape(b.name)+'">Прибрати</button></td></tr>').join('');
+  document.querySelector('#brandCountMetric').textContent=brandDirectory.length+' брендів';
+}
+function openBrandEditor(brand=null){
+ const d=document.querySelector('#brandDialog');document.querySelector('#brandId').value=brand?.id||'';document.querySelector('#brandName').value=brand?.name||'';document.querySelector('#brandSlug').value=brand?.slug||'';document.querySelector('#brandDescription').value=brand?.description||'';document.querySelector('#brandLogo').value=brand?.logo_path||'';document.querySelector('#brandWebsite').value=brand?.website||'';document.querySelector('#brandActive').checked=brand?.is_active!==false;document.querySelector('#brandDialogTitle').textContent=brand?'Редагування бренду':'Новий бренд';d.showModal();
+}
+document.querySelector('#brandName')?.addEventListener('input',e=>{if(!document.querySelector('#brandId').value)document.querySelector('#brandSlug').value=brandSlug(e.target.value);});
+document.querySelector('#closeBrandDialog')?.addEventListener('click',()=>document.querySelector('#brandDialog').close());
+document.addEventListener('click',e=>{const b=e.target.closest('[data-brand-edit-id]');if(b)openBrandEditor(brandDirectory.find(x=>Number(x.id)===Number(b.dataset.brandEditId)));});
+document.querySelector('#brandForm')?.addEventListener('submit',async e=>{
+ e.preventDefault();const id=document.querySelector('#brandId').value;const payload={name:normalizedBrandName(document.querySelector('#brandName').value),slug:brandSlug(document.querySelector('#brandSlug').value),description:document.querySelector('#brandDescription').value.trim()||null,logo_path:document.querySelector('#brandLogo').value.trim()||null,website:document.querySelector('#brandWebsite').value.trim()||null,is_active:document.querySelector('#brandActive').checked,updated_at:new Date().toISOString()};
+ if(!payload.name||!payload.slug)return;const q=id?supabase.from('brands').update(payload).eq('id',id):supabase.from('brands').insert(payload);const {error}=await q;if(error){notice('Не вдалося зберегти бренд: '+error.message,true);return;}document.querySelector('#brandDialog').close();await loadBrandDirectory();notice('Бренд збережено.');
+});
+document.querySelector('#addBrand')?.addEventListener('click',async e=>{if(await loadBrandDirectory()){e.stopImmediatePropagation();openBrandEditor();}},true);
+loadBrandDirectory();

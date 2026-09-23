@@ -103,3 +103,15 @@ drop policy if exists "admins manage brands" on public.brands;
 create policy "admins manage brands" on public.brands for all to authenticated using (public.is_admin()) with check (public.is_admin());
 grant select on public.brands to anon, authenticated;
 grant insert, update, delete on public.brands to authenticated;
+
+-- Central product -> brand relation. Keep products.brand temporarily for backward compatibility.
+alter table public.products add column if not exists brand_id bigint references public.brands(id) on delete set null;
+create index if not exists products_brand_id_idx on public.products(brand_id);
+
+-- Link existing products to the centralized directory by normalized brand name.
+update public.products p
+set brand_id = b.id
+from public.brands b
+where p.brand_id is null
+  and p.brand is not null
+  and lower(trim(p.brand)) = lower(trim(b.name));

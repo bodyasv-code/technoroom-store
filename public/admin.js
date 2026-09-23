@@ -1783,6 +1783,39 @@ document.addEventListener('click', (event) => {
 });
 
 
+/* Фільтри категорій і брендів у списку товарів. */
+const adminFilterValue = value => String(value || '').trim();
+const refreshAdminProductFilters = () => {
+  const category=document.querySelector('#categoryFilter'), brand=document.querySelector('#brandFilter');
+  if(category){
+    const current=category.value;
+    const cats=[...new Set(state.products.map(p=>adminFilterValue(p.category)).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'uk'));
+    category.innerHTML='<option value="all">Усі категорії</option>'+cats.map(v=>'<option value="'+escape(v)+'">'+escape(state.categories.find(c=>c.slug===v)?.name||v)+'</option>').join('');
+    if(cats.includes(current)) category.value=current;
+  }
+  if(brand){
+    const current=brand.value;
+    const brands=[...new Map(state.products.map(p=>adminFilterValue(p.brand)).filter(Boolean).map(v=>[searchText(v),v])).values()].sort((a,b)=>a.localeCompare(b,'uk'));
+    brand.innerHTML='<option value="all">Усі бренди</option>'+brands.map(v=>'<option value="'+escape(v)+'">'+escape(v)+'</option>').join('');
+    if(brands.includes(current)) brand.value=current;
+  }
+};
+const renderProductsBeforeAdminFilters=renderProducts;
+renderProducts=function(){
+  renderProductsBeforeAdminFilters();
+  const category=document.querySelector('#categoryFilter')?.value||'all';
+  const brand=document.querySelector('#brandFilter')?.value||'all';
+  if(category==='all'&&brand==='all') return;
+  document.querySelectorAll('#adminProducts tr').forEach(row=>{
+    const edit=row.querySelector('[data-edit-product]'); if(!edit)return;
+    const p=state.products.find(x=>Number(x.id)===Number(edit.dataset.editProduct)); if(!p)return;
+    row.hidden=(category!=='all'&&p.category!==category)||(brand!=='all'&&adminFilterValue(p.brand)!==brand);
+  });
+};
+['#categoryFilter','#brandFilter'].forEach(sel=>document.querySelector(sel)?.addEventListener('change',()=>{state.productPage=1;renderProducts();}));
+const renderAllBeforeAdminFilters=renderAll;
+renderAll=function(){renderAllBeforeAdminFilters();refreshAdminProductFilters();renderProducts();};
+
 /* Підсумок стану каталогу для нового інтерфейсу. */
 const catalogStatusPanel = document.createElement('section');
 catalogStatusPanel.className = 'admin-metrics catalog-status-metrics';

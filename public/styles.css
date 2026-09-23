@@ -398,3 +398,6 @@ body:not(.admin-body){background:#f5f8fc;color:#081b38}
 
 /* Approved storefront option 2 */
 .home-logo{width:300px!important;min-width:300px!important;height:82px!important;background-size:contain!important;background-position:left center!important}.product>.sale-badge{top:8px!important;left:8px!important;background:#ef233c!important;border-radius:5px!important;padding:5px 8px!important;font-size:11px!important;box-shadow:none!important}.product>.promotion-name{display:block!important;margin:5px 0 7px!important;padding:5px 8px!important;background:#0875e9!important;color:#fff!important;border:0!important;border-radius:5px!important;font-size:11px!important;font-weight:700!important;width:max-content!important;max-width:100%!important}.product>.promotion-name b{color:#fff!important;font-weight:800!important}.home-sale .product{border-radius:9px!important}@media(max-width:900px){.home-logo{width:235px!important;min-width:235px!important;height:68px!important}}
+
+/* Persistent storefront header */
+.store-shared-header,.compact-header.store-shared-header{position:sticky!important;top:0!important;z-index:1000!important;background:#fff!important;box-shadow:0 3px 14px rgba(16,36,62,.08)!important}.shared-store-top{position:relative!important;z-index:1001!important}.header-search{min-width:260px!important}

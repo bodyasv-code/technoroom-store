@@ -177,6 +177,8 @@ document.head.appendChild(catalogSchema);
   const sort = document.getElementById('catalogSort');
   let category = new URLSearchParams(location.search).get('category') || 'all';
   const initialParams=new URLSearchParams(location.search); const initialSort=initialParams.get('sort'); if(initialSort==='new') sort.value='newest'; else if(initialSort==='popular'||initialSort==='recommended') sort.value='default';
+  const initialSearch = new URLSearchParams(location.search).get('search') || '';
+  if (search && initialSearch) search.value = initialSearch;
   fillBrandSelect(brand,products);
   const maxPrice = Math.max(0, ...products.map((product) => Number(product.price) || 0));
   const rangeMax = Math.max(1000, Math.ceil(maxPrice / 1000) * 1000);
@@ -184,8 +186,7 @@ document.head.appendChild(catalogSchema);
   const updatePriceCaption = () => { priceCaption.textContent = `Від ${Number(priceMin.value || 0).toLocaleString('uk-UA')} ₴ до ${Number(price.value || rangeMax).toLocaleString('uk-UA')} ₴`; }; updatePriceCaption();
   const draw = () => {
     buttons.forEach((button) => button.classList.toggle('selected', button.dataset.category === category));
-    const term = (new URLSearchParams(location.search).get('search') || search.value || '').trim();
-    if(search.value!==term) search.value=term;
+    const term = (search.value || '').trim();
     let shown = products.filter((product) =>
       (!saleOnly || !!promotionFor(product)) &&
       (!promotionOnly || Number(promotionFor(product)?.id)===promotionOnly) &&

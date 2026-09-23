@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 210" role="img" aria-label="TECHNOROOM">
+<defs><linearGradient id="b" x1="0" x2="1"><stop stop-color="#075de8"/><stop offset=".55" stop-color="#08b9ef"/><stop offset="1" stop-color="#9aa9b7"/></linearGradient><linearGradient id="r" x1="0" x2="1"><stop stop-color="#263b4c"/><stop offset=".62" stop-color="#08aeea"/></linearGradient></defs>
+<g transform="translate(8 5)"><path d="M85 8 158 50v92l-73 42-73-42V50z" fill="none" stroke="url(#b)" stroke-width="13" stroke-linejoin="bevel"/><path d="M45 65h78c25 0 38 13 38 34 0 20-14 33-38 33H91v-18h30c11 0 17-5 17-15s-6-15-17-15H91v70H68V84H45z" fill="url(#r)"/><path d="m101 125 39 43-18 10-37-42z" fill="#263b4c"/></g>
+<text x="190" y="105" font-family="Arial,Helvetica,sans-serif" font-size="63" font-weight="800" letter-spacing="1" fill="#263b4c">TECHNO<tspan fill="#08aeea">ROOM</tspan></text>
+<path d="M355 130h55M425 130h55M495 130h55" stroke="#9aa9b7" stroke-width="4" stroke-linecap="round"/><path d="M425 130h55" stroke="#08aeea" stroke-width="5"/>
+<text x="235" y="169" font-family="Arial,Helvetica,sans-serif" font-size="20" letter-spacing="8" fill="#263b4c">НАДІЙНІ РІШЕННЯ СЬОГОДНІ</text></svg>

@@ -4,6 +4,8 @@ const supabase = createClient(window.TECHNOROOM_SUPABASE.url, window.TECHNOROOM_
 const catalogImageStyles = document.createElement('style');
 catalogImageStyles.textContent = '.product-image{overflow:hidden;cursor:zoom-in}.product-image img{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;z-index:2;-webkit-user-drag:none;user-select:none}.product-image:has(img)::before{display:none}.catalog-grid .product,.product-grid .product{display:flex;flex-direction:column;min-width:0}.catalog-grid .product-image,.product-grid .product-image{position:static!important;inset:auto!important;top:auto!important;right:auto!important;bottom:auto!important;left:auto!important;flex:0 0 195px;width:100%!important;height:195px!important;margin:0 0 16px!important;overflow:hidden}.catalog-grid .product-image img,.product-grid .product-image img{position:static!important;display:block;width:100%!important;height:195px!important;object-fit:contain;transform:none!important}.product-detail-visual{overflow:hidden}.product-detail-visual .product-image{position:static!important;inset:auto!important;width:100%!important;height:100%!important;min-height:480px;margin:0!important;display:flex!important;align-items:center;justify-content:center}.product-detail-visual .product-image img{position:static!important;display:block;width:100%!important;height:100%!important;object-fit:contain;transform:none!important}.catalog-grid .product h3,.catalog-grid .product p,.product-grid .product h3,.product-grid .product p,.product-detail-copy h1,.product-detail-copy p,.product-detail-copy dt,.product-detail-copy dd{user-select:none}.image-lightbox{position:fixed;inset:0;z-index:1000;display:grid;place-items:center;padding:32px;background:rgba(8,24,22,.88)}.image-lightbox[hidden]{display:none!important}.image-lightbox img{max-width:min(100%,1200px);max-height:calc(100vh - 64px);object-fit:contain;background:#fff}.image-lightbox button{position:absolute;top:20px;right:24px;width:42px;height:42px;border:0;border-radius:50%;font-size:28px;line-height:1;background:#d8ff37;color:#0b2723;cursor:pointer}';
 document.head.append(catalogImageStyles);
+
+const saleStyle=document.createElement('style');saleStyle.textContent='.product{position:relative}.sale-badge{position:absolute;z-index:3;top:10px;left:10px;background:#e52629;color:#fff;border-radius:6px;padding:6px 9px;font-weight:800;font-size:12px}.old-price{display:block;color:#8996a8;font-size:12px;margin-bottom:2px}.product-footer .price{display:block;color:#e52629}';document.head.append(saleStyle);
 const fallbackProducts = [
   { id: 1, name: 'Acer H6830BD', description: '4K UHD проєктор для домашнього кінотеатру', price: 40449, type: 'projector', brand: 'Acer', details: '4000 лм · 3840 × 2160', stock: true },
   { id: 2, name: 'Epson EH-TW9400', description: 'Кінотеатральний Full HD проєктор', price: 150505, type: 'projector', brand: 'Epson', details: '2600 лм · 1920 × 1080', stock: true },
@@ -11,6 +13,7 @@ const fallbackProducts = [
   { id: 4, name: 'Samsung The Frame 65', description: 'QLED телевізор, 65 дюймів', price: 52999, type: 'tv', brand: 'Samsung', details: '65 дюймів · 4K UHD', stock: true },
 ];
 let products = fallbackProducts;
+let activePromotions=[]; let promotionProductIds=new Map();
 const cart = JSON.parse(localStorage.getItem('technoroom-cart') || '[]');
 const money = (value) => `${new Intl.NumberFormat('uk-UA').format(value)} ₴`;
 const escapeHtml = (value = '') => String(value).replace(/[&<>"']/g, (char) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
@@ -41,7 +44,9 @@ document.addEventListener('contextmenu', (event) => { if (event.target.closest('
 
 function add(id) { const product = get(id); if (!product?.stock) return; cart.push(Number(id)); save(); renderCart(); }
 function renderCart() { const count = document.getElementById('cartCount'); if (count) count.textContent = cart.length; const root = document.getElementById('cartItems'), total = document.getElementById('cartTotal'), checkoutButton = document.getElementById('checkoutButton'); if (!root) return; const items = cart.map((id, index) => ({ product: get(id), index })).filter((item) => item.product); root.innerHTML = items.length ? items.map(({ product, index }) => `<div class="cart-item"><b>${product.name}</b><strong>${money(product.price)}</strong><span>${product.stock ? 'В наявності' : 'Немає в наявності'}</span><button class="remove" data-remove="${index}">Прибрати</button></div>`).join('') : '<p class="empty-cart">Кошик поки порожній.</p>'; if (total) total.textContent = money(items.reduce((sum, item) => sum + item.product.price, 0)); if (checkoutButton) checkoutButton.disabled = !items.length; root.querySelectorAll('[data-remove]').forEach((button) => button.onclick = () => { cart.splice(Number(button.dataset.remove), 1); save(); renderCart(); }); }
-function card(product) { return `<article class="product"><div class="product-image ${product.type}">${image(product)}</div><h3><a href="product.html?id=${product.id}">${product.name}</a></h3><p class="availability">${product.stock ? 'В наявності' : 'Немає в наявності'}</p><p>${product.description || ''}</p><div class="product-footer"><strong class="price">${money(product.price)}</strong><button class="add-button" data-add="${product.id}" ${product.stock ? '' : 'disabled'}>${product.stock ? 'У кошик' : 'Немає'}</button></div></article>`; }
+function promotionFor(product){return activePromotions.find(p=>p.target_type==='all'||(p.target_type==='category'&&p.target_value===product.type)||(p.target_type==='brand'&&Number(p.target_value)===Number(product.brand_id))||(p.target_type==='products'&&promotionProductIds.get(p.id)?.has(Number(product.id))))}
+function salePrice(product){const p=promotionFor(product);if(!p)return Number(product.price);return Math.max(0,p.discount_type==='percent'?Number(product.price)*(1-Number(p.discount_value)/100):Number(product.price)-Number(p.discount_value))}
+function card(product) { const promo=promotionFor(product),price=salePrice(product),badge=promo?'<span class="sale-badge">'+(promo.discount_type==='percent'?'-'+Number(promo.discount_value)+'%':'АКЦІЯ')+'</span>':''; return `<article class="product">${badge}<div class="product-image ${product.type}">${image(product)}</div><h3><a href="product.html?id=${product.id}">${product.name}</a></h3><p class="availability">${product.stock ? 'В наявності' : 'Немає в наявності'}</p><p>${product.description || ''}</p><div class="product-footer"><div>${promo?'<del class="old-price">'+money(product.price)+'</del>':''}<strong class="price">${money(price)}</strong></div><button class="add-button" data-add="${product.id}" ${product.stock ? '' : 'disabled'}>${product.stock ? 'У кошик' : 'Немає'}</button></div></article>`; }
 function bind(root = document) { root.querySelectorAll('[data-add]').forEach((button) => button.onclick = () => add(button.dataset.add)); root.querySelectorAll('.product-image img').forEach((image) => image.onclick = () => openLightbox(image.currentSrc || image.src, image.alt)); }
 async function home() {
   const root=document.getElementById('productGrid'); if(!root) return;
@@ -98,6 +103,7 @@ function categoryMatch(product, category) { return product.type === category || 
 function catalog() {
 
   const root = document.getElementById('catalogGrid');
+  const saleOnly=new URLSearchParams(location.search).get('promo')==='sale';
   if (!root) return;
 
   document.title = 'Каталог товарів | TECHNOROOM';
@@ -332,7 +338,8 @@ async function loadProducts() { try {
     all.push(...data);
     if (data.length < pageSize) break;
   }
-  if (all.length) products = all.map((item) => ({ id: item.id, name: item.name, description: item.description, price: Number(item.price), type: item.category, brand: item.brand, specifications: item.specifications, stock: item.in_stock && Number(item.stock_quantity || 0) > 0, image: item.image_path }));
+  if (all.length) products = all.map((item) => ({ id: item.id, name: item.name, description: item.description, price: Number(item.price), type: item.category, brand: item.brand, brand_id:item.brand_id, specifications: item.specifications, stock: item.in_stock && Number(item.stock_quantity || 0) > 0, image: item.image_path }));
+  const now=new Date().toISOString(),pr=await supabase.from('promotions').select('*').eq('is_active',true);if(!pr.error){activePromotions=(pr.data||[]).filter(p=>(!p.starts_at||p.starts_at<=now)&&(!p.ends_at||p.ends_at>=now));const pp=await supabase.from('promotion_products').select('promotion_id,product_id');if(!pp.error)(pp.data||[]).forEach(x=>{if(!promotionProductIds.has(x.promotion_id))promotionProductIds.set(x.promotion_id,new Set());promotionProductIds.get(x.promotion_id).add(Number(x.product_id))})}
 } catch (error) { console.warn('Не вдалося завантажити каталог із Supabase', error); } finally { mount(); await mountMegaCatalog(); } }
 if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', loadProducts, { once: true });
 else loadProducts();

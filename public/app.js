@@ -46,6 +46,24 @@ function bind(root = document) { root.querySelectorAll('[data-add]').forEach((bu
 async function home() {
   const root=document.getElementById('productGrid'); if(!root) return;
   let homeProducts=[...products], cats=[];
+  try {
+    const now=new Date().toISOString();
+    const {data:banners,error:bannerError}=await supabase.from('banners').select('*').eq('is_active',true).order('sort_order').order('created_at',{ascending:false});
+    if(bannerError) throw bannerError;
+    const banner=(banners||[])[0], hero=document.querySelector('.home-hero');
+    if(banner&&hero){
+      const copy=hero.querySelector('.home-hero-copy');
+      if(copy){
+        const title=escapeHtml(banner.title||'TECHNOROOM'), subtitle=escapeHtml(banner.subtitle||''), button=escapeHtml(banner.button_text||'Переглянути');
+        copy.innerHTML='<small>TECHNOROOM</small><h1>'+title+'</h1>'+(subtitle?'<p>'+subtitle+'</p>':'')+'<a href="'+escapeHtml(banner.link_url||'catalog.html')+'">'+button+' →</a>';
+      }
+      if(banner.image_url){hero.style.backgroundImage='linear-gradient(90deg,rgba(8,27,56,.96),rgba(8,27,56,.60)),url("'+String(banner.image_url).replace(/["\\]/g,'')+'")';hero.style.backgroundSize='cover';hero.style.backgroundPosition='center';const art=hero.querySelector('.home-projector-art');if(art)art.style.display='none'}
+    }
+    const {data:promos}=await supabase.from('promotions').select('*').eq('is_active',true);
+    const active=(promos||[]).filter(p=>(!p.starts_at||p.starts_at<=now)&&(!p.ends_at||p.ends_at>=now));
+    if(active.length){const sale=document.querySelector('.home-tabs a[href*="promo=sale"]');if(sale)sale.textContent='Акції ('+active.length+')'}
+  } catch(e){console.warn('Промоблоки головної',e)}
+
   const cards=document.getElementById('homeCategoryCards');
   try {
     const res=await supabase.from('categories').select('id,name,slug,parent_id,sort_order').eq('is_active',true).order('sort_order');

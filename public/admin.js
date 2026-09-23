@@ -1904,11 +1904,27 @@ function renderBrandsAdmin(){
   const term=searchText(document.querySelector('#brandAdminSearch')?.value||'');
   const map=new Map();
   state.products.forEach(p=>{const name=normalizedBrandName(p.brand);if(!name)return;const key=searchText(name);if(!map.has(key))map.set(key,{name,count:0});map.get(key).count++;});
-  const rows=[...map.values()].filter(x=>!term||searchText(x.name).includes(term)).sort((a,b)=>a.name.localeCompare(b.name,'uk'));
+  let rows=[...map.values()].filter(x=>!term||searchText(x.name).includes(term)); const sort=document.querySelector('#brandSort')?.value||'name'; rows.sort(sort==='count'?(a,b)=>b.count-a.count||a.name.localeCompare(b.name,'uk'):(a,b)=>a.name.localeCompare(b.name,'uk')); const brandCount=document.querySelector('#brandCountMetric'), productCount=document.querySelector('#brandProductMetric'); if(brandCount)brandCount.textContent=map.size+' брендів'; if(productCount)productCount.textContent=state.products.filter(p=>normalizedBrandName(p.brand)).length+' товарів із брендом';
   body.innerHTML=rows.length?rows.map(x=>'<tr><td><b>'+escape(x.name)+'</b></td><td>'+x.count+'</td><td class="table-actions"><button type="button" data-brand-rename="'+escape(x.name)+'">Редагувати</button><button type="button" data-brand-merge="'+escape(x.name)+'">Об’єднати</button><button type="button" data-brand-clear="'+escape(x.name)+'">Прибрати</button></td></tr>').join(''):'<tr><td colspan="3" class="empty-row">Брендів не знайдено</td></tr>';
 }
-document.querySelector('#brandAdminSearch')?.addEventListener('input',renderBrandsAdmin);
-document.querySelector('#addBrand')?.addEventListener('click',()=>alert('Новий бренд з’явиться після призначення його товару. Відкрийте товар і вкажіть назву бренду.'));
+document.querySelector('#brandAdminSearch')?.addEventListener('input',renderBrandsAdmin); document.querySelector('#brandSort')?.addEventListener('change',renderBrandsAdmin);
+document.querySelector('#addBrand')?.addEventListener('click',()=>{
+  const name=normalizedBrandName(prompt('Назва нового бренду:')||''); if(!name)return;
+  const exists=state.products.some(p=>searchText(normalizedBrandName(p.brand))===searchText(name));
+  alert(exists?'Такий бренд уже є.':'Бренд «'+name+'» підготовлено. Призначте його товару через редагування товару — після збереження він з’явиться у списку.');
+});
+document.querySelector('#normalizeBrands')?.addEventListener('click',async()=>{
+  const groups=new Map();
+  state.products.forEach(p=>{const n=normalizedBrandName(p.brand);if(!n)return;const key=searchText(n);if(!groups.has(key))groups.set(key,[]);groups.get(key).push(p);});
+  const changes=[];
+  groups.forEach(items=>{const canonical=items.map(p=>normalizedBrandName(p.brand)).sort((a,b)=>a.localeCompare(b,'uk'))[0];items.forEach(p=>{if(p.brand!==canonical)changes.push({id:p.id,brand:canonical});});});
+  if(!changes.length){notice('Назви брендів уже нормалізовані.');return;}
+  if(!confirm('Нормалізувати '+changes.length+' товарів із дубльованими варіантами назв брендів?'))return;
+  const button=document.querySelector('#normalizeBrands');button.disabled=true;
+  let failed=0;
+  for(const change of changes){const {error}=await supabase.from('products').update({brand:change.brand}).eq('id',change.id);if(error)failed++;else{const p=state.products.find(x=>Number(x.id)===Number(change.id));if(p)p.brand=change.brand;}}
+  button.disabled=false;renderAll();renderBrandsAdmin();refreshAdminProductFilters();notice(failed?'Оновлено '+(changes.length-failed)+'; помилок: '+failed:'Нормалізовано '+changes.length+' товарів.',!!failed);
+});
 document.addEventListener('click',async event=>{
   const rename=event.target.closest('[data-brand-rename]'), merge=event.target.closest('[data-brand-merge]'), clear=event.target.closest('[data-brand-clear]');
   const button=rename||merge||clear;if(!button)return;

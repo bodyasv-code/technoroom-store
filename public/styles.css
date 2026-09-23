@@ -389,3 +389,6 @@ body:not(.admin-body){background:#f5f8fc;color:#081b38}
 
 /* Strong visible promotion label */
 .product .promotion-name{display:block!important;width:max-content!important;max-width:calc(100% - 16px)!important;margin:8px 8px 5px!important;padding:7px 10px!important;border:1px solid #9dccff!important;border-radius:7px!important;background:#e8f3ff!important;color:#0069d9!important;font-size:12px!important;font-weight:700!important;line-height:1.25!important;position:relative!important;z-index:5!important}.product .promotion-name b{color:#0055b3!important}
+
+/* Promotion overlays live inside product image */
+.product .product-image{position:relative!important}.product .product-image .promotion-name{position:absolute!important;left:8px!important;right:8px!important;bottom:8px!important;width:auto!important;max-width:none!important;margin:0!important;padding:7px 9px!important;background:#0875e9!important;color:#fff!important;border:0!important;border-radius:6px!important;font-size:11px!important;font-weight:800!important;line-height:1.2!important;z-index:20!important;box-shadow:0 2px 8px rgba(8,117,233,.25)!important}.product .product-image .promotion-name b{color:#fff!important}.product .product-image .sale-badge{z-index:21!important}

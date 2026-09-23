@@ -1781,3 +1781,43 @@ document.addEventListener('click', (event) => {
   renderProducts();
   location.hash = 'products';
 });
+
+
+/* Видалення товарів з адмінки. */
+const deleteProductStyle = document.createElement('style');
+deleteProductStyle.textContent = '.table-actions [data-delete-product]{margin-left:8px;color:#b42318}.product-delete-warning{font-size:12px;color:#8a2d25}';
+document.head.append(deleteProductStyle);
+const appendDeleteProductActions = () => {
+  document.querySelectorAll('#adminProducts [data-edit-product]').forEach((editButton) => {
+    const id = editButton.dataset.editProduct;
+    if (editButton.parentElement.querySelector('[data-delete-product="' + id + '"]')) return;
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.dataset.deleteProduct = id;
+    button.textContent = 'Видалити';
+    editButton.parentElement.append(button);
+  });
+};
+new MutationObserver(appendDeleteProductActions).observe(document.querySelector('#adminProducts'), { childList: true, subtree: true });
+appendDeleteProductActions();
+document.addEventListener('click', async (event) => {
+  const button = event.target.closest('[data-delete-product]');
+  if (!button) return;
+  const id = Number(button.dataset.deleteProduct);
+  const product = state.products.find(item => Number(item.id) === id);
+  if (!product) return;
+  const ok = confirm('Видалити товар «' + product.name + '»?\n\nЦю дію не можна скасувати.');
+  if (!ok) return;
+  button.disabled = true;
+  button.textContent = 'Видалення…';
+  const { error } = await supabase.from('products').delete().eq('id', id);
+  if (error) {
+    button.disabled = false;
+    button.textContent = 'Видалити';
+    notice('Не вдалося видалити товар. Якщо він є у старому замовленні, краще приховати його з каталогу.', true);
+    return;
+  }
+  state.products = state.products.filter(item => Number(item.id) !== id);
+  renderAll();
+  notice('Товар «' + product.name + '» видалено.');
+});

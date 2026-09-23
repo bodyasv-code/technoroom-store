@@ -1954,7 +1954,6 @@ async function loadBrandDirectory(){
   if(error)return false; brandDirectory=data||[]; renderBrandDirectory(); return true;
 }
 function renderBrandDirectory(){
-  if(!brandDirectory.length)return;
   const body=document.querySelector('#adminBrands'), term=searchText(document.querySelector('#brandAdminSearch')?.value||'');if(!body)return;
   const counts=new Map();state.products.forEach(p=>{const k=searchText(normalizedBrandName(p.brand));if(k)counts.set(k,(counts.get(k)||0)+1);});
   let rows=brandDirectory.filter(b=>!term||searchText(b.name).includes(term));const sort=document.querySelector('#brandSort')?.value||'name';
@@ -1986,7 +1985,7 @@ async function syncBrandsFromProducts(){
   const rows=missing.map((name,index)=>({name,slug:brandSlug(name)||('brand-'+Date.now()+'-'+index),is_active:true,sort_order:0}));
   const {error}=await supabase.from('brands').insert(rows);
   if(error){notice('Не вдалося перенести бренди у довідник: '+error.message,true);return -1;}
-  await loadBrandDirectory();return rows.length;
+  const {data:refreshed}=await supabase.from('brands').select('*').order('sort_order').order('name'); brandDirectory=refreshed||brandDirectory; renderBrandDirectory(); return rows.length;
 }
 const originalLoadBrandDirectory=loadBrandDirectory;
 loadBrandDirectory=async function(){

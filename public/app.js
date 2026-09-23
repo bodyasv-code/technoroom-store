@@ -70,7 +70,7 @@ async function home() {
   } catch(e){console.warn('Промоблоки головної',e)}
 
   const saleSection=document.getElementById('homeSaleSection'),saleGrid=document.getElementById('homeSaleGrid');
-  if(saleSection&&saleGrid){const saleProducts=homeProducts.filter(p=>promotionFor(p));if(saleProducts.length){saleGrid.innerHTML=saleProducts.slice(0,6).map(card).join('');bind(saleGrid);saleSection.hidden=false}else saleSection.hidden=true}
+  if(saleSection&&saleGrid){const saleProducts=homeProducts.filter(p=>promotionFor(p));saleSection.hidden=false;if(saleProducts.length){saleGrid.innerHTML=saleProducts.slice(0,6).map(card).join('');bind(saleGrid)}else{saleGrid.innerHTML='<div class="home-sale-empty">Акційні товари з’являться тут після активації акції.</div>'}}
   const cards=document.getElementById('homeCategoryCards');
   try {
     const res=await supabase.from('categories').select('id,name,slug,parent_id,sort_order').eq('is_active',true).order('sort_order');

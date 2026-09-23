@@ -554,7 +554,7 @@ renderProducts = function () {
     const quantity = inventoryQuantity(product);
     const status = inventoryStatus(product);
     const stockClass = status === 'under_order' ? 'stock-order' : quantity === 0 ? 'stock-zero' : quantity <= 3 ? 'stock-low' : 'stock-ok';
-    return '<tr><td><b>' + escape(product.name) + '</b><small>' + escape(product.brand || 'Без бренду') + '</small></td><td><b>' + escape(product.sku || '—') + '</b><small>' + escape(product.category) + '</small></td><td>' + money(product.price) + '</td><td><span class="stock-badge ' + stockClass + '">' + (status === 'under_order' ? 'під замовлення' : quantity + ' шт.') + '</span></td><td><span class="inventory-badge inventory-' + status + '">' + inventoryLabels[status] + '</span></td><td><span class="visibility ' + (product.is_active ? 'visible' : 'hidden-status') + '">' + (product.is_active ? 'У каталозі' : 'Приховано') + '</span></td><td class="table-actions"><button data-edit-product="' + product.id + '">Редагувати</button></td></tr>';
+    return '<tr><td><b>' + escape(product.name) + '</b><small>' + escape(product.brand || 'Без бренду') + '</small></td><td><b>' + escape(product.sku || '—') + '</b><small>' + escape(product.category) + '</small></td><td>' + money(product.price) + '</td><td><span class="stock-badge ' + stockClass + '">' + (status === 'under_order' ? 'під замовлення' : quantity + ' шт.') + '</span></td><td><span class="inventory-badge inventory-' + status + '">' + inventoryLabels[status] + '</span></td><td><span class="visibility ' + (product.is_active ? 'visible' : 'hidden-status') + '">' + (product.is_active ? 'У каталозі' : 'Приховано') + '</span></td><td class="table-actions"><button data-edit-product="' + product.id + '">Редагувати</button><button type="button" data-duplicate-product="' + product.id + '">Дублювати</button><button type="button" class="danger-action" data-delete-product="' + product.id + '">Видалити</button></td></tr>';
   }).join('') : '<tr><td class="empty-row" colspan="7">' + emptyMessage + '</td></tr>';
 };
 const originalShowProductForInventory = showProductDialog;
@@ -2033,3 +2033,26 @@ const ensureProductRowActions=()=>{
 const productActionsObserver=new MutationObserver(ensureProductRowActions);
 productActionsObserver.observe(document.querySelector('#adminProducts'),{childList:true,subtree:true});
 ensureProductRowActions();
+
+
+/* Надійна синхронізація довідника брендів: один конфлікт slug не блокує решту. */
+async function repairBrandDirectory(){
+  const {data:existing,error}=await supabase.from('brands').select('*');
+  if(error){console.error('brands read',error);return;}
+  brandDirectory=existing||[];
+  const names=[...new Map(state.products.map(p=>normalizedBrandName(p.brand)).filter(Boolean).map(n=>[searchText(n),n])).values()];
+  const known=new Set(brandDirectory.map(b=>searchText(b.name))),usedSlugs=new Set(brandDirectory.map(b=>b.slug));
+  let added=0;
+  for(const name of names){
+    if(known.has(searchText(name)))continue;
+    let base=brandSlug(name)||'brand',slug=base,n=2;
+    while(usedSlugs.has(slug))slug=base+'-'+n++;
+    const {data,error:insertError}=await supabase.from('brands').insert({name,slug,is_active:true,sort_order:0}).select().single();
+    if(insertError){console.error('brand insert',name,insertError);continue;}
+    brandDirectory.push(data);known.add(searchText(name));usedSlugs.add(slug);added++;
+  }
+  renderBrandDirectory();
+  if(added)notice('Довідник брендів відновлено: додано '+added+' брендів.');
+  await syncProductBrandRelations();
+}
+setTimeout(repairBrandDirectory,800);

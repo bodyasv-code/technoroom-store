@@ -1267,8 +1267,7 @@ document.addEventListener('click', async event => {
 renderOrderQuickActions();
 
 
-// Масове керування товарами у каталозі.const bulkProductStyles = document.createElement('style');
-
+// Масове керування товарами у каталозі.
 const bulkProductStyles = document.createElement('style');
 
 bulkProductStyles.textContent = `

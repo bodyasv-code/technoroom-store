@@ -908,7 +908,7 @@ const storefrontCategoryBranch = (slug) => {
 const storefrontCategoryMatches = (product, slug) => storefrontCategoryBranch(slug).has(product.type);
 
 const storefrontCategoryStyle = document.createElement('style');
-storefrontCategoryStyle.textContent = '.catalog-taxonomy{margin:0 0 16px}.catalog-taxonomy__root{width:100%;display:flex;align-items:center;justify-content:space-between;gap:12px;text-align:left}.catalog-taxonomy__root b,.catalog-taxonomy__child b{color:#6d8c00;font-size:11px}.catalog-taxonomy__root.is-selected{color:#587900}.catalog-taxonomy__children{margin:1px 0 7px 15px;padding:3px 0 4px 14px;border-left:1px solid #d8ff37}.catalog-taxonomy__child{display:flex!important;align-items:center;justify-content:space-between;gap:8px;padding:8px 0!important;color:#60706d!important;font-size:12px!important}.catalog-taxonomy__child.is-selected{color:#587900!important}.catalog-taxonomy__child span:first-child{padding-right:8px}.catalog-taxonomy__empty{display:none}@media(max-width:780px){.catalog-taxonomy{display:flex;gap:8px;min-width:max-content}.catalog-taxonomy__children{display:contents;border:0;margin:0;padding:0}.catalog-taxonomy__root,.catalog-taxonomy__child{min-width:max-content;width:auto!important;padding:8px 10px!important;border:1px solid var(--line)!important;background:#fff!important}.catalog-taxonomy__root b,.catalog-taxonomy__child b{display:none}}';
+storefrontCategoryStyle.textContent = '.catalog-taxonomy{margin:0 0 16px}.catalog-taxonomy__root{width:100%;display:flex;align-items:center;justify-content:space-between;gap:12px;text-align:left}.catalog-taxonomy__root b,.catalog-taxonomy__child b{color:#6d8c00;font-size:11px}.catalog-taxonomy__root.is-selected{color:#587900}.catalog-taxonomy__group{margin:0 0 3px}.catalog-taxonomy__root-row{display:grid;grid-template-columns:minmax(0,1fr) 32px;align-items:stretch}.catalog-taxonomy__toggle{border:0;border-left:1px solid #e3e8e5;background:transparent;color:#60706d;font-size:17px;cursor:pointer}.catalog-taxonomy__toggle:hover{background:#f1f5ef;color:#587900}.catalog-taxonomy__children{display:none;margin:1px 0 7px 15px;padding:3px 0 4px 14px;border-left:1px solid #d8ff37}.catalog-taxonomy__group.is-open .catalog-taxonomy__children{display:block}.catalog-taxonomy__group.is-open .catalog-taxonomy__toggle{color:#587900}.catalog-taxonomy__child{display:flex!important;align-items:center;justify-content:space-between;gap:8px;padding:8px 0!important;color:#60706d!important;font-size:12px!important}.catalog-taxonomy__child.is-selected{color:#587900!important}.catalog-taxonomy__child span:first-child{padding-right:8px}.catalog-taxonomy__empty{display:none}@media(max-width:780px){.catalog-taxonomy{display:flex;gap:8px;min-width:max-content}.catalog-taxonomy__group{display:contents}.catalog-taxonomy__root-row{display:flex}.catalog-taxonomy__children{display:none!important;position:absolute;z-index:5;margin:42px 0 0;padding:8px;border:1px solid var(--line);background:#fff}.catalog-taxonomy__group.is-open .catalog-taxonomy__children{display:block!important}.catalog-taxonomy__root,.catalog-taxonomy__child{min-width:max-content;width:auto!important;padding:8px 10px!important;border:1px solid var(--line)!important;background:#fff!important}.catalog-taxonomy__root b,.catalog-taxonomy__child b{display:none}.catalog-taxonomy__toggle{width:32px;border:1px solid var(--line);border-left:0}}';
 document.head.append(storefrontCategoryStyle);
 
 const renderStorefrontCategoryNavigation = (filters, selectedCategory) => {
@@ -928,7 +928,13 @@ const renderStorefrontCategoryNavigation = (filters, selectedCategory) => {
   navigation.className = 'catalog-taxonomy';
   const button = (category, child = false) => '<button type="button" class="' + (child ? 'catalog-taxonomy__child' : 'catalog-taxonomy__root') + (selectedCategory === category.slug ? ' is-selected' : '') + '" data-catalog-taxonomy="' + escapeHtml(category.slug) + '"><span>' + escapeHtml(category.name) + '</span><b>' + quantity(category.slug) + '</b></button>';
   const children = (parentId) => (byParent.get(parentId) || []).filter((category) => quantity(category.slug)).map((category) => button(category, true)).join('');
-  navigation.innerHTML = '<button type="button" class="catalog-taxonomy__root' + (selectedCategory === 'all' ? ' is-selected' : '') + '" data-catalog-taxonomy="all"><span>Усі товари</span><b>' + products.length + '</b></button>' + roots.map((category) => button(category) + (children(category.id) ? '<div class="catalog-taxonomy__children">' + children(category.id) + '</div>' : '')).join('');
+  const group = (category) => {
+    const nested = children(category.id);
+    const selectedInside = storefrontCategoryBranch(category.slug).has(selectedCategory);
+    if (!nested) return button(category);
+    return '<div class="catalog-taxonomy__group' + (selectedInside ? ' is-open' : '') + '"><div class="catalog-taxonomy__root-row">' + button(category) + '<button type="button" class="catalog-taxonomy__toggle" data-taxonomy-toggle aria-label="Показати підкатегорії" aria-expanded="' + (selectedInside ? 'true' : 'false') + '">' + (selectedInside ? '−' : '+') + '</button></div><div class="catalog-taxonomy__children">' + nested + '</div></div>';
+  };
+  navigation.innerHTML = '<button type="button" class="catalog-taxonomy__root' + (selectedCategory === 'all' ? ' is-selected' : '') + '" data-catalog-taxonomy="all"><span>Усі товари</span><b>' + products.length + '</b></button>' + roots.map(group).join('');
   refine.before(navigation);
 };
 
@@ -973,6 +979,14 @@ catalog = function () {
 
   root._catalogDraw = draw;
   filters.addEventListener('click', (event) => {
+    const toggle = event.target.closest('[data-taxonomy-toggle]');
+    if (toggle) {
+      const group = toggle.closest('.catalog-taxonomy__group');
+      const opened = group.classList.toggle('is-open');
+      toggle.setAttribute('aria-expanded', String(opened));
+      toggle.textContent = opened ? '−' : '+';
+      return;
+    }
     const button = event.target.closest('[data-catalog-taxonomy]');
     if (!button) return;
     category = button.dataset.catalogTaxonomy;

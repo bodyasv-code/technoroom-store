@@ -17,6 +17,14 @@ let activePromotions=[]; let promotionProductIds=new Map();
 const cart = JSON.parse(localStorage.getItem('technoroom-cart') || '[]');
 const money = (value) => `${new Intl.NumberFormat('uk-UA').format(value)} ₴`;
 const escapeHtml = (value = '') => String(value).replace(/[&<>"']/g, (char) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
+// Частина назв з XML постачальника приходить у застарілому %uXXXX-форматі.
+// Декодуємо його лише для показу, щоб навігація не перетворювалася на %u041F…
+const readableText = (value = '') => {
+  let text = String(value);
+  try { if (/%u[0-9a-f]{4}/i.test(text)) text = unescape(text); } catch {}
+  try { if (/%[0-9a-f]{2}/i.test(text)) text = decodeURIComponent(text); } catch {}
+  return text.replace(/&amp;/gi, '&').replace(/&quot;/gi, '"').replace(/&#39;|&apos;/gi, "'").replace(/&nbsp;/gi, ' ').replace(/\s+/g, ' ').trim();
+};
 const get = (id) => products.find((product) => product.id === Number(id));
 const save = () => localStorage.setItem('technoroom-cart', JSON.stringify(cart));
 const imageUrl = (product) => product.image?.startsWith('http') ? `/api/product-image?id=${product.id}` : product.image ? supabase.storage.from('product-images').getPublicUrl(product.image).data.publicUrl : '';
@@ -80,7 +88,7 @@ async function home() {
   const cards=document.getElementById('homeCategoryCards');
   try {
     const res=await supabase.from('categories').select('id,name,slug,parent_id,sort_order').eq('is_active',true).order('sort_order');
-    cats=res.data||[];
+    cats=(res.data||[]).map((category) => ({ ...category, name: readableText(category.name) }));
     if(cats.length){
       const ids=new Set(cats.map(c=>c.id)), roots=cats.filter(c=>!c.parent_id||!ids.has(c.parent_id));
       if(cards) cards.innerHTML=roots.slice(0,8).map(c=>`<a href="catalog.html?category=${encodeURIComponent(c.slug)}"><div class="home-cat-visual">▣</div><b>${escapeHtml(c.name)}</b><span>Переглянути →</span></a>`).join('');
@@ -361,7 +369,8 @@ else loadProducts();
 async function mountMegaCatalog() {
   const mega=document.getElementById('catalogMega'), rootsEl=document.getElementById('megaRoots'), childrenEl=document.getElementById('megaChildren');
   if(!mega||!rootsEl||!childrenEl) return;
-  const {data:cats,error}=await supabase.from('categories').select('id,name,slug,parent_id,sort_order').eq('is_active',true).order('sort_order');
+  const {data:categoryRows,error}=await supabase.from('categories').select('id,name,slug,parent_id,sort_order').eq('is_active',true).order('sort_order');
+  const cats=(categoryRows||[]).map((category)=>({ ...category, name: readableText(category.name) }));
   if(error||!cats?.length) return;
   const ids=new Set(cats.map(c=>c.id)), roots=cats.filter(c=>!c.parent_id||!ids.has(c.parent_id));
   const show=(root)=>{
@@ -870,7 +879,7 @@ const loadStorefrontCategories = async () => {
     .order('sort_order')
     .order('name')
     .then(({ data, error }) => {
-      storefrontCategories = error ? [] : (data || []);
+      storefrontCategories = error ? [] : (data || []).map((category) => ({ ...category, name: readableText(category.name) }));
       return storefrontCategories;
     })
     .catch(() => []);

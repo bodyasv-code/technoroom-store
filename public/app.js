@@ -926,7 +926,7 @@ const renderStorefrontCategoryNavigation = (filters, selectedCategory) => {
   const roots = storefrontCategories.filter((category) => !category.parent_id && quantity(category.slug));
   const navigation = document.createElement('div');
   navigation.className = 'catalog-taxonomy';
-  const button = (category, child = false) => '<button type="button" class="' + (child ? 'catalog-taxonomy__child' : 'catalog-taxonomy__root') + (selectedCategory === category.slug ? ' is-selected' : '') + '" data-catalog-taxonomy="' + escape(category.slug) + '"><span>' + escape(category.name) + '</span><b>' + quantity(category.slug) + '</b></button>';
+  const button = (category, child = false) => '<button type="button" class="' + (child ? 'catalog-taxonomy__child' : 'catalog-taxonomy__root') + (selectedCategory === category.slug ? ' is-selected' : '') + '" data-catalog-taxonomy="' + escapeHtml(category.slug) + '"><span>' + escapeHtml(category.name) + '</span><b>' + quantity(category.slug) + '</b></button>';
   const children = (parentId) => (byParent.get(parentId) || []).filter((category) => quantity(category.slug)).map((category) => button(category, true)).join('');
   navigation.innerHTML = '<button type="button" class="catalog-taxonomy__root' + (selectedCategory === 'all' ? ' is-selected' : '') + '" data-catalog-taxonomy="all"><span>Усі товари</span><b>' + products.length + '</b></button>' + roots.map((category) => button(category) + (children(category.id) ? '<div class="catalog-taxonomy__children">' + children(category.id) + '</div>' : '')).join('');
   refine.before(navigation);
@@ -952,7 +952,7 @@ catalog = function () {
   const draw = () => {
     const brands = [...new Set(products.map((product) => product.brand).filter(Boolean))].sort((left, right) => left.localeCompare(right, 'uk'));
     const selectedBrand = brand.value;
-    brand.innerHTML = '<option value="">Усі бренди</option>' + brands.map((value) => '<option value="' + escape(value) + '">' + escape(value) + '</option>').join('');
+    brand.innerHTML = '<option value="">Усі бренди</option>' + brands.map((value) => '<option value="' + escapeHtml(value) + '">' + escapeHtml(readableText(value)) + '</option>').join('');
     if (brands.includes(selectedBrand)) brand.value = selectedBrand;
     const term = search.value.trim().toLocaleLowerCase('uk-UA');
     let shown = products.filter((product) =>

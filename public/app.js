@@ -849,3 +849,133 @@ const renderStorefrontRecommendations = () => {
   rememberCurrentProduct();
   renderStorefrontRecommendations();
 }, delay));
+
+
+/* Каталог будується за реальним деревом категорій, а не за статичним списком у розмітці. */
+let storefrontCategories = [];
+let storefrontCategoriesRequest = null;
+const legacyCategoryAliases = { projector: 'cat-projectors', audio: 'cat-audio', tv: 'cat-displays' };
+const legacyCategoryChildren = {
+  'cat-projectors': ['projector', 'laser-proj', 'home-projectors', 'short-throw-projectors', 'installation-projectors', 'universal-projectors', 'projection-screens'],
+  'cat-audio': ['audio'],
+  'cat-displays': ['tv']
+};
+
+const loadStorefrontCategories = async () => {
+  if (storefrontCategoriesRequest) return storefrontCategoriesRequest;
+  storefrontCategoriesRequest = supabase
+    .from('categories')
+    .select('id,name,slug,parent_id,sort_order')
+    .eq('is_active', true)
+    .order('sort_order')
+    .order('name')
+    .then(({ data, error }) => {
+      storefrontCategories = error ? [] : (data || []);
+      return storefrontCategories;
+    })
+    .catch(() => []);
+  return storefrontCategoriesRequest;
+};
+
+const storefrontCategoryBranch = (slug) => {
+  const resolved = legacyCategoryAliases[slug] || slug;
+  const byParent = new Map();
+  storefrontCategories.forEach((category) => {
+    const children = byParent.get(category.parent_id) || [];
+    children.push(category);
+    byParent.set(category.parent_id, children);
+  });
+  const root = storefrontCategories.find((category) => category.slug === resolved);
+  if (!root) return new Set([slug, resolved, ...(legacyCategoryChildren[resolved] || [])]);
+  const branch = new Set([root.slug, ...(legacyCategoryChildren[root.slug] || [])]);
+  const visit = (parentId) => (byParent.get(parentId) || []).forEach((child) => {
+    branch.add(child.slug);
+    visit(child.id);
+  });
+  visit(root.id);
+  return branch;
+};
+
+const storefrontCategoryMatches = (product, slug) => storefrontCategoryBranch(slug).has(product.type);
+
+const storefrontCategoryStyle = document.createElement('style');
+storefrontCategoryStyle.textContent = '.catalog-taxonomy{margin:0 0 16px}.catalog-taxonomy__root{width:100%;display:flex;align-items:center;justify-content:space-between;gap:12px;text-align:left}.catalog-taxonomy__root b,.catalog-taxonomy__child b{color:#6d8c00;font-size:11px}.catalog-taxonomy__root.is-selected{color:#587900}.catalog-taxonomy__children{margin:1px 0 7px 15px;padding:3px 0 4px 14px;border-left:1px solid #d8ff37}.catalog-taxonomy__child{display:flex!important;align-items:center;justify-content:space-between;gap:8px;padding:8px 0!important;color:#60706d!important;font-size:12px!important}.catalog-taxonomy__child.is-selected{color:#587900!important}.catalog-taxonomy__child span:first-child{padding-right:8px}.catalog-taxonomy__empty{display:none}@media(max-width:780px){.catalog-taxonomy{display:flex;gap:8px;min-width:max-content}.catalog-taxonomy__children{display:contents;border:0;margin:0;padding:0}.catalog-taxonomy__root,.catalog-taxonomy__child{min-width:max-content;width:auto!important;padding:8px 10px!important;border:1px solid var(--line)!important;background:#fff!important}.catalog-taxonomy__root b,.catalog-taxonomy__child b{display:none}}';
+document.head.append(storefrontCategoryStyle);
+
+const renderStorefrontCategoryNavigation = (filters, selectedCategory) => {
+  const refine = filters.querySelector('.catalog-refine');
+  if (!refine || !storefrontCategories.length) return;
+  filters.querySelectorAll('[data-category],.category-nest,.category-constellation,.catalog-taxonomy').forEach((node) => node.remove());
+
+  const byParent = new Map();
+  storefrontCategories.forEach((category) => {
+    const children = byParent.get(category.parent_id) || [];
+    children.push(category);
+    byParent.set(category.parent_id, children);
+  });
+  const quantity = (slug) => products.filter((product) => storefrontCategoryMatches(product, slug)).length;
+  const roots = storefrontCategories.filter((category) => !category.parent_id && quantity(category.slug));
+  const navigation = document.createElement('div');
+  navigation.className = 'catalog-taxonomy';
+  const button = (category, child = false) => '<button type="button" class="' + (child ? 'catalog-taxonomy__child' : 'catalog-taxonomy__root') + (selectedCategory === category.slug ? ' is-selected' : '') + '" data-catalog-taxonomy="' + escape(category.slug) + '"><span>' + escape(category.name) + '</span><b>' + quantity(category.slug) + '</b></button>';
+  const children = (parentId) => (byParent.get(parentId) || []).filter((category) => quantity(category.slug)).map((category) => button(category, true)).join('');
+  navigation.innerHTML = '<button type="button" class="catalog-taxonomy__root' + (selectedCategory === 'all' ? ' is-selected' : '') + '" data-catalog-taxonomy="all"><span>Усі товари</span><b>' + products.length + '</b></button>' + roots.map((category) => button(category) + (children(category.id) ? '<div class="catalog-taxonomy__children">' + children(category.id) + '</div>' : '')).join('');
+  refine.before(navigation);
+};
+
+catalog = function () {
+  const root = document.getElementById('catalogGrid');
+  const filters = document.querySelector('.filters');
+  if (!root || !filters || root.dataset.catalogBound === 'true') {
+    root?._catalogDraw?.();
+    return;
+  }
+
+  root.dataset.catalogBound = 'true';
+  document.title = 'Каталог товарів | TECHNOROOM';
+  const search = document.getElementById('catalogSearch');
+  const brand = document.getElementById('brandFilter');
+  const price = document.getElementById('priceFilter');
+  const stock = document.getElementById('stockFilter');
+  const sort = document.getElementById('catalogSort');
+  let category = legacyCategoryAliases[new URLSearchParams(location.search).get('category')] || new URLSearchParams(location.search).get('category') || 'all';
+
+  const draw = () => {
+    const brands = [...new Set(products.map((product) => product.brand).filter(Boolean))].sort((left, right) => left.localeCompare(right, 'uk'));
+    const selectedBrand = brand.value;
+    brand.innerHTML = '<option value="">Усі бренди</option>' + brands.map((value) => '<option value="' + escape(value) + '">' + escape(value) + '</option>').join('');
+    if (brands.includes(selectedBrand)) brand.value = selectedBrand;
+    const term = search.value.trim().toLocaleLowerCase('uk-UA');
+    let shown = products.filter((product) =>
+      (category === 'all' || storefrontCategoryMatches(product, category)) &&
+      (!term || (product.name + ' ' + (product.brand || '') + ' ' + (product.description || '')).toLocaleLowerCase('uk-UA').includes(term)) &&
+      (!brand.value || product.brand === brand.value) &&
+      (!price.value || Number(product.price) <= Number(price.value)) &&
+      (!stock.checked || product.stock)
+    );
+    if (sort.value === 'price-asc') shown.sort((left, right) => left.price - right.price);
+    if (sort.value === 'price-desc') shown.sort((left, right) => right.price - left.price);
+    if (sort.value === 'name') shown.sort((left, right) => left.name.localeCompare(right.name, 'uk'));
+    root.innerHTML = shown.length ? shown.map(card).join('') : '<p class="empty-cart">За цими параметрами товарів не знайдено.</p>';
+    document.getElementById('resultCount').textContent = shown.length + ' товарів';
+    renderStorefrontCategoryNavigation(filters, category);
+    bind(root);
+  };
+
+  root._catalogDraw = draw;
+  filters.addEventListener('click', (event) => {
+    const button = event.target.closest('[data-catalog-taxonomy]');
+    if (!button) return;
+    category = button.dataset.catalogTaxonomy;
+    const url = new URL(location.href);
+    if (category === 'all') url.searchParams.delete('category'); else url.searchParams.set('category', category);
+    history.replaceState({}, '', url);
+    draw();
+  });
+  [search, brand, price, stock, sort].forEach((field) => field.addEventListener(field === stock || field === brand || field === sort ? 'change' : 'input', draw));
+  document.getElementById('clearCatalogFilters').addEventListener('click', () => {
+    search.value = ''; brand.value = ''; price.value = ''; stock.checked = false; sort.value = 'popular'; draw();
+  });
+  draw();
+  loadStorefrontCategories().then(() => draw());
+};

@@ -399,7 +399,7 @@ async function mountMegaCatalog() {
   const show=(root)=>{
     rootsEl.querySelectorAll('button').forEach(b=>b.classList.toggle('active',b.dataset.slug===root.slug));
     const kids=cats.filter(c=>c.parent_id===root.id);
-    childrenEl.innerHTML=`<div class="mega-title"><h2>${root.name}</h2><a href="catalog.html?category=${encodeURIComponent(root.slug)}">Усі товари →</a></div><div class="mega-grid">${kids.map(c=>`<a href="catalog.html?category=${encodeURIComponent(c.slug)}"><strong>${c.name}</strong><span>${products.filter(p=>p.type===c.slug).length} товарів</span></a>`).join('')}</div>`;
+    childrenEl.innerHTML=`<div class="mega-title"><h2>${root.name}</h2><a href="catalog.html?category=${encodeURIComponent(root.slug)}">Усі товари →</a></div><div class="mega-grid">${kids.map(c=>`<a href="catalog.html?category=${encodeURIComponent(c.slug)}"><strong>${c.name}</strong><span>${products.filter(p=>storefrontCategoryMatches(p,c.slug)).length} товарів</span></a>`).join('')}</div>`;
   };
   rootsEl.innerHTML=roots.map(r=>`<button type="button" data-slug="${r.slug}"><span>${r.name}</span><b>›</b></button>`).join('');
   rootsEl.querySelectorAll('button').forEach(b=>{b.onmouseenter=b.onclick=()=>show(roots.find(r=>r.slug===b.dataset.slug));});
@@ -1013,6 +1013,10 @@ catalog = function () {
   const price = document.getElementById('priceFilter');
   const stock = document.getElementById('stockFilter');
   const sort = document.getElementById('catalogSort');
+  const pageSize = document.getElementById('catalogPageSize');
+  const pagination = document.getElementById('catalogPagination');
+  const priceMin = document.getElementById('priceMin');
+  let page = 1;
   let category = legacyCategoryAliases[params.get('category')] || params.get('category') || 'all';
   if (params.get('search')) search.value = params.get('search');
 
@@ -1030,14 +1034,23 @@ catalog = function () {
         && (!promotionOnly || Number(promotion?.id) === promotionOnly)
         && (!terms.length || terms.every((term) => searchable.includes(term)))
         && (!brand.value || product.brand === brand.value)
+        && (!priceMin?.value || Number(product.price) >= Number(priceMin.value))
         && (!price.value || Number(product.price) <= Number(price.value))
         && (!stock.checked || product.stock);
     });
     if (sort.value === 'price-asc') shown.sort((left, right) => left.price - right.price);
     if (sort.value === 'price-desc') shown.sort((left, right) => right.price - left.price);
     if (sort.value === 'name') shown.sort((left, right) => left.name.localeCompare(right.name, 'uk'));
-    root.innerHTML = shown.length ? shown.map(card).join('') : '<p class="empty-cart">За цими параметрами товарів не знайдено.</p>';
+    const size = Number(pageSize?.value || 20);
+    const pages = Math.max(1, Math.ceil(shown.length / size));
+    page = Math.min(page, pages);
+    const visible = shown.slice((page - 1) * size, page * size);
+    root.innerHTML = visible.length ? visible.map(card).join('') : '<p class="empty-cart">За цими параметрами товарів не знайдено.</p>';
     document.getElementById('resultCount').textContent = shown.length + ' товарів';
+    if (pagination) {
+      pagination.hidden = pages <= 1;
+      pagination.innerHTML = pages > 1 ? '<button type="button" data-catalog-page="prev" '+(page === 1 ? 'disabled' : '')+'>← Попередні</button><span>Сторінка '+page+' з '+pages+'</span><button type="button" data-catalog-page="next" '+(page === pages ? 'disabled' : '')+'>Наступні →</button>' : '';
+    }
     renderStorefrontCategoryNavigation(filters, category);
     bind(root);
   };
@@ -1055,14 +1068,22 @@ catalog = function () {
     const button = event.target.closest('[data-catalog-taxonomy]');
     if (!button) return;
     category = button.dataset.catalogTaxonomy;
+    page = 1;
     const url = new URL(location.href);
     if (category === 'all') url.searchParams.delete('category'); else url.searchParams.set('category', category);
     history.replaceState({}, '', url);
     draw();
   });
-  [search, brand, price, stock, sort].filter(Boolean).forEach((field) => field.addEventListener(field === stock || field === brand || field === sort ? 'change' : 'input', draw));
+  [search, brand, price, priceMin, stock, sort, pageSize].filter(Boolean).forEach((field) => field.addEventListener(field === stock || field === brand || field === sort || field === pageSize ? 'change' : 'input', () => { page = 1; draw(); }));
+  pagination?.addEventListener('click', (event) => {
+    const control = event.target.closest('[data-catalog-page]');
+    if (!control) return;
+    page += control.dataset.catalogPage === 'next' ? 1 : -1;
+    draw();
+    root.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  });
   document.getElementById('clearCatalogFilters').addEventListener('click', () => {
-    search.value = ''; brand.value = ''; price.value = ''; stock.checked = false; sort.value = 'popular'; draw();
+    search.value = ''; brand.value = ''; price.value = ''; if(priceMin) priceMin.value = '0'; stock.checked = false; sort.value = 'popular'; page = 1; draw();
   });
   draw();
   loadStorefrontCategories().then(() => draw());

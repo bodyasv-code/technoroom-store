@@ -1044,11 +1044,85 @@ catalog = function () {
   const pageSize = document.getElementById('catalogPageSize');
   const pagination = document.getElementById('catalogPagination');
   const priceMin = document.getElementById('priceMin');
+  const screenSpecificationFilters = document.getElementById('screenSpecificationFilters');
+  const screenCategory = 'erc-display-06';
+  const selectedScreenSpecifications = new Map();
+  const normaliseSpecificationKey = (value) => readableText(value)
+    .toLocaleLowerCase('uk-UA')
+    .replace(/[\s:]+$/g, '')
+    .replace(/\s+/g, ' ');
+  const screenSpecificationDefinitions = [
+    { id: 'diagonal', label: 'Діагональ', keys: ['діагональ'], sort: (left, right) => Number.parseFloat(left) - Number.parseFloat(right) },
+    { id: 'format', label: 'Формат екрана', keys: ['співвідношення сторін'] },
+    { id: 'construction', label: 'Тип конструкції', keys: ['тип екрану'] },
+    { id: 'mounting', label: 'Монтаж', keys: ['установка', 'встановлення', 'монтаж'] },
+    {
+      id: 'drive',
+      label: 'Привід',
+      keys: ['тип екрану'],
+      values: (product) => {
+        const type = specificationValues(product, ['тип екрану']).join(' ').toLocaleLowerCase('uk-UA');
+        return [
+          ...(type.includes('моторизован') ? ['Моторизований'] : []),
+          ...(type.includes('ручн') ? ['Ручний'] : [])
+        ];
+      }
+    }
+  ];
+  const specificationValues = (product, keys) => Object.entries(product.specifications || {})
+    .filter(([key]) => keys.includes(normaliseSpecificationKey(key)))
+    .flatMap(([, value]) => Array.isArray(value) ? value : [value])
+    .map((value) => readableText(value))
+    .filter(Boolean);
+  const valuesForScreenFilter = (product, definition) => definition.values
+    ? definition.values(product)
+    : specificationValues(product, definition.keys);
+  const screenFilterOptions = () => screenSpecificationDefinitions
+    .map((definition) => {
+      const values = new Set();
+      products.filter((product) => product.type === screenCategory).forEach((product) => {
+        valuesForScreenFilter(product, definition).forEach((value) => values.add(value));
+      });
+      const options = [...values].sort(definition.sort || ((left, right) => left.localeCompare(right, 'uk')));
+      return options.length ? { ...definition, options } : null;
+    })
+    .filter(Boolean);
+  const renderScreenSpecificationFilters = () => {
+    if (!screenSpecificationFilters) return;
+    if (category !== screenCategory) {
+      selectedScreenSpecifications.clear();
+      screenSpecificationFilters.hidden = true;
+      screenSpecificationFilters.replaceChildren();
+      return;
+    }
+    const groups = screenFilterOptions();
+    if (!groups.length) {
+      screenSpecificationFilters.hidden = true;
+      return;
+    }
+    const available = new Map(groups.map((group) => [group.id, new Set(group.options)]));
+    selectedScreenSpecifications.forEach((values, id) => {
+      const valid = new Set([...values].filter((value) => available.get(id)?.has(value)));
+      if (valid.size) selectedScreenSpecifications.set(id, valid); else selectedScreenSpecifications.delete(id);
+    });
+    screenSpecificationFilters.hidden = false;
+    screenSpecificationFilters.innerHTML = groups.map((group) => {
+      const selected = selectedScreenSpecifications.get(group.id) || new Set();
+      return '<fieldset class="screen-specification-filter"><legend>' + escapeHtml(group.label) + '</legend><div class="screen-specification-filter__options">'
+        + group.options.map((value) => '<label><input type="checkbox" data-screen-specification="' + escapeHtml(group.id) + '" value="' + escapeHtml(value) + '"' + (selected.has(value) ? ' checked' : '') + '> <span>' + escapeHtml(value) + '</span></label>').join('')
+        + '</div></fieldset>';
+    }).join('');
+  };
+  const matchesSelectedScreenSpecifications = (product) => [...selectedScreenSpecifications].every(([id, selected]) => {
+    const definition = screenSpecificationDefinitions.find((item) => item.id === id);
+    return !definition || valuesForScreenFilter(product, definition).some((value) => selected.has(value));
+  });
   let page = 1;
   let category = legacyCategoryAliases[params.get('category')] || params.get('category') || 'all';
   if (params.get('search')) search.value = params.get('search');
 
   const draw = () => {
+    renderScreenSpecificationFilters();
     const brands = [...new Set(products.map((product) => product.brand).filter(Boolean))].sort((left, right) => left.localeCompare(right, 'uk'));
     const selectedBrand = brand.value;
     brand.innerHTML = '<option value="">Усі бренди</option>' + brands.map((value) => '<option value="' + escapeHtml(value) + '">' + escapeHtml(readableText(value)) + '</option>').join('');
@@ -1064,7 +1138,8 @@ catalog = function () {
         && (!brand.value || product.brand === brand.value)
         && (!priceMin?.value || Number(product.price) >= Number(priceMin.value))
         && (!price.value || Number(product.price) <= Number(price.value))
-        && (!stock.checked || product.stock);
+        && (!stock.checked || product.stock)
+        && (category !== screenCategory || matchesSelectedScreenSpecifications(product));
     });
     if (sort.value === 'price-asc') shown.sort((left, right) => left.price - right.price);
     if (sort.value === 'price-desc') shown.sort((left, right) => right.price - left.price);
@@ -1083,6 +1158,15 @@ catalog = function () {
   };
 
   root._catalogDraw = draw;
+  screenSpecificationFilters?.addEventListener('change', (event) => {
+    const input = event.target.closest('[data-screen-specification]');
+    if (!input) return;
+    const selected = selectedScreenSpecifications.get(input.dataset.screenSpecification) || new Set();
+    if (input.checked) selected.add(input.value); else selected.delete(input.value);
+    if (selected.size) selectedScreenSpecifications.set(input.dataset.screenSpecification, selected); else selectedScreenSpecifications.delete(input.dataset.screenSpecification);
+    page = 1;
+    draw();
+  });
   filters.addEventListener('click', (event) => {
     const toggle = event.target.closest('[data-taxonomy-toggle]');
     if (toggle) {
@@ -1095,6 +1179,7 @@ catalog = function () {
     const button = event.target.closest('[data-catalog-taxonomy]');
     if (!button) return;
     category = button.dataset.catalogTaxonomy;
+    selectedScreenSpecifications.clear();
     page = 1;
     const url = new URL(location.href);
     if (category === 'all') url.searchParams.delete('category'); else url.searchParams.set('category', category);
@@ -1110,7 +1195,7 @@ catalog = function () {
     root.scrollIntoView({ behavior: 'smooth', block: 'start' });
   });
   document.getElementById('clearCatalogFilters').addEventListener('click', () => {
-    search.value = ''; brand.value = ''; price.value = ''; if(priceMin) priceMin.value = '0'; stock.checked = false; sort.value = 'popular'; page = 1; draw();
+    search.value = ''; brand.value = ''; price.value = ''; if(priceMin) priceMin.value = '0'; stock.checked = false; sort.value = 'popular'; selectedScreenSpecifications.clear(); page = 1; draw();
   });
   draw();
   loadStorefrontCategories().then(() => draw());

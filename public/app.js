@@ -428,14 +428,30 @@ async function mountMegaCatalog() {
   const cats=(categoryRows||[]).map((category)=>({ ...category, name: readableText(category.name) }));
   if(error||!cats?.length) return;
   const ids=new Set(cats.map(c=>c.id)), roots=cats.filter(c=>!c.parent_id||!ids.has(c.parent_id));
+  const compactMenu=()=>window.matchMedia('(max-width:700px)').matches;
+  const renderRoots=()=>{
+    rootsEl.hidden=false;
+    childrenEl.hidden=true;
+    rootsEl.innerHTML=roots.map(r=>`<button type="button" data-slug="${r.slug}"><span>${r.name}</span><b>›</b></button>`).join('');
+    rootsEl.querySelectorAll('button').forEach(button=>{
+      const root=roots.find(item=>item.slug===button.dataset.slug);
+      button.onmouseenter=()=>{if(!compactMenu()) show(root)};
+      button.onclick=()=>show(root);
+    });
+  };
   const show=(root)=>{
     rootsEl.querySelectorAll('button').forEach(b=>b.classList.toggle('active',b.dataset.slug===root.slug));
     const kids=cats.filter(c=>c.parent_id===root.id);
-    childrenEl.innerHTML=`<div class="mega-title"><h2>${root.name}</h2><a href="catalog.html?category=${encodeURIComponent(root.slug)}">Усі товари →</a></div><div class="mega-grid">${kids.map(c=>`<a href="catalog.html?category=${encodeURIComponent(c.slug)}"><strong>${c.name}</strong><span>${products.filter(p=>storefrontCategoryMatches(p,c.slug)).length} товарів</span></a>`).join('')}</div>`;
+    const back=compactMenu()?'<button type="button" class="mega-back" data-mega-back>← Усі категорії</button>':'';
+    childrenEl.innerHTML=`${back}<div class="mega-title"><h2>${root.name}</h2><a href="catalog.html?category=${encodeURIComponent(root.slug)}">Усі товари →</a></div><div class="mega-grid">${kids.map(c=>`<a href="catalog.html?category=${encodeURIComponent(c.slug)}"><strong>${c.name}</strong><span>${products.filter(p=>storefrontCategoryMatches(p,c.slug)).length} товарів</span></a>`).join('')}</div>`;
+    if(compactMenu()){
+      rootsEl.hidden=true;
+      childrenEl.hidden=false;
+      childrenEl.querySelector('[data-mega-back]').onclick=renderRoots;
+    }else childrenEl.hidden=false;
   };
-  rootsEl.innerHTML=roots.map(r=>`<button type="button" data-slug="${r.slug}"><span>${r.name}</span><b>›</b></button>`).join('');
-  rootsEl.querySelectorAll('button').forEach(b=>{b.onmouseenter=b.onclick=()=>show(roots.find(r=>r.slug===b.dataset.slug));});
-  if(roots[0]) show(roots[0]);
+  renderRoots();
+  if(roots[0]&&!compactMenu()) show(roots[0]);
   const toggle=document.getElementById('catalogMenuToggle');
   toggle.onclick=(event)=>{ event.preventDefault(); mega.hidden=!mega.hidden; };
   document.addEventListener('pointerdown',(event)=>{

@@ -13,6 +13,7 @@ const fallbackProducts = [
   { id: 4, name: 'Samsung The Frame 65', description: 'QLED телевізор, 65 дюймів', price: 52999, type: 'tv', brand: 'Samsung', details: '65 дюймів · 4K UHD', stock: true },
 ];
 let products = fallbackProducts;
+let productsLoaded = false;
 let activePromotions=[]; let promotionProductIds=new Map();
 const cart = JSON.parse(localStorage.getItem('technoroom-cart') || '[]');
 const money = (value) => `${new Intl.NumberFormat('uk-UA').format(value)} ₴`;
@@ -383,7 +384,7 @@ async function loadProducts() { try {
   }
   if (all.length) products = all.map((item) => ({ id: item.id, sku: item.sku, name: item.name, description: item.description, price: Number(item.price), type: item.category, brand: item.brand, brand_id:item.brand_id, specifications: item.specifications, availabilityStatus: item.availability_status, stock: item.in_stock && Number(item.stock_quantity || 0) > 0, image: item.image_path }));
   const now=Date.now(),pr=await supabase.from('promotions').select('*').eq('is_active',true);if(pr.error)console.warn('Акції:',pr.error);else{activePromotions=(pr.data||[]).filter(p=>(!p.starts_at||new Date(p.starts_at).getTime()<=now)&&(!p.ends_at||new Date(p.ends_at).getTime()>=now));promotionProductIds.clear();const targeted=activePromotions.filter(p=>p.target_type==='products').map(p=>p.id);if(targeted.length){const pp=await supabase.from('promotion_products').select('promotion_id,product_id').in('promotion_id',targeted);if(pp.error)console.warn('Товари акцій:',pp.error);else(pp.data||[]).forEach(x=>{const key=Number(x.promotion_id);if(!promotionProductIds.has(key))promotionProductIds.set(key,new Set());promotionProductIds.get(key).add(Number(x.product_id))})}}
-} catch (error) { console.warn('Не вдалося завантажити каталог із Supabase', error); } finally { mount(); await mountMegaCatalog(); } }
+} catch (error) { console.warn('Не вдалося завантажити каталог із Supabase', error); } finally { productsLoaded = true; mount(); await mountMegaCatalog(); } }
 if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', loadProducts, { once: true });
 else loadProducts();
 
@@ -743,7 +744,9 @@ product = function () {
   const requestedId = Number(new URLSearchParams(location.search).get('id'));
   const item = requestedId ? get(requestedId) : products[0];
   if (!item) {
-    root.innerHTML = '<p class="empty-cart">Завантажуємо товар…</p>';
+    root.innerHTML = productsLoaded
+      ? '<div class="empty-cart"><b>Товар не знайдено або його приховано.</b><br><a href="catalog.html">Повернутися до каталогу →</a></div>'
+      : '<p class="empty-cart">Завантажуємо товар…</p>';
     return;
   }
   document.title = readableText(item.name) + ' | TECHNOROOM';

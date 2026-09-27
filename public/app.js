@@ -707,17 +707,32 @@ product = function () {
   if (!root) return;
   const item = get(new URLSearchParams(location.search).get('id')) || products[0];
   if (!item) return;
+  document.title = readableText(item.name) + ' | TECHNOROOM';
   const state = availability(item);
   const paths = galleryEntriesFor(item);
-  const specs = item.specifications
-    ? Object.entries(item.specifications).map(([key, value]) => '<div><dt>' + key + '</dt><dd>' + value + '</dd></div>').join('')
-    : '<div><dt>Характеристики</dt><dd>' + (item.details || 'Уточнюйте у менеджера') + '</dd></div>';
+  const safe = (value) => catalogCardEscape(readableText(value));
+  const safeName = safe(item.name);
+  const safeBrand = safe(item.brand || 'TECHNOROOM');
+  const specEntries = item.specifications ? Object.entries(item.specifications) : [];
+  const specs = specEntries.length
+    ? specEntries.map(([key, value]) => '<div><dt>' + safe(key) + '</dt><dd>' + safe(Array.isArray(value) ? value.join(', ') : value) + '</dd></div>').join('')
+    : '<div><dt>Характеристики</dt><dd>Уточнюйте у менеджера</dd></div>';
+  const related = products.filter((product) => product.id !== item.id && product.type === item.type).slice(0, 4);
   const renderProductGallery = (activePath = paths[0]) => {
     const source = galleryImageUrl(item, activePath);
     const thumbs = paths.length > 1
-      ? '<div class="product-gallery-thumbs" aria-label="Інші фото товару">' + paths.map((path, index) => '<button class="product-gallery-thumb ' + (path === activePath ? 'is-active' : '') + '" type="button" data-gallery-path="' + encodeURIComponent(path) + '" aria-label="Фото ' + (index + 1) + '"><img src="' + galleryImageUrl(item, path) + '" alt="' + item.name + ' — фото ' + (index + 1) + '" draggable="false"></button>').join('') + '</div>'
+      ? '<div class="product-gallery-thumbs" aria-label="Інші фото товару">' + paths.map((path, index) => '<button class="product-gallery-thumb ' + (path === activePath ? 'is-active' : '') + '" type="button" data-gallery-path="' + encodeURIComponent(path) + '" aria-label="Фото ' + (index + 1) + '"><img src="' + galleryImageUrl(item, path) + '" alt="' + safeName + ' — фото ' + (index + 1) + '" draggable="false"></button>').join('') + '</div>'
       : '';
-    root.innerHTML = '<div class="product-detail-visual ' + item.type + '"><div class="product-image ' + item.type + '">' + (source ? '<img src="' + source + '" alt="' + item.name + '" draggable="false">' : '') + '</div>' + thumbs + '</div><div class="product-detail-copy"><p class="eyebrow">' + (item.brand || '') + '</p><h1>' + item.name + '</h1><p class="product-description">' + (item.description || '') + '</p><p class="availability">' + state.label + '</p><strong class="detail-price">' + money(item.price) + '</strong><div class="detail-actions"><button class="button primary" data-add="' + item.id + '" ' + (state.orderable ? '' : 'disabled') + '>' + (state.orderable ? (item.availabilityStatus === 'under_order' ? 'Замовити' : 'Додати в кошик') : 'Немає в наявності') + '</button><a class="button outline" href="catalog.html">До каталогу</a></div><dl class="specs"><div><dt>Виробник</dt><dd>' + (item.brand || '—') + '</dd></div>' + specs + '</dl></div>';
+    root.innerHTML = '<section class="product-showcase">'
+      + '<div class="product-gallery-panel"><div class="product-detail-visual ' + safe(item.type) + '"><div class="product-image ' + safe(item.type) + '">' + (source ? '<img src="' + source + '" alt="' + safeName + '" draggable="false">' : '<div class="product-placeholder"><span>Фото товару<br>з’явиться незабаром</span></div>') + '</div><span class="product-photo-hint">Натисніть на фото, щоб збільшити</span></div>' + thumbs + '</div>'
+      + '<div class="product-overview"><div class="product-topline"><a href="catalog.html?category=' + encodeURIComponent(item.type || '') + '" class="product-category-link">Каталог</a><span class="product-code">Код товару: ' + item.id + '</span></div>'
+      + '<p class="product-brand">' + safeBrand + '</p><h1>' + safeName + '</h1>'
+      + '<div class="product-buy-card"><div class="product-availability ' + (state.orderable ? 'is-available' : 'is-unavailable') + '"><i></i><span>' + state.label + '</span></div>'
+      + '<strong class="detail-price">' + money(item.price) + '</strong><p class="product-price-note">Ціна вказана за 1 одиницю товару</p>'
+      + '<div class="detail-actions"><button class="button product-buy" data-add="' + item.id + '" ' + (state.orderable ? '' : 'disabled') + '>' + (state.orderable ? (item.availabilityStatus === 'under_order' ? 'Замовити' : 'Додати в кошик') : 'Немає в наявності') + '</button><a class="button product-back" href="catalog.html">До каталогу</a></div>'
+      + '<div class="product-service-grid"><div><b>Доставка</b><span>Підберемо зручний спосіб</span></div><div><b>Гарантія</b><span>Офіційна техніка</span></div><div><b>Консультація</b><span>Допоможемо з вибором</span></div></div></div></div></section>'
+      + '<section class="product-content-grid"><article class="product-description-card"><p class="section-kicker">Про товар</p><h2>Опис</h2><p>' + safe(item.description || 'Деталі та комплектацію уточнюйте у менеджера.') + '</p></article><article class="product-specs-card"><div class="product-section-heading"><div><p class="section-kicker">Технічні дані</p><h2>Характеристики</h2></div><span>' + (specEntries.length ? specEntries.length + ' параметрів' : '') + '</span></div><dl class="specs"><div><dt>Виробник</dt><dd>' + safeBrand + '</dd></div>' + specs + '</dl></article></section>'
+      + (related.length ? '<section class="related-products"><div class="related-heading"><div><p class="section-kicker">Добірка</p><h2>Схожі товари</h2></div><a href="catalog.html?category=' + encodeURIComponent(item.type || '') + '">Переглянути всі →</a></div><div class="product-grid">' + related.map(card).join('') + '</div></section>' : '');
     bind(root);
     root.querySelectorAll('[data-gallery-path]').forEach((button) => button.addEventListener('click', () => renderProductGallery(decodeURIComponent(button.dataset.galleryPath))));
   };

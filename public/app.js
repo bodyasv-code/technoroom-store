@@ -393,8 +393,17 @@ async function mountMegaCatalog() {
   const search=document.getElementById('headerCatalogSearch'), go=document.getElementById('headerCatalogSearchGo');
   const normalizeSearch=v=>String(v||'').toLowerCase().replace(/['’\-_/.,()]+/g,' ').replace(/\s+/g,' ').trim();
   const score=(p,q)=>{const words=normalizeSearch(q).split(' ').filter(Boolean),name=normalizeSearch(p.name),brand=normalizeSearch(p.brand),sku=normalizeSearch(p.sku),desc=normalizeSearch(p.description),hay=[name,brand,sku,desc].join(' ');if(!words.every(w=>hay.includes(w)))return-1;let n=0;words.forEach(w=>{if(name===w)n+=100;else if(name.startsWith(w))n+=60;else if(name.includes(w))n+=40;if(brand===w)n+=30;if(sku===w)n+=50});return n};
-  const run=()=>{const q=search.value.trim();const url=new URL('catalog.html',location.href);if(q)url.searchParams.set('search',q);location.href=url.href;};
-  if(search){const q=new URLSearchParams(location.search).get('search');if(q)search.value=q;search.onkeydown=e=>{if(e.key==='Enter')run()};}
+  const run=()=>{const q=search?.value.trim();const url=new URL('catalog.html',location.href);if(q)url.searchParams.set('search',q);else url.searchParams.delete('search');location.href=url.href;};
+  if(search){
+    const wrap=search.closest('.header-search');
+    const results=document.createElement('div');
+    results.className='header-search-results'; results.hidden=true; results.setAttribute('role','status');
+    wrap?.append(results);
+    const showResults=()=>{const q=search.value.trim(),normalized=normalizeSearch(q);if(normalized.length<2){results.hidden=true;return}const matches=products.map(product=>({product,rank:score(product,normalized)})).filter(row=>row.rank>=0).sort((a,b)=>b.rank-a.rank).slice(0,6);results.innerHTML='<div class="header-search-results__head"><b>Знайдено: '+matches.length+(matches.length===6?'+':'')+'</b><span>за назвою, брендом або SKU</span></div>'+(matches.length?matches.map(({product})=>{const source=imageUrl(product),name=escapeHtml(product.name),brand=escapeHtml(product.brand||'TECHNOROOM');return '<a class="header-search-result" href="product.html?id='+product.id+'">'+(source?'<img src="'+escapeHtml(source)+'" alt="" draggable="false">':'<span class="header-search-result__placeholder">▣</span>')+'<span><b>'+name+'</b><small>'+brand+' · '+money(product.price)+'</small></span><em>'+availability(product).label+'</em></a>'}).join(''):'<p class="header-search-empty">Нічого не знайдено. Спробуйте назву, бренд або SKU.</p>')+'<button type="button" class="header-search-all">Переглянути всі результати для «'+escapeHtml(q)+'» →</button>';results.hidden=false;results.querySelector('.header-search-all')?.addEventListener('click',run)};
+    const q=new URLSearchParams(location.search).get('search');if(q)search.value=q;
+    search.addEventListener('input',showResults);search.addEventListener('focus',showResults);search.addEventListener('keydown',event=>{if(event.key==='Enter'){event.preventDefault();run()}if(event.key==='Escape')results.hidden=true});
+    document.addEventListener('pointerdown',event=>{if(!wrap?.contains(event.target))results.hidden=true});
+  }
   if(go)go.onclick=run;
 }
 /* Статус «Під замовлення»: товар можна оформити без складського залишку. */

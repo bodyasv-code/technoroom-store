@@ -116,10 +116,30 @@ async function home() {
       if(cards) cards.innerHTML=roots.slice(0,8).map(c=>`<a href="catalog.html?category=${encodeURIComponent(c.slug)}"><div class="home-cat-visual">▣</div><b>${escapeHtml(c.name)}</b><span>Переглянути →</span></a>`).join('');
       const mega=document.getElementById('homeCatalogMega'), rootsEl=document.getElementById('homeMegaRoots'), childrenEl=document.getElementById('homeMegaChildren'), toggle=document.getElementById('homeCatalogToggle');
       if(mega&&rootsEl&&childrenEl&&toggle){
-        const show=r=>{rootsEl.querySelectorAll('button').forEach(b=>b.classList.toggle('active',b.dataset.slug===r.slug)); const kids=cats.filter(c=>c.parent_id===r.id); childrenEl.innerHTML=`<div class="mega-title"><h2>${escapeHtml(r.name)}</h2><a href="catalog.html?category=${encodeURIComponent(r.slug)}">Усі товари →</a></div><div class="mega-grid">${kids.map(c=>`<a href="catalog.html?category=${encodeURIComponent(c.slug)}"><strong>${escapeHtml(c.name)}</strong><span>${products.filter(p=>p.type===c.slug).length} товарів</span></a>`).join('')}</div>`;};
-        rootsEl.innerHTML=roots.map(r=>`<button type="button" data-slug="${r.slug}"><span>${escapeHtml(r.name)}</span><b>›</b></button>`).join('');
-        rootsEl.querySelectorAll('button').forEach(b=>b.onmouseenter=b.onclick=()=>show(roots.find(r=>r.slug===b.dataset.slug)));
-        if(roots[0]) show(roots[0]);
+        const compactMenu=()=>window.matchMedia('(max-width:700px)').matches;
+        const renderRoots=()=>{
+          rootsEl.hidden=false;
+          childrenEl.hidden=true;
+          rootsEl.innerHTML=roots.map(r=>`<button type="button" data-slug="${r.slug}"><span>${escapeHtml(r.name)}</span><b>›</b></button>`).join('');
+          rootsEl.querySelectorAll('button').forEach(button=>{
+            const root=roots.find(item=>item.slug===button.dataset.slug);
+            button.onmouseenter=()=>{if(!compactMenu()) show(root)};
+            button.onclick=()=>show(root);
+          });
+        };
+        const show=r=>{
+          rootsEl.querySelectorAll('button').forEach(b=>b.classList.toggle('active',b.dataset.slug===r.slug));
+          const kids=cats.filter(c=>c.parent_id===r.id);
+          const back=compactMenu()?'<button type="button" class="mega-back" data-mega-back>← Усі категорії</button>':'';
+          childrenEl.innerHTML=`${back}<div class="mega-title"><h2>${escapeHtml(r.name)}</h2><a href="catalog.html?category=${encodeURIComponent(r.slug)}">Усі товари →</a></div><div class="mega-grid">${kids.map(c=>`<a href="catalog.html?category=${encodeURIComponent(c.slug)}"><strong>${escapeHtml(c.name)}</strong><span>${products.filter(p=>p.type===c.slug).length} товарів</span></a>`).join('')}</div>`;
+          if(compactMenu()){
+            rootsEl.hidden=true;
+            childrenEl.hidden=false;
+            childrenEl.querySelector('[data-mega-back]').onclick=renderRoots;
+          }else childrenEl.hidden=false;
+        };
+        renderRoots();
+        if(roots[0]&&!compactMenu()) show(roots[0]);
         const setMenuOpen=(isOpen)=>{
           mega.hidden=!isOpen;
           toggle.setAttribute('aria-expanded', String(isOpen));

@@ -310,6 +310,9 @@ body:not(.admin-body){background:#f5f8fc;color:#081b38}
 .store-home .home-stage{display:grid;grid-template-columns:285px minmax(0,1fr);gap:22px;align-items:start}
 .store-home .home-filter-panel{width:100%!important;min-width:0;box-sizing:border-box}
 .store-home .home-content{width:100%;min-width:0}
+/* На головній сторінці фільтри дублюють каталог і відволікають від добірок. */
+.store-home .home-filter-panel{display:none!important}
+.store-home .home-stage{grid-template-columns:minmax(0,1fr)!important}
 .store-home .home-hero{width:100%;min-width:0}
 .home-banner-controls{position:absolute;right:18px;bottom:16px;z-index:3;display:flex;align-items:center;gap:10px}.home-banner-controls>button{width:32px;height:32px;border:1px solid rgba(255,255,255,.6);border-radius:50%;background:rgba(6,24,44,.45);color:#fff;cursor:pointer}.home-banner-controls>div{display:flex;gap:6px}.home-banner-controls [data-banner-dot]{width:8px;height:8px;padding:0;border:0;border-radius:50%;background:rgba(255,255,255,.45);cursor:pointer}.home-banner-controls [data-banner-dot].is-active{background:#54b4ff;transform:scale(1.2)}
 .store-home .home-service-strip,.store-home .home-category-cards,.store-home .home-products{min-width:0}

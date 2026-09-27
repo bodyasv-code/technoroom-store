@@ -120,8 +120,20 @@ async function home() {
         rootsEl.innerHTML=roots.map(r=>`<button type="button" data-slug="${r.slug}"><span>${escapeHtml(r.name)}</span><b>›</b></button>`).join('');
         rootsEl.querySelectorAll('button').forEach(b=>b.onmouseenter=b.onclick=()=>show(roots.find(r=>r.slug===b.dataset.slug)));
         if(roots[0]) show(roots[0]);
-        let timer; const open=()=>{clearTimeout(timer);mega.hidden=false;toggle.setAttribute('aria-expanded','true')}, close=()=>{timer=setTimeout(()=>{mega.hidden=true;toggle.setAttribute('aria-expanded','false')},180)};
-        toggle.onclick=()=>mega.hidden?open():(mega.hidden=true,toggle.setAttribute('aria-expanded','false')); toggle.onmouseenter=open; toggle.onmouseleave=close; mega.onmouseenter=()=>clearTimeout(timer); mega.onmouseleave=close;
+        const setMenuOpen=(isOpen)=>{
+          mega.hidden=!isOpen;
+          toggle.setAttribute('aria-expanded', String(isOpen));
+        };
+        // Меню відкривається тільки явним натисканням: на сенсорних екранах і мишкою
+        // воно не закривається миттєво через випадковий mouseleave.
+        toggle.onclick=(event)=>{
+          event.preventDefault();
+          event.stopPropagation();
+          setMenuOpen(mega.hidden);
+        };
+        document.addEventListener('pointerdown',(event)=>{
+          if(!mega.hidden&&!mega.contains(event.target)&&!toggle.contains(event.target)) setMenuOpen(false);
+        });
       }
     }
   } catch(e){ console.warn('Категорії головної',e); }

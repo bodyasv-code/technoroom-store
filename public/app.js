@@ -1047,7 +1047,6 @@ catalog = function () {
       pagination.hidden = pages <= 1;
       pagination.innerHTML = pages > 1 ? '<button type="button" data-catalog-page="prev" '+(page === 1 ? 'disabled' : '')+'>← Попередні</button><span>Сторінка '+page+' з '+pages+'</span><button type="button" data-catalog-page="next" '+(page === pages ? 'disabled' : '')+'>Наступні →</button>' : '';
     }
-    renderStorefrontCategoryNavigation(filters, category);
     bind(root);
   };
 

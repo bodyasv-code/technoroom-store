@@ -4,6 +4,8 @@ const state={products:[],orders:[],categories:[],brands:[],promotions:[],banners
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 const esc=(v='')=>String(v??'').replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));
 const txt=(v='')=>String(v??'').toLocaleLowerCase('uk-UA').replace(/[ʼ'’`]/g,'').replace(/[\s_\-–—/.,]+/g,'');
+const canonicalBrandNames={"2e":"2E",acer:"Acer",asus:"ASUS",dell:"Dell",digitus:"DIGITUS",epos:"EPOS",fsp:"FSP",legrand:"Legrand",ledvance:"LEDVANCE",lg:"LG",msi:"MSI",oneplus:"OnePlus",philips:"Philips",samsung:"Samsung",sony:"Sony",tcl:"TCL"};
+const canonicalBrandName=(v='')=>{const name=String(v??'').replace(/\s+/g,' ').trim(),root=name.replace(/\s+(?:accessories|audio|displays|energy(?:\s+ups)?|gaming|lfd|mobile|monitors|mounts|multimedia|retail|screens|scs|tv|ups)\s*$/i,'').trim();return canonicalBrandNames[txt(root)]||root};
 const money=v=>new Intl.NumberFormat('uk-UA',{maximumFractionDigits:2}).format(Number(v||0))+' ₴';
 const date=v=>new Intl.DateTimeFormat('uk-UA',{dateStyle:'medium',timeStyle:'short'}).format(new Date(v));
 const notice=(m,e=false)=>{const n=$('#notice');if(!n)return;n.textContent=m;n.hidden=false;n.classList.toggle('error',e)};
@@ -70,6 +72,261 @@ $('#selectAllProducts').addEventListener('change',e=>{$$('#adminProducts [data-s
 $('#addPromotion').onclick=()=>promotionDialog();$('#promotionTargetType').onchange=promotionTargets;$('#addBanner').onclick=()=>bannerDialog();$('#promotionSearch').oninput=renderPromotions;$('#promotionFilter').onchange=renderPromotions;$('#bannerSearch').oninput=renderBanners;$('#bannerFilter').onchange=renderBanners;
 $('#promotionForm').addEventListener('submit',async e=>{e.preventDefault();const f=e.currentTarget,r=Object.fromEntries(new FormData(f)),type=r.target_type;const p={name:r.name.trim(),code:r.code.trim()||null,discount_type:r.discount_type,discount_value:Number(r.discount_value),starts_at:r.starts_at||null,ends_at:r.ends_at||null,is_active:f.elements.is_active.checked,target_type:type,target_value:(type==='category'||type==='brand')?(r.target_value||null):null};let id=Number(r.id)||null,z;if(id)z=await supabase.from('promotions').update(p).eq('id',id).select('id').single();else z=await supabase.from('promotions').insert(p).select('id').single();if(z.error){notice('Помилка акції: '+z.error.message,true);return}id=z.data.id;if(type==='products'){await supabase.from('promotion_products').delete().eq('promotion_id',id);const ids=[...$('#promotionProducts').selectedOptions].map(o=>Number(o.value));if(ids.length){const q=await supabase.from('promotion_products').insert(ids.map(product_id=>({promotion_id:id,product_id})));if(q.error){notice('Акцію збережено, але товари не прив’язано: '+q.error.message,true);return}}}else await supabase.from('promotion_products').delete().eq('promotion_id',id);$('#promotionDialog').close();await loadData();notice('Акцію збережено.')});
 $('#bannerForm').addEventListener('submit',async e=>{e.preventDefault();const f=e.currentTarget,r=Object.fromEntries(new FormData(f));const p={title:r.title.trim(),subtitle:r.subtitle.trim()||null,image_url:r.image_url.trim()||null,link_url:r.link_url.trim()||null,button_text:r.button_text.trim()||null,sort_order:Number(r.sort_order||0),is_active:f.elements.is_active.checked};const q=r.id?supabase.from('banners').update(p).eq('id',r.id):supabase.from('banners').insert(p);const z=await q;if(z.error){notice('Помилка банера: '+z.error.message,true);return}$('#bannerDialog').close();await loadData();notice('Банер збережено.')});
-$('#normalizeBrands').onclick=async()=>{notice('Нормалізацію брендів виконуємо через централізований довідник.')};
+$('#normalizeBrands').onclick=async()=>{
+ const grouped=new Map();
+ const ensureGroup=canonical=>{if(!grouped.has(canonical))grouped.set(canonical,{canonical,brands:[],products:[]});return grouped.get(canonical)};
+ state.brands.forEach(brand=>ensureGroup(canonicalBrandName(brand.name)).brands.push(brand));
+ state.products.filter(product=>product.brand||product.brand_id).forEach(product=>{const linked=state.brands.find(brand=>Number(brand.id)===Number(product.brand_id));ensureGroup(canonicalBrandName(product.brand||linked?.name)).products.push(product)});
+ const groups=[...grouped.values()].filter(group=>group.canonical&&(
+   group.brands.length>1||group.brands.some(brand=>brand.name!==group.canonical||brand.slug!==slug(group.canonical))||group.products.some(product=>product.brand!==group.canonical)
+ ));
+ const affected=groups.reduce((total,group)=>total+group.products.length,0);
+ if(!groups.length){notice('Назви брендів уже впорядковано.');return}
+ if(!confirm('Впорядкувати '+groups.length+' груп брендів і переприв’язати до канонічних назв '+affected+' товарів? Старі записи не видалятимуться — вони будуть приховані.'))return;
+ let updated=0,hidden=0;
+ for(const group of groups){
+   let canonical=group.brands.find(brand=>brand.name===group.canonical);
+   if(!canonical&&group.brands.length===1){const renamed=await supabase.from('brands').update({name:group.canonical,slug:slug(group.canonical),is_active:true,updated_at:new Date().toISOString()}).eq('id',group.brands[0].id).select('*').single();if(renamed.error){notice('Зупинено на бренді «'+group.canonical+'»: '+renamed.error.message,true);await loadData();return}canonical=renamed.data}
+   if(!canonical){const created=await supabase.from('brands').insert({name:group.canonical,slug:slug(group.canonical),is_active:true,updated_at:new Date().toISOString()}).select('*').single();if(created.error){notice('Зупинено на бренді «'+group.canonical+'»: '+created.error.message,true);await loadData();return}canonical=created.data}
+   else if(!canonical.is_active){const enabled=await supabase.from('brands').update({is_active:true,updated_at:new Date().toISOString()}).eq('id',canonical.id).select('*').single();if(enabled.error){notice('Зупинено на бренді «'+group.canonical+'»: '+enabled.error.message,true);await loadData();return}canonical=enabled.data}
+   const sourceIds=new Set(group.brands.filter(brand=>Number(brand.id)!==Number(canonical.id)).map(brand=>Number(brand.id)));
+   const products=group.products.filter(product=>product.brand!==group.canonical||Number(product.brand_id)!==Number(canonical.id)||sourceIds.has(Number(product.brand_id)));
+   let changed=0;
+   for(let offset=0;offset<products.length;offset+=100){const ids=products.slice(offset,offset+100).map(product=>product.id),result=await supabase.from('products').update({brand_id:canonical.id,brand:group.canonical}).in('id',ids).select('id');if(result.error){notice('Оновлено '+updated+' товарів, але сталася помилка: '+result.error.message,true);await loadData();return}changed+=(result.data||[]).length}
+   if(changed!==products.length){notice('Оновлено '+updated+changed+' з '+affected+' товарів. Старі бренди залишено активними для безпеки.',true);await loadData();return}
+   updated+=changed;
+   const duplicates=group.brands.filter(brand=>Number(brand.id)!==Number(canonical.id));
+   if(duplicates.length){const deactivated=await supabase.from('brands').update({is_active:false,updated_at:new Date().toISOString()}).in('id',duplicates.map(brand=>brand.id));if(deactivated.error){notice('Товари для «'+group.canonical+'» уже оновлено, але старі записи не приховано: '+deactivated.error.message,true);await loadData();return}hidden+=duplicates.length}
+ }
+ await loadData();notice('Готово: оновлено '+updated+' товарів, приховано дублікати брендів: '+hidden+'.')
+};
 supabase.auth.onAuthStateChange(ev=>{if(ev==='PASSWORD_RECOVERY')view('recovery')});
 supabase.auth.getSession().then(({data:{session}})=>session?dashboard():view('login'));
+
+// Універсальний імпорт XML: читає поширені структури постачальників і не перезаписує ручні дані.
+(() => {
+  const importer = { rows: [], selected: new Set(), page: 1 };
+  const supportedImageHosts = new Set(['www.tradeinn.com','www.audiotrends.com.au','static-ecapac.acer.com','media4home.com.pl','media.sonos.com','images.samsung.com','assets2.razerzone.com','d7qztf2ityad6.cloudfront.net','hp.widen.net','img06.en25.com','koss.com.ua','ssl-product-images.www8-hp.com','www.3ona51.com','www.hp.com','www.koss.com','yugcontract.ua']);
+  const cleanImportText = (value = '') => String(value).replace(/\s+/g, ' ').trim();
+  const decodeEntities = (value = '') => {
+    let text = String(value || '');
+    for (let pass = 0; pass < 3; pass += 1) {
+      const field = document.createElement('textarea');
+      field.innerHTML = text;
+      if (field.value === text) break;
+      text = field.value;
+    }
+    return text;
+  };
+  const textFrom = (node, names) => {
+    for (const name of names) {
+      const found = node.querySelector(name);
+      const value = cleanImportText(found?.textContent || '');
+      if (value) return value;
+    }
+    return '';
+  };
+  const importNumber = (value) => {
+    const parsed = Number(String(value || '').replace(/\s/g, '').replace(',', '.').replace(/[^0-9.]/g, ''));
+    return Number.isFinite(parsed) ? parsed : 0;
+  };
+  const importQuantity = (value) => Math.max(0, Number((String(value || '').match(/\d+/) || ['0'])[0]));
+  const normaliseSku = (value = '') => cleanImportText(value).replace(/^\*+|\*+$/g, '').toUpperCase();
+  const normaliseCategory = (value = '') => cleanImportText(value).toLocaleLowerCase('uk-UA').replace(/[ʼ’']/g, '').replace(/\s+/g, ' ');
+  const normaliseSpecKey = (value = '') => cleanImportText(value).toLocaleLowerCase('uk-UA').replace(/[:\s]+$/g, '');
+  const canonicalSpecKey = (value) => {
+    const key = normaliseSpecKey(value);
+    if (/діагонал/.test(key)) return 'Діагональ';
+    if (/співвідношення.*сторін|формат.*екран|формат.*матриц/.test(key)) return 'Співвідношення сторін';
+    if (/тип.*екран|форм.?фактор|конструкц/.test(key)) return 'Тип екрану';
+    if (/установк|встановлен|монтаж/.test(key)) return 'Установка';
+    return cleanImportText(value).replace(/:$/, '');
+  };
+  const parseDescription = (markup = '') => {
+    const parsed = new DOMParser().parseFromString(decodeEntities(markup), 'text/html');
+    return cleanImportText(parsed.body.textContent || '').slice(0, 3000);
+  };
+  const parseSpecifications = (markup = '') => {
+    const parsed = new DOMParser().parseFromString(decodeEntities(markup), 'text/html');
+    const specifications = {};
+    const add = (key, value) => {
+      const label = canonicalSpecKey(key), text = cleanImportText(value);
+      if (label && text && label.length <= 120 && text.length <= 700) specifications[label] = text;
+    };
+    parsed.querySelectorAll('tr').forEach((row) => {
+      const cells = [...row.querySelectorAll('th,td')].map((cell) => cleanImportText(cell.textContent)).filter(Boolean);
+      if (cells.length >= 2) add(cells[0], cells.slice(1).join(' '));
+    });
+    (parsed.body.innerText || '').split(/\n+/).forEach((line) => {
+      const match = cleanImportText(line).match(/^([^:]{2,120}):\s*(.+)$/);
+      if (match) add(match[1], match[2]);
+    });
+    return specifications;
+  };
+  const titleSpecifications = (name = '') => {
+    const specifications = {};
+    const diagonal = String(name).match(/(?:^|[\s,(])([1-9]\d{1,2}(?:[.,]\d+)?)\s*(?:&quot;|\")/i);
+    const ratio = String(name).match(/\b(\d{1,2}:\d{1,2})\b/);
+    if (diagonal) specifications['Діагональ'] = diagonal[1].replace(',', '.') + '"';
+    if (ratio) specifications['Співвідношення сторін'] = ratio[1];
+    return specifications;
+  };
+  const allowedImage = (value) => {
+    try {
+      const url = new URL(value);
+      return url.protocol === 'https:' && supportedImageHosts.has(url.hostname) ? url.href : '';
+    } catch { return ''; }
+  };
+  const imagesFrom = (node, markup) => {
+    const fromTags = [...node.querySelectorAll('image,photo,picture,img,image_url,photo_url')].map((item) => item.getAttribute('src') || item.getAttribute('href') || item.textContent || '');
+    const fromMarkup = decodeEntities(markup).match(/https?:\/\/[^\s"'<>]+?\.(?:jpg|jpeg|png|webp)(?:\?[^\s"'<>]+)?/gi) || [];
+    return [...new Set([...fromTags, ...fromMarkup].map(allowedImage).filter(Boolean))].slice(0, 6);
+  };
+  const categoryFor = (row) => {
+    const candidates = [row.subcategory, row.sourceCategory].map(normaliseCategory).filter(Boolean);
+    const exact = state.categories.find((category) => candidates.includes(normaliseCategory(category.name)) || candidates.includes(normaliseCategory(category.slug)));
+    if (exact) return exact.slug;
+    const alias = [
+      [/екран.*про[єе]кц|projection screen/i, 'erc-display-06'],
+      [/про[єе]ктор/i, 'projector'],
+      [/телевізор|tv/i, 'tv'],
+      [/монітор/i, 'monitor'],
+      [/акуст|навуш|гарнітур|саундбар|мікрофон/i, 'audio']
+    ].find(([pattern]) => pattern.test(row.subcategory + ' ' + row.sourceCategory));
+    return alias && state.categories.some((category) => category.slug === alias[1]) ? alias[1] : '';
+  };
+  const knownBySku = () => new Map(state.products.filter((product) => product.sku).map((product) => [normaliseSku(product.sku), product]));
+  const importerStatus = (message, isError = false) => {
+    const target = $('#supplierImportMessage');
+    target.textContent = message;
+    target.hidden = false;
+    target.classList.toggle('error', isError);
+  };
+  const importPageRows = () => {
+    const size = Math.max(1, Math.min(100, Number($('#supplierImportLimit').value || 50)));
+    const pages = Math.max(1, Math.ceil(importer.rows.length / size));
+    importer.page = Math.min(Math.max(1, importer.page), pages);
+    return importer.rows.slice((importer.page - 1) * size, importer.page * size);
+  };
+  const renderImportPreview = () => {
+    const body = $('#supplierImportRows'), summary = $('#supplierImportSummary'), pager = $('#supplierImportPagination');
+    const rows = importPageRows(), size = Math.max(1, Math.min(100, Number($('#supplierImportLimit').value || 50)));
+    const pages = Math.max(1, Math.ceil(importer.rows.length / size)), existing = knownBySku();
+    summary.textContent = importer.rows.length ? `Знайдено ${importer.rows.length} товарів. Вибрано: ${importer.selected.size}. На сторінці ${importer.page} з ${pages}.` : 'Оберіть XML-файл для попереднього перегляду.';
+    pager.hidden = pages <= 1;
+    pager.innerHTML = pages > 1 ? `<button class="button outline" type="button" data-import-page="prev" ${importer.page === 1 ? 'disabled' : ''}>← Попередні</button><span>Сторінка ${importer.page} з ${pages}</span><button class="button outline" type="button" data-import-page="next" ${importer.page === pages ? 'disabled' : ''}>Наступні →</button>` : '';
+    body.innerHTML = rows.length ? rows.map((row) => {
+      const category = categoryFor(row), current = existing.get(row.sku), disabled = !row.sku || !row.name || !row.price || !category;
+      const sourceInfo = [row.vendor, row.subcategory || row.sourceCategory].filter(Boolean).join(' · ');
+      return `<tr><td><input type="checkbox" data-import-select="${esc(row.key)}" ${importer.selected.has(row.key) ? 'checked ' : ''}${disabled ? 'disabled' : ''}></td><td><b>${esc(row.name)}</b><small>${esc(sourceInfo || 'Постачальник не вказаний')}</small></td><td>${esc(row.sku || '—')}</td><td>${esc(category ? (state.categories.find((item) => item.slug === category)?.name || category) : 'Немає зіставлення')}</td><td>${Object.keys(row.specifications).length} хар. · ${row.images.length} фото</td><td><span class="visibility ${current ? 'visible' : 'hidden-status'}">${current ? 'Оновити' : 'Новий'}</span></td></tr>`;
+    }).join('') : '<tr><td colspan="6" class="empty-row">Даних для імпорту немає</td></tr>';
+  };
+  const parseFile = (content) => {
+    const xml = new DOMParser().parseFromString(content, 'application/xml');
+    if (xml.querySelector('parsererror')) throw new Error('XML містить помилку структури.');
+    const nodes = [...xml.querySelectorAll('goods,good,offer,product,item')].filter((node) => textFrom(node, ['gname','name','model','title']));
+    importer.rows = nodes.map((node, index) => {
+      const vendorNode = node.closest('vendor,supplier,provider,brand');
+      const vendor = canonicalBrandName(cleanImportText(vendorNode?.getAttribute('name') || textFrom(node, ['vendor','supplier','brand','manufacturer'])));
+      const name = decodeEntities(textFrom(node, ['gname','name','model','title']));
+      const sku = normaliseSku(textFrom(node, ['code','sku','article','vendor_code','id']) || node.getAttribute('id'));
+      const sourceCategory = cleanImportText(textFrom(node, ['category','category_name','group']));
+      const subcategory = cleanImportText(textFrom(node, ['subcategory','subcategory_name','subgroup']));
+      const comment = textFrom(node, ['comment','description','full_description','details']);
+      const shortDescription = textFrom(node, ['a_desc','short_description','summary']);
+      const specifications = { ...parseSpecifications(comment), ...titleSpecifications(name) };
+      return { key: sku + '-' + index, vendor, name: cleanImportText(name), sku, sourceCategory, subcategory, price: importNumber(textFrom(node, ['rprice','price','retail_price','price_uah'])), stock: importQuantity(textFrom(node, ['stock','quantity','qty','available'])), description: parseDescription(shortDescription) || parseDescription(comment), specifications, images: imagesFrom(node, comment) };
+    }).filter((row) => row.name && row.sku);
+    importer.selected.clear();
+    importer.page = 1;
+    if (!importer.rows.length) throw new Error('У файлі не знайдено товарних позицій.');
+  };
+  const newSlug = (name, sku, used) => {
+    const base = (slug(name) || 'product') + '-' + (slug(sku) || 'item');
+    let result = base, index = 2;
+    while (used.has(result)) result = base + '-' + index++;
+    used.add(result);
+    return result;
+  };
+  const mergeSpecifications = (current, incoming) => ({ ...incoming, ...(current || {}) });
+  const importProductImages = async (productId, urls) => {
+    if (!urls.length) return;
+    const { data: { session } } = await supabase.auth.getSession();
+    const response = await fetch('/api/import-product-images', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + (session?.access_token || '') },
+      body: JSON.stringify({ productId, urls })
+    });
+    if (!response.ok) {
+      const result = await response.json().catch(() => ({}));
+      throw new Error(result.error || 'Не вдалося завантажити фото');
+    }
+  };
+  const importSelected = async () => {
+    const selectedRows = importer.rows.filter((row) => importer.selected.has(row.key));
+    if (!selectedRows.length) return importerStatus('Виберіть хоча б один товар.', true);
+    if (selectedRows.length > 100) return importerStatus('За один раз можна імпортувати до 100 товарів.', true);
+    const updateSpecifications = $('#supplierImportSpecifications').checked;
+    const importImages = $('#supplierImportImages').checked;
+    const publishNew = $('#supplierImportPublish').checked;
+    const existing = knownBySku(), usedSlugs = new Set(state.products.map((product) => product.slug).filter(Boolean));
+    const failures = []; let created = 0, updated = 0;
+    const button = $('#supplierImportApply'); button.disabled = true; button.textContent = 'Імпорт…';
+    for (const row of selectedRows) {
+      const category = categoryFor(row), current = existing.get(row.sku);
+      if (!category) { failures.push(row.sku + ': не знайдено категорію'); continue; }
+      const images = importImages ? row.images : [];
+      const inventory = { category, price: row.price, stock_quantity: row.stock, in_stock: row.stock > 0, availability_status: row.stock > 0 ? 'in_stock' : 'out_of_stock' };
+      if (current) {
+        const payload = { ...inventory };
+        if (updateSpecifications && Object.keys(row.specifications).length) payload.specifications = mergeSpecifications(current.specifications, row.specifications);
+        if (!current.description && row.description) payload.description = row.description;
+        const shouldImportImages = !current.image_path && images.length;
+        const result = await supabase.from('products').update(payload).eq('id', current.id);
+        if (result.error) failures.push(row.sku + ': ' + (result.error.message || result.error.code));
+        else {
+          updated += 1;
+          if (shouldImportImages) {
+            try { await importProductImages(current.id, images); } catch (error) { failures.push(row.sku + ': ' + error.message); }
+          }
+        }
+      } else {
+        const importedBrand = state.brands.find((brand) => brand.is_active && txt(brand.name) === txt(row.vendor));
+        const payload = { ...inventory, name: row.name, slug: newSlug(row.name, row.sku, usedSlugs), sku: row.sku, brand_id: importedBrand?.id || null, brand: importedBrand?.name || row.vendor || null, description: row.description || null, specifications: row.specifications, is_active: publishNew };
+        const result = await supabase.from('products').insert(payload).select('id').single();
+        if (result.error) failures.push(row.sku + ': ' + (result.error.message || result.error.code));
+        else {
+          created += 1;
+          if (images.length) {
+            try { await importProductImages(result.data.id, images); } catch (error) { failures.push(row.sku + ': ' + error.message); }
+          }
+        }
+      }
+    }
+    button.disabled = false; button.textContent = 'Імпортувати вибрані';
+    await loadData();
+    importer.selected.clear(); renderImportPreview();
+    importerStatus(`Готово: створено ${created}, оновлено ${updated}.${failures.length ? ' Помилки: ' + failures.slice(0, 8).join(' | ') : ''}`, Boolean(failures.length));
+  };
+  const mountImporter = () => {
+    const anchor = $('#products');
+    if (!anchor || $('#supplierImport')) return;
+    anchor.insertAdjacentHTML('afterend', `<section class="admin-section" id="supplierImport"><div class="admin-title"><div><h2>Імпорт XML</h2><span>Товари, характеристики та посилання на фото від постачальників</span></div></div><p class="recovery-help">Характеристики додаються лише до порожніх полів; вручну внесені значення залишаються без змін. Фото підтримуються лише з перевірених HTTPS-джерел.</p><div class="admin-controls"><input id="supplierImportFile" type="file" accept=".xml,application/xml,text/xml"><input id="supplierImportLimit" type="number" min="1" max="100" value="50" title="Товарів на сторінці попереднього перегляду"></div><div class="admin-controls"><button class="button outline" type="button" id="supplierImportSelectNew">Вибрати нові на сторінці</button><button class="button outline" type="button" id="supplierImportSelectVisible">Вибрати всі показані</button><button class="button outline" type="button" id="supplierImportClear">Очистити вибір</button><label class="check"><input id="supplierImportSpecifications" type="checkbox" checked> Додати відсутні характеристики</label><label class="check"><input id="supplierImportImages" type="checkbox"> Додати доступні фото</label><label class="check"><input id="supplierImportPublish" type="checkbox"> Публікувати нові товари</label><button class="button primary" type="button" id="supplierImportApply">Імпортувати вибрані</button></div><p class="admin-message" id="supplierImportMessage" hidden></p><p class="recovery-help" id="supplierImportSummary">Оберіть XML-файл для попереднього перегляду.</p><div class="admin-controls" id="supplierImportPagination" hidden></div><div class="admin-table-wrap"><table><thead><tr><th></th><th>Товар / джерело</th><th>SKU</th><th>Категорія</th><th>Дані джерела</th><th>Дія</th></tr></thead><tbody id="supplierImportRows"></tbody></table></div></section>`);
+    document.querySelector('.admin-nav').insertAdjacentHTML('beforeend', '<a href="#supplierImport">Імпорт XML</a>');
+    const section = $('#supplierImport');
+    $('#supplierImportFile').addEventListener('change', async (event) => {
+      const file = event.target.files?.[0]; if (!file) return;
+      importerStatus('Читаю ' + file.name + '…');
+      try { parseFile(await file.text()); importerStatus('Файл прочитано: ' + importer.rows.length + ' товарів.'); renderImportPreview(); } catch (error) { importer.rows = []; renderImportPreview(); importerStatus(error.message || 'Не вдалося прочитати XML.', true); }
+    });
+    section.addEventListener('input', (event) => { if (event.target.matches('#supplierImportLimit')) { importer.page = 1; renderImportPreview(); } });
+    section.addEventListener('change', (event) => { const checkbox = event.target.closest('[data-import-select]'); if (!checkbox) return; if (checkbox.checked) importer.selected.add(checkbox.dataset.importSelect); else importer.selected.delete(checkbox.dataset.importSelect); renderImportPreview(); });
+    section.addEventListener('click', (event) => { const pageButton = event.target.closest('[data-import-page]'); if (!pageButton || pageButton.disabled) return; importer.page += pageButton.dataset.importPage === 'next' ? 1 : -1; renderImportPreview(); });
+    $('#supplierImportSelectNew').onclick = () => { const existing = knownBySku(); importPageRows().forEach((row) => { if (!existing.has(row.sku) && categoryFor(row) && row.price) importer.selected.add(row.key); }); renderImportPreview(); };
+    $('#supplierImportSelectVisible').onclick = () => { importPageRows().forEach((row) => { if (categoryFor(row) && row.price) importer.selected.add(row.key); }); renderImportPreview(); };
+    $('#supplierImportClear').onclick = () => { importer.selected.clear(); renderImportPreview(); };
+    $('#supplierImportApply').onclick = importSelected;
+  };
+  window.addEventListener('load', mountImporter, { once: true });
+  if (document.readyState !== 'loading') mountImporter();
+})();

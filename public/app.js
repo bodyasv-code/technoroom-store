@@ -405,14 +405,10 @@ async function mountMegaCatalog() {
   rootsEl.querySelectorAll('button').forEach(b=>{b.onmouseenter=b.onclick=()=>show(roots.find(r=>r.slug===b.dataset.slug));});
   if(roots[0]) show(roots[0]);
   const toggle=document.getElementById('catalogMenuToggle');
-  let closeTimer;
-  const cancelClose=()=>clearTimeout(closeTimer);
-  const scheduleClose=()=>{ clearTimeout(closeTimer); closeTimer=setTimeout(()=>{ mega.hidden=true; },180); };
-  toggle.onclick=()=>{ mega.hidden=!mega.hidden; };
-  toggle.onmouseenter=()=>{ cancelClose(); mega.hidden=false; };
-  toggle.onmouseleave=scheduleClose;
-  mega.onmouseenter=cancelClose;
-  mega.onmouseleave=scheduleClose;
+  toggle.onclick=(event)=>{ event.preventDefault(); mega.hidden=!mega.hidden; };
+  document.addEventListener('pointerdown',(event)=>{
+    if(!mega.hidden&&!mega.contains(event.target)&&!toggle.contains(event.target)) mega.hidden=true;
+  });
   const search=document.getElementById('headerCatalogSearch'), go=document.getElementById('headerCatalogSearchGo');
   const normalizeSearch=v=>String(v||'').toLowerCase().replace(/є/g,'е').replace(/['’\-_/.,()]+/g,' ').replace(/\s+/g,' ').trim();
   const score=(p,q)=>{const words=normalizeSearch(q).split(' ').filter(Boolean),name=normalizeSearch(p.name),brand=normalizeSearch(p.brand),sku=normalizeSearch(p.sku),desc=normalizeSearch(p.description),hay=[name,brand,sku,desc].join(' ');if(!words.every(w=>hay.includes(w)))return-1;let n=0;words.forEach(w=>{if(name===w)n+=100;else if(name.startsWith(w))n+=60;else if(name.includes(w))n+=40;if(brand===w)n+=30;if(sku===w)n+=50});return n};

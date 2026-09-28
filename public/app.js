@@ -1166,7 +1166,7 @@ catalog = function () {
       .filter(([key]) => /(?:світлов\w*\s+потік|яскравість|brightness)/iu.test(readableText(key)))
       .flatMap(([, value]) => Array.isArray(value) ? value : [value]);
     const source = values.length ? values.join(' ') : readableText([product.name, product.description].join(' '));
-    const match = String(source).match(/\b(\d{2,5})\s*(?:лм|lm)\b/iu);
+    const match = String(source).match(values.length ? /\b(\d{2,5})\b/u : /\b(\d{2,5})\s*(?:лм|lm)\b/iu);
     return match ? Number(match[1]) : null;
   };
   const luminousFluxRange = (categoryProducts) => {
@@ -1215,6 +1215,26 @@ catalog = function () {
       .slice(0, 4)
       .map((group) => ({ ...group, options: [...group.values.values()].sort((left, right) => left.localeCompare(right, 'uk')) }));
   };
+  const projectorTechnologyValues = (product) => {
+    const source = specificationValues(product, ['технологія', 'технологія проекції', 'projection technology']).join(' ');
+    return [
+      ...( /dlp/iu.test(source) ? ['DLP'] : []),
+      ...( /(?:3lcd|\blcd\b)/iu.test(source) ? ['LCD'] : [])
+    ];
+  };
+  const projectorFilterOptions = (categoryProducts) => {
+    const definitions = [
+      { id: 'projector-technology', label: 'Технологія', values: projectorTechnologyValues, normaliseValue: normaliseSpecificationValue },
+      { id: 'projector-resolution', label: 'Роздільна здатність', keys: ['роздільна здатність', 'resolution'], normaliseValue: normaliseSpecificationValue },
+      { id: 'projector-light-source', label: 'Джерело світла', keys: ['джерело світла', 'тип джерела'], values: (product) => specificationValues(product, ['джерело світла', 'тип джерела']).map(normaliseLightSource), normaliseValue: normaliseLightSource }
+    ];
+    return definitions.map((definition) => {
+      const values = new Set();
+      categoryProducts.forEach((product) => valuesForScreenFilter(product, definition).filter(Boolean).forEach((value) => values.add((definition.normaliseValue || normaliseSpecificationValue)(value))));
+      const options = [...values].filter(Boolean).sort((left, right) => left.localeCompare(right, 'uk'));
+      return options.length >= 2 ? { ...definition, options } : null;
+    }).filter(Boolean);
+  };
   const screenFilterOptions = () => {
     const categoryProducts = products.filter((product) => category !== 'all' && storefrontCategoryMatches(product, category));
     if (!categoryProducts.length) return [];
@@ -1226,6 +1246,8 @@ catalog = function () {
         return options.length ? { ...definition, options } : null;
       }).filter(Boolean);
     }
+    const projectorProducts = categoryProducts.filter((product) => /(?:про[єе]ктор|projector)/iu.test(readableText(product.name) + ' ' + readableText(product.type)));
+    if (/(?:про[єе]ктор|projector)/iu.test(category) || projectorProducts.length >= Math.max(2, categoryProducts.length * 0.7)) return projectorFilterOptions(projectorProducts.length ? projectorProducts : categoryProducts);
     return genericSpecificationDefinitions(categoryProducts);
   };
   const renderScreenSpecificationFilters = () => {
@@ -1248,7 +1270,7 @@ catalog = function () {
     });
     screenSpecificationFilters.hidden = false;
     const fluxMarkup = fluxRange
-      ? '<fieldset class="screen-specification-filter luminous-flux-filter"><legend>Світловий потік, лм</legend><div class="price-values"><input type="number" min="' + fluxRange.min + '" max="' + fluxRange.max + '" placeholder="Від ' + fluxRange.min + '" value="' + selectedLuminousFlux.min + '" data-luminous-flux="min"><input type="number" min="' + fluxRange.min + '" max="' + fluxRange.max + '" placeholder="До ' + fluxRange.max + '" value="' + selectedLuminousFlux.max + '" data-luminous-flux="max"></div></fieldset>'
+      ? '<fieldset class="screen-specification-filter luminous-flux-filter"><legend>Яскравість, лм</legend><div class="price-values"><input type="number" min="' + fluxRange.min + '" max="' + fluxRange.max + '" placeholder="Від ' + fluxRange.min + '" value="' + selectedLuminousFlux.min + '" data-luminous-flux="min"><input type="number" min="' + fluxRange.min + '" max="' + fluxRange.max + '" placeholder="До ' + fluxRange.max + '" value="' + selectedLuminousFlux.max + '" data-luminous-flux="max"></div></fieldset>'
       : '';
     screenSpecificationFilters.innerHTML = fluxMarkup + groups.map((group) => {
       const selected = selectedScreenSpecifications.get(group.id) || new Set();

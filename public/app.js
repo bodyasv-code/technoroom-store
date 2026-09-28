@@ -527,6 +527,13 @@ const cleanBrand = (value) => {
   text=text.replace(suffixes,'').trim();
   return text;
 };
+const compactProductName = (value = '') => {
+  let name = readableText(value).replace(/\s*[|•]\s*(?:код|sku|артикул|vendor code)\b.*$/iu, '').replace(/\s*\((?:код|sku|артикул)\s*[:#]?[^)]*\)/iu, '').replace(/\s{2,}/g, ' ').trim();
+  const parts = name.split(',').map((item) => item.trim()).filter(Boolean);
+  const startsWithProductType = /^(?:про[єе]ктор|телевізор|монітор|екран|саундбар|акустичн|гарнітур|навушник|портативн|зарядн|джерел|ноутбук|планшет)/iu;
+  if (startsWithProductType.test(name) && parts.length >= 3) name = parts[0];
+  return name || readableText(value);
+};
 const fillBrandSelect = (select, source) => {
   if(!select)return;
   const map=new Map();
@@ -538,7 +545,7 @@ const catalogCardEscape = (value) => String(value ?? '').replace(/[&<>\"]/g, (ch
 card = (product) => {
   const state = availability(product);
   const promotion = promotionFor(product) || promotionByProductLink(product);
-  const name = catalogCardEscape(product.name);
+  const name = catalogCardEscape(compactProductName(product.name));
   const brand = catalogCardEscape(product.brand || 'TECHNOROOM');
   const source = imageUrl(product);
   const preview = source
@@ -1170,7 +1177,8 @@ catalog = function () {
 
   const draw = () => {
     renderScreenSpecificationFilters();
-    const brands = [...new Set(products.map((product) => product.brand).filter(Boolean))].sort((left, right) => left.localeCompare(right, 'uk'));
+    const categoryProducts = products.filter((product) => category === 'all' || storefrontCategoryMatches(product, category));
+    const brands = [...new Map(categoryProducts.map((product) => cleanBrand(product.brand)).filter(Boolean).map((value) => [value.toLocaleLowerCase('uk-UA'), value])).values()].sort((left, right) => left.localeCompare(right, 'uk'));
     const selectedBrand = brand.value;
     brand.innerHTML = '<option value="">Усі бренди</option>' + brands.map((value) => '<option value="' + escapeHtml(value) + '">' + escapeHtml(readableText(value)) + '</option>').join('');
     if (brands.includes(selectedBrand)) brand.value = selectedBrand;
@@ -1182,7 +1190,7 @@ catalog = function () {
         && (!saleOnly || Boolean(promotion))
         && (!promotionOnly || Number(promotion?.id) === promotionOnly)
         && (!terms.length || terms.every((term) => searchable.includes(term)))
-        && (!brand.value || product.brand === brand.value)
+        && (!brand.value || cleanBrand(product.brand) === brand.value)
         && (!priceMin?.value || Number(product.price) >= Number(priceMin.value))
         && (!price.value || Number(product.price) <= Number(price.value))
         && (!stock.checked || product.stock)

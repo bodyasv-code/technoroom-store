@@ -414,7 +414,7 @@ async function loadProducts() { try {
     all.push(...data);
     if (data.length < pageSize) break;
   }
-  if (all.length) products = all.map((item) => ({ id: item.id, sku: item.sku, name: item.name, description: item.description, price: Number(item.price), type: item.category, brand: item.brand, brand_id:item.brand_id, specifications: item.specifications, availabilityStatus: item.availability_status, stock: item.in_stock && Number(item.stock_quantity || 0) > 0, image: item.image_path }));
+  if (all.length) products = all.map((item) => ({ id: item.id, sku: item.sku, name: compactProductName(item.name, item.sku), description: item.description, price: Number(item.price), type: item.category, brand: item.brand, brand_id:item.brand_id, specifications: item.specifications, availabilityStatus: item.availability_status, stock: item.in_stock && Number(item.stock_quantity || 0) > 0, image: item.image_path }));
   const now=Date.now(),pr=await supabase.from('promotions').select('*').eq('is_active',true);if(pr.error)console.warn('Акції:',pr.error);else{activePromotions=(pr.data||[]).filter(p=>(!p.starts_at||new Date(p.starts_at).getTime()<=now)&&(!p.ends_at||new Date(p.ends_at).getTime()>=now));promotionProductIds.clear();const targeted=activePromotions.filter(p=>p.target_type==='products').map(p=>p.id);if(targeted.length){const pp=await supabase.from('promotion_products').select('promotion_id,product_id').in('promotion_id',targeted);if(pp.error)console.warn('Товари акцій:',pp.error);else(pp.data||[]).forEach(x=>{const key=Number(x.promotion_id);if(!promotionProductIds.has(key))promotionProductIds.set(key,new Set());promotionProductIds.get(key).add(Number(x.product_id))})}}
 } catch (error) { console.warn('Не вдалося завантажити каталог із Supabase', error); } finally { productsLoaded = true; mount(); await mountMegaCatalog(); } }
 if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', loadProducts, { once: true });
@@ -527,11 +527,14 @@ const cleanBrand = (value) => {
   text=text.replace(suffixes,'').trim();
   return text;
 };
-const compactProductName = (value = '') => {
+const compactProductName = (value = '', sku = '') => {
   let name = readableText(value).replace(/\s*[|•]\s*(?:код|sku|артикул|vendor code)\b.*$/iu, '').replace(/\s*\((?:код|sku|артикул)\s*[:#]?[^)]*\)/iu, '').replace(/\s{2,}/g, ' ').trim();
   const parts = name.split(',').map((item) => item.trim()).filter(Boolean);
   const startsWithProductType = /^(?:про[єе]ктор|телевізор|монітор|екран|саундбар|акустичн|гарнітур|навушник|портативн|зарядн|джерел|ноутбук|планшет)/iu;
   if (startsWithProductType.test(name) && parts.length >= 3) name = parts[0];
+  const normaliseToken = (text) => String(text || '').toLocaleLowerCase('uk-UA').replace(/[^\p{L}\p{N}]/gu, '');
+  const cleanSku = readableText(sku);
+  if (cleanSku && !normaliseToken(name).includes(normaliseToken(cleanSku))) name += ' — ' + cleanSku;
   return name || readableText(value);
 };
 const fillBrandSelect = (select, source) => {
@@ -545,7 +548,7 @@ const catalogCardEscape = (value) => String(value ?? '').replace(/[&<>\"]/g, (ch
 card = (product) => {
   const state = availability(product);
   const promotion = promotionFor(product) || promotionByProductLink(product);
-  const name = catalogCardEscape(compactProductName(product.name));
+  const name = catalogCardEscape(compactProductName(product.name, product.sku));
   const brand = catalogCardEscape(product.brand || 'TECHNOROOM');
   const source = imageUrl(product);
   const preview = source
@@ -743,7 +746,7 @@ checkout = () => {
 async function refreshAvailabilityStatuses() {
   const { data, error } = await supabase.from('products').select('*').eq('is_active', true).order('created_at', { ascending: false });
   if (error || !data?.length) return;
-  products = data.map((item) => ({ id: item.id, sku: item.sku, name: item.name, description: item.description, price: Number(item.price), type: item.category, brand: item.brand, brand_id: item.brand_id, specifications: item.specifications, availabilityStatus: item.availability_status || ((item.in_stock && Number(item.stock_quantity || 0) > 0) ? 'in_stock' : 'out_of_stock'), stock: item.in_stock && Number(item.stock_quantity || 0) > 0, image: item.image_path }));
+  products = data.map((item) => ({ id: item.id, sku: item.sku, name: compactProductName(item.name, item.sku), description: item.description, price: Number(item.price), type: item.category, brand: item.brand, brand_id: item.brand_id, specifications: item.specifications, availabilityStatus: item.availability_status || ((item.in_stock && Number(item.stock_quantity || 0) > 0) ? 'in_stock' : 'out_of_stock'), stock: item.in_stock && Number(item.stock_quantity || 0) > 0, image: item.image_path }));
   mount();
 }
 window.addEventListener('load', refreshAvailabilityStatuses, { once: true });
@@ -822,11 +825,11 @@ product = function () {
       : '<p class="empty-cart">Завантажуємо товар…</p>';
     return;
   }
-  document.title = compactProductName(item.name) + ' | TECHNOROOM';
+  document.title = compactProductName(item.name, item.sku) + ' | TECHNOROOM';
   const state = availability(item);
   const paths = galleryEntriesFor(item);
   const safe = (value) => catalogCardEscape(readableText(value));
-  const safeName = safe(compactProductName(item.name));
+  const safeName = safe(compactProductName(item.name, item.sku));
   const safeBrand = safe(item.brand || 'TECHNOROOM');
   const specEntries = displaySpecificationEntries(item);
   const specs = specEntries.length

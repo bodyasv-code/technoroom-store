@@ -181,7 +181,7 @@ supabase.auth.getSession().then(({data:{session}})=>session?dashboard():view('lo
     return specifications;
   };
   // Повна назва з джерела зберігається в описі, а в заголовку лишається модель.
-  const compactImportName = (value = '') => {
+  const compactImportName = (value = '', sku = '') => {
     let name = decodeEntities(cleanImportText(value))
       .replace(/\s*[|•]\s*(?:код|sku|артикул|vendor code)\b.*$/iu, '')
       .replace(/\s*\((?:код|sku|артикул)\s*[:#]?[^)]*\)/iu, '')
@@ -189,6 +189,9 @@ supabase.auth.getSession().then(({data:{session}})=>session?dashboard():view('lo
     const parts = name.split(',').map(cleanImportText).filter(Boolean);
     const startsWithProductType = /^(?:про[єе]ктор|телевізор|монітор|екран|саундбар|акустичн|гарнітур|навушник|портативн|зарядн|джерел|ноутбук|планшет)/iu;
     if (startsWithProductType.test(name) && parts.length >= 3) name = parts[0];
+    const normaliseToken = (text) => String(text || '').toLocaleLowerCase('uk-UA').replace(/[^\p{L}\p{N}]/gu, '');
+    const cleanSku = cleanImportText(sku);
+    if (cleanSku && !normaliseToken(name).includes(normaliseToken(cleanSku))) name += ' — ' + cleanSku;
     return name || cleanImportText(value);
   };
   const allowedImage = (value) => {
@@ -368,9 +371,9 @@ supabase.auth.getSession().then(({data:{session}})=>session?dashboard():view('lo
       if (!textFrom(node, nameFields)) continue;
       const vendorNode = node.closest('vendor,supplier,provider,brand');
       const vendor = canonicalBrandName(cleanImportText(isAsbis ? textFrom(node, ['Vendor']) : (vendorNode?.getAttribute('name') || textFrom(node, ['vendor','supplier','brand','manufacturer']))));
-      const sourceName = decodeEntities(textFrom(node, nameFields));
-      const name = compactImportName(sourceName);
       const sku = normaliseSku(isAsbis ? textFrom(node, ['ProductCode']) : (textFrom(node, ['code','sku','article','vendor_code','id']) || node.getAttribute('id')));
+      const sourceName = decodeEntities(textFrom(node, nameFields));
+      const name = compactImportName(sourceName, sku);
       const sourceCategory = cleanImportText(textFrom(node, isAsbis ? ['ProductCategory'] : ['category','category_name','group']));
       const subcategory = cleanImportText(textFrom(node, isAsbis ? ['ProductType'] : ['subcategory','subcategory_name','subgroup']));
       const comment = textFrom(node, isAsbis ? ['MarketingInfo'] : ['comment','description','full_description','details']);

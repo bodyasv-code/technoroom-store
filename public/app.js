@@ -1235,6 +1235,52 @@ catalog = function () {
       return options.length >= 2 ? { ...definition, options } : null;
     }).filter(Boolean);
   };
+  const televisionSource = (product, keys = []) => {
+    const stored = keys.length ? specificationValues(product, keys).join(' ') : '';
+    return readableText([stored, product.name, product.description].filter(Boolean).join(' '));
+  };
+  const televisionDiagonalValues = (product) => {
+    const source = televisionSource(product, ['діагональ']);
+    const value = source.match(/\b(\d{2,3}(?:[.,]\d+)?)\s*(?:["″]|дюйм(?:ів|и|а)?\b)/iu)?.[1];
+    return value ? [value.replace(',', '.') + '"'] : [];
+  };
+  const televisionResolutionValues = (product) => {
+    const source = televisionSource(product, ['роздільна здатність', 'resolution']);
+    const match = source.match(/\b(?:\d{3,4}\s*[×xх]\s*\d{3,4}|8k|4k|uhd|full\s*hd|fhd|hd)\b/iu)?.[0];
+    if (!match) return [];
+    const normalized = normaliseSpecificationValue(match).toUpperCase();
+    return [normalized === 'UHD' ? '4K UHD' : normalized === 'FHD' ? 'Full HD' : normalized];
+  };
+  const televisionPanelValues = (product) => {
+    const source = televisionSource(product, ['тип матриці', 'матриця', 'технологія дисплею', 'тип екрану']);
+    if (/mini\s*-?\s*led/iu.test(source)) return ['miniLED'];
+    if (/oled/iu.test(source)) return ['OLED'];
+    if (/qled/iu.test(source)) return ['QLED'];
+    if (/\bled\b/iu.test(source)) return ['LED'];
+    if (/\blcd\b/iu.test(source)) return ['LCD'];
+    return [];
+  };
+  const televisionRefreshValues = (product) => {
+    const source = televisionSource(product, ['частота оновлення', 'частота', 'refresh rate']);
+    const value = source.match(/\b(\d{2,3})\s*(?:гц|hz)\b/iu)?.[1];
+    return value ? [value + ' Гц'] : [];
+  };
+  const televisionSmartValues = (product) => /(?:smart\s*tv|google\s*tv|android\s*tv|webos|tizen|vidaa)/iu.test(televisionSource(product)) ? ['Є Smart TV'] : [];
+  const televisionFilterOptions = (categoryProducts) => {
+    const definitions = [
+      { id: 'tv-diagonal', label: 'Діагональ екрана', values: televisionDiagonalValues, normaliseValue: normaliseSpecificationValue },
+      { id: 'tv-resolution', label: 'Роздільна здатність', values: televisionResolutionValues, normaliseValue: normaliseSpecificationValue },
+      { id: 'tv-panel', label: 'Тип матриці', values: televisionPanelValues, normaliseValue: normaliseSpecificationValue },
+      { id: 'tv-refresh', label: 'Частота оновлення', values: televisionRefreshValues, normaliseValue: normaliseSpecificationValue },
+      { id: 'tv-smart', label: 'Smart TV', values: televisionSmartValues, normaliseValue: normaliseSpecificationValue, allowSingle: true }
+    ];
+    return definitions.map((definition) => {
+      const values = new Set();
+      categoryProducts.forEach((product) => definition.values(product).filter(Boolean).forEach((value) => values.add((definition.normaliseValue || normaliseSpecificationValue)(value))));
+      const options = [...values].filter(Boolean).sort((left, right) => left.localeCompare(right, 'uk', { numeric: true }));
+      return options.length && (definition.allowSingle || options.length >= 2) ? { ...definition, options } : null;
+    }).filter(Boolean);
+  };
   const screenFilterOptions = () => {
     const categoryProducts = products.filter((product) => category !== 'all' && storefrontCategoryMatches(product, category));
     if (!categoryProducts.length) return [];
@@ -1248,6 +1294,8 @@ catalog = function () {
     }
     const projectorProducts = categoryProducts.filter((product) => /(?:про[єе]ктор|projector)/iu.test(readableText(product.name) + ' ' + readableText(product.type)));
     if (/(?:про[єе]ктор|projector)/iu.test(category) || projectorProducts.length >= Math.max(2, categoryProducts.length * 0.7)) return projectorFilterOptions(projectorProducts.length ? projectorProducts : categoryProducts);
+    const televisionProducts = categoryProducts.filter((product) => /(?:телевізор|\btv\b)/iu.test(readableText(product.name) + ' ' + readableText(product.type)));
+    if (/(?:телевізор|\btv\b)/iu.test(category) || televisionProducts.length >= Math.max(2, categoryProducts.length * 0.7)) return televisionFilterOptions(televisionProducts.length ? televisionProducts : categoryProducts);
     return genericSpecificationDefinitions(categoryProducts);
   };
   const renderScreenSpecificationFilters = () => {

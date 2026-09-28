@@ -541,9 +541,10 @@ const compactProductName = (value = '', sku = '', brand = '') => {
     const compact = ['Телевізор', size ? size.replace(',', '.') + '"' : '', cleanBrand, technology || '', model || ''].filter(Boolean).join(' ');
     if (compact) name = compact;
   }
-  const parts = name.split(',').map((item) => item.trim()).filter(Boolean);
-  const startsWithProductType = /^(?:про[єе]ктор|телевізор|монітор|екран|саундбар|акустичн|гарнітур|навушник|портативн|зарядн|джерел|ноутбук|планшет)/iu;
-  if (startsWithProductType.test(name) && parts.length >= 3) name = parts[0];
+  const parts = name.split(/[;,]/).map((item) => item.trim()).filter(Boolean);
+  const startsWithProductType = /^(?:про[єе]ктор|телевізор|монітор|екран|саундбар|акустичн|гарнітур|навушник|мікрофон|портативн|зарядн|джерел|ноутбук|планшет|смартфон|годинник|принтер|роутер|камера|клавіатур|миша|кабель|адаптер|блокs+живлення|павербанк|powers*bank)/iu;
+  const technicalTail = /\b(?:usb|hdmi|wifi|wi-fi|bluetooth|bt\s*\d|led|oled|qled|mini\s*-?\s*led|fhd|uhd|4k|8k|ips|va|tn|rgb|hdr|гб|gb|тб|tb|гц|hz|вт|w|лм|lm|кг|kg|м|mm\b|чорн|білий|сірий|silver|black|white|gray|grey)\b/iu;
+  if (startsWithProductType.test(name) && parts.length >= 2 && (parts.length >= 3 || technicalTail.test(parts.slice(1).join(' ')))) name = parts[0];
   const normaliseToken = (text) => String(text || '').toLocaleLowerCase('uk-UA').replace(/[^\p{L}\p{N}]/gu, '');
   const cleanSku = readableText(sku);
   if (cleanSku && !normaliseToken(name).includes(normaliseToken(cleanSku))) name += ' — ' + cleanSku;

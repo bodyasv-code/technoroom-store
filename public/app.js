@@ -1248,8 +1248,12 @@ catalog = function () {
     const source = televisionSource(product, ['роздільна здатність', 'resolution']);
     const match = source.match(/\b(?:\d{3,4}\s*[×xх]\s*\d{3,4}|8k|4k|uhd|full\s*hd|fhd|hd)\b/iu)?.[0];
     if (!match) return [];
-    const normalized = normaliseSpecificationValue(match).toUpperCase();
-    return [normalized === 'UHD' ? '4K UHD' : normalized === 'FHD' ? 'Full HD' : normalized];
+    const normalized = normaliseSpecificationValue(match).toUpperCase().replace(/\s+/g, '');
+    if (/^(?:3840×2160|4K|UHD|4KUHD)$/.test(normalized)) return ['4K UHD'];
+    if (/^(?:7680×4320|8K|8KUHD)$/.test(normalized)) return ['8K UHD'];
+    if (/^(?:1920×1080|FHD|FULLHD)$/.test(normalized)) return ['Full HD'];
+    if (/^(?:1366×768|1280×720|HD)$/.test(normalized)) return ['HD'];
+    return [normaliseSpecificationValue(match)];
   };
   const televisionPanelValues = (product) => {
     const source = televisionSource(product, ['тип матриці', 'матриця', 'технологія дисплею', 'тип екрану']);

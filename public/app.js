@@ -1108,6 +1108,7 @@ catalog = function () {
   const screenSpecificationFilters = document.getElementById('screenSpecificationFilters');
   const screenCategory = 'erc-display-06';
   const selectedScreenSpecifications = new Map();
+  const selectedLuminousFlux = { min: '', max: '' };
   const normaliseSpecificationKey = (value) => readableText(value)
     .toLocaleLowerCase('uk-UA')
     .replace(/[\s:]+$/g, '')
@@ -1148,8 +1149,35 @@ catalog = function () {
   const valuesForScreenFilter = (product, definition) => definition.values
     ? definition.values(product)
     : specificationValues(product, definition.keys);
+  const normaliseSpecificationValue = (value) => readableText(value)
+    .replace(/[хx×]/giu, '×')
+    .replace(/\s*×\s*/gu, ' × ')
+    .replace(/\s+/gu, ' ')
+    .trim();
+  const luminousFluxFor = (product) => {
+    const values = Object.entries(product.specifications || {})
+      .filter(([key]) => /(?:світлов\w*\s+потік|яскравість|brightness)/iu.test(readableText(key)))
+      .flatMap(([, value]) => Array.isArray(value) ? value : [value]);
+    const source = values.length ? values.join(' ') : readableText([product.name, product.description].join(' '));
+    const match = String(source).match(/\b(\d{2,5})\s*(?:лм|lm)\b/iu);
+    return match ? Number(match[1]) : null;
+  };
+  const luminousFluxRange = (categoryProducts) => {
+    const values = categoryProducts.map(luminousFluxFor).filter(Number.isFinite);
+    const min = Math.min(...values), max = Math.max(...values);
+    return values.length >= 2 && min !== max ? { min, max } : null;
+  };
   const genericSpecificationDefinitions = (categoryProducts) => {
     const byKey = new Map();
+    const mainSpecificationPriority = (key) => {
+      if (/діагональ|розмір/u.test(key)) return 1;
+      if (/тип\s*(?:екрана|матриці|конструкції|підключення)?|формат/u.test(key)) return 2;
+      if (/потужність|ємність|автономн/u.test(key)) return 3;
+      if (/інтерфейс|підключенн|з'єднан|бездротов/u.test(key)) return 4;
+      if (/монтаж|встановлен|установка/u.test(key)) return 5;
+      if (/колір/u.test(key)) return 6;
+      return 0;
+    };
     categoryProducts.forEach((product) => {
       const entries = [
         ...Object.entries(product.specifications || {}),
@@ -1159,21 +1187,24 @@ catalog = function () {
       entries.forEach(([rawKey, rawValue]) => {
         const key = normaliseSpecificationKey(rawKey);
         const label = readableText(rawKey);
-        if (!key || !label || /^(?:sku|артикул|код|модель|id)$/iu.test(key) || seen.has(key)) return;
+        const invalidLabel = !/[\p{L}]/u.test(label) || /^[\d\s.,:×x-]+$/u.test(label);
+        const excludedKey = /(?:sku|артикул|код|модель|id|роздільн|проекційн\w*\s*(?:віднош|коеф)|технолог\w*\s*(?:проекц|display)|світлов\w*\s+потік|яскравість|brightness)/iu.test(key);
+        const priority = mainSpecificationPriority(key);
+        if (!key || !label || invalidLabel || excludedKey || !priority || seen.has(key)) return;
         seen.add(key);
-        const values = (Array.isArray(rawValue) ? rawValue : [rawValue]).map(readableText).filter((value) => value && value.length <= 48);
+        const values = (Array.isArray(rawValue) ? rawValue : [rawValue]).map(normaliseSpecificationValue).filter((value) => value && value.length <= 48 && !/^(?:-|—|–|n\/?a|немає)$/iu.test(value));
         if (!values.length) return;
-        const group = byKey.get(key) || { id: 'spec-' + key, label, keys: [key], values: new Set(), products: new Set() };
-        values.forEach((value) => group.values.add(value));
+        const group = byKey.get(key) || { id: 'spec-' + key, label, keys: [key], priority, values: new Map(), products: new Set() };
+        values.forEach((value) => group.values.set(value.toLocaleLowerCase('uk-UA'), value));
         group.products.add(product.id);
         byKey.set(key, group);
       });
     });
     return [...byKey.values()]
       .filter((group) => group.products.size >= 2 && group.values.size >= 2 && group.values.size <= 12)
-      .sort((left, right) => right.products.size - left.products.size || left.label.localeCompare(right.label, 'uk'))
-      .slice(0, 6)
-      .map((group) => ({ ...group, options: [...group.values].sort((left, right) => left.localeCompare(right, 'uk')) }));
+      .sort((left, right) => left.priority - right.priority || right.products.size - left.products.size || left.label.localeCompare(right.label, 'uk'))
+      .slice(0, 4)
+      .map((group) => ({ ...group, options: [...group.values.values()].sort((left, right) => left.localeCompare(right, 'uk')) }));
   };
   const screenFilterOptions = () => {
     const categoryProducts = products.filter((product) => category !== 'all' && storefrontCategoryMatches(product, category));
@@ -1190,10 +1221,13 @@ catalog = function () {
   };
   const renderScreenSpecificationFilters = () => {
     if (!screenSpecificationFilters) return;
+    const categoryProducts = products.filter((product) => category !== 'all' && storefrontCategoryMatches(product, category));
+    const fluxRange = luminousFluxRange(categoryProducts);
     const groups = screenFilterOptions();
     activeSpecificationDefinitions = groups;
-    if (!groups.length) {
+    if (!groups.length && !fluxRange) {
       selectedScreenSpecifications.clear();
+      selectedLuminousFlux.min = ''; selectedLuminousFlux.max = '';
       screenSpecificationFilters.hidden = true;
       screenSpecificationFilters.replaceChildren();
       return;
@@ -1204,7 +1238,10 @@ catalog = function () {
       if (valid.size) selectedScreenSpecifications.set(id, valid); else selectedScreenSpecifications.delete(id);
     });
     screenSpecificationFilters.hidden = false;
-    screenSpecificationFilters.innerHTML = groups.map((group) => {
+    const fluxMarkup = fluxRange
+      ? '<fieldset class="screen-specification-filter luminous-flux-filter"><legend>Світловий потік, лм</legend><div class="price-values"><input type="number" min="' + fluxRange.min + '" max="' + fluxRange.max + '" placeholder="Від ' + fluxRange.min + '" value="' + selectedLuminousFlux.min + '" data-luminous-flux="min"><input type="number" min="' + fluxRange.min + '" max="' + fluxRange.max + '" placeholder="До ' + fluxRange.max + '" value="' + selectedLuminousFlux.max + '" data-luminous-flux="max"></div></fieldset>'
+      : '';
+    screenSpecificationFilters.innerHTML = fluxMarkup + groups.map((group) => {
       const selected = selectedScreenSpecifications.get(group.id) || new Set();
       return '<fieldset class="screen-specification-filter"><legend>' + escapeHtml(group.label) + '</legend><div class="screen-specification-filter__options">'
         + group.options.map((value) => '<label><input type="checkbox" data-screen-specification="' + escapeHtml(group.id) + '" value="' + escapeHtml(value) + '"' + (selected.has(value) ? ' checked' : '') + '> <span>' + escapeHtml(value) + '</span></label>').join('')
@@ -1213,8 +1250,13 @@ catalog = function () {
   };
   const matchesSelectedScreenSpecifications = (product) => [...selectedScreenSpecifications].every(([id, selected]) => {
     const definition = activeSpecificationDefinitions.find((item) => item.id === id);
-    return !definition || valuesForScreenFilter(product, definition).some((value) => selected.has(value));
+    return !definition || valuesForScreenFilter(product, definition).some((value) => selected.has(value) || selected.has(normaliseSpecificationValue(value)));
   });
+  const matchesLuminousFlux = (product) => {
+    if (!selectedLuminousFlux.min && !selectedLuminousFlux.max) return true;
+    const value = luminousFluxFor(product);
+    return Number.isFinite(value) && (!selectedLuminousFlux.min || value >= Number(selectedLuminousFlux.min)) && (!selectedLuminousFlux.max || value <= Number(selectedLuminousFlux.max));
+  };
   let page = 1;
   let category = legacyCategoryAliases[params.get('category')] || params.get('category') || 'all';
   if (params.get('search')) search.value = params.get('search');
@@ -1238,7 +1280,8 @@ catalog = function () {
         && (!priceMin?.value || Number(product.price) >= Number(priceMin.value))
         && (!price.value || Number(product.price) <= Number(price.value))
         && (!stock.checked || product.stock)
-        && matchesSelectedScreenSpecifications(product);
+        && matchesSelectedScreenSpecifications(product)
+        && matchesLuminousFlux(product);
     });
     if (sort.value === 'price-asc') shown.sort((left, right) => left.price - right.price);
     if (sort.value === 'price-desc') shown.sort((left, right) => right.price - left.price);
@@ -1258,6 +1301,13 @@ catalog = function () {
 
   root._catalogDraw = draw;
   screenSpecificationFilters?.addEventListener('change', (event) => {
+    const luminous = event.target.closest('[data-luminous-flux]');
+    if (luminous) {
+      selectedLuminousFlux[luminous.dataset.luminousFlux] = luminous.value;
+      page = 1;
+      draw();
+      return;
+    }
     const input = event.target.closest('[data-screen-specification]');
     if (!input) return;
     const selected = selectedScreenSpecifications.get(input.dataset.screenSpecification) || new Set();
@@ -1279,6 +1329,7 @@ catalog = function () {
     if (!button) return;
     category = button.dataset.catalogTaxonomy;
     selectedScreenSpecifications.clear();
+    selectedLuminousFlux.min = ''; selectedLuminousFlux.max = '';
     page = 1;
     const url = new URL(location.href);
     if (category === 'all') url.searchParams.delete('category'); else url.searchParams.set('category', category);
@@ -1294,7 +1345,7 @@ catalog = function () {
     root.scrollIntoView({ behavior: 'smooth', block: 'start' });
   });
   document.getElementById('clearCatalogFilters').addEventListener('click', () => {
-    search.value = ''; brand.value = ''; price.value = ''; if(priceMin) priceMin.value = '0'; stock.checked = false; sort.value = 'popular'; selectedScreenSpecifications.clear(); page = 1; draw();
+    search.value = ''; brand.value = ''; price.value = ''; if(priceMin) priceMin.value = '0'; stock.checked = false; sort.value = 'popular'; selectedScreenSpecifications.clear(); selectedLuminousFlux.min = ''; selectedLuminousFlux.max = ''; page = 1; draw();
   });
   draw();
   loadStorefrontCategories().then(() => draw());

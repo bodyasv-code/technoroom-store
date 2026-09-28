@@ -105,8 +105,8 @@ supabase.auth.getSession().then(({data:{session}})=>session?dashboard():view('lo
 
 // Універсальний імпорт XML: читає поширені структури постачальників і не перезаписує ручні дані.
 (() => {
-  const importer = { rows: [], selected: new Set(), page: 1 };
-  const supportedImageHosts = new Set(['www.tradeinn.com','www.audiotrends.com.au','static-ecapac.acer.com','media4home.com.pl','media.sonos.com','images.samsung.com','assets2.razerzone.com','d7qztf2ityad6.cloudfront.net','hp.widen.net','img06.en25.com','koss.com.ua','ssl-product-images.www8-hp.com','www.3ona51.com','www.hp.com','www.koss.com','yugcontract.ua']);
+  const importer = { rows: [], selected: new Set(), page: 1, prices: new Map() };
+  const supportedImageHosts = new Set(['www.tradeinn.com','www.audiotrends.com.au','static-ecapac.acer.com','media4home.com.pl','media.sonos.com','images.samsung.com','assets2.razerzone.com','d7qztf2ityad6.cloudfront.net','hp.widen.net','img06.en25.com','koss.com.ua','ssl-product-images.www8-hp.com','www.3ona51.com','www.hp.com','www.koss.com','yugcontract.ua','www.it4profit.com','content.it4profit.com']);
   const cleanImportText = (value = '') => String(value).replace(/\s+/g, ' ').trim();
   const decodeEntities = (value = '') => {
     let text = String(value || '');
@@ -163,6 +163,15 @@ supabase.auth.getSession().then(({data:{session}})=>session?dashboard():view('lo
     });
     return specifications;
   };
+  const attributeSpecifications = (node) => {
+    const specifications = {};
+    [...node.querySelectorAll('AttrList element, attrlist element')].forEach((item) => {
+      const key = canonicalSpecKey(item.getAttribute('Name') || item.getAttribute('name') || '');
+      const value = cleanImportText(item.getAttribute('Value') || item.getAttribute('value') || item.textContent || '');
+      if (key && value && key.length <= 120 && value.length <= 700) specifications[key] = value;
+    });
+    return specifications;
+  };
   const titleSpecifications = (name = '') => {
     const specifications = {};
     const diagonal = String(name).match(/(?:^|[\s,(])([1-9]\d{1,2}(?:[.,]\d+)?)\s*(?:&quot;|\")/i);
@@ -178,7 +187,7 @@ supabase.auth.getSession().then(({data:{session}})=>session?dashboard():view('lo
     } catch { return ''; }
   };
   const imagesFrom = (node, markup) => {
-    const fromTags = [...node.querySelectorAll('image,photo,picture,img,image_url,photo_url')].map((item) => item.getAttribute('src') || item.getAttribute('href') || item.textContent || '');
+    const fromTags = [...node.querySelectorAll('image,Image,photo,Photo,picture,Picture,img,image_url,photo_url')].map((item) => item.getAttribute('src') || item.getAttribute('href') || item.textContent || '');
     const fromMarkup = decodeEntities(markup).match(/https?:\/\/[^\s"'<>]+?\.(?:jpg|jpeg|png|webp)(?:\?[^\s"'<>]+)?/gi) || [];
     return [...new Set([...fromTags, ...fromMarkup].map(allowedImage).filter(Boolean))].slice(0, 6);
   };
@@ -188,12 +197,38 @@ supabase.auth.getSession().then(({data:{session}})=>session?dashboard():view('lo
     if (exact) return exact.slug;
     const alias = [
       [/екран.*про[єе]кц|projection screen/i, 'erc-display-06'],
+      [/про[єе]ктор.*коротко|short throw projector/i, 'erc-display-12'],
+      [/про[єе]ктор.*інстал|installation projector/i, 'erc-display-11'],
       [/про[єе]ктор/i, 'projector'],
       [/телевізор|tv/i, 'tv'],
       [/монітор/i, 'monitor'],
-      [/акуст|навуш|гарнітур|саундбар|мікрофон/i, 'audio']
+      [/акуст|навуш|гарнітур|саундбар|мікрофон/i, 'audio'],
+      [/power station|ups|uninterruptible|зарядн.*станц|джерел.*безпереб|акумулятор|battery/i, 'cat-power'],
+      [/кабел|адаптер|кронштейн|кріплен|accessor/i, 'cat-accessories']
     ].find(([pattern]) => pattern.test(row.subcategory + ' ' + row.sourceCategory));
     return alias && state.categories.some((category) => category.slug === alias[1]) ? alias[1] : '';
+  };
+  const applyPriceData = () => importer.rows.forEach((row) => {
+    const price = importer.prices.get(row.sku);
+    if (!price) return;
+    Object.assign(row, price);
+  });
+  const parsePriceFile = (content) => {
+    const xml = new DOMParser().parseFromString(content, 'application/xml');
+    if (xml.querySelector('parsererror')) throw new Error('XML цін містить помилку структури.');
+    const prices = new Map();
+    [...xml.querySelectorAll('PRICE,Price,price')].forEach((node) => {
+      const sku = normaliseSku(textFrom(node, ['WIC','wic','SKU','sku','ProductCode']));
+      const priceText = textFrom(node, ['RETAIL_PRICE','retail_price','Price','price','MY_PRICE','my_price']);
+      if (!sku || !cleanImportText(priceText)) return;
+      const availability = normaliseCategory(textFrom(node, ['AVAIL','avail','availability']));
+      const availabilityStatus = /^(так|обмежено|in stock|yes)/i.test(availability) ? 'in_stock' : /по запиту|під замовлення|under order/i.test(availability) ? 'under_order' : 'out_of_stock';
+      prices.set(sku, { price: importNumber(priceText), hasPrice: true, stock: availabilityStatus === 'in_stock' ? 1 : 0, hasStock: true, availabilityStatus });
+    });
+    if (!prices.size) throw new Error('У файлі цін не знайдено позицій.');
+    importer.prices = prices;
+    applyPriceData();
+    return prices.size;
   };
   const knownBySku = () => new Map(state.products.filter((product) => product.sku).map((product) => [normaliseSku(product.sku), product]));
   const importerStatus = (message, isError = false) => {
@@ -216,29 +251,41 @@ supabase.auth.getSession().then(({data:{session}})=>session?dashboard():view('lo
     pager.hidden = pages <= 1;
     pager.innerHTML = pages > 1 ? `<button class="button outline" type="button" data-import-page="prev" ${importer.page === 1 ? 'disabled' : ''}>← Попередні</button><span>Сторінка ${importer.page} з ${pages}</span><button class="button outline" type="button" data-import-page="next" ${importer.page === pages ? 'disabled' : ''}>Наступні →</button>` : '';
     body.innerHTML = rows.length ? rows.map((row) => {
-      const category = categoryFor(row), current = existing.get(row.sku), disabled = !row.sku || !row.name || !row.price || !category;
+      const category = categoryFor(row), current = existing.get(row.sku), disabled = !row.sku || !row.name || !category;
       const sourceInfo = [row.vendor, row.subcategory || row.sourceCategory].filter(Boolean).join(' · ');
-      return `<tr><td><input type="checkbox" data-import-select="${esc(row.key)}" ${importer.selected.has(row.key) ? 'checked ' : ''}${disabled ? 'disabled' : ''}></td><td><b>${esc(row.name)}</b><small>${esc(sourceInfo || 'Постачальник не вказаний')}</small></td><td>${esc(row.sku || '—')}</td><td>${esc(category ? (state.categories.find((item) => item.slug === category)?.name || category) : 'Немає зіставлення')}</td><td>${Object.keys(row.specifications).length} хар. · ${row.images.length} фото</td><td><span class="visibility ${current ? 'visible' : 'hidden-status'}">${current ? 'Оновити' : 'Новий'}</span></td></tr>`;
+      const mode = current ? 'Оновити' : (row.hasPrice ? 'Новий' : 'Чернетка без ціни');
+      return `<tr><td><input type="checkbox" data-import-select="${esc(row.key)}" ${importer.selected.has(row.key) ? 'checked ' : ''}${disabled ? 'disabled' : ''}></td><td><b>${esc(row.name)}</b><small>${esc(sourceInfo || 'Постачальник не вказаний')}</small></td><td>${esc(row.sku || '—')}</td><td>${esc(category ? (state.categories.find((item) => item.slug === category)?.name || category) : 'Немає зіставлення')}</td><td>${Object.keys(row.specifications).length} хар. · ${row.images.length} фото${row.hasPrice ? '' : ' · без ціни'}</td><td><span class="visibility ${current ? 'visible' : 'hidden-status'}">${mode}</span></td></tr>`;
     }).join('') : '<tr><td colspan="6" class="empty-row">Даних для імпорту немає</td></tr>';
   };
   const parseFile = (content) => {
-    const xml = new DOMParser().parseFromString(content, 'application/xml');
-    if (xml.querySelector('parsererror')) throw new Error('XML містить помилку структури.');
-    const nodes = [...xml.querySelectorAll('goods,good,offer,product,item')].filter((node) => textFrom(node, ['gname','name','model','title']));
-    importer.rows = nodes.map((node, index) => {
+    const isAsbis = /<ProductCatalog(?:\s|>)/i.test(content);
+    const xml = isAsbis ? null : new DOMParser().parseFromString(content, 'application/xml');
+    if (xml?.querySelector('parsererror')) throw new Error('XML містить помилку структури.');
+    const nodes = isAsbis ? content.matchAll(/<Product\b[^>]*>[\s\S]*?<\/Product>/gi) : xml.querySelectorAll('goods,good,offer,product,item');
+    const nameFields = isAsbis ? ['ProductDescription'] : ['gname','name','model','title'];
+    importer.rows = [];
+    let index = 0;
+    for (const sourceNode of nodes) {
+      const node = isAsbis ? new DOMParser().parseFromString(sourceNode[0], 'application/xml').documentElement : sourceNode;
+      if (!textFrom(node, nameFields)) continue;
       const vendorNode = node.closest('vendor,supplier,provider,brand');
-      const vendor = canonicalBrandName(cleanImportText(vendorNode?.getAttribute('name') || textFrom(node, ['vendor','supplier','brand','manufacturer'])));
-      const name = decodeEntities(textFrom(node, ['gname','name','model','title']));
-      const sku = normaliseSku(textFrom(node, ['code','sku','article','vendor_code','id']) || node.getAttribute('id'));
-      const sourceCategory = cleanImportText(textFrom(node, ['category','category_name','group']));
-      const subcategory = cleanImportText(textFrom(node, ['subcategory','subcategory_name','subgroup']));
-      const comment = textFrom(node, ['comment','description','full_description','details']);
-      const shortDescription = textFrom(node, ['a_desc','short_description','summary']);
-      const specifications = { ...parseSpecifications(comment), ...titleSpecifications(name) };
-      return { key: sku + '-' + index, vendor, name: cleanImportText(name), sku, sourceCategory, subcategory, price: importNumber(textFrom(node, ['rprice','price','retail_price','price_uah'])), stock: importQuantity(textFrom(node, ['stock','quantity','qty','available'])), description: parseDescription(shortDescription) || parseDescription(comment), specifications, images: imagesFrom(node, comment) };
-    }).filter((row) => row.name && row.sku);
+      const vendor = canonicalBrandName(cleanImportText(isAsbis ? textFrom(node, ['Vendor']) : (vendorNode?.getAttribute('name') || textFrom(node, ['vendor','supplier','brand','manufacturer']))));
+      const name = decodeEntities(textFrom(node, nameFields));
+      const sku = normaliseSku(isAsbis ? textFrom(node, ['ProductCode']) : (textFrom(node, ['code','sku','article','vendor_code','id']) || node.getAttribute('id')));
+      const sourceCategory = cleanImportText(textFrom(node, isAsbis ? ['ProductCategory'] : ['category','category_name','group']));
+      const subcategory = cleanImportText(textFrom(node, isAsbis ? ['ProductType'] : ['subcategory','subcategory_name','subgroup']));
+      const comment = textFrom(node, isAsbis ? ['MarketingInfo'] : ['comment','description','full_description','details']);
+      const shortDescription = textFrom(node, isAsbis ? ['ProductDescription'] : ['a_desc','short_description','summary']);
+      const priceValue = textFrom(node, ['rprice','price','retail_price','price_uah','Price']);
+      const stockValue = textFrom(node, ['stock','quantity','qty','available','Stock']);
+      const specifications = { ...parseSpecifications(comment), ...attributeSpecifications(node), ...titleSpecifications(name) };
+      const row = { key: sku + '-' + index, vendor, name: cleanImportText(name), sku, sourceCategory, subcategory, price: importNumber(priceValue), hasPrice: Boolean(cleanImportText(priceValue)), stock: importQuantity(stockValue), hasStock: Boolean(cleanImportText(stockValue)), description: parseDescription(shortDescription) || parseDescription(comment), specifications, images: imagesFrom(node, comment) };
+      if (row.name && row.sku) importer.rows.push(row);
+      index += 1;
+    }
     importer.selected.clear();
     importer.page = 1;
+    applyPriceData();
     if (!importer.rows.length) throw new Error('У файлі не знайдено товарних позицій.');
   };
   const newSlug = (name, sku, used) => {
@@ -276,7 +323,9 @@ supabase.auth.getSession().then(({data:{session}})=>session?dashboard():view('lo
       const category = categoryFor(row), current = existing.get(row.sku);
       if (!category) { failures.push(row.sku + ': не знайдено категорію'); continue; }
       const images = importImages ? row.images : [];
-      const inventory = { category, price: row.price, stock_quantity: row.stock, in_stock: row.stock > 0, availability_status: row.stock > 0 ? 'in_stock' : 'out_of_stock' };
+      const inventory = { category };
+      if (row.hasPrice) inventory.price = row.price;
+      if (row.hasStock) Object.assign(inventory, { stock_quantity: row.stock, in_stock: row.stock > 0, availability_status: row.availabilityStatus || (row.stock > 0 ? 'in_stock' : 'out_of_stock') });
       if (current) {
         const payload = { ...inventory };
         if (updateSpecifications && Object.keys(row.specifications).length) payload.specifications = mergeSpecifications(current.specifications, row.specifications);
@@ -292,7 +341,7 @@ supabase.auth.getSession().then(({data:{session}})=>session?dashboard():view('lo
         }
       } else {
         const importedBrand = state.brands.find((brand) => brand.is_active && txt(brand.name) === txt(row.vendor));
-        const payload = { ...inventory, name: row.name, slug: newSlug(row.name, row.sku, usedSlugs), sku: row.sku, brand_id: importedBrand?.id || null, brand: importedBrand?.name || row.vendor || null, description: row.description || null, specifications: row.specifications, is_active: publishNew };
+        const payload = { ...inventory, price: row.hasPrice ? row.price : 0, stock_quantity: row.hasStock ? row.stock : 0, in_stock: row.hasStock && row.stock > 0, availability_status: row.availabilityStatus || (row.hasStock && row.stock > 0 ? 'in_stock' : 'out_of_stock'), name: row.name, slug: newSlug(row.name, row.sku, usedSlugs), sku: row.sku, brand_id: importedBrand?.id || null, brand: importedBrand?.name || row.vendor || null, description: row.description || null, specifications: row.specifications, is_active: publishNew && row.hasPrice };
         const result = await supabase.from('products').insert(payload).select('id').single();
         if (result.error) failures.push(row.sku + ': ' + (result.error.message || result.error.code));
         else {
@@ -311,7 +360,7 @@ supabase.auth.getSession().then(({data:{session}})=>session?dashboard():view('lo
   const mountImporter = () => {
     const anchor = $('#products');
     if (!anchor || $('#supplierImport')) return;
-    anchor.insertAdjacentHTML('afterend', `<section class="admin-section" id="supplierImport"><div class="admin-title"><div><h2>Імпорт XML</h2><span>Товари, характеристики та посилання на фото від постачальників</span></div></div><p class="recovery-help">Характеристики додаються лише до порожніх полів; вручну внесені значення залишаються без змін. Фото підтримуються лише з перевірених HTTPS-джерел.</p><div class="admin-controls"><input id="supplierImportFile" type="file" accept=".xml,application/xml,text/xml"><input id="supplierImportLimit" type="number" min="1" max="100" value="50" title="Товарів на сторінці попереднього перегляду"></div><div class="admin-controls"><button class="button outline" type="button" id="supplierImportSelectNew">Вибрати нові на сторінці</button><button class="button outline" type="button" id="supplierImportSelectVisible">Вибрати всі показані</button><button class="button outline" type="button" id="supplierImportClear">Очистити вибір</button><label class="check"><input id="supplierImportSpecifications" type="checkbox" checked> Додати відсутні характеристики</label><label class="check"><input id="supplierImportImages" type="checkbox"> Додати доступні фото</label><label class="check"><input id="supplierImportPublish" type="checkbox"> Публікувати нові товари</label><button class="button primary" type="button" id="supplierImportApply">Імпортувати вибрані</button></div><p class="admin-message" id="supplierImportMessage" hidden></p><p class="recovery-help" id="supplierImportSummary">Оберіть XML-файл для попереднього перегляду.</p><div class="admin-controls" id="supplierImportPagination" hidden></div><div class="admin-table-wrap"><table><thead><tr><th></th><th>Товар / джерело</th><th>SKU</th><th>Категорія</th><th>Дані джерела</th><th>Дія</th></tr></thead><tbody id="supplierImportRows"></tbody></table></div></section>`);
+    anchor.insertAdjacentHTML('afterend', `<section class="admin-section" id="supplierImport"><div class="admin-title"><div><h2>Імпорт XML</h2><span>Товари, характеристики та посилання на фото від постачальників</span></div></div><p class="recovery-help">Для ASBIS виберіть спочатку <b>itemList.xml</b>, а також файл <b>PriceAvail.xml</b>: вони з’єднаються за SKU. Характеристики додаються лише до порожніх полів; вручну внесені значення залишаються без змін.</p><div class="admin-controls"><label>Каталог товарів <input id="supplierImportFile" type="file" accept=".xml,application/xml,text/xml"></label><label>Ціни та наявність <input id="supplierImportPriceFile" type="file" accept=".xml,application/xml,text/xml"></label><input id="supplierImportLimit" type="number" min="1" max="100" value="50" title="Товарів на сторінці попереднього перегляду"></div><div class="admin-controls"><button class="button outline" type="button" id="supplierImportSelectNew">Вибрати нові на сторінці</button><button class="button outline" type="button" id="supplierImportSelectVisible">Вибрати всі показані</button><button class="button outline" type="button" id="supplierImportClear">Очистити вибір</button><label class="check"><input id="supplierImportSpecifications" type="checkbox" checked> Додати відсутні характеристики</label><label class="check"><input id="supplierImportImages" type="checkbox"> Додати доступні фото</label><label class="check"><input id="supplierImportPublish" type="checkbox"> Публікувати нові товари</label><button class="button primary" type="button" id="supplierImportApply">Імпортувати вибрані</button></div><p class="admin-message" id="supplierImportMessage" hidden></p><p class="recovery-help" id="supplierImportSummary">Оберіть XML-файл для попереднього перегляду.</p><div class="admin-controls" id="supplierImportPagination" hidden></div><div class="admin-table-wrap"><table><thead><tr><th></th><th>Товар / джерело</th><th>SKU</th><th>Категорія</th><th>Дані джерела</th><th>Дія</th></tr></thead><tbody id="supplierImportRows"></tbody></table></div></section>`);
     document.querySelector('.admin-nav').insertAdjacentHTML('beforeend', '<a href="#supplierImport">Імпорт XML</a>');
     const section = $('#supplierImport');
     $('#supplierImportFile').addEventListener('change', async (event) => {
@@ -319,11 +368,16 @@ supabase.auth.getSession().then(({data:{session}})=>session?dashboard():view('lo
       importerStatus('Читаю ' + file.name + '…');
       try { parseFile(await file.text()); importerStatus('Файл прочитано: ' + importer.rows.length + ' товарів.'); renderImportPreview(); } catch (error) { importer.rows = []; renderImportPreview(); importerStatus(error.message || 'Не вдалося прочитати XML.', true); }
     });
+    $('#supplierImportPriceFile').addEventListener('change', async (event) => {
+      const file = event.target.files?.[0]; if (!file) return;
+      importerStatus('Читаю ціни та наявність з ' + file.name + '…');
+      try { const count = parsePriceFile(await file.text()); renderImportPreview(); importerStatus('Файл цін прочитано: ' + count + ' позицій. Дані з’єднано за SKU.'); } catch (error) { importerStatus(error.message || 'Не вдалося прочитати XML цін.', true); }
+    });
     section.addEventListener('input', (event) => { if (event.target.matches('#supplierImportLimit')) { importer.page = 1; renderImportPreview(); } });
     section.addEventListener('change', (event) => { const checkbox = event.target.closest('[data-import-select]'); if (!checkbox) return; if (checkbox.checked) importer.selected.add(checkbox.dataset.importSelect); else importer.selected.delete(checkbox.dataset.importSelect); renderImportPreview(); });
     section.addEventListener('click', (event) => { const pageButton = event.target.closest('[data-import-page]'); if (!pageButton || pageButton.disabled) return; importer.page += pageButton.dataset.importPage === 'next' ? 1 : -1; renderImportPreview(); });
-    $('#supplierImportSelectNew').onclick = () => { const existing = knownBySku(); importPageRows().forEach((row) => { if (!existing.has(row.sku) && categoryFor(row) && row.price) importer.selected.add(row.key); }); renderImportPreview(); };
-    $('#supplierImportSelectVisible').onclick = () => { importPageRows().forEach((row) => { if (categoryFor(row) && row.price) importer.selected.add(row.key); }); renderImportPreview(); };
+    $('#supplierImportSelectNew').onclick = () => { const existing = knownBySku(); importPageRows().forEach((row) => { if (!existing.has(row.sku) && categoryFor(row)) importer.selected.add(row.key); }); renderImportPreview(); };
+    $('#supplierImportSelectVisible').onclick = () => { importPageRows().forEach((row) => { if (categoryFor(row)) importer.selected.add(row.key); }); renderImportPreview(); };
     $('#supplierImportClear').onclick = () => { importer.selected.clear(); renderImportPreview(); };
     $('#supplierImportApply').onclick = importSelected;
   };

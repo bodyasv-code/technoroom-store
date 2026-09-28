@@ -181,11 +181,20 @@ supabase.auth.getSession().then(({data:{session}})=>session?dashboard():view('lo
     return specifications;
   };
   // Повна назва з джерела зберігається в описі, а в заголовку лишається модель.
-  const compactImportName = (value = '', sku = '') => {
+  const compactImportName = (value = '', sku = '', brand = '') => {
     let name = decodeEntities(cleanImportText(value))
       .replace(/\s*[|•]\s*(?:код|sku|артикул|vendor code)\b.*$/iu, '')
       .replace(/\s*\((?:код|sku|артикул)\s*[:#]?[^)]*\)/iu, '')
       .replace(/\s{2,}/g, ' ').trim();
+    if (/^телевізор\b/iu.test(name)) {
+      const size = name.match(/\b(\d{2,3}(?:[.,]\d+)?)\s*(?:["″]|дюйм(?:ів|и|а)?\b)/iu)?.[1];
+      const technology = [[/mini\s*-?\s*led/iu, 'miniLED'], [/oled/iu, 'OLED'], [/qled/iu, 'QLED'], [/\bled\b/iu, 'LED']].find(([pattern]) => pattern.test(name))?.[1];
+      const excludedModels = new Set(['4K', '8K', 'HDR', 'HDR10', 'HDMI', 'USB', 'WIFI', 'WI-FI', 'LED', 'OLED', 'QLED', 'MINILED', 'FULLHD']);
+      const model = [...name.matchAll(/\b[A-ZА-ЯІЇЄ]{1,6}(?:[-_ ]?[A-Z0-9]{2,})+\b/g)].map((match) => match[0]).find((candidate) => candidate.replace(/[-_ ]/g, '').length >= 5 && !excludedModels.has(candidate.replace(/[-_ ]/g, '').toUpperCase()));
+      const cleanBrand = cleanImportText(brand).replace(/\s+(?:tv|телевізори)$/iu, '').trim();
+      const compact = ['Телевізор', size ? size.replace(',', '.') + '"' : '', cleanBrand, technology || '', model || ''].filter(Boolean).join(' ');
+      if (compact) name = compact;
+    }
     const parts = name.split(',').map(cleanImportText).filter(Boolean);
     const startsWithProductType = /^(?:про[єе]ктор|телевізор|монітор|екран|саундбар|акустичн|гарнітур|навушник|портативн|зарядн|джерел|ноутбук|планшет)/iu;
     if (startsWithProductType.test(name) && parts.length >= 3) name = parts[0];
@@ -373,7 +382,7 @@ supabase.auth.getSession().then(({data:{session}})=>session?dashboard():view('lo
       const vendor = canonicalBrandName(cleanImportText(isAsbis ? textFrom(node, ['Vendor']) : (vendorNode?.getAttribute('name') || textFrom(node, ['vendor','supplier','brand','manufacturer']))));
       const sku = normaliseSku(isAsbis ? textFrom(node, ['ProductCode']) : (textFrom(node, ['code','sku','article','vendor_code','id']) || node.getAttribute('id')));
       const sourceName = decodeEntities(textFrom(node, nameFields));
-      const name = compactImportName(sourceName, sku);
+      const name = compactImportName(sourceName, sku, vendor);
       const sourceCategory = cleanImportText(textFrom(node, isAsbis ? ['ProductCategory'] : ['category','category_name','group']));
       const subcategory = cleanImportText(textFrom(node, isAsbis ? ['ProductType'] : ['subcategory','subcategory_name','subgroup']));
       const comment = textFrom(node, isAsbis ? ['MarketingInfo'] : ['comment','description','full_description','details']);

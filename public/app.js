@@ -557,12 +557,34 @@ card = (product) => {
     </div>
   </article>`;
 };
+// Для проекційних екранів частина постачальників передає параметри лише в назві
+// або описі. Витягуємо тільки однозначні значення й не змінюємо збережені дані.
+const inferredScreenSpecifications = (product) => {
+  if (product.type !== 'erc-display-06') return {};
+  const source = readableText([product.name, product.description].filter(Boolean).join(' '));
+  const result = {};
+  const diagonal = source.match(/(?:^|\s)(\d{2,3}(?:[.,]\d+)?)\s*(?:["″]|дюйм(?:ів|и|а)?\b)/iu)?.[1];
+  const format = source.match(/\b(1:1|4:3|16:9|16:10|21:9)\b/u)?.[1];
+  const construction = source.match(/\b(настінн\w*|стельов\w*|підлогов\w*|на\s+тринозі|рамн\w*|рулонн\w*|натяжн\w*|переносн\w*)\b/iu)?.[1];
+  const drive = source.match(/\b(моторизован\w*|ручн\w*)\b/iu)?.[1];
+  if (diagonal) result['Діагональ'] = diagonal.replace(',', '.') + '″';
+  if (format) result['Співвідношення сторін'] = format;
+  if (construction) result['Тип екрану'] = construction;
+  if (construction) result['Монтаж'] = construction;
+  if (drive) result['Привід'] = /^моторизован/iu.test(drive) ? 'Моторизований' : 'Ручний';
+  return result;
+};
+const displaySpecificationEntries = (product) => {
+  const stored = Object.entries(product.specifications || {}).filter(([, value]) => Array.isArray(value) ? value.length : readableText(value));
+  return stored.length ? stored : Object.entries(inferredScreenSpecifications(product));
+};
+
 product = () => {
   const root=document.getElementById('productView'); if(!root)return;
   const item=get(new URLSearchParams(location.search).get('id'))||products[0]; if(!item)return;
   const state=availability(item);
   const safeName=catalogCardEscape(item.name), safeBrand=catalogCardEscape(item.brand||'TECHNOROOM');
-  const specEntries=item.specifications?Object.entries(item.specifications):[];
+  const specEntries=displaySpecificationEntries(item);
   const specs=specEntries.length?specEntries.map(([key,value])=>`<div><dt>${catalogCardEscape(key)}</dt><dd>${catalogCardEscape(Array.isArray(value)?value.join(', '):value)}</dd></div>`).join(''):`<div><dt>Характеристики</dt><dd>${catalogCardEscape(item.details||'Уточнюйте у менеджера')}</dd></div>`;
   const related=products.filter(p=>p.id!==item.id&&p.type===item.type).slice(0,4);
   root.innerHTML=`
@@ -799,7 +821,7 @@ product = function () {
   const safe = (value) => catalogCardEscape(readableText(value));
   const safeName = safe(item.name);
   const safeBrand = safe(item.brand || 'TECHNOROOM');
-  const specEntries = item.specifications ? Object.entries(item.specifications) : [];
+  const specEntries = displaySpecificationEntries(item);
   const specs = specEntries.length
     ? specEntries.map(([key, value]) => '<div><dt>' + safe(key) + '</dt><dd>' + safe(Array.isArray(value) ? value.join(', ') : value) + '</dd></div>').join('')
     : '<div><dt>Характеристики</dt><dd>Уточнюйте у менеджера</dd></div>';
@@ -1077,7 +1099,7 @@ catalog = function () {
       label: 'Привід',
       keys: ['тип екрану'],
       values: (product) => {
-        const type = specificationValues(product, ['тип екрану']).join(' ').toLocaleLowerCase('uk-UA');
+        const type = specificationValues(product, ['тип екрану', 'привід']).join(' ').toLocaleLowerCase('uk-UA');
         return [
           ...(type.includes('моторизован') ? ['Моторизований'] : []),
           ...(type.includes('ручн') ? ['Ручний'] : [])
@@ -1085,11 +1107,20 @@ catalog = function () {
       }
     }
   ];
-  const specificationValues = (product, keys) => Object.entries(product.specifications || {})
-    .filter(([key]) => keys.includes(normaliseSpecificationKey(key)))
-    .flatMap(([, value]) => Array.isArray(value) ? value : [value])
-    .map((value) => readableText(value))
-    .filter(Boolean);
+  const specificationValues = (product, keys) => {
+    const stored = Object.entries(product.specifications || {})
+      .filter(([key]) => keys.includes(normaliseSpecificationKey(key)))
+      .flatMap(([, value]) => Array.isArray(value) ? value : [value])
+      .map((value) => readableText(value))
+      .filter(Boolean);
+    if (stored.length) return stored;
+    const inferred = inferredScreenSpecifications(product);
+    return Object.entries(inferred)
+      .filter(([key]) => keys.includes(normaliseSpecificationKey(key)))
+      .flatMap(([, value]) => Array.isArray(value) ? value : [value])
+      .map((value) => readableText(value))
+      .filter(Boolean);
+  };
   const valuesForScreenFilter = (product, definition) => definition.values
     ? definition.values(product)
     : specificationValues(product, definition.keys);

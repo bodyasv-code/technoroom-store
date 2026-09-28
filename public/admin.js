@@ -183,7 +183,8 @@ supabase.auth.getSession().then(({data:{session}})=>session?dashboard():view('lo
   const allowedImage = (value) => {
     try {
       const url = new URL(value);
-      return url.protocol === 'https:' && supportedImageHosts.has(url.hostname) ? url.href : '';
+      const isAsbisPlaceholder = url.hostname === 'www.it4profit.com' && /^\/catalogimg\/wic\//i.test(url.pathname);
+      return url.protocol === 'https:' && supportedImageHosts.has(url.hostname) && !isAsbisPlaceholder ? url.href : '';
     } catch { return ''; }
   };
   const imagesFrom = (node, markup) => {

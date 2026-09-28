@@ -822,11 +822,11 @@ product = function () {
       : '<p class="empty-cart">Завантажуємо товар…</p>';
     return;
   }
-  document.title = readableText(item.name) + ' | TECHNOROOM';
+  document.title = compactProductName(item.name) + ' | TECHNOROOM';
   const state = availability(item);
   const paths = galleryEntriesFor(item);
   const safe = (value) => catalogCardEscape(readableText(value));
-  const safeName = safe(item.name);
+  const safeName = safe(compactProductName(item.name));
   const safeBrand = safe(item.brand || 'TECHNOROOM');
   const specEntries = displaySpecificationEntries(item);
   const specs = specEntries.length

@@ -1154,6 +1154,13 @@ catalog = function () {
     .replace(/\s*×\s*/gu, ' × ')
     .replace(/\s+/gu, ' ')
     .trim();
+  const normaliseLightSource = (value) => {
+    const text = normaliseSpecificationValue(value);
+    if (/laser|лазер/iu.test(text)) return 'Лазер';
+    if (/led|світлодіод/iu.test(text)) return 'Світлодіод';
+    if (/lamp|ламп/iu.test(text)) return 'Лампа';
+    return '';
+  };
   const luminousFluxFor = (product) => {
     const values = Object.entries(product.specifications || {})
       .filter(([key]) => /(?:світлов\w*\s+потік|яскравість|brightness)/iu.test(readableText(key)))
@@ -1170,12 +1177,13 @@ catalog = function () {
   const genericSpecificationDefinitions = (categoryProducts) => {
     const byKey = new Map();
     const mainSpecificationPriority = (key) => {
-      if (/діагональ|розмір/u.test(key)) return 1;
-      if (/тип\s*(?:екрана|матриці|конструкції|підключення)?|формат/u.test(key)) return 2;
-      if (/потужність|ємність|автономн/u.test(key)) return 3;
-      if (/інтерфейс|підключенн|з'єднан|бездротов/u.test(key)) return 4;
-      if (/монтаж|встановлен|установка/u.test(key)) return 5;
-      if (/колір/u.test(key)) return 6;
+      if (/роздільн/u.test(key)) return 1;
+      if (/(?:джерел\w*\s+світла|тип\s+джерела)/u.test(key)) return 2;
+      if (/тип\s*(?:екрана|матриці|конструкції|підключення)?|формат/u.test(key)) return 3;
+      if (/потужність|ємність|автономн/u.test(key)) return 4;
+      if (/інтерфейс|підключенн|з'єднан/u.test(key)) return 5;
+      if (/монтаж|встановлен|установка/u.test(key)) return 6;
+      if (/колір/u.test(key)) return 7;
       return 0;
     };
     categoryProducts.forEach((product) => {
@@ -1188,13 +1196,14 @@ catalog = function () {
         const key = normaliseSpecificationKey(rawKey);
         const label = readableText(rawKey);
         const invalidLabel = !/[\p{L}]/u.test(label) || /^[\d\s.,:×x-]+$/u.test(label);
-        const excludedKey = /(?:sku|артикул|код|модель|id|роздільн|проекційн\w*\s*(?:віднош|коеф)|технолог\w*\s*(?:проекц|display)|світлов\w*\s+потік|яскравість|brightness)/iu.test(key);
+        const excludedKey = /(?:sku|артикул|код|модель|id|діагональ|розмір|бездротов|проекційн\w*\s*(?:віднош|коеф)|технолог\w*\s*(?:проекц|display)|світлов\w*\s+потік|яскравість|brightness)/iu.test(key);
         const priority = mainSpecificationPriority(key);
         if (!key || !label || invalidLabel || excludedKey || !priority || seen.has(key)) return;
         seen.add(key);
-        const values = (Array.isArray(rawValue) ? rawValue : [rawValue]).map(normaliseSpecificationValue).filter((value) => value && value.length <= 48 && !/^(?:-|—|–|n\/?a|немає)$/iu.test(value));
+        const isLightSource = /(?:джерел\w*\s+світла|тип\s+джерела)/iu.test(key);
+        const values = (Array.isArray(rawValue) ? rawValue : [rawValue]).map(isLightSource ? normaliseLightSource : normaliseSpecificationValue).filter((value) => value && value.length <= 48 && !/^(?:-|—|–|n\/?a|немає)$/iu.test(value));
         if (!values.length) return;
-        const group = byKey.get(key) || { id: 'spec-' + key, label, keys: [key], priority, values: new Map(), products: new Set() };
+        const group = byKey.get(key) || { id: 'spec-' + key, label, keys: [key], priority, normaliseValue: isLightSource ? normaliseLightSource : normaliseSpecificationValue, values: new Map(), products: new Set() };
         values.forEach((value) => group.values.set(value.toLocaleLowerCase('uk-UA'), value));
         group.products.add(product.id);
         byKey.set(key, group);
@@ -1250,7 +1259,7 @@ catalog = function () {
   };
   const matchesSelectedScreenSpecifications = (product) => [...selectedScreenSpecifications].every(([id, selected]) => {
     const definition = activeSpecificationDefinitions.find((item) => item.id === id);
-    return !definition || valuesForScreenFilter(product, definition).some((value) => selected.has(value) || selected.has(normaliseSpecificationValue(value)));
+    return !definition || valuesForScreenFilter(product, definition).some((value) => selected.has(value) || selected.has((definition.normaliseValue || normaliseSpecificationValue)(value)));
   });
   const matchesLuminousFlux = (product) => {
     if (!selectedLuminousFlux.min && !selectedLuminousFlux.max) return true;

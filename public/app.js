@@ -1130,6 +1130,7 @@ catalog = function () {
       }
     }
   ];
+  let activeSpecificationDefinitions = [];
   const specificationValues = (product, keys) => {
     const stored = Object.entries(product.specifications || {})
       .filter(([key]) => keys.includes(normaliseSpecificationKey(key)))
@@ -1147,27 +1148,54 @@ catalog = function () {
   const valuesForScreenFilter = (product, definition) => definition.values
     ? definition.values(product)
     : specificationValues(product, definition.keys);
-  const screenFilterOptions = () => screenSpecificationDefinitions
-    .map((definition) => {
-      const values = new Set();
-      products.filter((product) => product.type === screenCategory).forEach((product) => {
-        valuesForScreenFilter(product, definition).forEach((value) => values.add(value));
+  const genericSpecificationDefinitions = (categoryProducts) => {
+    const byKey = new Map();
+    categoryProducts.forEach((product) => {
+      const entries = [
+        ...Object.entries(product.specifications || {}),
+        ...(product.type === screenCategory ? Object.entries(inferredScreenSpecifications(product)) : [])
+      ];
+      const seen = new Set();
+      entries.forEach(([rawKey, rawValue]) => {
+        const key = normaliseSpecificationKey(rawKey);
+        const label = readableText(rawKey);
+        if (!key || !label || /^(?:sku|артикул|код|модель|id)$/iu.test(key) || seen.has(key)) return;
+        seen.add(key);
+        const values = (Array.isArray(rawValue) ? rawValue : [rawValue]).map(readableText).filter((value) => value && value.length <= 48);
+        if (!values.length) return;
+        const group = byKey.get(key) || { id: 'spec-' + key, label, keys: [key], values: new Set(), products: new Set() };
+        values.forEach((value) => group.values.add(value));
+        group.products.add(product.id);
+        byKey.set(key, group);
       });
-      const options = [...values].sort(definition.sort || ((left, right) => left.localeCompare(right, 'uk')));
-      return options.length ? { ...definition, options } : null;
-    })
-    .filter(Boolean);
+    });
+    return [...byKey.values()]
+      .filter((group) => group.products.size >= 2 && group.values.size >= 2 && group.values.size <= 12)
+      .sort((left, right) => right.products.size - left.products.size || left.label.localeCompare(right.label, 'uk'))
+      .slice(0, 6)
+      .map((group) => ({ ...group, options: [...group.values].sort((left, right) => left.localeCompare(right, 'uk')) }));
+  };
+  const screenFilterOptions = () => {
+    const categoryProducts = products.filter((product) => category !== 'all' && storefrontCategoryMatches(product, category));
+    if (!categoryProducts.length) return [];
+    if (category === screenCategory) {
+      return screenSpecificationDefinitions.map((definition) => {
+        const values = new Set();
+        categoryProducts.forEach((product) => valuesForScreenFilter(product, definition).forEach((value) => values.add(value)));
+        const options = [...values].sort(definition.sort || ((left, right) => left.localeCompare(right, 'uk')));
+        return options.length ? { ...definition, options } : null;
+      }).filter(Boolean);
+    }
+    return genericSpecificationDefinitions(categoryProducts);
+  };
   const renderScreenSpecificationFilters = () => {
     if (!screenSpecificationFilters) return;
-    if (category !== screenCategory) {
+    const groups = screenFilterOptions();
+    activeSpecificationDefinitions = groups;
+    if (!groups.length) {
       selectedScreenSpecifications.clear();
       screenSpecificationFilters.hidden = true;
       screenSpecificationFilters.replaceChildren();
-      return;
-    }
-    const groups = screenFilterOptions();
-    if (!groups.length) {
-      screenSpecificationFilters.hidden = true;
       return;
     }
     const available = new Map(groups.map((group) => [group.id, new Set(group.options)]));
@@ -1184,7 +1212,7 @@ catalog = function () {
     }).join('');
   };
   const matchesSelectedScreenSpecifications = (product) => [...selectedScreenSpecifications].every(([id, selected]) => {
-    const definition = screenSpecificationDefinitions.find((item) => item.id === id);
+    const definition = activeSpecificationDefinitions.find((item) => item.id === id);
     return !definition || valuesForScreenFilter(product, definition).some((value) => selected.has(value));
   });
   let page = 1;
@@ -1210,7 +1238,7 @@ catalog = function () {
         && (!priceMin?.value || Number(product.price) >= Number(priceMin.value))
         && (!price.value || Number(product.price) <= Number(price.value))
         && (!stock.checked || product.stock)
-        && (category !== screenCategory || matchesSelectedScreenSpecifications(product));
+        && matchesSelectedScreenSpecifications(product);
     });
     if (sort.value === 'price-asc') shown.sort((left, right) => left.price - right.price);
     if (sort.value === 'price-desc') shown.sort((left, right) => right.price - left.price);

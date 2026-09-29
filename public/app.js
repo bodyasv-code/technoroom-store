@@ -1222,10 +1222,22 @@ catalog = function () {
       ...( /(?:3lcd|\blcd\b)/iu.test(source) ? ['LCD'] : [])
     ];
   };
+  const projectorResolutionValues = (product) => {
+    const source = specificationValues(product, ['роздільна здатність', 'resolution']).join(' ');
+    const normalized = normaliseSpecificationValue(source).toUpperCase().replace(/\s+/g, '');
+    if (/3840\s*[×XХ]\s*2160|\b4K\b|\bUHD\b/.test(source.toUpperCase())) return ['4K UHD'];
+    if (/2560\s*[×XХ]\s*1600|\bWQXGA\b/.test(source.toUpperCase())) return ['WQXGA'];
+    if (/1920\s*[×XХ]\s*1200|\bWUXGA\b/.test(source.toUpperCase())) return ['WUXGA'];
+    if (/1920\s*[×XХ]\s*1080|FULL\s*HD|\bFHD\b/.test(source.toUpperCase())) return ['Full HD'];
+    if (/1280\s*[×XХ]\s*800|\bWXGA\b/.test(source.toUpperCase())) return ['WXGA'];
+    if (/1024\s*[×XХ]\s*768|\bXGA\b/.test(source.toUpperCase())) return ['XGA'];
+    if (/800\s*[×XХ]\s*600|\bSVGA\b/.test(source.toUpperCase())) return ['SVGA'];
+    return normalized ? [normaliseSpecificationValue(source)] : [];
+  };
   const projectorFilterOptions = (categoryProducts) => {
     const definitions = [
       { id: 'projector-technology', label: 'Технологія', values: projectorTechnologyValues, normaliseValue: normaliseSpecificationValue },
-      { id: 'projector-resolution', label: 'Роздільна здатність', keys: ['роздільна здатність', 'resolution'], normaliseValue: normaliseSpecificationValue },
+      { id: 'projector-resolution', label: 'Роздільна здатність', values: projectorResolutionValues, normaliseValue: normaliseSpecificationValue },
       { id: 'projector-light-source', label: 'Джерело світла', keys: ['джерело світла', 'тип джерела'], values: (product) => specificationValues(product, ['джерело світла', 'тип джерела']).map(normaliseLightSource), normaliseValue: normaliseLightSource }
     ];
     return definitions.map((definition) => {

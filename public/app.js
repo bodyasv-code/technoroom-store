@@ -528,6 +528,16 @@ const cleanBrand = (value) => {
   text=text.replace(suffixes,'').trim();
   return text;
 };
+// Дані постачальників іноді містять HTML-посилання або <br> замість звичайного
+// тексту. У картці товару показуємо лише безпечний і читабельний вміст.
+const specificationDisplayText = (value = '') => {
+  let text = readableText(Array.isArray(value) ? value.join(', ') : value)
+    .replace(/<br\s*\/?\s*>/gi, ' · ');
+  const holder = document.createElement('div');
+  holder.innerHTML = text;
+  text = holder.textContent || holder.innerText || '';
+  return readableText(text).replace(/\s*·\s*(?:·\s*)+/g, ' · ');
+};
 const compactProductName = (value = '', sku = '', brand = '') => {
   let name = readableText(value).replace(/\s*[|•]\s*(?:код|sku|артикул|vendor code)\b.*$/iu, '').replace(/\s*\((?:код|sku|артикул)\s*[:#]?[^)]*\)/iu, '').replace(/\s{2,}/g, ' ').trim();
   if (/^телевізор\b/iu.test(name)) {
@@ -599,7 +609,9 @@ const inferredScreenSpecifications = (product) => {
   return result;
 };
 const displaySpecificationEntries = (product) => {
-  const stored = Object.entries(product.specifications || {}).filter(([, value]) => Array.isArray(value) ? value.length : readableText(value));
+  const stored = Object.entries(product.specifications || {})
+    .map(([key, value]) => [readableText(key), specificationDisplayText(value)])
+    .filter(([key, value]) => key && value);
   return stored.length ? stored : Object.entries(inferredScreenSpecifications(product));
 };
 
@@ -842,7 +854,7 @@ product = function () {
   document.title = compactProductName(item.name, item.sku) + ' | TECHNOROOM';
   const state = availability(item);
   const paths = galleryEntriesFor(item);
-  const safe = (value) => catalogCardEscape(readableText(value));
+  const safe = (value) => catalogCardEscape(specificationDisplayText(value));
   const safeName = safe(compactProductName(item.name, item.sku));
   const safeBrand = safe(item.brand || 'TECHNOROOM');
   const specEntries = displaySpecificationEntries(item);

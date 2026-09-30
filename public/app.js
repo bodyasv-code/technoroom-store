@@ -1149,14 +1149,14 @@ catalog = function () {
     const stored = Object.entries(product.specifications || {})
       .filter(([key]) => keys.includes(normaliseSpecificationKey(key)))
       .flatMap(([, value]) => Array.isArray(value) ? value : [value])
-      .map((value) => readableText(value))
+      .map((value) => specificationDisplayText(value))
       .filter(Boolean);
     if (stored.length) return stored;
     const inferred = inferredScreenSpecifications(product);
     return Object.entries(inferred)
       .filter(([key]) => keys.includes(normaliseSpecificationKey(key)))
       .flatMap(([, value]) => Array.isArray(value) ? value : [value])
-      .map((value) => readableText(value))
+      .map((value) => specificationDisplayText(value))
       .filter(Boolean);
   };
   const valuesForScreenFilter = (product, definition) => definition.values
@@ -1193,9 +1193,7 @@ catalog = function () {
       if (/(?:джерел\w*\s+світла|тип\s+джерела)/u.test(key)) return 2;
       if (/тип\s*(?:екрана|матриці|конструкції|підключення)?|формат/u.test(key)) return 3;
       if (/потужність|ємність|автономн/u.test(key)) return 4;
-      if (/інтерфейс|підключенн|з'єднан/u.test(key)) return 5;
-      if (/монтаж|встановлен|установка/u.test(key)) return 6;
-      if (/колір/u.test(key)) return 7;
+      if (/колір/u.test(key)) return 5;
       return 0;
     };
     categoryProducts.forEach((product) => {
@@ -1208,12 +1206,12 @@ catalog = function () {
         const key = normaliseSpecificationKey(rawKey);
         const label = readableText(rawKey);
         const invalidLabel = !/[\p{L}]/u.test(label) || /^[\d\s.,:×x-]+$/u.test(label);
-        const excludedKey = /(?:sku|артикул|код|модель|id|діагональ|розмір|бездротов|проекційн\w*\s*(?:віднош|коеф)|технолог\w*\s*(?:проекц|display)|світлов\w*\s+потік|яскравість|brightness)/iu.test(key);
+        const excludedKey = /(?:sku|артикул|код|модель|id|ean|epr|energy|label|nfc|wi-?fi|bluetooth|інтерфейс|підключенн|з'єднан|бездротов|сері[яї]|вага|висота|ширина|довжина|глибина|проекційн\w*\s*(?:віднош|коеф)|технолог\w*\s*(?:проекц|display)|світлов\w*\s+потік|яскравість|brightness)/iu.test(key);
         const priority = mainSpecificationPriority(key);
         if (!key || !label || invalidLabel || excludedKey || !priority || seen.has(key)) return;
         seen.add(key);
         const isLightSource = /(?:джерел\w*\s+світла|тип\s+джерела)/iu.test(key);
-        const values = (Array.isArray(rawValue) ? rawValue : [rawValue]).map(isLightSource ? normaliseLightSource : normaliseSpecificationValue).filter((value) => value && value.length <= 48 && !/^(?:-|—|–|n\/?a|немає)$/iu.test(value));
+        const values = (Array.isArray(rawValue) ? rawValue : [rawValue]).map(isLightSource ? normaliseLightSource : normaliseSpecificationValue).filter((value) => value && value.length <= 48 && !/[<>]|https?:\/\/|href\s*=/iu.test(value) && !/^(?:-|—|–|n\/?a|немає)$/iu.test(value));
         if (!values.length) return;
         const group = byKey.get(key) || { id: 'spec-' + key, label, keys: [key], priority, normaliseValue: isLightSource ? normaliseLightSource : normaliseSpecificationValue, values: new Map(), products: new Set() };
         values.forEach((value) => group.values.set(value.toLocaleLowerCase('uk-UA'), value));
@@ -1222,9 +1220,9 @@ catalog = function () {
       });
     });
     return [...byKey.values()]
-      .filter((group) => group.products.size >= 2 && group.values.size >= 2 && group.values.size <= 12)
+      .filter((group) => group.products.size >= 3 && group.values.size >= 2 && group.values.size <= 10)
       .sort((left, right) => left.priority - right.priority || right.products.size - left.products.size || left.label.localeCompare(right.label, 'uk'))
-      .slice(0, 4)
+      .slice(0, 3)
       .map((group) => ({ ...group, options: [...group.values.values()].sort((left, right) => left.localeCompare(right, 'uk')) }));
   };
   const projectorTechnologyValues = (product) => {

@@ -129,7 +129,7 @@ async function home() {
         };
         const show=r=>{
           rootsEl.querySelectorAll('button').forEach(b=>b.classList.toggle('active',b.dataset.slug===r.slug));
-          const kids=cats.filter(c=>c.parent_id===r.id&&products.some(p=>storefrontCategoryMatches(p,c.slug)));
+          const kids=cats.filter(c=>c.parent_id===r.id);
           const back=compactMenu()?'<button type="button" class="mega-back" data-mega-back>← Усі категорії</button>':'';
           childrenEl.innerHTML=`${back}<div class="mega-title"><h2>${escapeHtml(r.name)}</h2><a href="catalog.html?category=${encodeURIComponent(r.slug)}">Усі товари →</a></div><div class="mega-grid">${kids.map(c=>`<a href="catalog.html?category=${encodeURIComponent(c.slug)}"><strong>${escapeHtml(c.name)}</strong><span>${products.filter(p=>storefrontCategoryMatches(p,c.slug)).length} товарів</span></a>`).join('')}</div>`;
           if(compactMenu()){
@@ -427,7 +427,7 @@ async function mountMegaCatalog() {
   const {data:categoryRows,error}=await supabase.from('categories').select('id,name,slug,parent_id,sort_order').eq('is_active',true).order('sort_order');
   const cats=(categoryRows||[]).map((category)=>({ ...category, name: readableText(category.name) }));
   if(error||!cats?.length) return;
-  const ids=new Set(cats.map(c=>c.id)), roots=cats.filter(c=>(!c.parent_id||!ids.has(c.parent_id))&&products.some(p=>storefrontCategoryMatches(p,c.slug)));
+  const ids=new Set(cats.map(c=>c.id)), roots=cats.filter(c=>!c.parent_id||!ids.has(c.parent_id));
   const compactMenu=()=>window.matchMedia('(max-width:700px)').matches;
   const renderRoots=()=>{
     rootsEl.hidden=false;
@@ -441,7 +441,7 @@ async function mountMegaCatalog() {
   };
   const show=(root)=>{
     rootsEl.querySelectorAll('button').forEach(b=>b.classList.toggle('active',b.dataset.slug===root.slug));
-    const kids=cats.filter(c=>c.parent_id===root.id&&products.some(p=>storefrontCategoryMatches(p,c.slug)));
+    const kids=cats.filter(c=>c.parent_id===root.id);
     const back=compactMenu()?'<button type="button" class="mega-back" data-mega-back>← Усі категорії</button>':'';
     childrenEl.innerHTML=`${back}<div class="mega-title"><h2>${root.name}</h2><a href="catalog.html?category=${encodeURIComponent(root.slug)}">Усі товари →</a></div><div class="mega-grid">${kids.map(c=>`<a href="catalog.html?category=${encodeURIComponent(c.slug)}"><strong>${c.name}</strong><span>${products.filter(p=>storefrontCategoryMatches(p,c.slug)).length} товарів</span></a>`).join('')}</div>`;
     if(compactMenu()){

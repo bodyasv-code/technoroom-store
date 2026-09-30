@@ -1150,8 +1150,7 @@ catalog = function () {
     ? definition.values(product)
     : specificationValues(product, definition.keys);
   const normaliseSpecificationValue = (value) => readableText(value)
-    .replace(/[хx×]/giu, '×')
-    .replace(/\s*×\s*/gu, ' × ')
+    .replace(/(\d)\s*[хx×]\s*(\d)/giu, '$1 × $2')
     .replace(/\s+/gu, ' ')
     .trim();
   const normaliseLightSource = (value) => {

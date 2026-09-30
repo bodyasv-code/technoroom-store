@@ -515,7 +515,10 @@ supabase.auth.getSession().then(({data:{session}})=>session?dashboard():view('lo
     const existing = knownBySku(), usedSlugs = new Set(state.products.map((product) => product.slug).filter(Boolean));
     const failures = []; let created = 0, updated = 0;
     const button = $('#supplierImportApply'); button.disabled = true; button.textContent = 'Імпорт…';
-    for (const row of selectedRows) {
+    importerStatus(`Починаю імпорт: 0 із ${selectedRows.length}. Не закривайте сторінку до завершення.`);
+    try {
+    for (const [index, row] of selectedRows.entries()) {
+      if (index === 0 || index % 5 === 0) importerStatus(`Імпорт: ${index} із ${selectedRows.length}. Створено: ${created}, оновлено: ${updated}.`);
       let category = ''; const current = existing.get(row.sku);
       try { category = await ensureImportCategory(row); } catch (error) { failures.push(row.sku + ': не вдалося створити категорію (' + (error.message || error.code) + ')'); continue; }
       if (!category) { failures.push(row.sku + ': не знайдено категорію'); continue; }
@@ -549,11 +552,16 @@ supabase.auth.getSession().then(({data:{session}})=>session?dashboard():view('lo
         }
       }
     }
-    button.disabled = false; button.textContent = 'Імпортувати вибрані';
     await loadData();
     importer.meta.clear();
     importer.selected.clear(); renderImportPreview();
     importerStatus(`Готово: створено ${created}, оновлено ${updated}.${failures.length ? ' Помилки: ' + failures.slice(0, 8).join(' | ') : ''}`, Boolean(failures.length));
+    } catch (error) {
+      importerStatus(`Імпорт зупинено: ${error.message || error.code || 'невідома помилка'}. Створено: ${created}, оновлено: ${updated}.`, true);
+    } finally {
+      button.disabled = false;
+      button.textContent = 'Імпортувати вибрані';
+    }
   };
   const mountImporter = () => {
     const anchor = $('#products');

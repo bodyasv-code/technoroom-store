@@ -109,11 +109,11 @@ async function home() {
   if(saleSection&&saleGrid){const saleProducts=homeProducts.filter(p=>promotionFor(p)||promotionByProductLink(p));saleSection.hidden=false;if(saleProducts.length){saleGrid.innerHTML=saleProducts.slice(0,6).map(card).join('');bind(saleGrid)}else{saleGrid.innerHTML='<div class="home-sale-empty">Акційні товари з’являться тут після активації акції.</div>'}}
   const cards=document.getElementById('homeCategoryCards');
   try {
-    const res=await supabase.from('categories').select('id,name,slug,parent_id,sort_order').eq('is_active',true).order('sort_order');
+    const res=await supabase.from('categories').select('id,name,slug,parent_id,sort_order,image_path').eq('is_active',true).order('sort_order');
     cats=(res.data||[]).map((category) => ({ ...category, name: readableText(category.name) }));
     if(cats.length){
       const ids=new Set(cats.map(c=>c.id)), roots=cats.filter(c=>!c.parent_id||!ids.has(c.parent_id));
-      if(cards) cards.innerHTML=roots.slice(0,8).map(c=>`<a href="catalog.html?category=${encodeURIComponent(c.slug)}"><div class="home-cat-visual">▣</div><b>${escapeHtml(c.name)}</b><span>Переглянути →</span></a>`).join('');
+      if(cards) cards.innerHTML=roots.slice(0,8).map(c=>{const source=c.image_path?(String(c.image_path).startsWith('http')?c.image_path:supabase.storage.from('product-images').getPublicUrl(c.image_path).data.publicUrl):'';return `<a href="catalog.html?category=${encodeURIComponent(c.slug)}"><div class="home-cat-visual">${source?'<img src="'+escapeHtml(source)+'" alt="" loading="lazy">':'▣'}</div><b>${escapeHtml(c.name)}</b><span>Переглянути →</span></a>`}).join('');
       const mega=document.getElementById('homeCatalogMega'), rootsEl=document.getElementById('homeMegaRoots'), childrenEl=document.getElementById('homeMegaChildren'), toggle=document.getElementById('homeCatalogToggle');
       if(mega&&rootsEl&&childrenEl&&toggle){
         const compactMenu=()=>window.matchMedia('(max-width:700px)').matches;

@@ -593,7 +593,13 @@ supabase.auth.getSession().then(({data:{session}})=>session?dashboard():view('lo
     $('#supplierImportPriceFile').addEventListener('change', async (event) => {
       const file = event.target.files?.[0]; if (!file) return;
       importerStatus('Читаю ціни та наявність з ' + file.name + '…');
-      try { const count = parsePriceFile(await file.text()); renderImportPreview(); importerStatus('Файл цін прочитано: ' + count + ' позицій. Дані з’єднано за SKU.'); } catch (error) { importerStatus(error.message || 'Не вдалося прочитати XML цін.', true); }
+      try {
+        const main = $('#supplierImportFile').files?.[0];
+        if (main && main.name === file.name && main.size === file.size) throw new Error('Ви вдруге обрали itemList.xml. Для цін і наявності потрібен окремий файл PriceAvail.xml.');
+        const count = parsePriceFile(await file.text());
+        renderImportPreview();
+        importerStatus('Файл цін прочитано: ' + count + ' позицій. Дані з’єднано за SKU.');
+      } catch (error) { importerStatus(error.message || 'Не вдалося прочитати XML цін.', true); }
     });
     section.addEventListener('input', (event) => { if (event.target.matches('#supplierImportLimit, #supplierImportSearch')) { importer.page = 1; renderImportPreview(); } });
     section.addEventListener('change', (event) => { if (event.target.matches('#supplierImportStatus')) { importer.page = 1; renderImportPreview(); return; } const checkbox = event.target.closest('[data-import-select]'); if (!checkbox) return; if (checkbox.checked) importer.selected.add(checkbox.dataset.importSelect); else importer.selected.delete(checkbox.dataset.importSelect); updateImportSelectionSummary(); });

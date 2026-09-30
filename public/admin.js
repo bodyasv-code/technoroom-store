@@ -217,7 +217,47 @@ supabase.auth.getSession().then(({data:{session}})=>session?dashboard():view('lo
     const fromMarkup = decodeEntities(markup).match(/https?:\/\/[^\s"'<>]+?\.(?:jpg|jpeg|png|webp)(?:\?[^\s"'<>]+)?/gi) || [];
     return [...new Set([...fromTags, ...fromMarkup].map(allowedImage).filter(Boolean))].slice(0, 6);
   };
+  // ASBIS groups most AENO equipment under "Other".  Keep those products in a
+  // useful Ukrainian catalogue tree instead of creating a catch-all "Other".
+  const aenoCategoryPlan = (row) => {
+    if (normaliseCategory(row.vendor) !== 'aeno') return null;
+    const source = [row.name, row.subcategory, row.sourceCategory].map(cleanImportText).join(' ').toLocaleLowerCase('uk-UA');
+    const groups = [
+      [/acc\s*-?\s*vacuum\s*sealer|vacuum\s*(?:seal\s*)?bags?|seal\s*bags?/i, 'Аксесуари для вакууматорів'],
+      [/vacuum\s*sealer|вакууматор/i, 'Вакууматори'],
+      [/vacuum\s*cleaner\s*robot|robot\s*vacuum|робот[и-]?пилосос/i, 'Роботи-пилососи'],
+      [/vacuum\s*cleaner\s*transformer|wet\s*and\s*dry\s*cleaning|миюч[аі]\s*пилосос/i, 'Миючі пилососи'],
+      [/vacuum\s*cleaner\s*stick|stick\s*vacuum|вертикальн[іи]\s*пилосос/i, 'Вертикальні пилососи'],
+      [/пилосос|vacuum\s*cleaner|robot\s*cleaner/i, 'Аксесуари для пилососів'],
+      [/smart\s*space\s*heater|smart\s*обігрівач|\bheater\b|обігрівач/i, 'Обігрівачі'],
+      [/irrigator|іригатор/i, 'Іригатори'],
+      [/brush\s*head|насадк[аи]\s*для\s*зубн/i, 'Аксесуари для зубних щіток'],
+      [/toothbrush|tooth\s*brush|зубн[іи]?\s*щітк/i, 'Електричні зубні щітки'],
+      [/air\s*purifier|очищувач[і]?\s*повітря/i, 'Аксесуари для очищувачів повітря'],
+      [/аксесуар[и]?\s*до\s*паров[іи]?\s*швабр|steam\s*mop.*(?:accessor|mop|brush|nozzle)|(?:mop|brush|nozzle).*steam\s*mop/i, 'Аксесуари для парових швабр'],
+      [/steam\s*mop|паров[іи]?\s*швабр/i, 'Парові швабри'],
+      [/acc\s*-?\s*multibaker|grill.*(?:plate|accessor)|(?:plate|accessor).*grill/i, 'Аксесуари для електрогрилів'],
+      [/grill|грил/i, 'Електрогрилі'],
+      [/toaster|тостер/i, 'Тостери'],
+      [/electric\s*kettle|\bkettle\b|чайник/i, 'Електрочайники'],
+      [/hand\s*garment\s*steamer|\bsteamer\b|відпарювач/i, 'Відпарювачі'],
+      [/sous\s*vide|су-?від/i, 'Су-від'],
+      [/kitchen\s*scale|кухонн[іи]?\s*ваг/i, 'Кухонні ваги'],
+      [/body\s*scale|підлогов[іи]?\s*ваг/i, 'Підлогові ваги'],
+      [/hair\s*dryer|hair\s*styler|фен|технік[аи]\s*для\s*волосс/i, 'Техніка для волосся'],
+      [/blender|блендер/i, 'Блендери'],
+      [/robot\s*kitchen|cooking\s*robot|кухонн[іи]?\s*робот/i, 'Кухонні машини']
+    ];
+    const match = groups.find(([pattern]) => pattern.test(source));
+    return { rootSlug: 'pobutova-tehnika', rootName: 'Побутова техніка', childName: match ? match[1] : '' };
+  };
   const categoryFor = (row) => {
+    const aenoPlan = aenoCategoryPlan(row);
+    if (aenoPlan) {
+      const root = state.categories.find((category) => category.slug === aenoPlan.rootSlug) || findImportCategory(aenoPlan.rootName, null);
+      const child = root && aenoPlan.childName ? findImportCategory(aenoPlan.childName, root.id) : null;
+      return child ? child.slug : '';
+    }
     const candidates = [row.subcategory, row.sourceCategory].map(normaliseCategory).filter(Boolean);
     const exact = state.categories.find((category) => candidates.includes(normaliseCategory(category.name)) || candidates.includes(normaliseCategory(category.slug)));
     if (exact) return exact.slug;
@@ -246,6 +286,8 @@ supabase.auth.getSession().then(({data:{session}})=>session?dashboard():view('lo
     return labels[normaliseCategory(source)] || source;
   };
   const categoryPlan = (row) => {
+    const aenoPlan = aenoCategoryPlan(row);
+    if (aenoPlan) return aenoPlan;
     const source = (row.subcategory + ' ' + row.sourceCategory).toLocaleLowerCase('uk-UA');
     const roots = [
       [/про[єе]ктор|projection screen/i, 'cat-projectors', 'Проєктори та екрани'],
@@ -274,6 +316,15 @@ supabase.auth.getSession().then(({data:{session}})=>session?dashboard():view('lo
     return result.data;
   };
   const ensureImportCategory = async (row) => {
+    const aenoPlan = aenoCategoryPlan(row);
+    if (aenoPlan) {
+      let root = state.categories.find((category) => category.slug === aenoPlan.rootSlug) || findImportCategory(aenoPlan.rootName, null);
+      if (!root) root = await createImportCategory(aenoPlan.rootName, null, aenoPlan.rootSlug);
+      if (!aenoPlan.childName) return root.slug;
+      let child = findImportCategory(aenoPlan.childName, root.id);
+      if (!child) child = await createImportCategory(aenoPlan.childName, root.id);
+      return child.slug;
+    }
     const direct = state.categories.find((category) => [row.subcategory, row.sourceCategory].map(normaliseCategory).includes(normaliseCategory(category.name)));
     if (direct) return direct.slug;
     const plan = categoryPlan(row);

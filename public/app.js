@@ -536,7 +536,10 @@ const specificationDisplayText = (value = '') => {
   const holder = document.createElement('div');
   holder.innerHTML = text;
   text = holder.textContent || holder.innerText || '';
-  return readableText(text).replace(/\s*·\s*(?:·\s*)+/g, ' · ');
+  text = readableText(text).replace(/\s*·\s*(?:·\s*)+/g, ' · ');
+  // У деяких XML у поле характеристики помилково потрапляє CSS або код віджета.
+  if (/[{};]|(?:@media|iframe|display\s*:|container[-_:]|#\w+[\s\w-]*\{)/iu.test(text)) return '';
+  return text;
 };
 const compactProductName = (value = '', sku = '', brand = '') => {
   let name = readableText(value).replace(/\s*[|•]\s*(?:код|sku|артикул|vendor code)\b.*$/iu, '').replace(/\s*\((?:код|sku|артикул)\s*[:#]?[^)]*\)/iu, '').replace(/\s{2,}/g, ' ').trim();
@@ -608,11 +611,41 @@ const inferredScreenSpecifications = (product) => {
   if (drive) result['Привід'] = /^моторизован/iu.test(drive) ? 'Моторизований' : 'Ручний';
   return result;
 };
+const isPhoneProduct = (product) => /(?:iphone|смартфон|smartphone|мобільн\w*\s+телефон)/iu.test(readableText([product.name, product.type, product.description].join(' ')));
+const phoneSpecificationEntries = (entries) => {
+  const groups = [
+    ['Діагональ екрана', /(?:діагональ|розмір).*(?:екран|диспле)|(?:екран|диспле).*(?:діагональ|розмір)/iu],
+    ['Вбудована пам’ять', /(?:вбудован|внутрішн).*(?:пам.?ят|storage)|(?:пам.?ят|storage).*(?:вбудован|внутрішн)/iu],
+    ['Оперативна пам’ять', /(?:оперативн.*пам.?ят|\bram\b)/iu],
+    ['Роздільна здатність екрана', /(?:роздільн.*(?:екран|диспле)|(?:екран|диспле).*роздільн)/iu],
+    ['Технологія дисплея', /(?:технолог.*диспле|тип.*диспле|матриц)/iu],
+    ['Основна камера', /(?:основн|головн|задн).*камера/iu],
+    ['Фронтальна камера', /(?:фронтальн|селфі).*камера/iu],
+    ['Процесор', /(?:процесор|chip|чіп)/iu],
+    ['Акумулятор', /(?:акумулятор|батаре)/iu],
+    ['Операційна система', /(?:операційн.*систем|\bios\b)/iu],
+    ['SIM-карта', /(?:sim|esim)/iu],
+    ['Колір', /(?:колір|color)/iu]
+  ];
+  const used = new Set(), result = [];
+  groups.forEach(([label, pattern]) => {
+    const found = entries.find(([key], index) => !used.has(index) && pattern.test(key));
+    if (!found) return;
+    const index = entries.indexOf(found);
+    used.add(index);
+    result.push([label, found[1]]);
+  });
+  return result;
+};
 const displaySpecificationEntries = (product) => {
   const stored = Object.entries(product.specifications || {})
     .map(([key, value]) => [readableText(key), specificationDisplayText(value)])
-    .filter(([key, value]) => key && value);
-  return stored.length ? stored : Object.entries(inferredScreenSpecifications(product));
+    .filter(([key, value]) => key && value)
+    .filter(([key]) => !/(?:упаковк|коробк|вага|висота|ширина|довжина|глибина|epr|energy|label|стандарт\s+зв.?язку)/iu.test(key));
+  if (!stored.length) return Object.entries(inferredScreenSpecifications(product));
+  if (!isPhoneProduct(product)) return stored;
+  const phoneEntries = phoneSpecificationEntries(stored);
+  return phoneEntries.length ? phoneEntries : stored;
 };
 
 product = () => {

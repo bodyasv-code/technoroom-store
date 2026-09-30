@@ -1394,7 +1394,7 @@ catalog = function () {
       return 0;
     };
     shown.sort((left, right) => availabilityRank(left) - availabilityRank(right) || secondarySort(left, right));
-    const size = Number(pageSize?.value || 20);
+    const size = Number(pageSize?.value || 12);
     const pages = Math.max(1, Math.ceil(shown.length / size));
     page = Math.min(page, pages);
     const visible = shown.slice((page - 1) * size, page * size);

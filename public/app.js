@@ -1340,6 +1340,52 @@ catalog = function () {
       return options.length && (definition.allowSingle || options.length >= 2) ? { ...definition, options } : null;
     }).filter(Boolean);
   };
+  const phoneSource = (product, keyPattern, includeName = false) => [
+    ...Object.entries(product.specifications || {})
+      .filter(([key]) => keyPattern.test(readableText(key)))
+      .flatMap(([, value]) => Array.isArray(value) ? value : [value]),
+    ...(includeName ? [product.name] : [])
+  ].map(specificationDisplayText).filter(Boolean).join(' ');
+  const phoneDiagonalValues = (product) => {
+    const source = phoneSource(product, /(?:діагональ|розмір).*(?:екран|диспле)|(?:екран|диспле).*(?:діагональ|розмір)/iu, true);
+    const match = source.match(/\b(\d(?:[.,]\d{1,2})?)\s*(?:["″]|дюйм)/iu);
+    return match ? [match[1].replace(',', '.') + '″'] : [];
+  };
+  const phoneStorageValues = (product) => {
+    const source = phoneSource(product, /(?:вбудован|внутрішн|загальн).*(?:пам.?ят|storage)|(?:пам.?ят|storage).*(?:вбудован|внутрішн|загальн)/iu, true);
+    const match = source.match(/\b(\d+(?:[.,]\d+)?)\s*(gb|гб|tb|тб)\b/iu);
+    if (!match) return [];
+    return [match[1].replace(',', '.') + ' ' + (/tb|тб/iu.test(match[2]) ? 'ТБ' : 'ГБ')];
+  };
+  const phoneRamValues = (product) => {
+    const source = phoneSource(product, /(?:оперативн.*пам.?ят|\bram\b)/iu);
+    const match = source.match(/\b(\d+(?:[.,]\d+)?)\s*(gb|гб)\b/iu);
+    return match ? [match[1].replace(',', '.') + ' ГБ'] : [];
+  };
+  const phoneDisplayValues = (product) => {
+    const source = phoneSource(product, /(?:технолог.*диспле|тип.*диспле|матриц)/iu);
+    const matched = /(super\s*amoled|amoled|oled|ips|lcd)/iu.exec(source)?.[1];
+    return matched ? [matched.replace(/\s+/g, ' ').toUpperCase()] : [];
+  };
+  const phoneColorValues = (product) => {
+    const source = phoneSource(product, /(?:колір|color)/iu);
+    return source && source.length <= 42 ? [source] : [];
+  };
+  const phoneFilterOptions = (categoryProducts) => {
+    const definitions = [
+      { id: 'phone-diagonal', label: 'Діагональ екрана', values: phoneDiagonalValues },
+      { id: 'phone-storage', label: 'Вбудована пам’ять', values: phoneStorageValues },
+      { id: 'phone-ram', label: 'Оперативна пам’ять', values: phoneRamValues },
+      { id: 'phone-display', label: 'Тип дисплея', values: phoneDisplayValues },
+      { id: 'phone-color', label: 'Колір', values: phoneColorValues }
+    ];
+    return definitions.map((definition) => {
+      const values = new Set();
+      categoryProducts.forEach((product) => definition.values(product).filter(Boolean).forEach((value) => values.add(normaliseSpecificationValue(value))));
+      const options = [...values].filter(Boolean).sort((left, right) => left.localeCompare(right, 'uk', { numeric: true }));
+      return options.length >= 2 ? { ...definition, options, normaliseValue: normaliseSpecificationValue } : null;
+    }).filter(Boolean);
+  };
   const screenFilterOptions = () => {
     const categoryProducts = products.filter((product) => category !== 'all' && storefrontCategoryMatches(product, category));
     if (!categoryProducts.length) return [];
@@ -1351,6 +1397,8 @@ catalog = function () {
         return options.length ? { ...definition, options } : null;
       }).filter(Boolean);
     }
+    const phoneProducts = categoryProducts.filter((product) => isPhoneProduct(product));
+    if (/(?:смартфон|телефон|phone)/iu.test(category) || phoneProducts.length >= Math.max(2, categoryProducts.length * 0.7)) return phoneFilterOptions(phoneProducts.length ? phoneProducts : categoryProducts);
     const projectorProducts = categoryProducts.filter((product) => /(?:про[єе]ктор|projector)/iu.test(readableText(product.name) + ' ' + readableText(product.type)));
     if (/(?:про[єе]ктор|projector)/iu.test(category) || projectorProducts.length >= Math.max(2, categoryProducts.length * 0.7)) return projectorFilterOptions(projectorProducts.length ? projectorProducts : categoryProducts);
     const televisionProducts = categoryProducts.filter((product) => /(?:телевізор|\btv\b)/iu.test(readableText(product.name) + ' ' + readableText(product.type)));
@@ -1360,7 +1408,8 @@ catalog = function () {
   const renderScreenSpecificationFilters = () => {
     if (!screenSpecificationFilters) return;
     const categoryProducts = products.filter((product) => category !== 'all' && storefrontCategoryMatches(product, category));
-    const fluxRange = luminousFluxRange(categoryProducts);
+    const projectorProducts = categoryProducts.filter((product) => /(?:про[єе]ктор|projector)/iu.test(readableText(product.name) + ' ' + readableText(product.type)));
+    const fluxRange = projectorProducts.length >= Math.max(2, categoryProducts.length * 0.7) ? luminousFluxRange(projectorProducts) : null;
     const groups = screenFilterOptions();
     activeSpecificationDefinitions = groups;
     if (!groups.length && !fluxRange) {

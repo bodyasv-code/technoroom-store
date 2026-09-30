@@ -397,17 +397,36 @@ supabase.auth.getSession().then(({data:{session}})=>session?dashboard():view('lo
     target.hidden = false;
     target.classList.toggle('error', isError);
   };
-  const importPageRows = () => {
+  const importFilteredRows = (existing = knownBySku()) => {
+    const query = txt($('#supplierImportSearch')?.value || '');
+    const status = $('#supplierImportStatus')?.value || 'all';
+    return importer.rows.filter((row) => {
+      const category = categoryFor(row);
+      const plan = categoryPlan(row);
+      const categoryName = category ? (state.categories.find((item) => item.slug === category)?.name || category) : (plan?.childName || plan?.rootName || '');
+      const current = existing.get(row.sku);
+      const mapped = Boolean(category || plan);
+      const haystack = txt([row.name, row.sku, row.vendor, row.sourceCategory, row.subcategory, categoryName].join(' '));
+      if (query && !haystack.includes(query)) return false;
+      if (status === 'new' && current) return false;
+      if (status === 'existing' && !current) return false;
+      if (status === 'ready' && !mapped) return false;
+      if (status === 'unmapped' && mapped) return false;
+      return true;
+    });
+  };
+  const importPageRows = (rows = importFilteredRows()) => {
     const size = Math.max(1, Math.min(100, Number($('#supplierImportLimit').value || 50)));
-    const pages = Math.max(1, Math.ceil(importer.rows.length / size));
+    const pages = Math.max(1, Math.ceil(rows.length / size));
     importer.page = Math.min(Math.max(1, importer.page), pages);
-    return importer.rows.slice((importer.page - 1) * size, importer.page * size);
+    return rows.slice((importer.page - 1) * size, importer.page * size);
   };
   const renderImportPreview = () => {
     const body = $('#supplierImportRows'), summary = $('#supplierImportSummary'), pager = $('#supplierImportPagination');
-    const rows = importPageRows(), size = Math.max(1, Math.min(100, Number($('#supplierImportLimit').value || 50)));
-    const pages = Math.max(1, Math.ceil(importer.rows.length / size)), existing = knownBySku();
-    summary.textContent = importer.rows.length ? `Знайдено ${importer.rows.length} товарів. Вибрано: ${importer.selected.size}. На сторінці ${importer.page} з ${pages}.` : 'Оберіть XML-файл для попереднього перегляду.';
+    const existing = knownBySku(), filtered = importFilteredRows(existing), rows = importPageRows(filtered), size = Math.max(1, Math.min(100, Number($('#supplierImportLimit').value || 50)));
+    const pages = Math.max(1, Math.ceil(filtered.length / size));
+    const hasSearch = Boolean($('#supplierImportSearch')?.value || ($('#supplierImportStatus')?.value && $('#supplierImportStatus').value !== 'all'));
+    summary.textContent = importer.rows.length ? `${hasSearch ? 'Знайдено за умовами: ' : 'У файлі: '}${filtered.length} з ${importer.rows.length} товарів. Вибрано: ${importer.selected.size}. ${filtered.length ? `На сторінці ${importer.page} з ${pages}.` : ''}` : 'Оберіть XML-файл для попереднього перегляду.';
     pager.hidden = pages <= 1;
     pager.innerHTML = pages > 1 ? `<button class="button outline" type="button" data-import-page="prev" ${importer.page === 1 ? 'disabled' : ''}>← Попередні</button><span>Сторінка ${importer.page} з ${pages}</span><button class="button outline" type="button" data-import-page="next" ${importer.page === pages ? 'disabled' : ''}>Наступні →</button>` : '';
     body.innerHTML = rows.length ? rows.map((row) => {
@@ -418,7 +437,7 @@ supabase.auth.getSession().then(({data:{session}})=>session?dashboard():view('lo
         ? (state.categories.find((item) => item.slug === category)?.name || category)
         : (plannedCategory ? `Буде створено: ${plannedCategory.childName || plannedCategory.rootName}` : 'Немає зіставлення');
       return `<tr><td><input type="checkbox" data-import-select="${esc(row.key)}" ${importer.selected.has(row.key) ? 'checked ' : ''}${disabled ? 'disabled' : ''}></td><td><b>${esc(row.name)}</b><small>${esc(sourceInfo || 'Постачальник не вказаний')}</small></td><td>${esc(row.sku || '—')}</td><td>${esc(categoryLabel)}</td><td>${Object.keys(row.specifications).length} хар. · ${row.images.length} фото${row.hasPrice ? '' : ' · без ціни'}</td><td><span class="visibility ${current ? 'visible' : 'hidden-status'}">${mode}</span></td></tr>`;
-    }).join('') : '<tr><td colspan="6" class="empty-row">Даних для імпорту немає</td></tr>';
+    }).join('') : `<tr><td colspan="6" class="empty-row">${importer.rows.length ? 'За заданими умовами товарів не знайдено' : 'Даних для імпорту немає'}</td></tr>`;
   };
   const parseFile = (content) => {
     const isAsbis = /<ProductCatalog(?:\s|>)/i.test(content);
@@ -449,6 +468,8 @@ supabase.auth.getSession().then(({data:{session}})=>session?dashboard():view('lo
     }
     importer.selected.clear();
     importer.page = 1;
+    $('#supplierImportSearch').value = '';
+    $('#supplierImportStatus').value = 'all';
     applyPriceData();
     if (!importer.rows.length) throw new Error('У файлі не знайдено товарних позицій.');
   };
@@ -525,7 +546,7 @@ supabase.auth.getSession().then(({data:{session}})=>session?dashboard():view('lo
   const mountImporter = () => {
     const anchor = $('#products');
     if (!anchor || $('#supplierImport')) return;
-    anchor.insertAdjacentHTML('afterend', `<section class="admin-section" id="supplierImport"><div class="admin-title"><div><h2>Імпорт ERC та ASBIS XML</h2><span>Товари, характеристики, ціни, залишки та посилання на фото від постачальників</span></div></div><p class="recovery-help"><b>ERC:</b> оберіть лише основний XML-файл — імпорт працює як раніше. <b>ASBIS:</b> оберіть <b>itemList.xml</b> і додатково <b>PriceAvail.xml</b>; вони з’єднаються за SKU. Характеристики додаються лише до порожніх полів, а вручну внесені значення залишаються без змін.</p><div class="admin-controls"><label>Основний XML (ERC або ASBIS itemList) <input id="supplierImportFile" type="file" accept=".xml,application/xml,text/xml"></label><label>Ціни та наявність ASBIS — необов’язково <input id="supplierImportPriceFile" type="file" accept=".xml,application/xml,text/xml"></label><input id="supplierImportLimit" type="number" min="1" max="100" value="50" title="Товарів на сторінці попереднього перегляду"></div><div class="admin-controls"><button class="button outline" type="button" id="supplierImportBrands">Створити відсутні бренди</button><button class="button outline" type="button" id="supplierImportSelectNew">Вибрати нові на сторінці</button><button class="button outline" type="button" id="supplierImportSelectVisible">Вибрати всі показані</button><button class="button outline" type="button" id="supplierImportClear">Очистити вибір</button><label class="check"><input id="supplierImportSpecifications" type="checkbox" checked> Додати відсутні характеристики</label><label class="check"><input id="supplierImportImages" type="checkbox"> Додати доступні фото</label><label class="check"><input id="supplierImportPublish" type="checkbox"> Публікувати нові товари</label><button class="button primary" type="button" id="supplierImportApply">Імпортувати вибрані</button></div><p class="admin-message" id="supplierImportMessage" hidden></p><p class="recovery-help" id="supplierImportSummary">Оберіть XML-файл для попереднього перегляду.</p><div class="admin-controls" id="supplierImportPagination" hidden></div><div class="admin-table-wrap"><table><thead><tr><th></th><th>Товар / джерело</th><th>SKU</th><th>Категорія</th><th>Дані джерела</th><th>Дія</th></tr></thead><tbody id="supplierImportRows"></tbody></table></div></section>`);
+    anchor.insertAdjacentHTML('afterend', `<section class="admin-section" id="supplierImport"><div class="admin-title"><div><h2>Імпорт ERC та ASBIS XML</h2><span>Товари, характеристики, ціни, залишки та посилання на фото від постачальників</span></div></div><p class="recovery-help"><b>ERC:</b> оберіть лише основний XML-файл — імпорт працює як раніше. <b>ASBIS:</b> оберіть <b>itemList.xml</b> і додатково <b>PriceAvail.xml</b>; вони з’єднаються за SKU. Характеристики додаються лише до порожніх полів, а вручну внесені значення залишаються без змін.</p><div class="admin-controls"><label>Основний XML (ERC або ASBIS itemList) <input id="supplierImportFile" type="file" accept=".xml,application/xml,text/xml"></label><label>Ціни та наявність ASBIS — необов’язково <input id="supplierImportPriceFile" type="file" accept=".xml,application/xml,text/xml"></label><input id="supplierImportLimit" type="number" min="1" max="100" value="50" title="Товарів на сторінці попереднього перегляду"></div><div class="admin-controls"><label>Пошук у попередньому перегляді <input id="supplierImportSearch" type="search" placeholder="Назва, SKU, бренд або категорія" autocomplete="off"></label><label>Показати <select id="supplierImportStatus"><option value="all">Усі товари</option><option value="new">Лише нові</option><option value="existing">Вже є на сайті</option><option value="ready">Зіставлені з категорією</option><option value="unmapped">Без зіставлення</option></select></label></div><div class="admin-controls"><button class="button outline" type="button" id="supplierImportBrands">Створити відсутні бренди</button><button class="button outline" type="button" id="supplierImportSelectNew">Вибрати нові на сторінці</button><button class="button outline" type="button" id="supplierImportSelectVisible">Вибрати всі показані</button><button class="button outline" type="button" id="supplierImportClear">Очистити вибір</button><label class="check"><input id="supplierImportSpecifications" type="checkbox" checked> Додати відсутні характеристики</label><label class="check"><input id="supplierImportImages" type="checkbox"> Додати доступні фото</label><label class="check"><input id="supplierImportPublish" type="checkbox"> Публікувати нові товари</label><button class="button primary" type="button" id="supplierImportApply">Імпортувати вибрані</button></div><p class="admin-message" id="supplierImportMessage" hidden></p><p class="recovery-help" id="supplierImportSummary">Оберіть XML-файл для попереднього перегляду.</p><div class="admin-controls" id="supplierImportPagination" hidden></div><div class="admin-table-wrap"><table><thead><tr><th></th><th>Товар / джерело</th><th>SKU</th><th>Категорія</th><th>Дані джерела</th><th>Дія</th></tr></thead><tbody id="supplierImportRows"></tbody></table></div></section>`);
     document.querySelector('.admin-nav').insertAdjacentHTML('beforeend', '<a href="#supplierImport">Імпорт ERC / ASBIS</a>');
     const section = $('#supplierImport');
     $('#supplierImportFile').addEventListener('change', async (event) => {
@@ -538,8 +559,8 @@ supabase.auth.getSession().then(({data:{session}})=>session?dashboard():view('lo
       importerStatus('Читаю ціни та наявність з ' + file.name + '…');
       try { const count = parsePriceFile(await file.text()); renderImportPreview(); importerStatus('Файл цін прочитано: ' + count + ' позицій. Дані з’єднано за SKU.'); } catch (error) { importerStatus(error.message || 'Не вдалося прочитати XML цін.', true); }
     });
-    section.addEventListener('input', (event) => { if (event.target.matches('#supplierImportLimit')) { importer.page = 1; renderImportPreview(); } });
-    section.addEventListener('change', (event) => { const checkbox = event.target.closest('[data-import-select]'); if (!checkbox) return; if (checkbox.checked) importer.selected.add(checkbox.dataset.importSelect); else importer.selected.delete(checkbox.dataset.importSelect); renderImportPreview(); });
+    section.addEventListener('input', (event) => { if (event.target.matches('#supplierImportLimit, #supplierImportSearch')) { importer.page = 1; renderImportPreview(); } });
+    section.addEventListener('change', (event) => { if (event.target.matches('#supplierImportStatus')) { importer.page = 1; renderImportPreview(); return; } const checkbox = event.target.closest('[data-import-select]'); if (!checkbox) return; if (checkbox.checked) importer.selected.add(checkbox.dataset.importSelect); else importer.selected.delete(checkbox.dataset.importSelect); renderImportPreview(); });
     section.addEventListener('click', (event) => { const pageButton = event.target.closest('[data-import-page]'); if (!pageButton || pageButton.disabled) return; importer.page += pageButton.dataset.importPage === 'next' ? 1 : -1; renderImportPreview(); });
     $('#supplierImportSelectNew').onclick = () => { const existing = knownBySku(); importPageRows().forEach((row) => { if (!existing.has(row.sku) && (categoryFor(row) || categoryPlan(row))) importer.selected.add(row.key); }); renderImportPreview(); };
     $('#supplierImportSelectVisible').onclick = () => { importPageRows().forEach((row) => { if (categoryFor(row) || categoryPlan(row)) importer.selected.add(row.key); }); renderImportPreview(); };

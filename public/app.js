@@ -414,7 +414,7 @@ async function loadProducts() { try {
     all.push(...data);
     if (data.length < pageSize) break;
   }
-  if (all.length) products = all.map((item) => ({ id: item.id, sku: item.sku, name: compactProductName(item.name, item.sku, item.brand), description: item.description, price: Number(item.price), type: item.category, brand: item.brand, brand_id:item.brand_id, specifications: item.specifications, availabilityStatus: item.availability_status, stock: item.in_stock && Number(item.stock_quantity || 0) > 0, image: item.image_path }));
+  if (all.length) products = all.map((item) => ({ id: item.id, sku: item.sku, name: compactProductName(item.name, item.sku, item.brand), description: item.description, price: Number(item.price), type: item.category, brand: item.brand, brand_id:item.brand_id, specifications: item.specifications, availabilityStatus: item.availability_status, stockQuantity: Number(item.stock_quantity || 0), stock: item.in_stock && Number(item.stock_quantity || 0) > 0, image: item.image_path }));
   const now=Date.now(),pr=await supabase.from('promotions').select('*').eq('is_active',true);if(pr.error)console.warn('Акції:',pr.error);else{activePromotions=(pr.data||[]).filter(p=>(!p.starts_at||new Date(p.starts_at).getTime()<=now)&&(!p.ends_at||new Date(p.ends_at).getTime()>=now));promotionProductIds.clear();const targeted=activePromotions.filter(p=>p.target_type==='products').map(p=>p.id);if(targeted.length){const pp=await supabase.from('promotion_products').select('promotion_id,product_id').in('promotion_id',targeted);if(pp.error)console.warn('Товари акцій:',pp.error);else(pp.data||[]).forEach(x=>{const key=Number(x.promotion_id);if(!promotionProductIds.has(key))promotionProductIds.set(key,new Set());promotionProductIds.get(key).add(Number(x.product_id))})}}
 } catch (error) { console.warn('Не вдалося завантажити каталог із Supabase', error); } finally { productsLoaded = true; mount(); await mountMegaCatalog(); } }
 if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', loadProducts, { once: true });
@@ -475,6 +475,7 @@ async function mountMegaCatalog() {
 }
 /* Статус «Під замовлення»: товар можна оформити без складського залишку. */
 function availability(product) {
+  if (product.availabilityStatus === 'limited_stock') return { label: 'Обмежена кількість', button: 'У кошик', orderable: true };
   if (product.availabilityStatus === 'under_order') return { label: 'Під замовлення', button: 'Замовити', orderable: true };
   if (product.stock) return { label: 'В наявності', button: 'У кошик', orderable: true };
   return { label: 'Немає в наявності', button: 'Немає', orderable: false };
@@ -759,7 +760,7 @@ checkout = () => {
 async function refreshAvailabilityStatuses() {
   const { data, error } = await supabase.from('products').select('*').eq('is_active', true).order('created_at', { ascending: false });
   if (error || !data?.length) return;
-  products = data.map((item) => ({ id: item.id, sku: item.sku, name: compactProductName(item.name, item.sku, item.brand), description: item.description, price: Number(item.price), type: item.category, brand: item.brand, brand_id: item.brand_id, specifications: item.specifications, availabilityStatus: item.availability_status || ((item.in_stock && Number(item.stock_quantity || 0) > 0) ? 'in_stock' : 'out_of_stock'), stock: item.in_stock && Number(item.stock_quantity || 0) > 0, image: item.image_path }));
+  products = data.map((item) => ({ id: item.id, sku: item.sku, name: compactProductName(item.name, item.sku, item.brand), description: item.description, price: Number(item.price), type: item.category, brand: item.brand, brand_id: item.brand_id, specifications: item.specifications, availabilityStatus: item.availability_status || ((item.in_stock && Number(item.stock_quantity || 0) > 0) ? 'in_stock' : 'out_of_stock'), stockQuantity: Number(item.stock_quantity || 0), stock: item.in_stock && Number(item.stock_quantity || 0) > 0, image: item.image_path }));
   mount();
 }
 window.addEventListener('load', refreshAvailabilityStatuses, { once: true });
@@ -1377,9 +1378,22 @@ catalog = function () {
         && matchesSelectedScreenSpecifications(product)
         && matchesLuminousFlux(product);
     });
-    if (sort.value === 'price-asc') shown.sort((left, right) => left.price - right.price);
-    if (sort.value === 'price-desc') shown.sort((left, right) => right.price - left.price);
-    if (sort.value === 'name') shown.sort((left, right) => left.name.localeCompare(right.name, 'uk'));
+    // Товари, які можна купити зараз, завжди мають бути над недоступними.
+    // Вибране сортування працює вже всередині кожної групи наявності.
+    const availabilityRank = (product) => {
+      const state = availability(product);
+      if (state.label === 'В наявності') return 0;
+      if (state.label === 'Обмежена кількість') return 1;
+      if (state.label === 'Під замовлення') return 2;
+      return 3;
+    };
+    const secondarySort = (left, right) => {
+      if (sort.value === 'price-asc') return left.price - right.price;
+      if (sort.value === 'price-desc') return right.price - left.price;
+      if (sort.value === 'name') return left.name.localeCompare(right.name, 'uk');
+      return 0;
+    };
+    shown.sort((left, right) => availabilityRank(left) - availabilityRank(right) || secondarySort(left, right));
     const size = Number(pageSize?.value || 20);
     const pages = Math.max(1, Math.ceil(shown.length / size));
     page = Math.min(page, pages);

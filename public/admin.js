@@ -263,7 +263,9 @@ supabase.auth.getSession().then(({data:{session}})=>session?dashboard():view('lo
     const aenoPlan = aenoCategoryPlan(row);
     if (aenoPlan) {
       const root = state.categories.find((category) => category.slug === aenoPlan.rootSlug) || findImportCategory(aenoPlan.rootName, null);
-      const child = root && aenoPlan.childName ? findImportCategory(aenoPlan.childName, root.id) : null;
+      // Якщо підкатегорія вже була створена раніше, повторно її не додаємо,
+      // навіть коли її старе розміщення у дереві відрізняється.
+      const child = root && aenoPlan.childName ? (findImportCategory(aenoPlan.childName, root.id) || findImportCategory(aenoPlan.childName)) : null;
       return child ? child.slug : '';
     }
     const candidates = [row.subcategory, row.sourceCategory].map(normaliseCategory).filter(Boolean);
@@ -329,7 +331,7 @@ supabase.auth.getSession().then(({data:{session}})=>session?dashboard():view('lo
       let root = state.categories.find((category) => category.slug === aenoPlan.rootSlug) || findImportCategory(aenoPlan.rootName, null);
       if (!root) root = await createImportCategory(aenoPlan.rootName, null, aenoPlan.rootSlug);
       if (!aenoPlan.childName) return root.slug;
-      let child = findImportCategory(aenoPlan.childName, root.id);
+      let child = findImportCategory(aenoPlan.childName, root.id) || findImportCategory(aenoPlan.childName);
       if (!child) child = await createImportCategory(aenoPlan.childName, root.id);
       return child.slug;
     }
@@ -340,7 +342,7 @@ supabase.auth.getSession().then(({data:{session}})=>session?dashboard():view('lo
     let root = state.categories.find((category) => category.slug === plan.rootSlug) || findImportCategory(plan.rootName, null);
     if (!root) root = await createImportCategory(plan.rootName, null, plan.rootSlug);
     if (!plan.childName || normaliseCategory(plan.childName) === normaliseCategory(root.name)) return root.slug;
-    let child = findImportCategory(plan.childName, root.id);
+    let child = findImportCategory(plan.childName, root.id) || findImportCategory(plan.childName);
     if (!child) child = await createImportCategory(plan.childName, root.id);
     return child.slug;
   };
@@ -358,8 +360,14 @@ supabase.auth.getSession().then(({data:{session}})=>session?dashboard():view('lo
       const priceText = textFrom(node, ['RETAIL_PRICE','retail_price','Price','price','MY_PRICE','my_price']);
       if (!sku || !cleanImportText(priceText)) return;
       const availability = normaliseCategory(textFrom(node, ['AVAIL','avail','availability']));
-      const availabilityStatus = /^(так|обмежено|in stock|yes)/i.test(availability) ? 'in_stock' : /по запиту|під замовлення|under order/i.test(availability) ? 'under_order' : 'out_of_stock';
-      prices.set(sku, { price: importNumber(priceText), hasPrice: true, stock: availabilityStatus === 'in_stock' ? 1 : 0, hasStock: true, availabilityStatus });
+      const availabilityStatus = /обмеж|limited|low stock/i.test(availability)
+        ? 'limited_stock'
+        : /^(так|in stock|yes)/i.test(availability)
+          ? 'in_stock'
+          : /по запиту|під замовлення|under order/i.test(availability)
+            ? 'under_order'
+            : 'out_of_stock';
+      prices.set(sku, { price: importNumber(priceText), hasPrice: true, stock: /^(in_stock|limited_stock)$/.test(availabilityStatus) ? 1 : 0, hasStock: true, availabilityStatus });
     });
     if (!prices.size) throw new Error('У файлі цін не знайдено позицій.');
     importer.prices = prices;

@@ -1402,6 +1402,75 @@ catalog = function () {
       return options.length >= 2 ? { ...definition, options, normaliseValue: normaliseSpecificationValue } : null;
     }).filter(Boolean);
   };
+  // Для великих категорій показуємо лише параметри, за якими покупці зазвичай
+  // обирають техніку. Службові поля постачальника сюди не потрапляють.
+  const compactFilterOptions = (categoryProducts, definitions) => definitions.map((definition) => {
+    const values = new Set();
+    categoryProducts.forEach((product) => definition.values(product).filter(Boolean).forEach((value) => values.add(normaliseSpecificationValue(value))));
+    const options = [...values].filter(Boolean).sort((left, right) => left.localeCompare(right, 'uk', { numeric: true }));
+    return options.length >= 2 ? { ...definition, options, normaliseValue: normaliseSpecificationValue } : null;
+  }).filter(Boolean);
+  const deviceSource = (product, keyPattern, includeName = false) => [
+    ...Object.entries(product.specifications || {})
+      .filter(([key]) => keyPattern.test(readableText(key)))
+      .flatMap(([, value]) => Array.isArray(value) ? value : [value]),
+    ...(includeName ? [product.name, product.description] : [])
+  ].map(specificationDisplayText).filter(Boolean).join(' ');
+  const deviceDiagonalValues = (product) => {
+    const source = deviceSource(product, /(?:діагональ|розмір).*(?:екран|диспле)|(?:екран|диспле).*(?:діагональ|розмір)/iu, true);
+    const match = source.match(/\b(\d{1,2}(?:[.,]\d{1,2})?)\s*(?:["″]|дюйм)/iu);
+    return match ? [match[1].replace(',', '.') + '″'] : [];
+  };
+  const deviceStorageValues = (product) => {
+    const source = deviceSource(product, /(?:вбудован|внутрішн|накопичувач|ssd|storage|пам.?ят)/iu, true);
+    const values = [...source.matchAll(/\b(\d+(?:[.,]\d+)?)\s*(gb|гб|tb|тб)\b/giu)]
+      .map((match) => ({ amount: Number(match[1].replace(',', '.')), unit: match[2] }));
+    const largest = values.sort((left, right) => right.amount * (/tb|тб/iu.test(right.unit) ? 1024 : 1) - left.amount * (/tb|тб/iu.test(left.unit) ? 1024 : 1))[0];
+    return largest && largest.amount >= 32 ? [largest.amount + ' ' + (/tb|тб/iu.test(largest.unit) ? 'ТБ' : 'ГБ')] : [];
+  };
+  const deviceRamValues = (product) => {
+    const source = deviceSource(product, /(?:оперативн.*пам.?ят|\bram\b)/iu);
+    const match = source.match(/\b(\d+(?:[.,]\d+)?)\s*(gb|гб)\b/iu);
+    return match ? [match[1].replace(',', '.') + ' ГБ'] : [];
+  };
+  const deviceResolutionValues = (product) => {
+    const source = deviceSource(product, /(?:роздільн.*здатн|resolution)/iu, true);
+    const match = source.match(/\b\d{3,4}\s*[×xх]\s*\d{3,4}\b/iu)?.[0];
+    return match ? [normaliseSpecificationValue(match)] : [];
+  };
+  const deviceRefreshValues = (product) => {
+    const source = deviceSource(product, /(?:частота.*(?:оновлення|розгорт)|refresh)/iu, true);
+    const match = source.match(/\b(\d{2,3})\s*(?:гц|hz)\b/iu)?.[1];
+    return match ? [match + ' Гц'] : [];
+  };
+  const devicePanelValues = (product) => {
+    const source = deviceSource(product, /(?:тип.*(?:матриц|екран|диспле)|технолог.*диспле|panel)/iu, true);
+    const value = /mini\s*-?\s*led|oled|ips|va|tn|amoled|lcd/iu.exec(source)?.[0];
+    return value ? [value.replace(/\s+/g, ' ').toUpperCase()] : [];
+  };
+  const deviceProcessorValues = (product) => {
+    const source = deviceSource(product, /(?:процесор|processor|cpu|чип)/iu, true);
+    const value = /(apple\s+m\d(?:\s+(?:pro|max|ultra))?|intel\s+core\s+i[3-9]|intel\s+core\s+ultra|amd\s+ryzen\s+\d|snapdragon\s+\d+)/iu.exec(source)?.[0];
+    return value ? [value.replace(/\s+/g, ' ').replace(/\b\w/g, (letter) => letter.toUpperCase())] : [];
+  };
+  const laptopFilterOptions = (categoryProducts) => compactFilterOptions(categoryProducts, [
+    { id: 'laptop-diagonal', label: 'Діагональ екрана', values: deviceDiagonalValues },
+    { id: 'laptop-processor', label: 'Процесор', values: deviceProcessorValues },
+    { id: 'laptop-ram', label: 'Оперативна пам’ять', values: deviceRamValues },
+    { id: 'laptop-storage', label: 'Накопичувач', values: deviceStorageValues }
+  ]);
+  const tabletFilterOptions = (categoryProducts) => compactFilterOptions(categoryProducts, [
+    { id: 'tablet-diagonal', label: 'Діагональ екрана', values: deviceDiagonalValues },
+    { id: 'tablet-storage', label: 'Вбудована пам’ять', values: deviceStorageValues },
+    { id: 'tablet-ram', label: 'Оперативна пам’ять', values: deviceRamValues },
+    { id: 'tablet-panel', label: 'Тип дисплея', values: devicePanelValues }
+  ]);
+  const monitorFilterOptions = (categoryProducts) => compactFilterOptions(categoryProducts, [
+    { id: 'monitor-diagonal', label: 'Діагональ екрана', values: deviceDiagonalValues },
+    { id: 'monitor-resolution', label: 'Роздільна здатність', values: deviceResolutionValues },
+    { id: 'monitor-panel', label: 'Тип матриці', values: devicePanelValues },
+    { id: 'monitor-refresh', label: 'Частота оновлення', values: deviceRefreshValues }
+  ]);
   const screenFilterOptions = () => {
     const categoryProducts = products.filter((product) => category !== 'all' && storefrontCategoryMatches(product, category));
     if (!categoryProducts.length) return [];
@@ -1419,6 +1488,12 @@ catalog = function () {
     if (/(?:про[єе]ктор|projector)/iu.test(category) || projectorProducts.length >= Math.max(2, categoryProducts.length * 0.7)) return projectorFilterOptions(projectorProducts.length ? projectorProducts : categoryProducts);
     const televisionProducts = categoryProducts.filter((product) => /(?:телевізор|\btv\b)/iu.test(readableText(product.name) + ' ' + readableText(product.type)));
     if (/(?:телевізор|\btv\b)/iu.test(category) || televisionProducts.length >= Math.max(2, categoryProducts.length * 0.7)) return televisionFilterOptions(televisionProducts.length ? televisionProducts : categoryProducts);
+    const monitorProducts = categoryProducts.filter((product) => /(?:монітор|monitor)/iu.test(readableText(product.name) + ' ' + readableText(product.type)));
+    if (/(?:монітор|monitor)/iu.test(category) || monitorProducts.length >= Math.max(2, categoryProducts.length * 0.7)) return monitorFilterOptions(monitorProducts.length ? monitorProducts : categoryProducts);
+    const tabletProducts = categoryProducts.filter((product) => /(?:планшет|tablet|ipad)/iu.test(readableText(product.name) + ' ' + readableText(product.type)));
+    if (/(?:планшет|tablet|ipad)/iu.test(category) || tabletProducts.length >= Math.max(2, categoryProducts.length * 0.7)) return tabletFilterOptions(tabletProducts.length ? tabletProducts : categoryProducts);
+    const laptopProducts = categoryProducts.filter((product) => /(?:ноутбук|laptop|macbook)/iu.test(readableText(product.name) + ' ' + readableText(product.type)));
+    if (/(?:ноутбук|laptop|macbook)/iu.test(category) || laptopProducts.length >= Math.max(2, categoryProducts.length * 0.7)) return laptopFilterOptions(laptopProducts.length ? laptopProducts : categoryProducts);
     return genericSpecificationDefinitions(categoryProducts);
   };
   const renderScreenSpecificationFilters = () => {
@@ -1489,10 +1564,9 @@ catalog = function () {
     // Товари, які можна купити зараз, завжди мають бути над недоступними.
     // Вибране сортування працює вже всередині кожної групи наявності.
     const availabilityRank = (product) => {
-      const state = availability(product);
-      if (state.label === 'В наявності') return 0;
-      if (state.label === 'Обмежена кількість') return 1;
-      if (state.label === 'Під замовлення') return 2;
+      if (product.availabilityStatus === 'limited_stock') return 1;
+      if (product.availabilityStatus === 'under_order') return 2;
+      if (product.stock) return 0;
       return 3;
     };
     const secondarySort = (left, right) => {

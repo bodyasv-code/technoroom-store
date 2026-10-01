@@ -62,7 +62,7 @@ function promotionFor(product){
 function promotionByProductLink(product){for(const p of activePromotions){if(promotionProductIds.get(Number(p.id))?.has(Number(product.id)))return p}return null}
 function salePrice(product){const p=promotionFor(product);if(!p)return Number(product.price);return Math.max(0,p.discount_type==='percent'?Number(product.price)*(1-Number(p.discount_value)/100):Number(product.price)-Number(p.discount_value))}
 function card(product) { const promo=promotionFor(product)||promotionByProductLink(product),price=promo?Math.max(0,promo.discount_type==='percent'?Number(product.price)*(1-Number(promo.discount_value)/100):Number(product.price)-Number(promo.discount_value)):Number(product.price),badge=promo?'<span class="sale-badge">'+(promo.discount_type==='percent'?'-'+Number(promo.discount_value)+'%':'АКЦІЯ')+'</span>':'',promoName=promo?'<div class="promotion-name">🏷 Акція: <b>'+escapeHtml(promo.name||'Спеціальна пропозиція')+'</b></div>':''; return `<article class="product">${badge}<div class="product-image ${product.type}">${image(product)}</div>${promoName}<h3><a href="product.html?id=${product.id}">${product.name}</a></h3><p class="availability">${product.stock ? 'В наявності' : 'Немає в наявності'}</p><p>${product.description || ''}</p><div class="product-footer"><div>${promo?'<del class="old-price">'+money(product.price)+'</del>':''}<strong class="price">${money(price)}</strong></div><button class="add-button" data-add="${product.id}" ${product.stock ? '' : 'disabled'}>${product.stock ? 'У кошик' : 'Немає'}</button></div></article>`; }
-function bind(root = document) { root.querySelectorAll('[data-add]').forEach((button) => button.onclick = () => add(button.dataset.add)); root.querySelectorAll('.product-image img').forEach((image) => image.onclick = () => openLightbox(image.currentSrc || image.src, image.alt)); }
+function bind(root = document) { root.querySelectorAll('[data-add]').forEach((button) => button.onclick = () => add(button.dataset.add)); root.querySelectorAll('[data-inquiry]').forEach((button) => button.onclick = () => openInquiry(button.dataset.inquiry)); root.querySelectorAll('.product-image img').forEach((image) => image.onclick = () => openLightbox(image.currentSrc || image.src, image.alt)); }
 async function home() {
   const root=document.getElementById('productGrid'); if(!root || !productsLoaded) return;
   if(root.dataset.homeReady==='true') return;
@@ -475,10 +475,54 @@ async function mountMegaCatalog() {
 }
 /* Статус «Під замовлення»: товар можна оформити без складського залишку. */
 function availability(product) {
-  if (product.availabilityStatus === 'limited_stock') return { label: 'Обмежена кількість', button: 'У кошик', orderable: true };
-  if (product.availabilityStatus === 'under_order') return { label: 'Під замовлення', button: 'Замовити', orderable: true };
+  if (product.availabilityStatus === 'limited_stock') return { label: 'В наявності — обмежено', button: 'У кошик', orderable: true };
+  if (product.availabilityStatus === 'under_order') return { label: 'Під замовлення — уточнюйте термін', button: 'Уточнити наявність', orderable: false, inquiry: true };
   if (product.stock) return { label: 'В наявності', button: 'У кошик', orderable: true };
   return { label: 'Немає в наявності', button: 'Немає', orderable: false };
+}
+
+function openInquiry(id) {
+  const item = get(Number(id));
+  if (!item) return;
+  let dialog = document.getElementById('productInquiryDialog');
+  if (!dialog) {
+    dialog = document.createElement('dialog');
+    dialog.id = 'productInquiryDialog';
+    dialog.className = 'inquiry-dialog';
+    document.body.append(dialog);
+  }
+  const name = catalogCardEscape(compactProductName(item.name, item.sku, item.brand));
+  dialog.innerHTML = '<form method="dialog" class="inquiry-form">'
+    + '<button class="inquiry-close" value="cancel" aria-label="Закрити">×</button>'
+    + '<p class="section-kicker">Товар під замовлення</p><h2>Уточнити наявність</h2>'
+    + '<p class="inquiry-product"><b>' + name + '</b><span>SKU: ' + catalogCardEscape(item.sku || '—') + '</span></p>'
+    + '<p>Залиште контакти — менеджер уточнить строк постачання та підтвердить ціну.</p>'
+    + '<label>Ім’я<input name="name" required autocomplete="name" placeholder="Ваше ім’я"></label>'
+    + '<label>Телефон<input name="phone" required autocomplete="tel" inputmode="tel" placeholder="+380 …"></label>'
+    + '<label>Email <small>(необов’язково)</small><input name="email" type="email" autocomplete="email" placeholder="name@email.com"></label>'
+    + '<label>Коментар <small>(необов’язково)</small><textarea name="comment" rows="3" placeholder="Наприклад, потрібна кількість або зручний час для дзвінка"></textarea></label>'
+    + '<p class="inquiry-message" aria-live="polite"></p><button class="button product-buy" type="submit">Надіслати запит</button>'
+    + '</form>';
+  const form = dialog.querySelector('form');
+  form.addEventListener('submit', async (event) => {
+    event.preventDefault();
+    const button = form.querySelector('[type="submit"]');
+    const message = form.querySelector('.inquiry-message');
+    const data = Object.fromEntries(new FormData(form));
+    button.disabled = true;
+    message.textContent = 'Надсилаємо запит…';
+    try {
+      const response = await fetch('/api/inquiries', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ productId: item.id, customer: data }) });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(result.error || 'Не вдалося надіслати запит');
+      message.textContent = 'Запит №' + result.orderId + ' надіслано. Менеджер зв’яжеться з вами для уточнення терміну.';
+      form.querySelectorAll('input, textarea, button:not(.inquiry-close)').forEach((control) => { control.disabled = true; });
+    } catch (error) {
+      message.textContent = error.message || 'Не вдалося надіслати запит. Спробуйте ще раз.';
+      button.disabled = false;
+    }
+  });
+  dialog.showModal();
 }
 add = (id) => {
   const item = get(id);
@@ -590,7 +634,7 @@ card = (product) => {
       <div class="product-card-meta"><span>${brand}</span><span class="availability">${state.label}</span></div>
       <h3><a href="product.html?id=${product.id}">${name}</a></h3>
       ${promotion ? '<div class="promotion-name">🏷 Акція: <b>' + catalogCardEscape(promotion.name || 'Спеціальна пропозиція') + '</b></div>' : ''}
-      <div class="product-footer"><div>${promotion ? '<del class="old-price">' + money(product.price) + '</del>' : ''}<strong class="price">${money(currentPrice)}</strong></div><button class="add-button" data-add="${product.id}" ${state.orderable ? '' : 'disabled'}>${state.button}</button></div>
+      <div class="product-footer"><div>${promotion ? '<del class="old-price">' + money(product.price) + '</del>' : ''}<strong class="price">${money(currentPrice)}</strong></div>${state.inquiry ? '<button class="add-button" data-inquiry="' + product.id + '">' + state.button + '</button>' : '<button class="add-button" data-add="' + product.id + '" ' + (state.orderable ? '' : 'disabled') + '>' + state.button + '</button>'}</div>
     </div>
   </article>`;
 };
@@ -876,9 +920,9 @@ product = function () {
       + '<div class="product-gallery-panel"><div class="product-detail-visual ' + safe(item.type) + '"><div class="product-image ' + safe(item.type) + '">' + (source ? '<img src="' + source + '" alt="' + safeName + '" draggable="false">' : '<div class="product-placeholder"><span>Фото товару<br>з’явиться незабаром</span></div>') + '</div><span class="product-photo-hint">Натисніть на фото, щоб збільшити</span></div>' + thumbs + '</div>'
       + '<div class="product-overview"><div class="product-topline"><a href="catalog.html?category=' + encodeURIComponent(item.type || '') + '" class="product-category-link">Каталог</a><span class="product-code">SKU: ' + safe(item.sku || '—') + ' · Код: ' + item.id + '</span></div>'
       + '<p class="product-brand">' + safeBrand + '</p><h1>' + safeName + '</h1>'
-      + '<div class="product-buy-card"><div class="product-availability ' + (state.orderable ? 'is-available' : 'is-unavailable') + '"><i></i><span>' + state.label + '</span></div>'
+      + '<div class="product-buy-card"><div class="product-availability ' + (state.orderable || state.inquiry ? 'is-available' : 'is-unavailable') + '"><i></i><span>' + state.label + '</span></div>'
       + '<strong class="detail-price">' + money(item.price) + '</strong><p class="product-price-note">Ціна вказана за 1 одиницю товару</p>'
-      + '<div class="detail-actions"><button class="button product-buy" data-add="' + item.id + '" ' + (state.orderable ? '' : 'disabled') + '>' + (state.orderable ? (item.availabilityStatus === 'under_order' ? 'Замовити' : 'Додати в кошик') : 'Немає в наявності') + '</button><a class="button product-back" href="catalog.html">До каталогу</a></div>'
+      + '<div class="detail-actions">' + (state.inquiry ? '<button class="button product-buy" data-inquiry="' + item.id + '">Уточнити наявність</button>' : '<button class="button product-buy" data-add="' + item.id + '" ' + (state.orderable ? '' : 'disabled') + '>' + (state.orderable ? 'Додати в кошик' : 'Немає в наявності') + '</button>') + '<a class="button product-back" href="catalog.html">До каталогу</a></div>'
       + '<div class="product-service-grid"><div><b>Доставка</b><span>Підберемо зручний спосіб</span></div><div><b>Гарантія</b><span>Офіційна техніка</span></div><div><b>Консультація</b><span>Допоможемо з вибором</span></div></div></div></div></section>'
       + '<section class="product-content-grid"><article class="product-description-card"><p class="section-kicker">Про товар</p><h2>Опис</h2><p>' + safe(item.description || 'Деталі та комплектацію уточнюйте у менеджера.') + '</p></article><article class="product-specs-card"><div class="product-section-heading"><div><p class="section-kicker">Технічні дані</p><h2>Характеристики</h2></div><span>' + (specEntries.length ? specEntries.length + ' параметрів' : '') + '</span></div><dl class="specs"><div><dt>Виробник</dt><dd>' + safeBrand + '</dd></div>' + specs + '</dl></article></section>'
       + (related.length ? '<section class="related-products"><div class="related-heading"><div><p class="section-kicker">Добірка</p><h2>Схожі товари</h2></div><a href="catalog.html?category=' + encodeURIComponent(item.type || '') + '">Переглянути всі →</a></div><div class="product-grid">' + related.map(card).join('') + '</div></section>' : '');

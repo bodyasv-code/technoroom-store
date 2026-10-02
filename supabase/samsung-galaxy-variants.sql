@@ -65,7 +65,7 @@ set
   parent_product_id = family.id,
   variant_label = nullif(concat_ws(' - ',
     (regexp_match(child.name, '\m([0-9]{1,4}[[:space:]]*(?:GB|TB|ГБ|ТБ))\M', 'i'))[1],
-    initcap((regexp_match(child.name, '\m(black|white|blue|silver|gold|green|pink|purple|orange|yellow|gray|grey|graphite|cream|mint|lavender|coral|violet|navy|titanium|чорн[а-яіїє]*|бі[л]?[а-яіїє]*|син[а-яіїє]*|сріб[а-яіїє]*|золот[а-яіїє]*|зелен[а-яіїє]*|рожев[а-яіїє]*|фіолет[а-яіїє]*|сір[а-яіїє]*)\M', 'i'))[1]
+    initcap((regexp_match(child.name, '\m(black|white|blue|silver|gold|green|pink|purple|orange|yellow|gray|grey|graphite|cream|mint|lavender|coral|violet|navy|titanium|чорн[а-яіїє]*|бі[л]?[а-яіїє]*|син[а-яіїє]*|сріб[а-яіїє]*|золот[а-яіїє]*|зелен[а-яіїє]*|рожев[а-яіїє]*|фіолет[а-яіїє]*|сір[а-яіїє]*)\M', 'i'))[1])
   ), '')
 from candidates source
 join families family on family.slug = 'samsung-family-' || regexp_replace(lower(source.model_name), '[^a-z0-9]+', '-', 'g')

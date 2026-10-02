@@ -18,7 +18,7 @@ async function loadData(){
 }
 function renderMetrics(){const active=state.products.filter(p=>p.is_active).length,newOrders=state.orders.filter(o=>o.status==='new').length,revenue=state.orders.filter(o=>o.status!=='cancelled').reduce((s,o)=>s+Number(o.total||0),0);$('#productMetric').textContent=active;$('#productMetricHint').textContent='із '+state.products.length+' усіх товарів';$('#orderMetric').textContent=newOrders;$('#orderMetricHint').textContent=newOrders?'потребують уваги':'нових заявок немає';$('#revenueMetric').textContent=money(revenue);$('#lowStockMetric').textContent=state.products.filter(p=>Number(p.stock_quantity||0)<=3).length;$('#productsNavCount').textContent=state.products.length||'';$('#ordersNavCount').textContent=newOrders||''}
 function fillFilters(){const c=$('#categoryFilter'),b=$('#brandFilter'),cv=c.value,bv=b.value;c.innerHTML='<option value="all">Усі категорії</option>'+state.categories.map(x=>'<option value="'+esc(x.slug)+'">'+esc(x.name)+'</option>').join('');const names=[...new Map(state.products.map(p=>String(p.brand||'').trim()).filter(Boolean).map(n=>[txt(n),n])).values()].sort((a,b)=>a.localeCompare(b,'uk'));b.innerHTML='<option value="all">Усі бренди</option>'+names.map(n=>'<option>'+esc(n)+'</option>').join('');c.value=[...c.options].some(o=>o.value===cv)?cv:'all';b.value=[...b.options].some(o=>o.value===bv)?bv:'all'}
-function renderProducts(){const q=txt($('#productSearch').value),cat=$('#categoryFilter').value,brand=$('#brandFilter').value,filter=$('#productFilter').value;let a=state.products.filter(p=>{const hay=txt([p.id,p.name,p.brand,p.sku,p.slug,p.category].join(' '));if(q&&!hay.includes(q))return false;if(cat!=='all'&&p.category!==cat)return false;if(brand!=='all'&&String(p.brand||'').trim()!==brand)return false;if(filter==='active'&&!p.is_active)return false;if(filter==='draft'&&p.is_active)return false;if(filter==='low'&&Number(p.stock_quantity||0)>3)return false;if(filter==='no_image'&&p.image_path)return false;if(filter==='no_description'&&p.description)return false;if(filter==='no_specifications'&&p.specifications&&Object.keys(p.specifications).length)return false;return true});const size=$('#pageSize').value==='all'?a.length:Number($('#pageSize').value||10),pages=Math.max(1,Math.ceil(a.length/Math.max(size,1)));state.page=Math.min(state.page,pages);const rows=a.slice((state.page-1)*size,state.page*size);$('#adminProducts').innerHTML=rows.length?rows.map(p=>{const q=Number(p.stock_quantity||0),st=inventory(p),catName=state.categories.find(c=>c.slug===p.category)?.name||p.category||'—';return '<tr><td><input type="checkbox" data-select-product="'+p.id+'" '+(state.selectedProducts.has(Number(p.id))?'checked':'')+' aria-label="Виділити товар"></td><td><b>'+esc(p.name)+'</b><small>'+esc(p.brand||'Без бренду')+' · SKU: '+esc(p.sku||'—')+'</small></td><td>'+esc(catName)+'</td><td>'+money(p.price)+'</td><td><span class="stock-badge">'+q+' шт.</span></td><td><span class="visibility '+(st==='in_stock'?'visible':'hidden-status')+'">'+(st==='in_stock'?'В наявності':st==='under_order'?'Під замовлення':'Немає')+'</span></td><td><span class="visibility '+(p.is_active?'visible':'hidden-status')+'">'+(p.is_active?'У каталозі':'Приховано')+'</span></td><td class="table-actions"><button type="button" data-edit-product="'+p.id+'">Редагувати</button><button type="button" data-duplicate-product="'+p.id+'">Дублювати</button><button type="button" class="danger-action" data-delete-product="'+p.id+'">Видалити</button></td></tr>'}).join(''):'<tr><td colspan="8" class="empty-row">Товарів не знайдено</td></tr>';$('#productPagination').innerHTML=pages>1?'<button type="button" data-page="-1" '+(state.page===1?'disabled':'')+'>←</button> <span>'+state.page+' / '+pages+'</span> <button type="button" data-page="1" '+(state.page===pages?'disabled':'')+'>→</button>':''}
+function renderProducts(){const q=txt($('#productSearch').value),cat=$('#categoryFilter').value,brand=$('#brandFilter').value,filter=$('#productFilter').value;let a=state.products.filter(p=>{const hay=txt([p.id,p.name,p.brand,p.sku,p.slug,p.category].join(' '));if(q&&!hay.includes(q))return false;if(cat!=='all'&&p.category!==cat)return false;if(brand!=='all'&&String(p.brand||'').trim()!==brand)return false;if(filter==='active'&&!p.is_active)return false;if(filter==='draft'&&p.is_active)return false;if(filter==='low'&&Number(p.stock_quantity||0)>3)return false;if(filter==='no_image'&&p.image_path)return false;if(filter==='no_description'&&p.description)return false;if(filter==='no_specifications'&&p.specifications&&Object.keys(p.specifications).length)return false;return true});const size=$('#pageSize').value==='all'?a.length:Number($('#pageSize').value||10),pages=Math.max(1,Math.ceil(a.length/Math.max(size,1)));state.page=Math.min(state.page,pages);const rows=a.slice((state.page-1)*size,state.page*size);$('#adminProducts').innerHTML=rows.length?rows.map(p=>{const q=Number(p.stock_quantity||0),st=inventory(p),catName=state.categories.find(c=>c.slug===p.category)?.name||p.category||'—',stockLabel=st==='limited_stock'?'Є в наявності — закінчується':st==='in_stock'?'В наявності':st==='under_order'?'Під замовлення':'Немає';return '<tr><td><input type="checkbox" data-select-product="'+p.id+'" '+(state.selectedProducts.has(Number(p.id))?'checked':'')+' aria-label="Виділити товар"></td><td><b>'+esc(p.name)+'</b><small>'+esc(p.brand||'Без бренду')+' · SKU: '+esc(p.sku||'—')+'</small></td><td>'+esc(catName)+'</td><td>'+money(p.price)+'</td><td><span class="stock-badge">'+q+' шт.</span></td><td><span class="visibility '+(/^(in_stock|limited_stock)$/.test(st)?'visible':'hidden-status')+'">'+stockLabel+'</span></td><td><span class="visibility '+(p.is_active?'visible':'hidden-status')+'">'+(p.is_active?'У каталозі':'Приховано')+'</span></td><td class="table-actions"><button type="button" data-edit-product="'+p.id+'">Редагувати</button><button type="button" data-duplicate-product="'+p.id+'">Дублювати</button><button type="button" class="danger-action" data-delete-product="'+p.id+'">Видалити</button></td></tr>'}).join(''):'<tr><td colspan="8" class="empty-row">Товарів не знайдено</td></tr>';$('#productPagination').innerHTML=pages>1?'<button type="button" data-page="-1" '+(state.page===1?'disabled':'')+'>←</button> <span>'+state.page+' / '+pages+'</span> <button type="button" data-page="1" '+(state.page===pages?'disabled':'')+'>→</button>':''}
 function renderBrands(){
  const q=String($('#brandAdminSearch').value||'').trim().toLocaleLowerCase('uk-UA'),counts=new Map(),status=$('#brandStatusFilter')?.value||'all';
  state.products.forEach(p=>{const k=txt(p.brand);if(k)counts.set(k,(counts.get(k)||0)+1)});
@@ -143,6 +143,17 @@ supabase.auth.getSession().then(({data:{session}})=>session?dashboard():view('lo
     return Number.isFinite(parsed) ? parsed : 0;
   };
   const importQuantity = (value) => Math.max(0, Number((String(value || '').match(/\d+/) || ['0'])[0]));
+  // ERC інколи передає не число, а текстовий складський стан на кшталт
+  // «Є в наявності, закінчується». Це все ще товар, який можна купити.
+  const importAvailabilityStatus = (value = '') => {
+    const status = normaliseCategory(value);
+    if (!status) return '';
+    if (/закінчу|обмеж|limited|low stock/i.test(status)) return 'limited_stock';
+    if (/по запиту|під замовлення|under order/i.test(status)) return 'under_order';
+    if (/немає|відсут|out of stock|no stock|^ні$/i.test(status)) return 'out_of_stock';
+    if (/є в наявності|в наявності|in stock|available|^так$|^yes$/i.test(status)) return 'in_stock';
+    return '';
+  };
   const normaliseSku = (value = '') => cleanImportText(value).replace(/^\*+|\*+$/g, '').toUpperCase();
   const normaliseCategory = (value = '') => cleanImportText(value).toLocaleLowerCase('uk-UA').replace(/[ʼ’']/g, '').replace(/\s+/g, ' ');
   const normaliseSpecKey = (value = '') => cleanImportText(value).toLocaleLowerCase('uk-UA').replace(/[:\s]+$/g, '');
@@ -362,14 +373,8 @@ supabase.auth.getSession().then(({data:{session}})=>session?dashboard():view('lo
       const sku = normaliseSku(textFrom(node, ['WIC','wic','SKU','sku','ProductCode']));
       const priceText = textFrom(node, ['RETAIL_PRICE','retail_price','Price','price','MY_PRICE','my_price']);
       if (!sku || !cleanImportText(priceText)) return;
-      const availability = normaliseCategory(textFrom(node, ['AVAIL','avail','availability']));
-      const availabilityStatus = /обмеж|limited|low stock/i.test(availability)
-        ? 'limited_stock'
-        : /^(так|in stock|yes)/i.test(availability)
-          ? 'in_stock'
-          : /по запиту|під замовлення|under order/i.test(availability)
-            ? 'under_order'
-            : 'out_of_stock';
+      const availability = textFrom(node, ['AVAIL','avail','Availability','availability']);
+      const availabilityStatus = importAvailabilityStatus(availability) || 'out_of_stock';
       prices.set(sku, { price: importNumber(priceText), hasPrice: true, stock: /^(in_stock|limited_stock)$/.test(availabilityStatus) ? 1 : 0, hasStock: true, availabilityStatus });
     });
     if (!prices.size) throw new Error('У файлі цін не знайдено позицій.');
@@ -490,8 +495,12 @@ supabase.auth.getSession().then(({data:{session}})=>session?dashboard():view('lo
       const shortDescription = textFrom(node, isAsbis ? ['ProductDescription'] : ['a_desc','short_description','summary']);
       const priceValue = textFrom(node, ['rprice','price','retail_price','price_uah','Price']);
       const stockValue = textFrom(node, ['stock','quantity','qty','available','Stock']);
+      const availabilityValue = textFrom(node, ['availability','Availability','AVAIL','avail','stock_status','StockStatus','availability_status','AvailabilityStatus','in_stock','InStock']);
+      const availabilityStatus = importAvailabilityStatus(availabilityValue) || importAvailabilityStatus(stockValue);
       const specifications = { ...parseSpecifications(comment), ...attributeSpecifications(node), ...titleSpecifications(name) };
-      const row = { key: sku + '-' + index, vendor, name: cleanImportText(name), sku, sourceCategory, subcategory, price: importNumber(priceValue), hasPrice: Boolean(cleanImportText(priceValue)), stock: importQuantity(stockValue), hasStock: Boolean(cleanImportText(stockValue)), description: parseDescription(shortDescription) || parseDescription(comment) || cleanImportText(sourceName), specifications, images: imagesFrom(node, comment) };
+      const parsedStock = importQuantity(stockValue);
+      const stock = parsedStock || (/^(in_stock|limited_stock)$/i.test(availabilityStatus) ? 1 : 0);
+      const row = { key: sku + '-' + index, vendor, name: cleanImportText(name), sku, sourceCategory, subcategory, price: importNumber(priceValue), hasPrice: Boolean(cleanImportText(priceValue)), stock, hasStock: Boolean(cleanImportText(stockValue) || availabilityStatus), availabilityStatus: availabilityStatus || undefined, description: parseDescription(shortDescription) || parseDescription(comment) || cleanImportText(sourceName), specifications, images: imagesFrom(node, comment) };
       if (row.name && row.sku) importer.rows.push(row);
       index += 1;
     }

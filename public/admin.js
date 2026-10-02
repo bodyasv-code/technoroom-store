@@ -161,6 +161,18 @@ supabase.auth.getSession().then(({data:{session}})=>session?dashboard():view('lo
   const canonicalSpecKey = (value) => {
     const key = normaliseSpecKey(value);
     if (/діагонал/.test(key)) return 'Діагональ';
+    if (/(?:вбудован|внутрішн|загальн).*(?:пам.?ят|storage)|(?:пам.?ят|storage).*(?:вбудован|внутрішн|загальн)/.test(key)) return 'Вбудована пам’ять';
+    if (/оперативн.*пам.?ят|\bram\b/.test(key)) return 'Оперативна пам’ять';
+    if (/процесор|processor|\bcpu\b|чипсет|чип\b/.test(key)) return 'Процесор';
+    if (/накопичувач|\bssd\b|обсяг.*диск/.test(key)) return 'Накопичувач';
+    if (/роздільн.*здатн|\bresolution\b/.test(key)) return 'Роздільна здатність';
+    if (/технолог.*проекц|projection technology/.test(key)) return 'Технологія проекції';
+    if (/світлов.*потік|яскравість|\bbrightness\b/.test(key)) return 'Яскравість';
+    if (/джерел.*світла|тип.*джерела/.test(key)) return 'Джерело світла';
+    if (/частота.*(?:оновлення|розгорт)|refresh rate/.test(key)) return 'Частота оновлення';
+    if (/тип.*матриц|матриця|panel type/.test(key)) return 'Тип матриці';
+    if (/smart\s*tv|смарт\s*тв/.test(key)) return 'Smart TV';
+    if (/камер/.test(key)) return 'Камера';
     if (/співвідношення.*сторін|формат.*екран|формат.*матриц/.test(key)) return 'Співвідношення сторін';
     if (/тип.*екран|форм.?фактор|конструкц/.test(key)) return 'Тип екрану';
     if (/установк|встановлен|монтаж/.test(key)) return 'Установка';
@@ -204,6 +216,27 @@ supabase.auth.getSession().then(({data:{session}})=>session?dashboard():view('lo
     if (ratio) specifications['Співвідношення сторін'] = ratio[1];
     return specifications;
   };
+  // Шаблони не прибирають жодної характеристики з XML. Вони лише додають
+  // відсутні ключові параметри з назви, щоб фільтри й картка товару мали
+  // однакові, зрозумілі назви полів.
+  const templateSpecifications = (source = '') => {
+    const text = cleanImportText(source);
+    const specifications = {};
+    const add = (key, value) => { if (value && !specifications[key]) specifications[key] = value; };
+    const diagonal = text.match(/\b(\d{1,3}(?:[.,]\d+)?)\s*(?:["″]|дюйм(?:ів|и|а)?\b)/iu)?.[1];
+    const resolution = text.match(/\b\d{3,4}\s*[×xх]\s*\d{3,4}\b/iu)?.[0] || text.match(/\b(?:8k|4k|uhd|full\s*hd|fhd|wuxga|wqxga|wxga|xga)\b/iu)?.[0];
+    const ram = text.match(/\b(\d+(?:[.,]\d+)?)\s*(?:гб|gb)\s*(?:ram|оперативн)/iu)?.[1];
+    const storageMatches = [...text.matchAll(/\b(\d+(?:[.,]\d+)?)\s*(?:гб|gb|тб|tb)\b/giu)];
+    const storage = storageMatches.map((match) => ({ value: match[1].replace(',', '.') + ' ' + (/тб|tb/iu.test(match[2]) ? 'ТБ' : 'ГБ'), size: Number(match[1].replace(',', '.')) * (/тб|tb/iu.test(match[2]) ? 1024 : 1) })).filter((item) => item.size >= 32).sort((a, b) => b.size - a.size)[0]?.value;
+    const processor = /(apple\s+m\d(?:\s+(?:pro|max|ultra))?|intel\s+core\s+(?:i[3-9]|ultra)|amd\s+ryzen\s+\d|snapdragon\s+\d+)/iu.exec(text)?.[0];
+    const brightness = text.match(/\b(\d{2,5})\s*(?:лм|lm)\b/iu)?.[1];
+    if (/(?:смартфон|телефон|iphone|android)/iu.test(text)) { add('Діагональ', diagonal && diagonal.replace(',', '.') + '″'); add('Вбудована пам’ять', storage); add('Оперативна пам’ять', ram && ram.replace(',', '.') + ' ГБ'); }
+    if (/(?:ноутбук|laptop|macbook)/iu.test(text)) { add('Діагональ', diagonal && diagonal.replace(',', '.') + '″'); add('Процесор', processor); add('Оперативна пам’ять', ram && ram.replace(',', '.') + ' ГБ'); add('Накопичувач', storage); }
+    if (/(?:про[єе]ктор|projector)/iu.test(text)) { add('Роздільна здатність', resolution); add('Яскравість', brightness && brightness + ' лм'); add('Технологія проекції', /\bdlp\b/iu.test(text) ? 'DLP' : /(?:3lcd|\blcd\b)/iu.test(text) ? 'LCD' : ''); add('Джерело світла', /лазер|laser/iu.test(text) ? 'Лазер' : /світлодіод|\bled\b/iu.test(text) ? 'Світлодіод' : /ламп|lamp/iu.test(text) ? 'Лампа' : ''); }
+    if (/(?:телевізор|\btv\b)/iu.test(text)) { add('Діагональ', diagonal && diagonal.replace(',', '.') + '″'); add('Роздільна здатність', resolution); add('Тип матриці', /mini\s*-?\s*led/iu.test(text) ? 'miniLED' : /oled/iu.test(text) ? 'OLED' : /qled/iu.test(text) ? 'QLED' : /\bled\b/iu.test(text) ? 'LED' : ''); add('Smart TV', /(?:smart\s*tv|google\s*tv|android\s*tv|webos|tizen|vidaa)/iu.test(text) ? 'Є' : ''); }
+    return specifications;
+  };
+  const mergeMissingSpecifications = (specifications, inferred) => ({ ...inferred, ...specifications });
   // Повна назва з джерела зберігається в описі, а в заголовку лишається модель.
   const compactImportName = (value = '', sku = '', brand = '') => {
     let name = decodeEntities(cleanImportText(value))
@@ -520,7 +553,8 @@ supabase.auth.getSession().then(({data:{session}})=>session?dashboard():view('lo
       const stockValue = textFrom(node, ['stock','quantity','qty','available','Stock']);
       const availabilityValue = textFrom(node, ['availability','Availability','AVAIL','avail','stock_status','StockStatus','availability_status','AvailabilityStatus','in_stock','InStock']);
       const availabilityStatus = importAvailabilityStatus(availabilityValue) || importAvailabilityStatus(stockValue);
-      const specifications = { ...parseSpecifications(comment), ...attributeSpecifications(node), ...titleSpecifications(name) };
+      const importedSpecifications = { ...parseSpecifications(comment), ...attributeSpecifications(node), ...titleSpecifications(name) };
+      const specifications = mergeMissingSpecifications(importedSpecifications, templateSpecifications([sourceName, sourceCategory, subcategory].filter(Boolean).join(' ')));
       const parsedStock = importQuantity(stockValue);
       const stock = parsedStock || (/^(in_stock|limited_stock)$/i.test(availabilityStatus) ? 1 : 0);
       const row = { key: sku + '-' + index, vendor, name: cleanImportText(name), sku, sourceCategory, subcategory, price: importNumber(priceValue), hasPrice: Boolean(cleanImportText(priceValue)), stock, hasStock: Boolean(cleanImportText(stockValue) || availabilityStatus), availabilityStatus: availabilityStatus || undefined, description: parseDescription(shortDescription) || parseDescription(comment) || cleanImportText(sourceName), specifications, images: imagesFrom(node, comment) };

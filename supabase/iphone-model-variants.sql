@@ -78,7 +78,7 @@ set
   parent_product_id = family.id,
   variant_label = coalesce(
     nullif(concat_ws(' · ',
-      (regexp_match(child.name, '\m([0-9]{2,4}[[:space:]]*(?:GB|TB|ГБ|ТБ))\M', 'i'))[1],
+      (regexp_match(child.name, '\m([0-9]{1,4}[[:space:]]*(?:GB|TB|ГБ|ТБ))\M', 'i'))[1],
       initcap((regexp_match(child.name, '\m(black|white|blue|silver|gold|green|pink|purple|orange|sage|navy|teal|yellow|natural|titanium|чорн[а-яіїє]*|бі[л]?[а-яіїє]*|син[а-яіїє]*|сріб[а-яіїє]*|золот[а-яіїє]*|зелен[а-яіїє]*|рожев[а-яіїє]*|фіолет[а-яіїє]*)\M', 'i'))[1])
     ), ''),
     child.sku,
@@ -89,6 +89,17 @@ join family_models family on family.model_name = source.model_name
 where child.id = source.id
   and child.id <> family.id
   and child.parent_product_id is null;
+
+-- Оновлюємо підписи вже створених варіантів. Це також додає 1 TB і 2 TB,
+-- які попередня версія правила не могла розпізнати.
+update public.products child
+set variant_label = nullif(concat_ws(' - ',
+  (regexp_match(child.name, '\m([0-9]{1,4}[[:space:]]*(?:GB|TB|ГБ|ТБ))\M', 'i'))[1],
+  (regexp_match(child.name, '\m(black|white|blue|silver|gold|green|pink|purple|orange|sage|navy|teal|yellow|natural|titanium|чорн[а-яіїє]*|бі[л]?[а-яіїє]*|син[а-яіїє]*|сріб[а-яіїє]*|золот[а-яіїє]*|зелен[а-яіїє]*|рожев[а-яіїє]*|фіолет[а-яіїє]*)\M', 'i'))[1]
+), '')
+from public.products parent
+where child.parent_product_id = parent.id
+  and parent.slug like 'apple-family-iphone-%';
 
 commit;
 

@@ -629,7 +629,7 @@ const variantDisplayLabel = (product) => {
       .trim();
   }
   const source = readableText(product?.name);
-  const memory = source.match(/\b(\d{2,4})\s*(GB|TB|ГБ|ТБ)\b/iu);
+  const memory = source.match(/\b(\d{1,4})\s*(GB|TB|ГБ|ТБ)\b/iu);
   const color = source.match(/\b(Black|White|Blue|Silver|Gold|Green|Pink|Purple|Orange|Sage|Navy|Teal|Yellow|Natural|Titanium|чорн\w*|бі[л]?[а-яіїє]*|син\w*|сріб\w*|золот\w*|зелен\w*|рожев\w*|фіолет\w*)\b/iu);
   const parts = [];
   if (memory) parts.push(memory[1] + ' ' + memory[2].toUpperCase().replace('ГБ', 'ГБ').replace('ТБ', 'ТБ'));

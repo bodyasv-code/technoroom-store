@@ -605,7 +605,7 @@ const compactProductName = (value = '', sku = '', brand = '') => {
   if (startsWithProductType.test(name) && parts.length >= 2 && (parts.length >= 3 || technicalTail.test(parts.slice(1).join(' ')))) name = parts[0];
   const normaliseToken = (text) => String(text || '').toLocaleLowerCase('uk-UA').replace(/[^\p{L}\p{N}]/gu, '');
   const cleanSku = readableText(sku);
-  if (cleanSku && !normaliseToken(name).includes(normaliseToken(cleanSku))) name += ' — ' + cleanSku;
+  if (cleanSku && !/^(?:null|undefined|none|—|-)$/iu.test(cleanSku) && !normaliseToken(name).includes(normaliseToken(cleanSku))) name += ' — ' + cleanSku;
   return name || readableText(value);
 };
 const fillBrandSelect = (select, source) => {
@@ -617,6 +617,15 @@ const fillBrandSelect = (select, source) => {
 };
 const catalogCardEscape = (value) => String(value ?? '').replace(/[&<>\"]/g, (character) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[character]);
 const productVariantsFor = (product) => products.filter((entry) => Number(entry.parentProductId) === Number(product?.id));
+const variantDisplayLabel = (product) => {
+  const source = readableText([product?.variantLabel, product?.name].filter(Boolean).join(' '));
+  const memory = source.match(/\b(\d{2,4})\s*(GB|TB|ГБ|ТБ)\b/iu);
+  const color = source.match(/\b(Black|White|Blue|Silver|Gold|Green|Pink|Purple|Orange|Sage|Navy|Teal|Yellow|Natural|Titanium|чорн\w*|бі[л]?[а-яіїє]*|син\w*|сріб\w*|золот\w*|зелен\w*|рожев\w*|фіолет\w*)\b/iu);
+  const parts = [];
+  if (memory) parts.push(memory[1] + ' ' + memory[2].toUpperCase().replace('ГБ', 'ГБ').replace('ТБ', 'ТБ'));
+  if (color) parts.push(color[1].replace(/^./u, (letter) => letter.toUpperCase()));
+  return parts.join(' · ');
+};
 const preferredVariantFor = (product) => {
   const variants = productVariantsFor(product);
   return variants.find((entry) => availability(entry).orderable)
@@ -932,8 +941,17 @@ product = function () {
   const specs = specEntries.length
     ? specEntries.map(([key, value]) => '<div><dt>' + safe(key) + '</dt><dd>' + safe(Array.isArray(value) ? value.join(', ') : value) + '</dd></div>').join('')
     : '<div><dt>Характеристики</dt><dd>Уточнюйте у менеджера</dd></div>';
-  const variantChoices = variants.length ? [baseItem, ...variants] : [];
-  const variantMarkup = variantChoices.length ? '<div class="product-variants"><b>Оберіть варіант</b><div>'+variantChoices.map((entry) => '<a class="product-variant'+(Number(entry.id) === Number(item.id) ? ' is-selected' : '')+'" href="product.html?id='+baseItem.id+'&variant='+entry.id+'">'+safe(entry.variantLabel || entry.sku || 'Варіант')+'</a>').join('')+'</div></div>' : '';
+  const variantChoices = [];
+  const labels = new Map();
+  variants.forEach((entry) => {
+    const label = variantDisplayLabel(entry);
+    if (!label) return;
+    const key = label.toLocaleLowerCase('uk-UA');
+    const current = labels.get(key);
+    if (!current || (availability(entry).orderable && !availability(current.entry).orderable)) labels.set(key, { entry, label });
+  });
+  labels.forEach((choice) => variantChoices.push(choice));
+  const variantMarkup = variantChoices.length ? '<div class="product-variants"><b>Оберіть варіант</b><div>'+variantChoices.map(({entry,label}) => '<a class="product-variant'+(Number(entry.id) === Number(item.id) ? ' is-selected' : '')+'" href="product.html?id='+baseItem.id+'&variant='+entry.id+'">'+safe(label)+'</a>').join('')+'</div></div>' : '';
   const related = products.filter((product) => !product.parentProductId && product.id !== baseItem.id && product.type === item.type).slice(0, 4);
   const renderProductGallery = (activePath = paths[0]) => {
     const source = galleryImageUrl(item, activePath);

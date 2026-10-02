@@ -414,7 +414,7 @@ async function loadProducts() { try {
     all.push(...data);
     if (data.length < pageSize) break;
   }
-  if (all.length) products = all.map((item) => ({ id: item.id, sku: item.sku, name: compactProductName(item.name, item.sku, item.brand), description: item.description, price: Number(item.price), type: item.category, brand: item.brand, brand_id:item.brand_id, specifications: item.specifications, availabilityStatus: item.availability_status, stockQuantity: Number(item.stock_quantity || 0), stock: item.in_stock && Number(item.stock_quantity || 0) > 0, image: item.image_path }));
+  if (all.length) products = all.map((item) => ({ id: item.id, sku: item.sku, name: compactProductName(item.name, item.sku, item.brand), description: item.description, price: Number(item.price), type: item.category, brand: item.brand, brand_id:item.brand_id, parentProductId:item.parent_product_id, variantLabel:item.variant_label, specifications: item.specifications, availabilityStatus: item.availability_status, stockQuantity: Number(item.stock_quantity || 0), stock: item.in_stock && Number(item.stock_quantity || 0) > 0, image: item.image_path }));
   const now=Date.now(),pr=await supabase.from('promotions').select('*').eq('is_active',true);if(pr.error)console.warn('Акції:',pr.error);else{activePromotions=(pr.data||[]).filter(p=>(!p.starts_at||new Date(p.starts_at).getTime()<=now)&&(!p.ends_at||new Date(p.ends_at).getTime()>=now));promotionProductIds.clear();const targeted=activePromotions.filter(p=>p.target_type==='products').map(p=>p.id);if(targeted.length){const pp=await supabase.from('promotion_products').select('promotion_id,product_id').in('promotion_id',targeted);if(pp.error)console.warn('Товари акцій:',pp.error);else(pp.data||[]).forEach(x=>{const key=Number(x.promotion_id);if(!promotionProductIds.has(key))promotionProductIds.set(key,new Set());promotionProductIds.get(key).add(Number(x.product_id))})}}
 } catch (error) { console.warn('Не вдалося завантажити каталог із Supabase', error); } finally { productsLoaded = true; mount(); await mountMegaCatalog(); } }
 if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', loadProducts, { once: true });
@@ -628,11 +628,13 @@ card = (product) => {
 
   const currentPrice = promotion ? salePrice(product) : Number(product.price);
   const promotionBadge = promotion ? '<span class="sale-badge">' + (promotion.discount_type === 'percent' ? '-' + Number(promotion.discount_value) + '%' : 'АКЦІЯ') + '</span>' : '';
+  const variantsCount = products.filter((entry) => Number(entry.parentProductId) === Number(product.id)).length;
+  const variantsNote = variantsCount ? '<span class="product-variants-note">Варіантів: ' + variantsCount + '</span>' : '';
   return `<article class="product product-card">
     ${promotionBadge}<a class="product-image ${product.type}" href="product.html?id=${product.id}" aria-label="Відкрити товар ${name}">${preview}</a>
     <div class="product-card-content">
       <div class="product-card-meta"><span>${brand}</span><span class="availability">${state.label}</span></div>
-      <h3><a href="product.html?id=${product.id}">${name}</a></h3>
+      <h3><a href="product.html?id=${product.id}">${name}</a></h3>${variantsNote}
       ${promotion ? '<div class="promotion-name">🏷 Акція: <b>' + catalogCardEscape(promotion.name || 'Спеціальна пропозиція') + '</b></div>' : ''}
       <div class="product-footer"><div>${promotion ? '<del class="old-price">' + money(product.price) + '</del>' : ''}<strong class="price">${money(currentPrice)}</strong></div>${state.inquiry ? '<button class="add-button" data-inquiry="' + product.id + '">' + state.button + '</button>' : '<button class="add-button" data-add="' + product.id + '" ' + (state.orderable ? '' : 'disabled') + '>' + state.button + '</button>'}</div>
     </div>
@@ -821,7 +823,7 @@ checkout = () => {
 async function refreshAvailabilityStatuses() {
   const { data, error } = await supabase.from('products').select('*').eq('is_active', true).order('created_at', { ascending: false });
   if (error || !data?.length) return;
-  products = data.map((item) => ({ id: item.id, sku: item.sku, name: compactProductName(item.name, item.sku, item.brand), description: item.description, price: Number(item.price), type: item.category, brand: item.brand, brand_id: item.brand_id, specifications: item.specifications, availabilityStatus: item.availability_status || ((item.in_stock && Number(item.stock_quantity || 0) > 0) ? 'in_stock' : 'out_of_stock'), stockQuantity: Number(item.stock_quantity || 0), stock: item.in_stock && Number(item.stock_quantity || 0) > 0, image: item.image_path }));
+  products = data.map((item) => ({ id: item.id, sku: item.sku, name: compactProductName(item.name, item.sku, item.brand), description: item.description, price: Number(item.price), type: item.category, brand: item.brand, brand_id: item.brand_id, parentProductId:item.parent_product_id, variantLabel:item.variant_label, specifications: item.specifications, availabilityStatus: item.availability_status || ((item.in_stock && Number(item.stock_quantity || 0) > 0) ? 'in_stock' : 'out_of_stock'), stockQuantity: Number(item.stock_quantity || 0), stock: item.in_stock && Number(item.stock_quantity || 0) > 0, image: item.image_path }));
   mount();
 }
 window.addEventListener('load', refreshAvailabilityStatuses, { once: true });
@@ -878,6 +880,10 @@ product = function () {
   renderProductGallery();
 };
 
+const productVariantsStyle = document.createElement('style');
+productVariantsStyle.textContent = '.product-variants{margin:18px 0 0}.product-variants>b{display:block;margin-bottom:8px;color:#334e68;font-size:12px}.product-variants>div{display:flex;flex-wrap:wrap;gap:8px}.product-variant{border:1px solid #cfd9e6;border-radius:7px;padding:9px 11px;background:#fff;color:#29425c;font-size:12px;font-weight:800}.product-variant:hover{border-color:#0875e9}.product-variant.is-selected{border-color:#0875e9;background:#eaf4ff;color:#075fbe}.product-variants-note{display:inline-block;margin:0 0 9px;color:#526b86;font-size:11px;font-weight:700}@media(max-width:560px){.product-variant{padding:8px 10px}}';
+document.head.append(productVariantsStyle);
+
 async function hydrateProductGallery() {
   const { data, error } = await supabase.from('products').select('id,image_path,image_paths').eq('is_active', true);
   if (!error && data) {
@@ -892,8 +898,13 @@ hydrateProductGallery();
 product = function () {
   const root = document.getElementById('productView');
   if (!root) return;
-  const requestedId = Number(new URLSearchParams(location.search).get('id'));
-  const item = requestedId ? get(requestedId) : products[0];
+  const query = new URLSearchParams(location.search);
+  const requestedId = Number(query.get('id'));
+  const requestedItem = requestedId ? get(requestedId) : products[0];
+  const baseItem = requestedItem?.parentProductId ? (get(Number(requestedItem.parentProductId)) || requestedItem) : requestedItem;
+  const variants = baseItem ? products.filter((entry) => Number(entry.parentProductId) === Number(baseItem.id)) : [];
+  const selectedVariantId = Number(query.get('variant'));
+  const item = (selectedVariantId && [baseItem, ...variants].find((entry) => Number(entry.id) === selectedVariantId)) || requestedItem || baseItem;
   if (!item) {
     root.innerHTML = productsLoaded
       ? '<div class="empty-cart"><b>Товар не знайдено або його приховано.</b><br><a href="catalog.html">Повернутися до каталогу →</a></div>'
@@ -910,7 +921,9 @@ product = function () {
   const specs = specEntries.length
     ? specEntries.map(([key, value]) => '<div><dt>' + safe(key) + '</dt><dd>' + safe(Array.isArray(value) ? value.join(', ') : value) + '</dd></div>').join('')
     : '<div><dt>Характеристики</dt><dd>Уточнюйте у менеджера</dd></div>';
-  const related = products.filter((product) => product.id !== item.id && product.type === item.type).slice(0, 4);
+  const variantChoices = variants.length ? [baseItem, ...variants] : [];
+  const variantMarkup = variantChoices.length ? '<div class="product-variants"><b>Оберіть варіант</b><div>'+variantChoices.map((entry) => '<a class="product-variant'+(Number(entry.id) === Number(item.id) ? ' is-selected' : '')+'" href="product.html?id='+baseItem.id+'&variant='+entry.id+'">'+safe(entry.variantLabel || entry.sku || 'Варіант')+'</a>').join('')+'</div></div>' : '';
+  const related = products.filter((product) => !product.parentProductId && product.id !== baseItem.id && product.type === item.type).slice(0, 4);
   const renderProductGallery = (activePath = paths[0]) => {
     const source = galleryImageUrl(item, activePath);
     const thumbs = paths.length > 1
@@ -919,7 +932,7 @@ product = function () {
     root.innerHTML = '<section class="product-showcase">'
       + '<div class="product-gallery-panel"><div class="product-detail-visual ' + safe(item.type) + '"><div class="product-image ' + safe(item.type) + '">' + (source ? '<img src="' + source + '" alt="' + safeName + '" draggable="false">' : '<div class="product-placeholder"><span>Фото товару<br>з’явиться незабаром</span></div>') + '</div><span class="product-photo-hint">Натисніть на фото, щоб збільшити</span></div>' + thumbs + '</div>'
       + '<div class="product-overview"><div class="product-topline"><a href="catalog.html?category=' + encodeURIComponent(item.type || '') + '" class="product-category-link">Каталог</a><span class="product-code">SKU: ' + safe(item.sku || '—') + ' · Код: ' + item.id + '</span></div>'
-      + '<p class="product-brand">' + safeBrand + '</p><h1>' + safeName + '</h1>'
+      + '<p class="product-brand">' + safeBrand + '</p><h1>' + safeName + '</h1>' + variantMarkup
       + '<div class="product-buy-card"><div class="product-availability ' + (state.orderable || state.inquiry ? 'is-available' : 'is-unavailable') + '"><i></i><span>' + state.label + '</span></div>'
       + '<strong class="detail-price">' + money(item.price) + '</strong><p class="product-price-note">Ціна вказана за 1 одиницю товару</p>'
       + '<div class="detail-actions">' + (state.inquiry ? '<button class="button product-buy" data-inquiry="' + item.id + '">Уточнити наявність</button>' : '<button class="button product-buy" data-add="' + item.id + '" ' + (state.orderable ? '' : 'disabled') + '>' + (state.orderable ? 'Додати в кошик' : 'Немає в наявності') + '</button>') + '<a class="button product-back" href="catalog.html">До каталогу</a></div>'
@@ -1130,7 +1143,7 @@ const renderStorefrontCategoryNavigation = (filters, selectedCategory) => {
     children.push(category);
     byParent.set(category.parent_id, children);
   });
-  const quantity = (slug) => products.filter((product) => storefrontCategoryMatches(product, slug)).length;
+  const quantity = (slug) => products.filter((product) => !product.parentProductId && storefrontCategoryMatches(product, slug)).length;
   const roots = storefrontCategories.filter((category) => !category.parent_id && quantity(category.slug));
   const navigation = document.createElement('div');
   navigation.className = 'catalog-taxonomy';
@@ -1142,7 +1155,7 @@ const renderStorefrontCategoryNavigation = (filters, selectedCategory) => {
     if (!nested) return button(category);
     return '<div class="catalog-taxonomy__group' + (selectedInside ? ' is-open' : '') + '"><div class="catalog-taxonomy__root-row">' + button(category) + '<button type="button" class="catalog-taxonomy__toggle" data-taxonomy-toggle aria-label="Показати підкатегорії" aria-expanded="' + (selectedInside ? 'true' : 'false') + '">' + (selectedInside ? '−' : '+') + '</button></div><div class="catalog-taxonomy__children">' + nested + '</div></div>';
   };
-  navigation.innerHTML = '<button type="button" class="catalog-taxonomy__root' + (selectedCategory === 'all' ? ' is-selected' : '') + '" data-catalog-taxonomy="all"><span>Усі товари</span><b>' + products.length + '</b></button>' + roots.map(group).join('');
+  navigation.innerHTML = '<button type="button" class="catalog-taxonomy__root' + (selectedCategory === 'all' ? ' is-selected' : '') + '" data-catalog-taxonomy="all"><span>Усі товари</span><b>' + products.filter((product) => !product.parentProductId).length + '</b></button>' + roots.map(group).join('');
   refine.before(navigation);
 };
 
@@ -1472,7 +1485,7 @@ catalog = function () {
     { id: 'monitor-refresh', label: 'Частота оновлення', values: deviceRefreshValues }
   ]);
   const screenFilterOptions = () => {
-    const categoryProducts = products.filter((product) => category !== 'all' && storefrontCategoryMatches(product, category));
+    const categoryProducts = products.filter((product) => !product.parentProductId && category !== 'all' && storefrontCategoryMatches(product, category));
     if (!categoryProducts.length) return [];
     if (category === screenCategory) {
       return screenSpecificationDefinitions.map((definition) => {
@@ -1498,7 +1511,7 @@ catalog = function () {
   };
   const renderScreenSpecificationFilters = () => {
     if (!screenSpecificationFilters) return;
-    const categoryProducts = products.filter((product) => category !== 'all' && storefrontCategoryMatches(product, category));
+    const categoryProducts = products.filter((product) => !product.parentProductId && category !== 'all' && storefrontCategoryMatches(product, category));
     const projectorProducts = categoryProducts.filter((product) => /(?:про[єе]ктор|projector)/iu.test(readableText(product.name) + ' ' + readableText(product.type)));
     const fluxRange = projectorProducts.length >= Math.max(2, categoryProducts.length * 0.7) ? luminousFluxRange(projectorProducts) : null;
     const groups = screenFilterOptions();
@@ -1541,7 +1554,7 @@ catalog = function () {
 
   const draw = () => {
     renderScreenSpecificationFilters();
-    const categoryProducts = products.filter((product) => category === 'all' || storefrontCategoryMatches(product, category));
+    const categoryProducts = products.filter((product) => !product.parentProductId && (category === 'all' || storefrontCategoryMatches(product, category)));
     const brands = [...new Map(categoryProducts.map((product) => cleanBrand(product.brand)).filter(Boolean).map((value) => [value.toLocaleLowerCase('uk-UA'), value])).values()].sort((left, right) => left.localeCompare(right, 'uk'));
     const selectedBrand = brand.value;
     brand.innerHTML = '<option value="">Усі бренди</option>' + brands.map((value) => '<option value="' + escapeHtml(value) + '">' + escapeHtml(readableText(value)) + '</option>').join('');
@@ -1550,7 +1563,8 @@ catalog = function () {
     let shown = products.filter((product) => {
       const promotion = promotionFor(product) || promotionByProductLink(product);
       const searchable = readableText([product.name, product.brand, product.sku, product.description].join(' ')).toLocaleLowerCase('uk-UA').replace(/є/g, 'е');
-      return (category === 'all' || storefrontCategoryMatches(product, category))
+      return !product.parentProductId
+        && (category === 'all' || storefrontCategoryMatches(product, category))
         && (!saleOnly || Boolean(promotion))
         && (!promotionOnly || Number(promotion?.id) === promotionOnly)
         && (!terms.length || terms.every((term) => searchable.includes(term)))

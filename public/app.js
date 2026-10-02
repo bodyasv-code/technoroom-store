@@ -618,7 +618,17 @@ const fillBrandSelect = (select, source) => {
 const catalogCardEscape = (value) => String(value ?? '').replace(/[&<>\"]/g, (character) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[character]);
 const productVariantsFor = (product) => products.filter((entry) => Number(entry.parentProductId) === Number(product?.id));
 const variantDisplayLabel = (product) => {
-  const source = readableText([product?.variantLabel, product?.name].filter(Boolean).join(' '));
+  const supplied = readableText(product?.variantLabel);
+  const sku = readableText(product?.sku);
+  if (supplied && !/^(?:варіант|null|undefined|none)$/iu.test(supplied) && supplied.toLocaleLowerCase('uk-UA') !== sku.toLocaleLowerCase('uk-UA')) {
+    return supplied
+      .replace(/(\d)\s*GB\b/giu, '$1 ГБ')
+      .replace(/(\d)\s*TB\b/giu, '$1 ТБ')
+      .replace(/\s*[·•]\s*/gu, ' - ')
+      .replace(/\s{2,}/gu, ' ')
+      .trim();
+  }
+  const source = readableText(product?.name);
   const memory = source.match(/\b(\d{2,4})\s*(GB|TB|ГБ|ТБ)\b/iu);
   const color = source.match(/\b(Black|White|Blue|Silver|Gold|Green|Pink|Purple|Orange|Sage|Navy|Teal|Yellow|Natural|Titanium|чорн\w*|бі[л]?[а-яіїє]*|син\w*|сріб\w*|золот\w*|зелен\w*|рожев\w*|фіолет\w*)\b/iu);
   const parts = [];

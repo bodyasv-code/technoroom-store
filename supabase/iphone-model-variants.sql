@@ -21,6 +21,8 @@ with candidates as (
       when p.name ~* '\miphone[[:space:]-]*17[[:space:]-]*pro[[:space:]-]*max\M' then 'iPhone 17 Pro Max'
       when p.name ~* '\miphone[[:space:]-]*17[[:space:]-]*pro\M' then 'iPhone 17 Pro'
       when p.name ~* '\miphone[[:space:]-]*17[[:space:]-]*air\M' then 'iPhone 17 Air'
+      -- У частині XML Apple передає модель як «iPhone Air» без номера покоління.
+      when p.name ~* '\miphone[[:space:]-]*air\M' then 'iPhone 17 Air'
       when p.name ~* '\miphone[[:space:]-]*17\M' then 'iPhone 17'
       when p.name ~* '\miphone[[:space:]-]*18[[:space:]-]*pro[[:space:]-]*max\M' then 'iPhone 18 Pro Max'
       when p.name ~* '\miphone[[:space:]-]*18[[:space:]-]*pro\M' then 'iPhone 18 Pro'
@@ -30,7 +32,8 @@ with candidates as (
   from public.products p
   where p.parent_product_id is null
     and coalesce(p.brand, '') ~* '^apple$'
-    and p.name ~* '\miphone[[:space:]-]*(15|16|17|18)\M'
+    and (p.name ~* '\miphone[[:space:]-]*(15|16|17|18)\M'
+      or p.name ~* '\miphone[[:space:]-]*air\M')
 ),
 representatives as (
   select distinct on (model_name)

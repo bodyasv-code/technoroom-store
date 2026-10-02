@@ -57,7 +57,7 @@ created as (
   returning id, slug
 ),
 families as (
-  select id, name as model_name
+  select id, slug, name as model_name
   from public.products
   where slug like 'apple-family-iphone-15%'
      or slug like 'apple-family-iphone-16%'

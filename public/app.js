@@ -616,19 +616,29 @@ const fillBrandSelect = (select, source) => {
   select.replaceChildren(new Option('Усі бренди',''),...brands.map(v=>new Option(v,v)));
 };
 const catalogCardEscape = (value) => String(value ?? '').replace(/[&<>\"]/g, (character) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[character]);
+const productVariantsFor = (product) => products.filter((entry) => Number(entry.parentProductId) === Number(product?.id));
+const preferredVariantFor = (product) => {
+  const variants = productVariantsFor(product);
+  return variants.find((entry) => availability(entry).orderable)
+    || variants.find((entry) => availability(entry).inquiry)
+    || variants[0]
+    || product;
+};
 card = (product) => {
-  const state = availability(product);
-  const promotion = promotionFor(product) || promotionByProductLink(product);
+  const variants = productVariantsFor(product);
+  const displayProduct = variants.length ? preferredVariantFor(product) : product;
+  const state = availability(displayProduct);
+  const promotion = promotionFor(displayProduct) || promotionByProductLink(displayProduct) || promotionFor(product) || promotionByProductLink(product);
   const name = catalogCardEscape(compactProductName(product.name, product.sku, product.brand));
   const brand = catalogCardEscape(product.brand || 'TECHNOROOM');
-  const source = imageUrl(product);
+  const source = imageUrl(product) || imageUrl(displayProduct);
   const preview = source
     ? `<img src="${source}" alt="${name}" loading="lazy" draggable="false">`
     : '<div class="product-placeholder"><span>Фото товару<br>з’явиться незабаром</span></div>';
 
-  const currentPrice = promotion ? salePrice(product) : Number(product.price);
+  const currentPrice = promotion ? salePrice(displayProduct) : Number(displayProduct.price);
   const promotionBadge = promotion ? '<span class="sale-badge">' + (promotion.discount_type === 'percent' ? '-' + Number(promotion.discount_value) + '%' : 'АКЦІЯ') + '</span>' : '';
-  const variantsCount = products.filter((entry) => Number(entry.parentProductId) === Number(product.id)).length;
+  const variantsCount = variants.length;
   const variantsNote = variantsCount ? '<span class="product-variants-note">Варіантів: ' + variantsCount + '</span>' : '';
   return `<article class="product product-card">
     ${promotionBadge}<a class="product-image ${product.type}" href="product.html?id=${product.id}" aria-label="Відкрити товар ${name}">${preview}</a>
@@ -636,7 +646,7 @@ card = (product) => {
       <div class="product-card-meta"><span>${brand}</span><span class="availability">${state.label}</span></div>
       <h3><a href="product.html?id=${product.id}">${name}</a></h3>${variantsNote}
       ${promotion ? '<div class="promotion-name">🏷 Акція: <b>' + catalogCardEscape(promotion.name || 'Спеціальна пропозиція') + '</b></div>' : ''}
-      <div class="product-footer"><div>${promotion ? '<del class="old-price">' + money(product.price) + '</del>' : ''}<strong class="price">${money(currentPrice)}</strong></div>${state.inquiry ? '<button class="add-button" data-inquiry="' + product.id + '">' + state.button + '</button>' : '<button class="add-button" data-add="' + product.id + '" ' + (state.orderable ? '' : 'disabled') + '>' + state.button + '</button>'}</div>
+      <div class="product-footer"><div>${promotion ? '<del class="old-price">' + money(displayProduct.price) + '</del>' : ''}<strong class="price">${money(currentPrice)}</strong></div>${state.inquiry ? '<button class="add-button" data-inquiry="' + displayProduct.id + '">' + state.button + '</button>' : '<button class="add-button" data-add="' + displayProduct.id + '" ' + (state.orderable ? '' : 'disabled') + '>' + state.button + '</button>'}</div>
     </div>
   </article>`;
 };
@@ -902,9 +912,9 @@ product = function () {
   const requestedId = Number(query.get('id'));
   const requestedItem = requestedId ? get(requestedId) : products[0];
   const baseItem = requestedItem?.parentProductId ? (get(Number(requestedItem.parentProductId)) || requestedItem) : requestedItem;
-  const variants = baseItem ? products.filter((entry) => Number(entry.parentProductId) === Number(baseItem.id)) : [];
+  const variants = baseItem ? productVariantsFor(baseItem) : [];
   const selectedVariantId = Number(query.get('variant'));
-  const item = (selectedVariantId && [baseItem, ...variants].find((entry) => Number(entry.id) === selectedVariantId)) || requestedItem || baseItem;
+  const item = (selectedVariantId && [baseItem, ...variants].find((entry) => Number(entry.id) === selectedVariantId)) || (variants.length ? preferredVariantFor(baseItem) : requestedItem || baseItem);
   if (!item) {
     root.innerHTML = productsLoaded
       ? '<div class="empty-cart"><b>Товар не знайдено або його приховано.</b><br><a href="catalog.html">Повернутися до каталогу →</a></div>'
@@ -915,8 +925,9 @@ product = function () {
   const state = availability(item);
   const paths = galleryEntriesFor(item);
   const safe = (value) => catalogCardEscape(specificationDisplayText(value));
-  const safeName = safe(compactProductName(item.name, item.sku));
-  const safeBrand = safe(item.brand || 'TECHNOROOM');
+  const titleItem = variants.length ? baseItem : item;
+  const safeName = safe(compactProductName(titleItem.name, titleItem.sku));
+  const safeBrand = safe(titleItem.brand || item.brand || 'TECHNOROOM');
   const specEntries = displaySpecificationEntries(item);
   const specs = specEntries.length
     ? specEntries.map(([key, value]) => '<div><dt>' + safe(key) + '</dt><dd>' + safe(Array.isArray(value) ? value.join(', ') : value) + '</dd></div>').join('')

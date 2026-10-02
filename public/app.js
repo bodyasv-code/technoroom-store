@@ -927,6 +927,10 @@ hydrateProductGallery();
 product = function () {
   const root = document.getElementById('productView');
   if (!root) return;
+  if (!productsLoaded) {
+    root.innerHTML = '<p class="empty-cart">Завантажуємо товар…</p>';
+    return;
+  }
   const query = new URLSearchParams(location.search);
   const requestedId = Number(query.get('id'));
   const requestedItem = requestedId ? get(requestedId) : products[0];

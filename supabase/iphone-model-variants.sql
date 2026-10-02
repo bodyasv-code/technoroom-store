@@ -5,6 +5,16 @@
 
 begin;
 
+-- Аксесуари можуть містити назву моделі (наприклад, «Чохол iPhone 17 Pro»),
+-- але не є її модифікаціями. Від'єднуємо такі помилкові зв'язки з ранніх запусків.
+update public.products child
+set parent_product_id = null,
+    variant_label = null
+from public.products parent
+where child.parent_product_id = parent.id
+  and parent.slug like 'apple-family-iphone-%'
+  and child.name !~* '^\s*(?:смартфон|smartphone|iphone)\M';
+
 with candidates as (
   select
     p.*,
@@ -32,6 +42,7 @@ with candidates as (
   from public.products p
   where p.parent_product_id is null
     and coalesce(p.brand, '') ~* '^apple$'
+    and p.name ~* '^\s*(?:смартфон|smartphone|iphone)\M'
     and (p.name ~* '\miphone[[:space:]-]*(15|16|17|18)\M'
       or p.name ~* '\miphone[[:space:]-]*air\M')
 ),
@@ -76,14 +87,10 @@ family_models as (
 update public.products child
 set
   parent_product_id = family.id,
-  variant_label = coalesce(
-    nullif(concat_ws(' · ',
+  variant_label = nullif(concat_ws(' · ',
       (regexp_match(child.name, '\m([0-9]{1,4}[[:space:]]*(?:GB|TB|ГБ|ТБ))\M', 'i'))[1],
       initcap((regexp_match(child.name, '\m(black|white|blue|silver|gold|green|pink|purple|orange|sage|navy|teal|yellow|natural|titanium|чорн[а-яіїє]*|бі[л]?[а-яіїє]*|син[а-яіїє]*|сріб[а-яіїє]*|золот[а-яіїє]*|зелен[а-яіїє]*|рожев[а-яіїє]*|фіолет[а-яіїє]*)\M', 'i'))[1])
-    ), ''),
-    child.sku,
-    'Варіант'
-  )
+  ), '')
 from candidates source
 join family_models family on family.model_name = source.model_name
 where child.id = source.id

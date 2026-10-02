@@ -118,7 +118,7 @@ supabase.auth.getSession().then(({data:{session}})=>session?dashboard():view('lo
 
 // Універсальний імпорт XML: читає поширені структури постачальників і не перезаписує ручні дані.
 (() => {
-  const importer = { rows: [], selected: new Set(), page: 1, prices: new Map(), meta: new Map() };
+  const importer = { rows: [], selected: new Set(), page: 1, prices: new Map(), meta: new Map(), report: null };
   const supportedImageHosts = new Set(['www.tradeinn.com','www.audiotrends.com.au','static-ecapac.acer.com','media4home.com.pl','media.sonos.com','images.samsung.com','assets2.razerzone.com','d7qztf2ityad6.cloudfront.net','hp.widen.net','img06.en25.com','koss.com.ua','ssl-product-images.www8-hp.com','www.3ona51.com','www.hp.com','www.koss.com','yugcontract.ua','www.it4profit.com','content.it4profit.com']);
   const cleanImportText = (value = '') => String(value).replace(/\s+/g, ' ').trim();
   const decodeEntities = (value = '') => {
@@ -431,6 +431,26 @@ supabase.auth.getSession().then(({data:{session}})=>session?dashboard():view('lo
     importer.meta.set(row.key, meta);
     return meta;
   };
+  const importGroup = (row, existing = knownBySku()) => {
+    if (!importRowMeta(row).mapped) return 'problem';
+    return existing.has(row.sku) ? 'update' : 'new';
+  };
+  const missingFromSourceFile = () => {
+    const sourceBrands = new Set(importer.rows.map((row) => txt(row.vendor)).filter(Boolean));
+    if (!sourceBrands.size) return [];
+    const sourceSkus = new Set(importer.rows.map((row) => row.sku));
+    return state.products.filter((product) => product.sku && sourceBrands.has(txt(product.brand)) && !sourceSkus.has(normaliseSku(product.sku)));
+  };
+  const renderImportReport = () => {
+    const target = $('#supplierImportReport');
+    if (!target) return;
+    const report = importer.report;
+    if (!report) { target.hidden = true; target.innerHTML = ''; return; }
+    const failures = report.failures || [];
+    target.hidden = false;
+    target.innerHTML = '<div class="import-report-heading"><b>Результат останнього імпорту</b><span>Оброблено: '+report.attempted+'</span></div><div class="import-report-cards"><span>Створено <b>'+report.created+'</b></span><span>Оновлено <b>'+report.updated+'</b></span><span class="'+(failures.length?'is-problem':'')+'">Проблеми <b>'+failures.length+'</b></span></div>'+(failures.length?'<div class="import-report-problems"><b>Потрібна увага</b><ul>'+failures.slice(0,8).map((failure)=>'<li><code>'+esc(failure.sku||'без SKU')+'</code> — '+esc(failure.reason)+'</li>').join('')+'</ul><button class="button outline" type="button" id="supplierImportRetryIssues">Повторити проблемні ('+failures.length+')</button></div>':'<p class="import-report-ok">Імпорт завершено без помилок.</p>');
+    $('#supplierImportRetryIssues')?.addEventListener('click', () => { importer.selected = new Set(failures.map((failure) => failure.key)); renderImportPreview(); importerStatus('Виділено проблемні позиції для повторної спроби.'); });
+  };
   const updateImportSelectionSummary = () => {
     const target = $('#supplierImportSelectedCount');
     if (target) target.textContent = importer.selected.size;
@@ -444,9 +464,9 @@ supabase.auth.getSession().then(({data:{session}})=>session?dashboard():view('lo
       const haystack = txt([row.name, row.sku, row.vendor, row.sourceCategory, row.subcategory, meta.categoryName].join(' '));
       if (query && !haystack.includes(query)) return false;
       if (status === 'new' && current) return false;
-      if (status === 'existing' && !current) return false;
+      if ((status === 'existing' || status === 'update') && !current) return false;
       if (status === 'ready' && !meta.mapped) return false;
-      if (status === 'unmapped' && meta.mapped) return false;
+      if ((status === 'unmapped' || status === 'problem') && meta.mapped) return false;
       return true;
     });
   };
@@ -461,17 +481,19 @@ supabase.auth.getSession().then(({data:{session}})=>session?dashboard():view('lo
     const existing = knownBySku(), filtered = importFilteredRows(existing), rows = importPageRows(filtered), size = Math.max(1, Math.min(100, Number($('#supplierImportLimit').value || 50)));
     const pages = Math.max(1, Math.ceil(filtered.length / size));
     const hasSearch = Boolean($('#supplierImportSearch')?.value || ($('#supplierImportStatus')?.value && $('#supplierImportStatus').value !== 'all'));
-    summary.innerHTML = importer.rows.length ? `${hasSearch ? 'Знайдено за умовами: ' : 'У файлі: '}${filtered.length} з ${importer.rows.length} товарів. Вибрано: <b id="supplierImportSelectedCount" aria-live="polite">${importer.selected.size}</b>. ${filtered.length ? `На сторінці ${importer.page} з ${pages}.` : ''}` : 'Оберіть XML-файл для попереднього перегляду.';
+    const groups = importer.rows.reduce((result, row) => { result[importGroup(row, existing)] += 1; return result; }, { new: 0, update: 0, problem: 0 });
+    const missing = missingFromSourceFile().length;
+    summary.innerHTML = importer.rows.length ? '<div class="import-preview-summary"><span>Нові <b>'+groups.new+'</b></span><span>Оновити <b>'+groups.update+'</b></span><span class="'+(groups.problem?'is-problem':'')+'">Проблемні <b>'+groups.problem+'</b></span><span title="Позиції брендів із файлу, що вже є на сайті, але не знайдені у поточному XML. Автоматично не приховуються.">Відсутні у файлі <b>'+missing+'</b></span></div>'+`${hasSearch ? 'Знайдено за умовами: ' : 'У файлі: '}${filtered.length} з ${importer.rows.length} товарів. Вибрано: <b id="supplierImportSelectedCount" aria-live="polite">${importer.selected.size}</b>. ${filtered.length ? `На сторінці ${importer.page} з ${pages}.` : ''}` : 'Оберіть XML-файл для попереднього перегляду.';
     pager.hidden = pages <= 1;
     pager.innerHTML = pages > 1 ? `<button class="button outline" type="button" data-import-page="prev" ${importer.page === 1 ? 'disabled' : ''}>← Попередні</button><span>Сторінка ${importer.page} з ${pages}</span><button class="button outline" type="button" data-import-page="next" ${importer.page === pages ? 'disabled' : ''}>Наступні →</button>` : '';
     body.innerHTML = rows.length ? rows.map((row) => {
       const meta = importRowMeta(row), category = meta.category, plannedCategory = meta.plan, current = existing.get(row.sku), disabled = !row.sku || !row.name || !meta.mapped;
       const sourceInfo = [row.vendor, row.subcategory || row.sourceCategory].filter(Boolean).join(' · ');
-      const mode = current ? 'Оновити' : (row.hasPrice ? 'Новий' : 'Чернетка без ціни');
+      const group = importGroup(row, existing), mode = group === 'problem' ? 'Проблема: категорія' : current ? 'Оновити' : (row.hasPrice ? 'Новий' : 'Чернетка без ціни');
       const categoryLabel = category
         ? (state.categories.find((item) => item.slug === category)?.name || category)
         : (plannedCategory ? `Буде створено: ${plannedCategory.childName || plannedCategory.rootName}` : 'Немає зіставлення');
-      return `<tr><td><input type="checkbox" data-import-select="${esc(row.key)}" ${importer.selected.has(row.key) ? 'checked ' : ''}${disabled ? 'disabled' : ''}></td><td><b>${esc(row.name)}</b><small>${esc(sourceInfo || 'Постачальник не вказаний')}</small></td><td>${esc(row.sku || '—')}</td><td>${esc(categoryLabel)}</td><td>${Object.keys(row.specifications).length} хар. · ${row.images.length} фото${row.hasPrice ? '' : ' · без ціни'}</td><td><span class="visibility ${current ? 'visible' : 'hidden-status'}">${mode}</span></td></tr>`;
+      return `<tr><td><input type="checkbox" data-import-select="${esc(row.key)}" ${importer.selected.has(row.key) ? 'checked ' : ''}${disabled ? 'disabled' : ''}></td><td><b>${esc(row.name)}</b><small>${esc(sourceInfo || 'Постачальник не вказаний')}</small></td><td>${esc(row.sku || '—')}</td><td>${esc(categoryLabel)}</td><td>${Object.keys(row.specifications).length} хар. · ${row.images.length} фото${row.hasPrice ? '' : ' · без ціни'}</td><td><span class="visibility ${group === 'update' ? 'visible' : group === 'problem' ? 'hidden-status' : ''}">${mode}</span></td></tr>`;
     }).join('') : `<tr><td colspan="6" class="empty-row">${importer.rows.length ? 'За заданими умовами товарів не знайдено' : 'Даних для імпорту немає'}</td></tr>`;
   };
   const parseFile = (content) => {
@@ -507,10 +529,12 @@ supabase.auth.getSession().then(({data:{session}})=>session?dashboard():view('lo
     }
     importer.selected.clear();
     importer.meta.clear();
+    importer.report = null;
     importer.page = 1;
     $('#supplierImportSearch').value = '';
     $('#supplierImportStatus').value = 'all';
     applyPriceData();
+    renderImportReport();
     if (!importer.rows.length) throw new Error('У файлі не знайдено товарних позицій.');
   };
   const newSlug = (name, sku, used) => {
@@ -542,15 +566,15 @@ supabase.auth.getSession().then(({data:{session}})=>session?dashboard():view('lo
     const importImages = $('#supplierImportImages').checked;
     const publishNew = $('#supplierImportPublish').checked;
     const existing = knownBySku(), usedSlugs = new Set(state.products.map((product) => product.slug).filter(Boolean));
-    const failures = []; let created = 0, updated = 0;
+    const failures = []; const fail = (row, reason) => failures.push({ key: row.key, sku: row.sku, reason }); let created = 0, updated = 0;
     const button = $('#supplierImportApply'); button.disabled = true; button.textContent = 'Імпорт…';
     importerStatus(`Починаю імпорт: 0 із ${selectedRows.length}. Не закривайте сторінку до завершення.`);
     try {
     for (const [index, row] of selectedRows.entries()) {
       if (index === 0 || index % 5 === 0) importerStatus(`Імпорт: ${index} із ${selectedRows.length}. Створено: ${created}, оновлено: ${updated}.`);
       let category = ''; const current = existing.get(row.sku);
-      try { category = await ensureImportCategory(row); } catch (error) { failures.push(row.sku + ': не вдалося створити категорію (' + (error.message || error.code) + ')'); continue; }
-      if (!category) { failures.push(row.sku + ': не знайдено категорію'); continue; }
+      try { category = await ensureImportCategory(row); } catch (error) { fail(row, 'не вдалося створити категорію (' + (error.message || error.code) + ')'); continue; }
+      if (!category) { fail(row, 'не знайдено категорію'); continue; }
       const images = importImages ? row.images : [];
       const inventory = { category };
       if (row.hasPrice) inventory.price = row.price;
@@ -561,31 +585,35 @@ supabase.auth.getSession().then(({data:{session}})=>session?dashboard():view('lo
         if (!current.description && row.description) payload.description = row.description;
         const shouldImportImages = !current.image_path && images.length;
         const result = await supabase.from('products').update(payload).eq('id', current.id);
-        if (result.error) failures.push(row.sku + ': ' + (result.error.message || result.error.code));
+        if (result.error) fail(row, result.error.message || result.error.code);
         else {
           updated += 1;
           if (shouldImportImages) {
-            try { await importProductImages(current.id, images); } catch (error) { failures.push(row.sku + ': ' + error.message); }
+            try { await importProductImages(current.id, images); } catch (error) { fail(row, error.message); }
           }
         }
       } else {
         const importedBrand = state.brands.find((brand) => brand.is_active && txt(brand.name) === txt(row.vendor));
         const payload = { ...inventory, price: row.hasPrice ? row.price : 0, stock_quantity: row.hasStock ? row.stock : 0, in_stock: row.hasStock && row.stock > 0, availability_status: row.availabilityStatus || (row.hasStock && row.stock > 0 ? 'in_stock' : 'out_of_stock'), name: row.name, slug: newSlug(row.name, row.sku, usedSlugs), sku: row.sku, brand_id: importedBrand?.id || null, brand: importedBrand?.name || row.vendor || null, description: row.description || null, specifications: row.specifications, is_active: publishNew && row.hasPrice };
         const result = await supabase.from('products').insert(payload).select('id').single();
-        if (result.error) failures.push(row.sku + ': ' + (result.error.message || result.error.code));
+        if (result.error) fail(row, result.error.message || result.error.code);
         else {
           created += 1;
           if (images.length) {
-            try { await importProductImages(result.data.id, images); } catch (error) { failures.push(row.sku + ': ' + error.message); }
+            try { await importProductImages(result.data.id, images); } catch (error) { fail(row, error.message); }
           }
         }
       }
     }
     await loadData();
     importer.meta.clear();
+    importer.report = { attempted: selectedRows.length, created, updated, failures };
     importer.selected.clear(); renderImportPreview();
-    importerStatus(`Готово: створено ${created}, оновлено ${updated}.${failures.length ? ' Помилки: ' + failures.slice(0, 8).join(' | ') : ''}`, Boolean(failures.length));
+    renderImportReport();
+    importerStatus(`Готово: створено ${created}, оновлено ${updated}.${failures.length ? ' Проблемних позицій: ' + failures.length + '.' : ''}`, Boolean(failures.length));
     } catch (error) {
+      importer.report = { attempted: selectedRows.length, created, updated, failures };
+      renderImportReport();
       importerStatus(`Імпорт зупинено: ${error.message || error.code || 'невідома помилка'}. Створено: ${created}, оновлено: ${updated}.`, true);
     } finally {
       button.disabled = false;
@@ -595,7 +623,7 @@ supabase.auth.getSession().then(({data:{session}})=>session?dashboard():view('lo
   const mountImporter = () => {
     const anchor = $('#products');
     if (!anchor || $('#supplierImport')) return;
-    anchor.insertAdjacentHTML('afterend', `<section class="admin-section" id="supplierImport"><div class="admin-title"><div><h2>Імпорт ERC та ASBIS XML</h2><span>Товари, характеристики, ціни, залишки та посилання на фото від постачальників</span></div></div><p class="recovery-help"><b>ERC:</b> оберіть лише основний XML-файл — імпорт працює як раніше. <b>ASBIS:</b> оберіть <b>itemList.xml</b> і додатково <b>PriceAvail.xml</b>; вони з’єднаються за SKU. Характеристики додаються лише до порожніх полів, а вручну внесені значення залишаються без змін.</p><div class="admin-controls"><label>Основний XML (ERC або ASBIS itemList) <input id="supplierImportFile" type="file" accept=".xml,application/xml,text/xml"></label><label>Ціни та наявність ASBIS — необов’язково <input id="supplierImportPriceFile" type="file" accept=".xml,application/xml,text/xml"></label><input id="supplierImportLimit" type="number" min="1" max="100" value="50" title="Товарів на сторінці попереднього перегляду"></div><div class="admin-controls"><label>Пошук у попередньому перегляді <input id="supplierImportSearch" type="search" placeholder="Назва, SKU, бренд або категорія" autocomplete="off"></label><label>Показати <select id="supplierImportStatus"><option value="all">Усі товари</option><option value="new">Лише нові</option><option value="existing">Вже є на сайті</option><option value="ready">Зіставлені з категорією</option><option value="unmapped">Без зіставлення</option></select></label></div><div class="admin-controls"><button class="button outline" type="button" id="supplierImportBrands">Створити відсутні бренди</button><button class="button outline" type="button" id="supplierImportSelectNew">Вибрати нові на сторінці</button><button class="button outline" type="button" id="supplierImportSelectVisible">Вибрати всі на сторінці</button><button class="button outline" type="button" id="supplierImportSelectMatched">Виділити всі знайдені (до 100)</button><button class="button outline" type="button" id="supplierImportClear">Очистити вибір</button><label class="check"><input id="supplierImportSpecifications" type="checkbox" checked> Додати відсутні характеристики</label><label class="check"><input id="supplierImportImages" type="checkbox"> Додати доступні фото</label><label class="check"><input id="supplierImportPublish" type="checkbox"> Публікувати нові товари</label><button class="button primary" type="button" id="supplierImportApply">Імпортувати вибрані</button></div><p class="admin-message" id="supplierImportMessage" hidden></p><p class="recovery-help" id="supplierImportSummary">Оберіть XML-файл для попереднього перегляду.</p><div class="admin-controls" id="supplierImportPagination" hidden></div><div class="admin-table-wrap"><table><thead><tr><th></th><th>Товар / джерело</th><th>SKU</th><th>Категорія</th><th>Дані джерела</th><th>Дія</th></tr></thead><tbody id="supplierImportRows"></tbody></table></div></section>`);
+    anchor.insertAdjacentHTML('afterend', `<section class="admin-section" id="supplierImport"><div class="admin-title"><div><h2>Імпорт ERC та ASBIS XML</h2><span>Товари, характеристики, ціни, залишки та посилання на фото від постачальників</span></div></div><p class="recovery-help"><b>ERC:</b> оберіть лише основний XML-файл — імпорт працює як раніше. <b>ASBIS:</b> оберіть <b>itemList.xml</b> і додатково <b>PriceAvail.xml</b>; вони з’єднаються за SKU. Характеристики додаються лише до порожніх полів, а вручну внесені значення залишаються без змін.</p><div class="admin-controls"><label>Основний XML (ERC або ASBIS itemList) <input id="supplierImportFile" type="file" accept=".xml,application/xml,text/xml"></label><label>Ціни та наявність ASBIS — необов’язково <input id="supplierImportPriceFile" type="file" accept=".xml,application/xml,text/xml"></label><input id="supplierImportLimit" type="number" min="1" max="100" value="50" title="Товарів на сторінці попереднього перегляду"></div><div class="admin-controls"><label>Пошук у попередньому перегляді <input id="supplierImportSearch" type="search" placeholder="Назва, SKU, бренд або категорія" autocomplete="off"></label><label>Показати <select id="supplierImportStatus"><option value="all">Усі товари</option><option value="new">Нові товари</option><option value="update">Оновити наявні</option><option value="ready">Зіставлені з категорією</option><option value="problem">Проблемні — без категорії</option></select></label></div><div class="admin-controls"><button class="button outline" type="button" id="supplierImportBrands">Створити відсутні бренди</button><button class="button outline" type="button" id="supplierImportSelectNew">Вибрати нові на сторінці</button><button class="button outline" type="button" id="supplierImportSelectVisible">Вибрати всі на сторінці</button><button class="button outline" type="button" id="supplierImportSelectMatched">Виділити всі знайдені (до 100)</button><button class="button outline" type="button" id="supplierImportClear">Очистити вибір</button><label class="check"><input id="supplierImportSpecifications" type="checkbox" checked> Додати відсутні характеристики</label><label class="check"><input id="supplierImportImages" type="checkbox"> Додати доступні фото</label><label class="check"><input id="supplierImportPublish" type="checkbox"> Публікувати нові товари</label><button class="button primary" type="button" id="supplierImportApply">Імпортувати вибрані</button></div><p class="admin-message" id="supplierImportMessage" hidden></p><p class="recovery-help" id="supplierImportSummary">Оберіть XML-файл для попереднього перегляду.</p><div id="supplierImportReport" class="import-report" hidden></div><div class="admin-controls" id="supplierImportPagination" hidden></div><div class="admin-table-wrap"><table><thead><tr><th></th><th>Товар / джерело</th><th>SKU</th><th>Категорія</th><th>Дані джерела</th><th>Дія</th></tr></thead><tbody id="supplierImportRows"></tbody></table></div></section>`);
     document.querySelector('.admin-nav').insertAdjacentHTML('beforeend', '<a href="#supplierImport">Імпорт ERC / ASBIS</a>');
     const section = $('#supplierImport');
     $('#supplierImportFile').addEventListener('change', async (event) => {

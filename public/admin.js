@@ -310,6 +310,22 @@ supabase.auth.getSession().then(({data:{session}})=>session?dashboard():view('lo
     const match = groups.find(([pattern]) => pattern.test(source));
     return { rootSlug: 'pobutova-tehnika', rootName: 'Побутова техніка', childName: match ? match[1] : '' };
   };
+  // Принтери й БФП розкладаємо одразу під час імпорту: кольорові та
+  // монохромні моделі не повинні спочатку потрапляти у стару змішану категорію ERC.
+  const officeEquipmentCategoryPlan = (row) => {
+    const source = [row.name, row.subcategory, row.sourceCategory, ...Object.values(row.specifications || {})]
+      .map(cleanImportText).join(' ').toLocaleLowerCase('uk-UA');
+    if (/(?:термо|thermal|label printer|етикет)/iu.test(source)) return null;
+    const isMfp = /(?:\bбфп\b|\bмфу\b|\bmfp\b|multifunction)/iu.test(source);
+    const isPrinter = /(?:принтер|\bprinter\b)/iu.test(source);
+    if (!isMfp && !isPrinter) return null;
+    const kind = isMfp ? 'mfp' : 'printers';
+    const isColor = /(?:\bcolor\b|\bcolour\b|кольоров)/iu.test(source);
+    const isMono = /(?:\bmono\b|monochrome|монохром|чорно[ -]?білий)/iu.test(source);
+    if (isColor) return { rootSlug: 'office-equipment', rootName: 'Оргтехніка', childSlug: 'office-' + kind + '-color', childName: isMfp ? 'Кольорові БФП' : 'Кольорові принтери' };
+    if (isMono) return { rootSlug: 'office-equipment', rootName: 'Оргтехніка', childSlug: 'office-' + kind + '-mono', childName: isMfp ? 'Монохромні БФП' : 'Монохромні принтери' };
+    return { rootSlug: 'office-equipment', rootName: 'Оргтехніка', childSlug: 'office-' + kind, childName: isMfp ? 'БФП' : 'Принтери' };
+  };
   const categoryFor = (row) => {
     const aenoPlan = aenoCategoryPlan(row);
     if (aenoPlan) {
@@ -317,6 +333,12 @@ supabase.auth.getSession().then(({data:{session}})=>session?dashboard():view('lo
       // Якщо підкатегорія вже була створена раніше, повторно її не додаємо,
       // навіть коли її старе розміщення у дереві відрізняється.
       const child = root && aenoPlan.childName ? (findImportCategory(aenoPlan.childName, root.id) || findImportCategory(aenoPlan.childName)) : null;
+      return child ? child.slug : '';
+    }
+    const officePlan = officeEquipmentCategoryPlan(row);
+    if (officePlan) {
+      const root = state.categories.find((category) => category.slug === officePlan.rootSlug) || findImportCategory(officePlan.rootName, null);
+      const child = root && (state.categories.find((category) => category.slug === officePlan.childSlug) || findImportCategory(officePlan.childName, root.id));
       return child ? child.slug : '';
     }
     const candidates = [row.subcategory, row.sourceCategory].map(normaliseCategory).filter(Boolean);
@@ -349,6 +371,8 @@ supabase.auth.getSession().then(({data:{session}})=>session?dashboard():view('lo
   const categoryPlan = (row) => {
     const aenoPlan = aenoCategoryPlan(row);
     if (aenoPlan) return aenoPlan;
+    const officePlan = officeEquipmentCategoryPlan(row);
+    if (officePlan) return officePlan;
     const source = (row.subcategory + ' ' + row.sourceCategory).toLocaleLowerCase('uk-UA');
     const roots = [
       [/про[єе]ктор|projection screen/i, 'cat-projectors', 'Проєктори та екрани'],
@@ -386,6 +410,14 @@ supabase.auth.getSession().then(({data:{session}})=>session?dashboard():view('lo
       if (!child) child = await createImportCategory(aenoPlan.childName, root.id);
       return child.slug;
     }
+    const officePlan = officeEquipmentCategoryPlan(row);
+    if (officePlan) {
+      let root = state.categories.find((category) => category.slug === officePlan.rootSlug) || findImportCategory(officePlan.rootName, null);
+      if (!root) root = await createImportCategory(officePlan.rootName, null, officePlan.rootSlug);
+      let child = state.categories.find((category) => category.slug === officePlan.childSlug) || findImportCategory(officePlan.childName, root.id);
+      if (!child) child = await createImportCategory(officePlan.childName, root.id, officePlan.childSlug);
+      return child.slug;
+    }
     const direct = state.categories.find((category) => [row.subcategory, row.sourceCategory].map(normaliseCategory).includes(normaliseCategory(category.name)));
     if (direct) return direct.slug;
     const plan = categoryPlan(row);
@@ -394,7 +426,7 @@ supabase.auth.getSession().then(({data:{session}})=>session?dashboard():view('lo
     if (!root) root = await createImportCategory(plan.rootName, null, plan.rootSlug);
     if (!plan.childName || normaliseCategory(plan.childName) === normaliseCategory(root.name)) return root.slug;
     let child = findImportCategory(plan.childName, root.id) || findImportCategory(plan.childName);
-    if (!child) child = await createImportCategory(plan.childName, root.id);
+    if (!child) child = await createImportCategory(plan.childName, root.id, plan.childSlug || '');
     return child.slug;
   };
   const applyPriceData = () => importer.rows.forEach((row) => {

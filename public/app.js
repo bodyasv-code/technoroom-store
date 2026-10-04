@@ -1024,7 +1024,7 @@ product = function () {
       : '';
     root.innerHTML = '<section class="product-showcase">'
       + '<div class="product-gallery-panel"><div class="product-detail-visual ' + safe(item.type) + '"><div class="product-image ' + safe(item.type) + '">' + (source ? '<img src="' + source + '" alt="' + safeName + '" draggable="false">' : '<div class="product-placeholder"><span>Фото товару<br>з’явиться незабаром</span></div>') + '</div><span class="product-photo-hint">Натисніть на фото, щоб збільшити</span></div>' + thumbs + '</div>'
-      + '<div class="product-overview"><div class="product-topline"><a href="catalog.html?category=' + encodeURIComponent(item.type || '') + '" class="product-category-link">Каталог</a><span class="product-code">SKU: ' + safe(item.sku || '—') + ' · Код: ' + item.id + '</span></div>'
+      + '<div class="product-overview"><div class="product-topline"><span class="product-category-path"><a href="catalog.html?category=' + encodeURIComponent(item.type || '') + '" class="product-category-link">Каталог</a></span><span class="product-code">SKU: ' + safe(item.sku || '—') + ' · Код: ' + item.id + '</span></div>'
       + '<p class="product-brand">' + safeBrand + '</p><h1>' + safeName + '</h1>' + variantMarkup
       + '<div class="product-buy-card"><div class="product-availability ' + (state.orderable || state.inquiry ? 'is-available' : 'is-unavailable') + '"><i></i><span>' + state.label + '</span></div>'
       + '<strong class="detail-price">' + money(item.price) + '</strong><p class="product-price-note">Ціна вказана за 1 одиницю товару</p>'
@@ -1036,6 +1036,7 @@ product = function () {
     root.querySelectorAll('[data-gallery-path]').forEach((button) => button.addEventListener('click', () => renderProductGallery(decodeURIComponent(button.dataset.galleryPath))));
   };
   renderProductGallery();
+  updateProductCategoryPath(item);
 };
 
 
@@ -1220,6 +1221,26 @@ const storefrontCategoryBranch = (slug) => {
 };
 
 const storefrontCategoryMatches = (product, slug) => storefrontCategoryBranch(slug).has(product.type);
+
+// На картці показуємо повний шлях товару, а не лише загальне слово «Каталог».
+// Дані беруться з єдиного дерева категорій, тому перейменування в адмінці
+// автоматично відображається і тут.
+const updateProductCategoryPath = async (product) => {
+  const categories = await loadStorefrontCategories();
+  const leaf = categories.find((category) => category.slug === product?.type);
+  if (!leaf) return;
+  const root = leaf.parent_id ? categories.find((category) => Number(category.id) === Number(leaf.parent_id)) : null;
+  const path = [root, leaf].filter(Boolean);
+  const links = path.map((category) => '<a href="catalog.html?category=' + encodeURIComponent(category.slug) + '">' + escapeHtml(category.name) + '</a>');
+  const pathMarkup = links.join('<span aria-hidden="true"> / </span>');
+  const productPathMarkup = links.join('<span aria-hidden="true"> › </span>');
+  const crumbs = document.querySelector('.breadcrumbs');
+  if (crumbs) {
+    crumbs.innerHTML = '<a href="index.html">Головна</a> / <a href="catalog.html">Каталог</a> / ' + pathMarkup + ' / Товар';
+  }
+  const categoryPath = document.querySelector('.product-category-path');
+  if (categoryPath) categoryPath.innerHTML = productPathMarkup;
+};
 
 const storefrontCategoryStyle = document.createElement('style');
 storefrontCategoryStyle.textContent = '.catalog-taxonomy{margin:0 0 16px}.catalog-taxonomy__root{width:100%;display:flex;align-items:center;justify-content:space-between;gap:12px;text-align:left}.catalog-taxonomy__root b,.catalog-taxonomy__child b{color:#6d8c00;font-size:11px}.catalog-taxonomy__root.is-selected{color:#587900}.catalog-taxonomy__group{margin:0 0 3px}.catalog-taxonomy__root-row{display:grid;grid-template-columns:minmax(0,1fr) 32px;align-items:stretch}.catalog-taxonomy__toggle{border:0;border-left:1px solid #e3e8e5;background:transparent;color:#60706d;font-size:17px;cursor:pointer}.catalog-taxonomy__toggle:hover{background:#f1f5ef;color:#587900}.catalog-taxonomy__children{display:none;margin:1px 0 7px 15px;padding:3px 0 4px 14px;border-left:1px solid #d8ff37}.catalog-taxonomy__group.is-open .catalog-taxonomy__children{display:block}.catalog-taxonomy__group.is-open .catalog-taxonomy__toggle{color:#587900}.catalog-taxonomy__child{display:flex!important;align-items:center;justify-content:space-between;gap:8px;padding:8px 0!important;color:#60706d!important;font-size:12px!important}.catalog-taxonomy__child.is-selected{color:#587900!important}.catalog-taxonomy__child span:first-child{padding-right:8px}.catalog-taxonomy__empty{display:none}@media(max-width:780px){.catalog-taxonomy{display:flex;gap:8px;min-width:max-content}.catalog-taxonomy__group{display:contents}.catalog-taxonomy__root-row{display:flex}.catalog-taxonomy__children{display:none!important;position:absolute;z-index:5;margin:42px 0 0;padding:8px;border:1px solid var(--line);background:#fff}.catalog-taxonomy__group.is-open .catalog-taxonomy__children{display:block!important}.catalog-taxonomy__root,.catalog-taxonomy__child{min-width:max-content;width:auto!important;padding:8px 10px!important;border:1px solid var(--line)!important;background:#fff!important}.catalog-taxonomy__root b,.catalog-taxonomy__child b{display:none}.catalog-taxonomy__toggle{width:32px;border:1px solid var(--line);border-left:0}}';

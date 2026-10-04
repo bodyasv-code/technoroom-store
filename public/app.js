@@ -14,6 +14,7 @@ const fallbackProducts = [
 ];
 let products = fallbackProducts;
 let productsLoaded = false;
+const isProductPage = Boolean(document.getElementById('productView'));
 let activePromotions=[]; let promotionProductIds=new Map();
 const scrollPositionKey = 'technoroom-scroll:' + location.pathname + location.search;
 let scrollPositionRestored = false;
@@ -421,7 +422,32 @@ schema.textContent = JSON.stringify({
 document.head.appendChild(schema); const specs = item.specifications ? Object.entries(item.specifications).map(([key, value]) => `<div><dt>${key}</dt><dd>${value}</dd></div>`).join('') : `<div><dt>Характеристики</dt><dd>${item.details || 'Уточнюйте у менеджера'}</dd></div>`; root.innerHTML = `<div class="product-detail-visual ${item.type}"><div class="product-image ${item.type}">${image(item)}</div></div><div class="product-detail-copy"><p class="eyebrow">${item.brand || ''}</p><h1>${item.name}</h1><p class="product-description">${item.description || ''}</p><p class="availability">${item.stock ? 'В наявності' : 'Немає в наявності'}</p><strong class="detail-price">${money(item.price)}</strong><div class="detail-actions"><button class="button primary" data-add="${item.id}" ${item.stock ? '' : 'disabled'}>${item.stock ? 'Додати в кошик' : 'Немає в наявності'}</button><a class="button outline" href="catalog.html">До каталогу</a></div><dl class="specs"><div><dt>Виробник</dt><dd>${item.brand || '—'}</dd></div>${specs}</dl></div>`; bind(root); }
 function checkout() { const form = document.getElementById('checkoutForm'); if (!form) return; const items = cart.map(get).filter(Boolean), total = items.reduce((sum, item) => sum + item.price, 0), root = document.getElementById('checkoutSummary'); root.innerHTML = items.length ? items.map((item) => `<div><span>${item.name}</span><strong>${money(item.price)}</strong></div>`).join('') + `<div class="checkout-total"><span>Разом</span><strong>${money(total)}</strong></div>` : '<p>Ваш кошик порожній. <a href="catalog.html">Перейти до каталогу</a></p>'; form.onsubmit = async (event) => { event.preventDefault(); if (items.some((item) => !item.stock)) return alert('У кошику є недоступний товар.'); const data = Object.fromEntries(new FormData(form)), button = form.querySelector('button'); button.disabled = true; try { const response = await fetch('/api/orders', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ customer: { name: data.name, phone: data.phone, email: data.email }, delivery: { city: data.city, address: data.address, comment: data.comment }, items: cart.map((productId) => ({ productId, quantity: 1 })) }) }); if (!response.ok) throw new Error(); localStorage.removeItem('technoroom-cart'); cart.length = 0; renderCart(); document.getElementById('checkoutNotice').hidden = false; button.textContent = 'Замовлення прийнято'; } catch { button.disabled = false; alert('Не вдалося створити замовлення. Спробуйте ще раз.'); } }; }
 function mount() { renderCart(); home(); catalog(); product(); checkout(); restoreScrollPosition(); const drawer = document.getElementById('cartDrawer'), overlay = document.getElementById('overlay'), close = () => { drawer?.classList.remove('open'); if (overlay) overlay.hidden = true; }; document.getElementById('cartButton')?.addEventListener('click', () => { drawer?.classList.add('open'); if (overlay) overlay.hidden = false; }); document.getElementById('closeCart')?.addEventListener('click', close); overlay?.addEventListener('click', close); document.getElementById('checkoutButton')?.addEventListener('click', () => location.href = 'checkout.html'); }
+const storeProductFromRow = (item) => ({ id: item.id, sku: item.sku, name: compactProductName(item.name, item.sku, item.brand), description: item.description, price: Number(item.price), type: item.category, brand: item.brand, brand_id:item.brand_id, parentProductId:item.parent_product_id, variantLabel:item.variant_label, specifications: item.specifications, availabilityStatus: item.availability_status, stockQuantity: Number(item.stock_quantity || 0), stock: item.in_stock && Number(item.stock_quantity || 0) > 0, image: item.image_path, imagePaths: item.image_paths });
+
+async function loadProductPageProducts() {
+  const id = Number(new URLSearchParams(location.search).get('id'));
+  if (!id) { products = []; return; }
+  const { data: requested, error } = await supabase.from('products').select('*').eq('id', id).eq('is_active', true).maybeSingle();
+  if (error) throw error;
+  if (!requested) { products = []; return; }
+  let base = requested;
+  if (requested.parent_product_id) {
+    const { data: parent, error: parentError } = await supabase.from('products').select('*').eq('id', requested.parent_product_id).eq('is_active', true).maybeSingle();
+    if (parentError) throw parentError;
+    if (parent) base = parent;
+  }
+  const { data: variants, error: variantsError } = await supabase.from('products').select('*').eq('parent_product_id', base.id).eq('is_active', true).order('id');
+  if (variantsError) throw variantsError;
+  const rows = [base, ...(variants || [])];
+  if (!rows.some((row) => Number(row.id) === Number(requested.id))) rows.push(requested);
+  products = rows.map(storeProductFromRow);
+}
+
 async function loadProducts() { try {
+  if (isProductPage) {
+    await loadProductPageProducts();
+    return;
+  }
   const pageSize = 1000;
   const all = [];
   for (let from = 0; ; from += pageSize) {
@@ -431,7 +457,7 @@ async function loadProducts() { try {
     all.push(...data);
     if (data.length < pageSize) break;
   }
-  if (all.length) products = all.map((item) => ({ id: item.id, sku: item.sku, name: compactProductName(item.name, item.sku, item.brand), description: item.description, price: Number(item.price), type: item.category, brand: item.brand, brand_id:item.brand_id, parentProductId:item.parent_product_id, variantLabel:item.variant_label, specifications: item.specifications, availabilityStatus: item.availability_status, stockQuantity: Number(item.stock_quantity || 0), stock: item.in_stock && Number(item.stock_quantity || 0) > 0, image: item.image_path }));
+  if (all.length) products = all.map(storeProductFromRow);
   const now=Date.now(),pr=await supabase.from('promotions').select('*').eq('is_active',true);if(pr.error)console.warn('Акції:',pr.error);else{activePromotions=(pr.data||[]).filter(p=>(!p.starts_at||new Date(p.starts_at).getTime()<=now)&&(!p.ends_at||new Date(p.ends_at).getTime()>=now));promotionProductIds.clear();const targeted=activePromotions.filter(p=>p.target_type==='products').map(p=>p.id);if(targeted.length){const pp=await supabase.from('promotion_products').select('promotion_id,product_id').in('promotion_id',targeted);if(pp.error)console.warn('Товари акцій:',pp.error);else(pp.data||[]).forEach(x=>{const key=Number(x.promotion_id);if(!promotionProductIds.has(key))promotionProductIds.set(key,new Set());promotionProductIds.get(key).add(Number(x.product_id))})}}
 } catch (error) { console.warn('Не вдалося завантажити каталог із Supabase', error); } finally { productsLoaded = true; mount(); await mountMegaCatalog(); } }
 if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', loadProducts, { once: true });
@@ -867,9 +893,10 @@ checkout = () => {
 
 };
 async function refreshAvailabilityStatuses() {
+  if (isProductPage) return;
   const { data, error } = await supabase.from('products').select('*').eq('is_active', true).order('created_at', { ascending: false });
   if (error || !data?.length) return;
-  products = data.map((item) => ({ id: item.id, sku: item.sku, name: compactProductName(item.name, item.sku, item.brand), description: item.description, price: Number(item.price), type: item.category, brand: item.brand, brand_id: item.brand_id, parentProductId:item.parent_product_id, variantLabel:item.variant_label, specifications: item.specifications, availabilityStatus: item.availability_status || ((item.in_stock && Number(item.stock_quantity || 0) > 0) ? 'in_stock' : 'out_of_stock'), stockQuantity: Number(item.stock_quantity || 0), stock: item.in_stock && Number(item.stock_quantity || 0) > 0, image: item.image_path }));
+  products = data.map((item) => ({ ...storeProductFromRow(item), availabilityStatus: item.availability_status || ((item.in_stock && Number(item.stock_quantity || 0) > 0) ? 'in_stock' : 'out_of_stock') }));
   mount();
 }
 window.addEventListener('load', refreshAvailabilityStatuses, { once: true });
@@ -891,7 +918,7 @@ let galleryByProductId = new Map();
 const galleryEntriesFor = (item) => {
   const row = galleryByProductId.get(Number(item.id));
   const primary = row?.image_path || item.image;
-  const extra = Array.isArray(row?.image_paths) ? row.image_paths : [];
+  const extra = Array.isArray(row?.image_paths) ? row.image_paths : (Array.isArray(item.imagePaths) ? item.imagePaths : []);
   return [...new Set([primary, ...extra].filter(Boolean))];
 };
 const galleryImageUrl = (item, path) => {
@@ -931,13 +958,14 @@ productVariantsStyle.textContent = '.product-variants{margin:18px 0 0}.product-v
 document.head.append(productVariantsStyle);
 
 async function hydrateProductGallery() {
+  if (isProductPage) return;
   const { data, error } = await supabase.from('products').select('id,image_path,image_paths').eq('is_active', true);
   if (!error && data) {
     galleryByProductId = new Map(data.map((row) => [Number(row.id), row]));
     product();
   }
 }
-hydrateProductGallery();
+if (!isProductPage) hydrateProductGallery();
 
 
 /* Сумісна версія галереї з актуальними статусами та характеристиками. */

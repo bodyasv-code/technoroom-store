@@ -326,6 +326,28 @@ supabase.auth.getSession().then(({data:{session}})=>session?dashboard():view('lo
     if (isMono) return { rootSlug: 'office-equipment', rootName: 'Оргтехніка', childSlug: 'office-' + kind + '-mono', childName: isMfp ? 'Монохромні БФП' : 'Монохромні принтери' };
     return { rootSlug: 'office-equipment', rootName: 'Оргтехніка', childSlug: 'office-' + kind, childName: isMfp ? 'БФП' : 'Принтери' };
   };
+  // Загальні правила застосовуємо лише до однозначних типів товарів. Вони
+  // доповнюють назви категорій із XML, але не переносять аксесуари до самих пристроїв.
+  const standardCategoryPlan = (row) => {
+    const source = [row.name, row.subcategory, row.sourceCategory, ...Object.values(row.specifications || {})]
+      .map(cleanImportText).join(' ').toLocaleLowerCase('uk-UA');
+    const isAccessory = /(?:чохол|case\b|cover\b|захисн(?:е|ий)? скло|screen protector|аксесуар|accessor|кабель|cable|адаптер|adapter|кріплен|mount)/iu.test(source);
+    const rules = [
+      [/(?:проекційн|projection).*(?:екран|screen)|(?:екран|screen).*(?:проекційн|projection)/iu, 'cat-projectors', 'Проєктори та екрани', 'erc-display-06', 'Проєкційні екрани'],
+      [/(?:лазерн|laser).*(?:про[єе]ктор|projector)|(?:про[єе]ктор|projector).*(?:лазерн|laser)/iu, 'cat-projectors', 'Проєктори та екрани', 'laser-proj', 'Лазерні проєктори'],
+      [/(?:короткофокус|short[ -]?throw).*(?:про[єе]ктор|projector)|(?:про[єе]ктор|projector).*(?:короткофокус|short[ -]?throw)/iu, 'cat-projectors', 'Проєктори та екрани', 'erc-display-12', 'Короткофокусні проєктори'],
+      [/(?:інсталяційн|installation).*(?:про[єе]ктор|projector)|(?:про[єе]ктор|projector).*(?:інсталяційн|installation)/iu, 'cat-projectors', 'Проєктори та екрани', 'erc-display-11', 'Інсталяційні проєктори'],
+      [/(?:^|\s)(?:монітор|monitor)\b/iu, 'cat-displays', 'Телевізори, монітори та дисплеї', 'erc-display-01', 'Монітори'],
+      [/(?:^|\s)(?:телевізор|television|tv)\b/iu, 'cat-displays', 'Телевізори, монітори та дисплеї', 'erc-display-07', 'Телевізори'],
+      [/(?:^|\s)(?:смартфон|smartphone|iphone|мобільн(?:ий|ого)? телефон)\b/iu, 'смартфони-телефони', 'Смартфони/Телефони', 'мобільнии-телефон', 'Мобільний телефон'],
+      [/(?:^|\s)(?:планшет|tablet|ipad)\b/iu, 'планшети', 'Планшети', 'планшетнии-комп-ютер', "Планшетний комп'ютер"],
+      [/(?:airpods)\b/iu, 'audio', 'Audio', 'airpods', 'AirPods'],
+      [/(?:apple watch|смарт-?годинник|smart ?watch)\b/iu, 'home-office-automation', 'Home / Office Automation', 'apple-watch', 'Apple Watch']
+    ];
+    if (isAccessory) return null;
+    const match = rules.find(([pattern]) => pattern.test(source));
+    return match ? { rootSlug: match[1], rootName: match[2], childSlug: match[3], childName: match[4] } : null;
+  };
   const categoryFor = (row) => {
     const aenoPlan = aenoCategoryPlan(row);
     if (aenoPlan) {
@@ -339,6 +361,12 @@ supabase.auth.getSession().then(({data:{session}})=>session?dashboard():view('lo
     if (officePlan) {
       const root = state.categories.find((category) => category.slug === officePlan.rootSlug) || findImportCategory(officePlan.rootName, null);
       const child = root && (state.categories.find((category) => category.slug === officePlan.childSlug) || findImportCategory(officePlan.childName, root.id));
+      return child ? child.slug : '';
+    }
+    const standardPlan = standardCategoryPlan(row);
+    if (standardPlan) {
+      const root = state.categories.find((category) => category.slug === standardPlan.rootSlug) || findImportCategory(standardPlan.rootName, null);
+      const child = root && (state.categories.find((category) => category.slug === standardPlan.childSlug) || findImportCategory(standardPlan.childName, root.id));
       return child ? child.slug : '';
     }
     const candidates = [row.subcategory, row.sourceCategory].map(normaliseCategory).filter(Boolean);
@@ -373,6 +401,8 @@ supabase.auth.getSession().then(({data:{session}})=>session?dashboard():view('lo
     if (aenoPlan) return aenoPlan;
     const officePlan = officeEquipmentCategoryPlan(row);
     if (officePlan) return officePlan;
+    const standardPlan = standardCategoryPlan(row);
+    if (standardPlan) return standardPlan;
     const source = (row.subcategory + ' ' + row.sourceCategory).toLocaleLowerCase('uk-UA');
     const roots = [
       [/про[єе]ктор|projection screen/i, 'cat-projectors', 'Проєктори та екрани'],
@@ -416,6 +446,14 @@ supabase.auth.getSession().then(({data:{session}})=>session?dashboard():view('lo
       if (!root) root = await createImportCategory(officePlan.rootName, null, officePlan.rootSlug);
       let child = state.categories.find((category) => category.slug === officePlan.childSlug) || findImportCategory(officePlan.childName, root.id);
       if (!child) child = await createImportCategory(officePlan.childName, root.id, officePlan.childSlug);
+      return child.slug;
+    }
+    const standardPlan = standardCategoryPlan(row);
+    if (standardPlan) {
+      let root = state.categories.find((category) => category.slug === standardPlan.rootSlug) || findImportCategory(standardPlan.rootName, null);
+      if (!root) root = await createImportCategory(standardPlan.rootName, null, standardPlan.rootSlug);
+      let child = state.categories.find((category) => category.slug === standardPlan.childSlug) || findImportCategory(standardPlan.childName, root.id);
+      if (!child) child = await createImportCategory(standardPlan.childName, root.id, standardPlan.childSlug);
       return child.slug;
     }
     const direct = state.categories.find((category) => [row.subcategory, row.sourceCategory].map(normaliseCategory).includes(normaliseCategory(category.name)));

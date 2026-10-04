@@ -28,37 +28,46 @@ set parent_id = excluded.parent_id,
     sort_order = excluded.sort_order,
     is_active = true;
 
+-- У старому імпорті ERC оргтехніка могла залишитися в об'єднаній категорії
+-- «ТВ, засоби відображення інформації, оргтехніка». Враховуємо її прямо,
+-- навіть якщо самої старої категорії вже немає у таблиці categories.
 -- Принтери: лише пристрої, без картриджів та витратних матеріалів.
 update public.products product
 set category = 'office-printers'
-where product.category in (select slug from public.categories where lower(name) like '%оргтех%' or slug in ('orgtehnika', 'office-equipment', 'office-tech'))
+where (product.category in (select slug from public.categories where lower(name) like '%оргтех%' or slug in ('orgtehnika', 'office-equipment', 'office-tech'))
+       or product.category = 'тв-засоби-відображення-інформаціі-оргтехніка')
   and product.name ~* '\m(?:принтер|printer)\M'
   and product.name !~* '\m(?:картридж|тонер|чорнил|ink|cartridge|toner)\M';
 
 -- Багатофункціональні пристрої.
 update public.products product
 set category = 'office-mfp'
-where product.category in (select slug from public.categories where lower(name) like '%оргтех%' or slug in ('orgtehnika', 'office-equipment', 'office-tech'))
+where (product.category in (select slug from public.categories where lower(name) like '%оргтех%' or slug in ('orgtehnika', 'office-equipment', 'office-tech'))
+       or product.category = 'тв-засоби-відображення-інформаціі-оргтехніка')
   and product.name ~* '\m(?:бфп|мфу|mfp|multifunction)\M';
 
 update public.products product
 set category = 'office-scanners'
-where product.category in (select slug from public.categories where lower(name) like '%оргтех%' or slug in ('orgtehnika', 'office-equipment', 'office-tech'))
+where (product.category in (select slug from public.categories where lower(name) like '%оргтех%' or slug in ('orgtehnika', 'office-equipment', 'office-tech'))
+       or product.category = 'тв-засоби-відображення-інформаціі-оргтехніка')
   and product.name ~* '\m(?:сканер|scanner)\M';
 
 update public.products product
 set category = 'office-copiers'
-where product.category in (select slug from public.categories where lower(name) like '%оргтех%' or slug in ('orgtehnika', 'office-equipment', 'office-tech'))
+where (product.category in (select slug from public.categories where lower(name) like '%оргтех%' or slug in ('orgtehnika', 'office-equipment', 'office-tech'))
+       or product.category = 'тв-засоби-відображення-інформаціі-оргтехніка')
   and product.name ~* '\m(?:копір|копир|copier)\M';
 
 update public.products product
 set category = 'office-laminators'
-where product.category in (select slug from public.categories where lower(name) like '%оргтех%' or slug in ('orgtehnika', 'office-equipment', 'office-tech'))
+where (product.category in (select slug from public.categories where lower(name) like '%оргтех%' or slug in ('orgtehnika', 'office-equipment', 'office-tech'))
+       or product.category = 'тв-засоби-відображення-інформаціі-оргтехніка')
   and product.name ~* '\m(?:ламінатор|ламинатор|laminator)\M';
 
 update public.products product
 set category = 'office-shredders'
-where product.category in (select slug from public.categories where lower(name) like '%оргтех%' or slug in ('orgtehnika', 'office-equipment', 'office-tech'))
+where (product.category in (select slug from public.categories where lower(name) like '%оргтех%' or slug in ('orgtehnika', 'office-equipment', 'office-tech'))
+       or product.category = 'тв-засоби-відображення-інформаціі-оргтехніка')
   and product.name ~* '\m(?:знищувач|шредер|shredder)\M';
 
 commit;

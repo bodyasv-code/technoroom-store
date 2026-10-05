@@ -556,8 +556,15 @@ supabase.auth.getSession().then(({data:{session}})=>session?dashboard():view('lo
     const report = importer.report;
     if (!report) { target.hidden = true; target.innerHTML = ''; return; }
     const failures = report.failures || [];
+    const skipped = report.skipped || 0;
+    const unmapped = report.unmapped || 0;
+    const missing = report.missing || 0;
     target.hidden = false;
-    target.innerHTML = '<div class="import-report-heading"><b>Результат останнього імпорту</b><span>Оброблено: '+report.attempted+'</span></div><div class="import-report-cards"><span>Створено <b>'+report.created+'</b></span><span>Оновлено <b>'+report.updated+'</b></span><span class="'+(failures.length?'is-problem':'')+'">Проблеми <b>'+failures.length+'</b></span></div>'+(failures.length?'<div class="import-report-problems"><b>Потрібна увага</b><ul>'+failures.slice(0,8).map((failure)=>'<li><code>'+esc(failure.sku||'без SKU')+'</code> — '+esc(failure.reason)+'</li>').join('')+'</ul><button class="button outline" type="button" id="supplierImportRetryIssues">Повторити проблемні ('+failures.length+')</button></div>':'<p class="import-report-ok">Імпорт завершено без помилок.</p>');
+    const waiting = [];
+    if (skipped) waiting.push('Не вибрано для цього запуску: <b>'+skipped+'</b>');
+    if (unmapped) waiting.push('Без категорії: <b>'+unmapped+'</b>');
+    if (missing) waiting.push('Відсутні у цьому файлі: <b>'+missing+'</b>');
+    target.innerHTML = '<div class="import-report-heading"><b>Результат останнього імпорту</b><span>Вибрано: '+report.attempted+' із '+(report.total || report.attempted)+'</span></div><div class="import-report-cards"><span>Створено <b>'+report.created+'</b></span><span>Оновлено <b>'+report.updated+'</b></span><span>Відкладено <b>'+skipped+'</b></span><span class="'+(failures.length || unmapped ? 'is-problem' : '')+'">Потрібна увага <b>'+(failures.length + unmapped)+'</b></span></div>'+(waiting.length?'<p class="recovery-help">'+waiting.join(' · ')+'. Відсутні у файлі товари автоматично не приховуються.</p>':'')+(failures.length?'<div class="import-report-problems"><b>Потрібна увага</b><ul>'+failures.slice(0,8).map((failure)=>'<li><code>'+esc(failure.sku||'без SKU')+'</code> — '+esc(failure.reason)+'</li>').join('')+'</ul><button class="button outline" type="button" id="supplierImportRetryIssues">Повторити проблемні ('+failures.length+')</button></div>':'<p class="import-report-ok">Імпорт завершено без помилок.</p>');
     $('#supplierImportRetryIssues')?.addEventListener('click', () => { importer.selected = new Set(failures.map((failure) => failure.key)); renderImportPreview(); importerStatus('Виділено проблемні позиції для повторної спроби.'); });
   };
   const updateImportSelectionSummary = () => {
@@ -677,6 +684,10 @@ supabase.auth.getSession().then(({data:{session}})=>session?dashboard():view('lo
     const publishNew = $('#supplierImportPublish').checked;
     const existing = knownBySku(), usedSlugs = new Set(state.products.map((product) => product.slug).filter(Boolean));
     const failures = []; const fail = (row, reason) => failures.push({ key: row.key, sku: row.sku, reason }); let created = 0, updated = 0;
+    const selectedKeys = new Set(selectedRows.map((row) => row.key));
+    const unmapped = importer.rows.filter((row) => !importRowMeta(row).mapped).length;
+    const skipped = importer.rows.filter((row) => !selectedKeys.has(row.key) && importRowMeta(row).mapped).length;
+    const reportBase = { attempted: selectedRows.length, total: importer.rows.length, skipped, unmapped, missing: missingFromSourceFile().length };
     const button = $('#supplierImportApply'); button.disabled = true; button.textContent = 'Імпорт…';
     importerStatus(`Починаю імпорт: 0 із ${selectedRows.length}. Не закривайте сторінку до завершення.`);
     try {
@@ -717,12 +728,12 @@ supabase.auth.getSession().then(({data:{session}})=>session?dashboard():view('lo
     }
     await loadData();
     importer.meta.clear();
-    importer.report = { attempted: selectedRows.length, created, updated, failures };
+    importer.report = { ...reportBase, created, updated, failures };
     importer.selected.clear(); renderImportPreview();
     renderImportReport();
     importerStatus(`Готово: створено ${created}, оновлено ${updated}.${failures.length ? ' Проблемних позицій: ' + failures.length + '.' : ''}`, Boolean(failures.length));
     } catch (error) {
-      importer.report = { attempted: selectedRows.length, created, updated, failures };
+      importer.report = { ...reportBase, created, updated, failures };
       renderImportReport();
       importerStatus(`Імпорт зупинено: ${error.message || error.code || 'невідома помилка'}. Створено: ${created}, оновлено: ${updated}.`, true);
     } finally {

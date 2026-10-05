@@ -330,6 +330,14 @@ supabase.auth.getSession().then(({data:{session}})=>session?dashboard():view('lo
     if (/(?:послуг|service|активац|технічн\w*\s+підтримк)/iu.test(source)) return { rootSlug: 'services', rootName: 'Послуги', childSlug: 'technical-support', childName: 'Технічна підтримка' };
     const isMfp = /(?:\bбфп\b|\bмфу\b|\bmfp\b|multifunction|багатофункціональн\w*\s+(?:пристрій|апарат))/iu.test(source);
     const isPrinter = /(?:принтер|\bprinter\b)/iu.test(source);
+    const isScanner = /(?:сканер|scanner)/iu.test(source);
+    const isCopier = /(?:копір|копир|copier)/iu.test(source);
+    const isLaminator = /(?:ламінатор|ламинатор|laminator)/iu.test(source);
+    const isShredder = /(?:знищувач|шредер|shredder)/iu.test(source);
+    if (isScanner) return { rootSlug: 'office-equipment', rootName: 'Оргтехніка', childSlug: 'office-scanners', childName: 'Сканери' };
+    if (isCopier) return { rootSlug: 'office-equipment', rootName: 'Оргтехніка', childSlug: 'office-copiers', childName: 'Копіри' };
+    if (isLaminator) return { rootSlug: 'office-equipment', rootName: 'Оргтехніка', childSlug: 'office-laminators', childName: 'Ламінатори' };
+    if (isShredder) return { rootSlug: 'office-equipment', rootName: 'Оргтехніка', childSlug: 'office-shredders', childName: 'Знищувачі документів' };
     if (!isMfp && !isPrinter) return null;
     const kind = isMfp ? 'mfp' : 'printers';
     const isColor = /(?:\bcolor\b|\bcolour\b|кольоров)/iu.test(source);

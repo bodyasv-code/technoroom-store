@@ -188,6 +188,8 @@ supabase.auth.getSession().then(({data:{session}})=>session?dashboard():view('lo
     const parsed = new DOMParser().parseFromString(decodeEntities(markup), 'text/html');
     return cleanImportText(parsed.body.textContent || '').slice(0, 3000);
   };
+  const isSupplierPromotionText = (value = '') => /(?:програма\s+захисту\s+рентабельності|зареєструват(?:ись|и)|знижк[ау]\s+на\s+бізнес|дилерськ(?:ого|ий)\s+прайс|кінцев(?:ого|ий)\s+замовник|представництв[ао]\s+epson)/iu.test(value);
+  const importDescription = (...values) => values.map(parseDescription).find((value) => value && !isSupplierPromotionText(value)) || '';
   const parseSpecifications = (markup = '') => {
     const parsed = new DOMParser().parseFromString(decodeEntities(markup), 'text/html');
     const specifications = {};
@@ -199,7 +201,7 @@ supabase.auth.getSession().then(({data:{session}})=>session?dashboard():view('lo
       const cells = [...row.querySelectorAll('th,td')].map((cell) => cleanImportText(cell.textContent)).filter(Boolean);
       if (cells.length >= 2) add(cells[0], cells.slice(1).join(' '));
     });
-    (parsed.body.innerText || '').split(/\n+/).forEach((line) => {
+    (parsed.body.innerText || '').split(/[\n;]+/).forEach((line) => {
       const match = cleanImportText(line).match(/^([^:]{2,120}):\s*(.+)$/);
       if (match) add(match[1], match[2]);
     });
@@ -207,10 +209,12 @@ supabase.auth.getSession().then(({data:{session}})=>session?dashboard():view('lo
   };
   const attributeSpecifications = (node) => {
     const specifications = {};
-    [...node.querySelectorAll('AttrList element, attrlist element')].forEach((item) => {
-      const key = canonicalSpecKey(item.getAttribute('Name') || item.getAttribute('name') || '');
-      const value = cleanImportText(item.getAttribute('Value') || item.getAttribute('value') || item.textContent || '');
+    const add = (rawKey, rawValue) => {
+      const key = canonicalSpecKey(rawKey || ''), value = cleanImportText(rawValue || '');
       if (key && value && key.length <= 120 && value.length <= 700) specifications[key] = value;
+    };
+    [...node.querySelectorAll('AttrList element, attrlist element, attribute, attr, parameter, property, specification, spec, feature, characteristic')].forEach((item) => {
+      add(item.getAttribute('Name') || item.getAttribute('name') || item.getAttribute('Key') || item.getAttribute('key') || item.getAttribute('Label') || item.getAttribute('label') || item.querySelector('name,key,label,title')?.textContent, item.getAttribute('Value') || item.getAttribute('value') || item.getAttribute('Data') || item.getAttribute('data') || item.querySelector('value,data,content')?.textContent || item.textContent);
     });
     return specifications;
   };
@@ -645,7 +649,7 @@ supabase.auth.getSession().then(({data:{session}})=>session?dashboard():view('lo
       const specifications = mergeMissingSpecifications(importedSpecifications, templateSpecifications([sourceName, sourceCategory, subcategory].filter(Boolean).join(' ')));
       const parsedStock = importQuantity(stockValue);
       const stock = parsedStock || (/^(in_stock|limited_stock)$/i.test(availabilityStatus) ? 1 : 0);
-      const row = { key: sku + '-' + index, vendor, name: cleanImportText(name), sku, sourceCategory, subcategory, price: importNumber(priceValue), hasPrice: Boolean(cleanImportText(priceValue)), stock, hasStock: Boolean(cleanImportText(stockValue) || availabilityStatus), availabilityStatus: availabilityStatus || undefined, description: parseDescription(shortDescription) || parseDescription(comment) || cleanImportText(sourceName), specifications, images: imagesFrom(node, comment) };
+      const row = { key: sku + '-' + index, vendor, name: cleanImportText(name), sku, sourceCategory, subcategory, price: importNumber(priceValue), hasPrice: Boolean(cleanImportText(priceValue)), stock, hasStock: Boolean(cleanImportText(stockValue) || availabilityStatus), availabilityStatus: availabilityStatus || undefined, description: importDescription(shortDescription, comment) || cleanImportText(sourceName), specifications, images: imagesFrom(node, comment) };
       if (row.name && row.sku) importer.rows.push(row);
       index += 1;
     }
@@ -708,7 +712,7 @@ supabase.auth.getSession().then(({data:{session}})=>session?dashboard():view('lo
       if (current) {
         const payload = { ...inventory };
         if (updateSpecifications && Object.keys(row.specifications).length) payload.specifications = mergeSpecifications(current.specifications, row.specifications);
-        if (!current.description && row.description) payload.description = row.description;
+        if (row.description && (!current.description || isSupplierPromotionText(current.description))) payload.description = row.description;
         const shouldImportImages = !current.image_path && images.length;
         const result = await supabase.from('products').update(payload).eq('id', current.id);
         if (result.error) fail(row, result.error.message || result.error.code);

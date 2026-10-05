@@ -1651,9 +1651,12 @@ catalog = function () {
     product.description
   ].map(specificationDisplayText).filter(Boolean).join(' ');
   const printerColorValues = (product) => {
-    const source = printerSource(product, /(?:колір|color|colour|тип\s+друку|print)/iu);
-    if (/(?:кольоров|\bcolor\b|\bcolour\b)/iu.test(source)) return ['Кольоровий'];
+    const title = readableText(product.name).toLocaleLowerCase('uk-UA');
+    if (/(?:\bcolor\b|\bcolour\b|кольоров)/iu.test(title)) return ['Кольоровий'];
+    if (/(?:монохром|чорно[ -]?білий|black[ -]?and[ -]?white|\bmono\b|\blaserjet\b)/iu.test(title)) return ['Монохромний'];
+    const source = printerSource(product, /(?:тип\s+друку|технолог.*друку|print\s*(?:type|mode|technolog)|color\s*mode|кольоровість)/iu);
     if (/(?:монохром|чорно[ -]?білий|black[ -]?and[ -]?white|\bmono\b)/iu.test(source)) return ['Монохромний'];
+    if (/(?:кольоров|\bcolor\b|\bcolour\b)/iu.test(source)) return ['Кольоровий'];
     return [];
   };
   const printerTechnologyValues = (product) => {
@@ -1695,7 +1698,7 @@ catalog = function () {
         return options.length ? { ...definition, options } : null;
       }).filter(Boolean);
     }
-    if (/^office-(?:printers|mfp)(?:-|$)/iu.test(category)) return printerFilterOptions(categoryProducts);
+    if (/^office-(?:printers|mfp)(?:-|$)|^office-wide-format$/iu.test(category)) return printerFilterOptions(categoryProducts);
     const phoneProducts = categoryProducts.filter((product) => isPhoneProduct(product));
     if (/(?:смартфон|телефон|phone)/iu.test(category) || phoneProducts.length >= Math.max(2, categoryProducts.length * 0.7)) return phoneFilterOptions(phoneProducts.length ? phoneProducts : categoryProducts);
     const projectorProducts = categoryProducts.filter((product) => /(?:про[єе]ктор|projector)/iu.test(readableText(product.name) + ' ' + readableText(product.type)));

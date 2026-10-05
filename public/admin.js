@@ -336,6 +336,19 @@ supabase.auth.getSession().then(({data:{session}})=>session?dashboard():view('lo
   // визначаємо тільки з назви, щоб випадкове число в характеристиках не
   // змінило категорію товару.
   const isWideFormat = (value = '') => /(?:^|[^0-9])(?:2[1-9]|[3-9][0-9]|[1-9][0-9]{2})\s*(?:"|″|”|''|дюйм(?:ів|и|а)?|inch(?:es)?|in\.?)(?=$|[^\p{L}\p{N}])/iu.test(value);
+  // «Color: Black» часто описує корпус, а не кольоровий друк. Тому
+  // кольоровість визначаємо з назви або лише з профільного поля про друк.
+  const printColourMode = (name = '', specifications = {}) => {
+    const title = cleanImportText(name).toLocaleLowerCase('uk-UA');
+    if (/(?:\bcolor\b|\bcolour\b|кольоров)/iu.test(title)) return 'color';
+    if (/(?:\bmono\b|monochrome|монохром|чорно[ -]?білий|\blaserjet\b)/iu.test(title)) return 'mono';
+    const printDetails = Object.entries(specifications || {})
+      .filter(([key]) => /(?:тип\s+друку|технолог.*друку|print\s*(?:type|mode|technolog)|color\s*mode|кольоровість)/iu.test(cleanImportText(key)))
+      .flatMap(([, value]) => Array.isArray(value) ? value : [value]).map(cleanImportText).join(' ').toLocaleLowerCase('uk-UA');
+    if (/(?:\bmono\b|monochrome|монохром|чорно[ -]?білий)/iu.test(printDetails)) return 'mono';
+    if (/(?:\bcolor\b|\bcolour\b|кольоров)/iu.test(printDetails)) return 'color';
+    return '';
+  };
   // Принтери й БФП розкладаємо одразу під час імпорту: кольорові та
   // монохромні моделі не повинні спочатку потрапляти у стару змішану категорію ERC.
   const officeEquipmentCategoryPlan = (row) => {
@@ -362,13 +375,12 @@ supabase.auth.getSession().then(({data:{session}})=>session?dashboard():view('lo
     // У JavaScript \b не розпізнає кирилицю як межу слова. Тому БФП/МФУ
     // перевіряємо без нього й обробляємо раніше за сканери: у БФП часто
     // є характеристика «сканер» або «копіювання».
-    const isColor = /(?:\bcolor\b|\bcolour\b|кольоров)/iu.test(source);
-    const isMono = /(?:\bmono\b|monochrome|монохром|чорно[ -]?білий)/iu.test(source);
+    const printMode = printColourMode(row.name, row.specifications);
     if (isMfp || isPrinter) {
       const kind = isMfp ? 'mfp' : 'printers';
-      if (isWideFormat(nameSource)) return { rootSlug: 'office-equipment', rootName: 'Оргтехніка', childSlug: 'office-' + kind + '-wide', childName: isMfp ? 'Широкоформатні БФП' : 'Широкоформатні принтери' };
-      if (isColor) return { rootSlug: 'office-equipment', rootName: 'Оргтехніка', childSlug: 'office-' + kind + '-color', childName: isMfp ? 'Кольорові БФП' : 'Кольорові принтери' };
-      if (isMono) return { rootSlug: 'office-equipment', rootName: 'Оргтехніка', childSlug: 'office-' + kind + '-mono', childName: isMfp ? 'Монохромні БФП' : 'Монохромні принтери' };
+      if (isWideFormat(nameSource)) return { rootSlug: 'office-equipment', rootName: 'Оргтехніка', childSlug: 'office-wide-format', childName: 'Принтери та БФП широкоформатні' };
+      if (printMode === 'mono') return { rootSlug: 'office-equipment', rootName: 'Оргтехніка', childSlug: 'office-' + kind + '-mono', childName: isMfp ? 'Монохромні БФП' : 'Монохромні принтери' };
+      if (printMode === 'color') return { rootSlug: 'office-equipment', rootName: 'Оргтехніка', childSlug: 'office-' + kind + '-color', childName: isMfp ? 'Кольорові БФП' : 'Кольорові принтери' };
       return { rootSlug: 'office-equipment', rootName: 'Оргтехніка', childSlug: 'office-' + kind, childName: isMfp ? 'БФП' : 'Принтери' };
     }
     if (isScanner) return { rootSlug: 'office-equipment', rootName: 'Оргтехніка', childSlug: 'office-scanners', childName: 'Сканери' };
@@ -840,19 +852,19 @@ supabase.auth.getSession().then(({data:{session}})=>session?dashboard():view('lo
   if (document.readyState !== 'loading') mountImporter();
   const expectedCategoryFromName = (product) => {
     const name = String(product?.name || '').trim().toLocaleLowerCase('uk-UA');
-    const details = (name + ' ' + Object.values(product?.specifications || {}).join(' ')).toLocaleLowerCase('uk-UA');
+    const printMode = printColourMode(product?.name, product?.specifications);
     if (/^(смартфон|smartphone|iphone|мобільн(?:ий|ого)\s+телефон)/iu.test(name) && !/(чохол|case|cover|кабель|cable|зарядн|charger|адаптер|adapter|дисплей|екран|display|запчастин|repair)/iu.test(name)) return 'мобільнии-телефон';
     if (/^(бфп|мфу|mfp|multifunction|багатофункціональн\w*\s+(?:пристрій|апарат))/iu.test(name)) {
-      if (isWideFormat(name)) return 'office-mfp-wide';
-      if (/(?:color|colour|кольоров)/iu.test(details)) return 'office-mfp-color';
-      if (/(?:mono|monochrome|монохром|чорно[ -]?білий)/iu.test(details)) return 'office-mfp-mono';
-      return 'office-mfp';
+      if (isWideFormat(name)) return 'office-wide-format';
+      if (printMode === 'color') return 'office-mfp-color';
+      if (printMode === 'mono') return 'office-mfp-mono';
+      return '';
     }
     if (/^(принтер|printer)/iu.test(name)) {
-      if (isWideFormat(name)) return 'office-printers-wide';
-      if (/(?:color|colour|кольоров)/iu.test(details)) return 'office-printers-color';
-      if (/(?:mono|monochrome|монохром|чорно[ -]?білий)/iu.test(details)) return 'office-printers-mono';
-      return 'office-printers';
+      if (isWideFormat(name)) return 'office-wide-format';
+      if (printMode === 'color') return 'office-printers-color';
+      if (printMode === 'mono') return 'office-printers-mono';
+      return '';
     }
     if (/^(сканер|scanner)/iu.test(name)) return 'office-scanners';
     return '';

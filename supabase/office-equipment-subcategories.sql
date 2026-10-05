@@ -17,10 +17,9 @@ with root as (
     ('БФП', 'office-mfp', 20),
     ('Кольорові принтери', 'office-printers-color', 11),
     ('Монохромні принтери', 'office-printers-mono', 12),
-    ('Широкоформатні принтери', 'office-printers-wide', 13),
     ('Кольорові БФП', 'office-mfp-color', 21),
     ('Монохромні БФП', 'office-mfp-mono', 22),
-    ('Широкоформатні БФП', 'office-mfp-wide', 23),
+    ('Принтери та БФП широкоформатні', 'office-wide-format', 25),
     ('Сканери', 'office-scanners', 30),
     ('Копіри', 'office-copiers', 40),
     ('Ламінатори', 'office-laminators', 50),
@@ -79,37 +78,38 @@ where (product.category in (select slug from public.categories where lower(name)
 -- Широкоформатні моделі мають пріоритет над типом друку: 21" і більше
 -- визначається лише з назви товару.
 update public.products product
-set category = 'office-printers-wide'
+set category = 'office-wide-format'
 where product.category = 'office-printers'
   and lower(coalesce(product.name, '')) ~ '(^|[^0-9])(2[1-9]|[3-9][0-9]|[1-9][0-9]{2})[[:space:]]*("|″|”|дюйм|inch|in\.)';
 
 update public.products product
-set category = 'office-mfp-wide'
+set category = 'office-wide-format'
 where product.category = 'office-mfp'
   and lower(coalesce(product.name, '')) ~ '(^|[^0-9])(2[1-9]|[3-9][0-9]|[1-9][0-9]{2})[[:space:]]*("|″|”|дюйм|inch|in\.)';
 
 -- Після базового розподілу деталізуємо принтери та БФП за типом друку.
--- Значення беруться з назви або характеристик. Якщо тип не вказано явно,
+-- Не використовуємо звичайне поле «Колір»: воно часто містить колір корпусу.
+-- Якщо тип не вказано явно,
 -- товар залишається в загальній категорії «Принтери» чи «БФП».
 update public.products product
 set category = 'office-printers-color'
 where product.category = 'office-printers'
-  and concat_ws(' ', product.name, product.specifications::text) ~* '\m(?:color|colour|кольоров)\M';
+  and lower(coalesce(product.name, '')) ~ '(color|colour|кольоров)';
 
 update public.products product
 set category = 'office-printers-mono'
 where product.category = 'office-printers'
-  and concat_ws(' ', product.name, product.specifications::text) ~* '\m(?:mono|monochrome|монохром|чорно[ -]?білий)\M';
+  and lower(coalesce(product.name, '')) ~ '(mono|monochrome|монохром|чорно[ -]?білий|laserjet)';
 
 update public.products product
 set category = 'office-mfp-color'
 where product.category = 'office-mfp'
-  and concat_ws(' ', product.name, product.specifications::text) ~* '\m(?:color|colour|кольоров)\M';
+  and lower(coalesce(product.name, '')) ~ '(color|colour|кольоров)';
 
 update public.products product
 set category = 'office-mfp-mono'
 where product.category = 'office-mfp'
-  and concat_ws(' ', product.name, product.specifications::text) ~* '\m(?:mono|monochrome|монохром|чорно[ -]?білий)\M';
+  and lower(coalesce(product.name, '')) ~ '(mono|monochrome|монохром|чорно[ -]?білий|laserjet)';
 
 commit;
 
@@ -117,6 +117,6 @@ commit;
 select category.name as "Підкатегорія", count(product.id) as "Товарів"
 from public.categories category
 left join public.products product on product.category = category.slug
-where category.slug in ('office-printers', 'office-mfp', 'office-printers-color', 'office-printers-mono', 'office-printers-wide', 'office-mfp-color', 'office-mfp-mono', 'office-mfp-wide', 'office-scanners', 'office-copiers', 'office-laminators', 'office-shredders')
+where category.slug in ('office-printers', 'office-mfp', 'office-printers-color', 'office-printers-mono', 'office-mfp-color', 'office-mfp-mono', 'office-wide-format', 'office-scanners', 'office-copiers', 'office-laminators', 'office-shredders')
 group by category.id, category.name, category.sort_order
 order by category.sort_order, category.name;

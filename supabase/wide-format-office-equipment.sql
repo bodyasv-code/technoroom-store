@@ -12,8 +12,7 @@ with root as (
   limit 1
 ), children(name, slug, sort_order) as (
   values
-    ('Широкоформатні принтери', 'office-printers-wide', 13),
-    ('Широкоформатні БФП', 'office-mfp-wide', 23)
+    ('Принтери та БФП широкоформатні', 'office-wide-format', 25)
 )
 insert into public.categories (name, slug, parent_id, sort_order, is_active)
 select children.name, children.slug, root.id, children.sort_order, true
@@ -30,11 +29,11 @@ with classified as (
     case
       when lower(coalesce(name, '')) ~ '(бфп|мфу|mfp|multifunction|багатофункціональн[^ ]*[[:space:]]+(пристрій|апарат))'
        and lower(coalesce(name, '')) ~ '(^|[^0-9])(2[1-9]|[3-9][0-9]|[1-9][0-9]{2})[[:space:]]*("|″|”|дюйм|inch|in\.)'
-        then 'office-mfp-wide'
+        then 'office-wide-format'
       when lower(coalesce(name, '')) ~ '(принтер|printer)'
        and lower(coalesce(name, '')) !~ '(картридж|тонер|чорнил|ink|cartridge|drum|фотобарабан)'
        and lower(coalesce(name, '')) ~ '(^|[^0-9])(2[1-9]|[3-9][0-9]|[1-9][0-9]{2})[[:space:]]*("|″|”|дюйм|inch|in\.)'
-        then 'office-printers-wide'
+        then 'office-wide-format'
     end as category
   from public.products
 )
@@ -45,10 +44,21 @@ where product.id = classified.id
   and classified.category is not null
   and product.category is distinct from classified.category;
 
+-- Попередня версія правила могла створити дві окремі підкатегорії.
+-- Об'єднуємо їх у спільну, не змінюючи жодних інших даних товару.
+update public.products
+set category = 'office-wide-format'
+where category in ('office-printers-wide', 'office-mfp-wide');
+
+update public.categories
+set is_active = false
+where slug in ('office-printers-wide', 'office-mfp-wide')
+  and not exists (select 1 from public.products product where product.category = categories.slug);
+
 commit;
 
 select category, count(*) as "Товарів"
 from public.products
-where category in ('office-printers-wide', 'office-mfp-wide')
+where category = 'office-wide-format'
 group by category
 order by category;

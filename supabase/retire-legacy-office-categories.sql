@@ -7,6 +7,40 @@
 
 begin;
 
+-- Розкладаємо всі прямі товари зі старої збірної категорії. Якщо тип не
+-- вдалося визначити однозначно, товар лишається у корені «Оргтехніка» —
+-- не у застарілій категорії ERC.
+with legacy_source as (
+  select id, lower(concat_ws(' ', name, description, specifications::text)) as text
+  from public.products
+  where category in (
+    'тв-засоби-відображення-інформаціі-оргтехніка',
+    'tv-zasobi-vidobrazhennya-informatsiyi-orgtehnika'
+  )
+), distributed as (
+  select id, case
+    when text ~ '(бфп|мфу|mfp|multifunction|багатофункціональн[^ ]*[[:space:]]+(пристрій|апарат))'
+         and text ~ '(color|colour|кольоров)' then 'office-mfp-color'
+    when text ~ '(бфп|мфу|mfp|multifunction|багатофункціональн[^ ]*[[:space:]]+(пристрій|апарат))'
+         and text ~ '(mono|monochrome|монохром|чорно[ -]?білий)' then 'office-mfp-mono'
+    when text ~ '(бфп|мфу|mfp|multifunction|багатофункціональн[^ ]*[[:space:]]+(пристрій|апарат))' then 'office-mfp'
+    when text ~ '(принтер|printer)' and text ~ '(color|colour|кольоров)' then 'office-printers-color'
+    when text ~ '(принтер|printer)' and text ~ '(mono|monochrome|монохром|чорно[ -]?білий)' then 'office-printers-mono'
+    when text ~ '(принтер|printer)' then 'office-printers'
+    when text ~ '(сканер|scanner)' then 'office-scanners'
+    when text ~ '(копір|копир|copier)' then 'office-copiers'
+    when text ~ '(ламінатор|ламинатор|laminator)' then 'office-laminators'
+    when text ~ '(знищувач|шредер|shredder)' then 'office-shredders'
+    when text ~ '(лоток|підставк|стенд|tray|stand|accessor|аксесуар)' then 'office-accessories'
+    else 'office-equipment'
+  end as category
+  from legacy_source
+)
+update public.products product
+set category = distributed.category
+from distributed
+where product.id = distributed.id;
+
 -- Підкатегорія зі старого XML дублює сучасну «Монохромні БФП».
 update public.products
 set category = 'office-mfp-mono'

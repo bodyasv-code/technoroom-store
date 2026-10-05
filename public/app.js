@@ -702,6 +702,20 @@ card = (product) => {
   const promotionBadge = promotion ? '<span class="sale-badge">' + (promotion.discount_type === 'percent' ? '-' + Number(promotion.discount_value) + '%' : 'АКЦІЯ') + '</span>' : '';
   const variantsCount = variants.length;
   const variantsNote = variantsCount ? '<span class="product-variants-note">Варіантів: ' + variantsCount + '</span>' : '';
+  const previewSpecs = Object.entries(displayProduct.specifications || {})
+    .map(([key, value]) => [readableText(key), specificationDisplayText(value)])
+    .filter(([key, value]) => key && value)
+    .slice(0, 4)
+    .map(([key, value]) => '<li><span>' + catalogCardEscape(key) + '</span><b>' + catalogCardEscape(value) + '</b></li>')
+    .join('');
+  const hoverPreview = `<a class="product-card-hover-preview" href="product.html?id=${product.id}" aria-label="Переглянути ${name}">
+    <span class="product-card-hover-image">${preview}</span>
+    <span class="product-card-hover-brand">${brand}</span>
+    <strong>${name}</strong>
+    <span class="product-card-hover-state">${state.label}</span>
+    ${previewSpecs ? '<ul>' + previewSpecs + '</ul>' : ''}
+    <span class="product-card-hover-bottom"><b>${money(currentPrice)}</b><em>Переглянути →</em></span>
+  </a>`;
   return `<article class="product product-card">
     ${promotionBadge}<a class="product-image ${product.type}" href="product.html?id=${product.id}" aria-label="Відкрити товар ${name}">${preview}</a>
     <div class="product-card-content">
@@ -709,7 +723,7 @@ card = (product) => {
       <h3><a href="product.html?id=${product.id}">${name}</a></h3>${variantsNote}
       ${promotion ? '<div class="promotion-name">🏷 Акція: <b>' + catalogCardEscape(promotion.name || 'Спеціальна пропозиція') + '</b></div>' : ''}
       <div class="product-footer"><div>${promotion ? '<del class="old-price">' + money(displayProduct.price) + '</del>' : ''}<strong class="price">${money(currentPrice)}</strong></div>${state.inquiry ? '<button class="add-button" data-inquiry="' + displayProduct.id + '">' + state.button + '</button>' : '<button class="add-button" data-add="' + displayProduct.id + '" ' + (state.orderable ? '' : 'disabled') + '>' + state.button + '</button>'}</div>
-    </div>
+    </div>${hoverPreview}
   </article>`;
 };
 // Для проекційних екранів частина постачальників передає параметри лише в назві

@@ -708,14 +708,18 @@ card = (product) => {
     .slice(0, 4)
     .map(([key, value]) => '<li><span>' + catalogCardEscape(key) + '</span><b>' + catalogCardEscape(value) + '</b></li>')
     .join('');
-  const hoverPreview = `<a class="product-card-hover-preview" href="product.html?id=${product.id}" aria-label="Переглянути ${name}">
-    <span class="product-card-hover-image">${preview}</span>
-    <span class="product-card-hover-brand">${brand}</span>
-    <strong>${name}</strong>
-    <span class="product-card-hover-state">${state.label}</span>
+  const hoverAction = state.inquiry
+    ? '<button type="button" class="product-card-hover-buy" data-inquiry="' + displayProduct.id + '">' + state.button + '</button>'
+    : '<button type="button" class="product-card-hover-buy" data-add="' + displayProduct.id + '" ' + (state.orderable ? '' : 'disabled') + '>' + (state.orderable ? '🛒 Купити' : state.button) + '</button>';
+  const hoverPreview = `<aside class="product-card-hover-preview" aria-label="Швидкий перегляд товару">
+    <span class="product-card-hover-code">Код товару: ${catalogCardEscape(displayProduct.sku || product.sku || '—')}</span>
+    <a class="product-card-hover-image" href="product.html?id=${product.id}" aria-label="Переглянути ${name}">${preview}</a>
+    <a class="product-card-hover-title" href="product.html?id=${product.id}">${name}</a>
+    <span class="product-card-hover-payment">▣ <span>Безпечна<br>оплата</span></span>
+    <span class="product-card-hover-review">◯ &nbsp; залишити відгук</span>
+    <span class="product-card-hover-bottom"><span>${promotion ? '<del>' + money(displayProduct.price) + '</del>' : ''}<b>${money(currentPrice)}</b></span>${hoverAction}</span>
     ${previewSpecs ? '<ul>' + previewSpecs + '</ul>' : ''}
-    <span class="product-card-hover-bottom"><b>${money(currentPrice)}</b><em>Переглянути →</em></span>
-  </a>`;
+  </aside>`;
   return `<article class="product product-card">
     ${promotionBadge}<a class="product-image ${product.type}" href="product.html?id=${product.id}" aria-label="Відкрити товар ${name}">${preview}</a>
     <div class="product-card-content">

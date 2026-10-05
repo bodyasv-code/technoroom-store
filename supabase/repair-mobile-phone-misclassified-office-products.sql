@@ -16,13 +16,28 @@ select 'Аксесуари для смартфонів', 'phone-accessories', id
 from accessories_root
 on conflict (slug) do update set parent_id = excluded.parent_id, is_active = true;
 
+-- Повертаємо реальні смартфони, які попередня версія правила могла
+-- помилково віднести до аксесуарів через слово з опису чи характеристик.
+-- Орієнтуємося лише на початок назви, тому чохли на кшталт «iPhone case»
+-- не зачіпаються.
+update public.products product
+set category = 'мобільнии-телефон'
+where product.category = 'phone-accessories'
+  and lower(coalesce(product.name, '')) ~ '^[[:space:]]*(смартфон|smartphone|iphone)'
+  and lower(coalesce(product.name, '')) !~ '(чохол|case|cover|захисн[^ ]*[[:space:]]+скло|screen[[:space:]]+protector|кабель|cable|зарядн|charger|адаптер|adapter)';
+
 with source as (
-  select id, lower(concat_ws(' ', name, description, specifications::text)) as text
+  select id,
+    lower(coalesce(name, '')) as name_text,
+    lower(concat_ws(' ', name, description, specifications::text)) as text
   from public.products
   where category in ('мобільнии-телефон', 'mobile-phone', 'mobile-phones')
 ), classified as (
   select id,
     case
+      -- Назва смартфона має пріоритет над випадковими словами в описі.
+      when name_text ~ '^[[:space:]]*(смартфон|smartphone|iphone)'
+           and name_text !~ '(чохол|case|cover|захисн[^ ]*[[:space:]]+скло|screen[[:space:]]+protector|кабель|cable|зарядн|charger|адаптер|adapter)' then 'мобільнии-телефон'
       -- БФП перевіряємо першим: у його параметрах часто є «сканер».
       when text ~ '(бфп|мфу|mfp|multifunction|багатофункціональн[^ ]*[[:space:]]+(пристрій|апарат))'
            and text ~ '(color|colour|кольоров)' then 'office-mfp-color'

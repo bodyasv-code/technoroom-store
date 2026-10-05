@@ -328,23 +328,28 @@ supabase.auth.getSession().then(({data:{session}})=>session?dashboard():view('lo
     if (/(?:навушник|headphone|headset|гарнітур)/iu.test(source)) return { rootSlug: 'audio', rootName: 'Audio', childSlug: 'headphones', childName: 'Навушники' };
     if (/(?:лоток|підставк|стенд|tray\b|stand\b|accessor|аксесуар|додатковий\s+планшет)/iu.test(source)) return { rootSlug: 'cat-accessories', rootName: 'Кріплення та аксесуари', childSlug: 'office-accessories', childName: 'Аксесуари для оргтехніки' };
     if (/(?:послуг|service|активац|технічн\w*\s+підтримк)/iu.test(source)) return { rootSlug: 'services', rootName: 'Послуги', childSlug: 'technical-support', childName: 'Технічна підтримка' };
-    const isMfp = /(?:\bбфп\b|\bмфу\b|\bmfp\b|multifunction|багатофункціональн\w*\s+(?:пристрій|апарат))/iu.test(source);
+    // У JavaScript \b не розпізнає кирилицю як межу слова. Тому БФП/МФУ
+    // перевіряємо без нього й обробляємо раніше за сканери: у БФП часто
+    // є характеристика «сканер» або «копіювання».
+    const isMfp = /(?:бфп|мфу|\bmfp\b|multifunction|багатофункціональн\w*\s+(?:пристрій|апарат))/iu.test(source);
     const isPrinter = /(?:принтер|\bprinter\b)/iu.test(source);
     const isScanner = /(?:сканер|scanner)/iu.test(source);
     const isCopier = /(?:копір|копир|copier)/iu.test(source);
     const isLaminator = /(?:ламінатор|ламинатор|laminator)/iu.test(source);
     const isShredder = /(?:знищувач|шредер|shredder)/iu.test(source);
+    const isColor = /(?:\bcolor\b|\bcolour\b|кольоров)/iu.test(source);
+    const isMono = /(?:\bmono\b|monochrome|монохром|чорно[ -]?білий)/iu.test(source);
+    if (isMfp || isPrinter) {
+      const kind = isMfp ? 'mfp' : 'printers';
+      if (isColor) return { rootSlug: 'office-equipment', rootName: 'Оргтехніка', childSlug: 'office-' + kind + '-color', childName: isMfp ? 'Кольорові БФП' : 'Кольорові принтери' };
+      if (isMono) return { rootSlug: 'office-equipment', rootName: 'Оргтехніка', childSlug: 'office-' + kind + '-mono', childName: isMfp ? 'Монохромні БФП' : 'Монохромні принтери' };
+      return { rootSlug: 'office-equipment', rootName: 'Оргтехніка', childSlug: 'office-' + kind, childName: isMfp ? 'БФП' : 'Принтери' };
+    }
     if (isScanner) return { rootSlug: 'office-equipment', rootName: 'Оргтехніка', childSlug: 'office-scanners', childName: 'Сканери' };
     if (isCopier) return { rootSlug: 'office-equipment', rootName: 'Оргтехніка', childSlug: 'office-copiers', childName: 'Копіри' };
     if (isLaminator) return { rootSlug: 'office-equipment', rootName: 'Оргтехніка', childSlug: 'office-laminators', childName: 'Ламінатори' };
     if (isShredder) return { rootSlug: 'office-equipment', rootName: 'Оргтехніка', childSlug: 'office-shredders', childName: 'Знищувачі документів' };
-    if (!isMfp && !isPrinter) return null;
-    const kind = isMfp ? 'mfp' : 'printers';
-    const isColor = /(?:\bcolor\b|\bcolour\b|кольоров)/iu.test(source);
-    const isMono = /(?:\bmono\b|monochrome|монохром|чорно[ -]?білий)/iu.test(source);
-    if (isColor) return { rootSlug: 'office-equipment', rootName: 'Оргтехніка', childSlug: 'office-' + kind + '-color', childName: isMfp ? 'Кольорові БФП' : 'Кольорові принтери' };
-    if (isMono) return { rootSlug: 'office-equipment', rootName: 'Оргтехніка', childSlug: 'office-' + kind + '-mono', childName: isMfp ? 'Монохромні БФП' : 'Монохромні принтери' };
-    return { rootSlug: 'office-equipment', rootName: 'Оргтехніка', childSlug: 'office-' + kind, childName: isMfp ? 'БФП' : 'Принтери' };
+    return null;
   };
   // Загальні правила застосовуємо лише до однозначних типів товарів. Вони
   // доповнюють назви категорій із XML, але не переносять аксесуари до самих пристроїв.

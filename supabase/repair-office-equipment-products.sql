@@ -33,29 +33,35 @@ set parent_id = excluded.parent_id,
 
 -- Спочатку БФП: назви на кшталт «Багатофункціональний пристрій» часто не
 -- містять слова «принтер» або «MFP», тому старе правило їх пропускало.
+-- ВАЖЛИВО: тип пристрою визначається тільки з назви. Характеристики можуть
+-- містити «LiDAR Scanner» у смартфона, але це не робить його сканером.
 with source as (
-  select id, lower(concat_ws(' ', name, description, specifications::text)) as text
+  select id,
+         lower(coalesce(name, '')) as name_text,
+         lower(concat_ws(' ', name, description, specifications::text)) as text
   from public.products
+  where category like 'office-%'
+     or lower(coalesce(name, '')) ~ '(^|[[:space:]])(бфп|мфу|mfp|multifunction|багатофункціональн|принтер|printer|сканер|scanner|копір|копир|copier|ламінатор|ламинатор|laminator|знищувач|шредер|shredder)'
 ), classified as (
   select id,
     case
-      when text ~ '(бфп|мфу|mfp|multifunction|багатофункціональн[^ ]*[[:space:]]+(пристрій|апарат))'
+      when name_text ~ '(бфп|мфу|mfp|multifunction|багатофункціональн[^ ]*[[:space:]]+(пристрій|апарат))'
            and text ~ '(color|colour|кольоров)' then 'office-mfp-color'
-      when text ~ '(бфп|мфу|mfp|multifunction|багатофункціональн[^ ]*[[:space:]]+(пристрій|апарат))'
+      when name_text ~ '(бфп|мфу|mfp|multifunction|багатофункціональн[^ ]*[[:space:]]+(пристрій|апарат))'
            and text ~ '(mono|monochrome|монохром|чорно[ -]?білий)' then 'office-mfp-mono'
-      when text ~ '(бфп|мфу|mfp|multifunction|багатофункціональн[^ ]*[[:space:]]+(пристрій|апарат))' then 'office-mfp'
-      when text ~ '(принтер|printer)'
+      when name_text ~ '(бфп|мфу|mfp|multifunction|багатофункціональн[^ ]*[[:space:]]+(пристрій|апарат))' then 'office-mfp'
+      when name_text ~ '(принтер|printer)'
            and text !~ '(картридж|тонер|чорнил|ink|cartridge|drum|фотобарабан)'
            and text ~ '(color|colour|кольоров)' then 'office-printers-color'
-      when text ~ '(принтер|printer)'
+      when name_text ~ '(принтер|printer)'
            and text !~ '(картридж|тонер|чорнил|ink|cartridge|drum|фотобарабан)'
            and text ~ '(mono|monochrome|монохром|чорно[ -]?білий)' then 'office-printers-mono'
-      when text ~ '(принтер|printer)'
+      when name_text ~ '(принтер|printer)'
            and text !~ '(картридж|тонер|чорнил|ink|cartridge|drum|фотобарабан)' then 'office-printers'
-      when text ~ '(сканер|scanner)' then 'office-scanners'
-      when text ~ '(копір|копир|copier)' then 'office-copiers'
-      when text ~ '(ламінатор|ламинатор|laminator)' then 'office-laminators'
-      when text ~ '(знищувач|шредер|shredder)' then 'office-shredders'
+      when name_text ~ '(сканер|scanner)' then 'office-scanners'
+      when name_text ~ '(копір|копир|copier)' then 'office-copiers'
+      when name_text ~ '(ламінатор|ламинатор|laminator)' then 'office-laminators'
+      when name_text ~ '(знищувач|шредер|shredder)' then 'office-shredders'
     end as category
   from source
 )

@@ -322,8 +322,14 @@ supabase.auth.getSession().then(({data:{session}})=>session?dashboard():view('lo
   // Принтери й БФП розкладаємо одразу під час імпорту: кольорові та
   // монохромні моделі не повинні спочатку потрапляти у стару змішану категорію ERC.
   const officeEquipmentCategoryPlan = (row) => {
+    // Тип пристрою визначаємо виключно за назвою. Слова на кшталт
+    // «scanner» у характеристиках смартфона (наприклад LiDAR Scanner)
+    // не повинні перетворювати його на сканер.
+    const nameSource = cleanImportText(row.name).toLocaleLowerCase('uk-UA');
     const source = [row.name, row.subcategory, row.sourceCategory, ...Object.values(row.specifications || {})]
       .map(cleanImportText).join(' ').toLocaleLowerCase('uk-UA');
+    if (/(?:^|[\s-])(?:смартфон|smartphone|iphone|мобільн(?:ий|ого)?\s+телефон)/iu.test(nameSource)) return null;
+    if (/(?:^|[\s-])(?:планшет|tablet|ipad)/iu.test(nameSource)) return null;
     if (/(?:термо|thermal|label printer|етикет)/iu.test(source)) return null;
     if (/(?:навушник|headphone|headset|гарнітур)/iu.test(source)) return { rootSlug: 'audio', rootName: 'Audio', childSlug: 'headphones', childName: 'Навушники' };
     if (/(?:лоток|підставк|стенд|tray\b|stand\b|accessor|аксесуар|додатковий\s+планшет)/iu.test(source)) return { rootSlug: 'cat-accessories', rootName: 'Кріплення та аксесуари', childSlug: 'office-accessories', childName: 'Аксесуари для оргтехніки' };
@@ -331,12 +337,12 @@ supabase.auth.getSession().then(({data:{session}})=>session?dashboard():view('lo
     // У JavaScript \b не розпізнає кирилицю як межу слова. Тому БФП/МФУ
     // перевіряємо без нього й обробляємо раніше за сканери: у БФП часто
     // є характеристика «сканер» або «копіювання».
-    const isMfp = /(?:бфп|мфу|\bmfp\b|multifunction|багатофункціональн\w*\s+(?:пристрій|апарат))/iu.test(source);
-    const isPrinter = /(?:принтер|\bprinter\b)/iu.test(source);
-    const isScanner = /(?:сканер|scanner)/iu.test(source);
-    const isCopier = /(?:копір|копир|copier)/iu.test(source);
-    const isLaminator = /(?:ламінатор|ламинатор|laminator)/iu.test(source);
-    const isShredder = /(?:знищувач|шредер|shredder)/iu.test(source);
+    const isMfp = /(?:бфп|мфу|\bmfp\b|multifunction|багатофункціональн\w*\s+(?:пристрій|апарат))/iu.test(nameSource);
+    const isPrinter = /(?:принтер|\bprinter\b)/iu.test(nameSource);
+    const isScanner = /(?:сканер|scanner)/iu.test(nameSource);
+    const isCopier = /(?:копір|копир|copier)/iu.test(nameSource);
+    const isLaminator = /(?:ламінатор|ламинатор|laminator)/iu.test(nameSource);
+    const isShredder = /(?:знищувач|шредер|shredder)/iu.test(nameSource);
     const isColor = /(?:\bcolor\b|\bcolour\b|кольоров)/iu.test(source);
     const isMono = /(?:\bmono\b|monochrome|монохром|чорно[ -]?білий)/iu.test(source);
     if (isMfp || isPrinter) {
@@ -354,9 +360,12 @@ supabase.auth.getSession().then(({data:{session}})=>session?dashboard():view('lo
   // Загальні правила застосовуємо лише до однозначних типів товарів. Вони
   // доповнюють назви категорій із XML, але не переносять аксесуари до самих пристроїв.
   const standardCategoryPlan = (row) => {
-    const source = [row.name, row.subcategory, row.sourceCategory, ...Object.values(row.specifications || {})]
+    // Для основної категорії достатньо назви товару. Параметри залишаємо
+    // для фільтрів: вони не можуть випадково перекласифікувати товар.
+    const nameSource = cleanImportText(row.name).toLocaleLowerCase('uk-UA');
+    const source = [row.name, row.subcategory, row.sourceCategory]
       .map(cleanImportText).join(' ').toLocaleLowerCase('uk-UA');
-    const isAccessory = /(?:чохол|case\b|cover\b|захисн(?:е|ий)? скло|screen protector|аксесуар|accessor|кабель|cable|адаптер|adapter|кріплен|mount)/iu.test(source);
+    const isAccessory = /(?:чохол|case\b|cover\b|захисн(?:е|ий)? скло|screen protector|аксесуар|accessor|кабель|cable|адаптер|adapter|кріплен|mount)/iu.test(nameSource);
     const rules = [
       [/(?:проекційн|projection).*(?:екран|screen)|(?:екран|screen).*(?:проекційн|projection)/iu, 'cat-projectors', 'Проєктори та екрани', 'erc-display-06', 'Проєкційні екрани'],
       [/(?:лазерн|laser).*(?:про[єе]ктор|projector)|(?:про[єе]ктор|projector).*(?:лазерн|laser)/iu, 'cat-projectors', 'Проєктори та екрани', 'laser-proj', 'Лазерні проєктори'],
@@ -370,7 +379,7 @@ supabase.auth.getSession().then(({data:{session}})=>session?dashboard():view('lo
       [/(?:apple watch|смарт-?годинник|smart ?watch)\b/iu, 'home-office-automation', 'Home / Office Automation', 'apple-watch', 'Apple Watch']
     ];
     if (isAccessory) return null;
-    const match = rules.find(([pattern]) => pattern.test(source));
+    const match = rules.find(([pattern]) => pattern.test(nameSource));
     return match ? { rootSlug: match[1], rootName: match[2], childSlug: match[3], childName: match[4] } : null;
   };
   const categoryFor = (row) => {

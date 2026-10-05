@@ -1,0 +1,84 @@
+-- TECHNOROOM: масово виправляє категорії наявних принтерів і БФП.
+-- Призначення: старі товари могли залишитися без категорії або в застарілому
+-- розділі після імпорту. Опис, характеристики, ціни та видимість не змінюються.
+-- Скрипт безпечно запускати повторно.
+
+begin;
+
+with root as (
+  select id from public.categories
+  where slug = 'office-equipment' or lower(name) like '%оргтех%'
+  order by case when slug = 'office-equipment' then 0 else 1 end, id
+  limit 1
+), children(name, slug, sort_order) as (
+  values
+    ('Принтери', 'office-printers', 10),
+    ('БФП', 'office-mfp', 20),
+    ('Кольорові принтери', 'office-printers-color', 11),
+    ('Монохромні принтери', 'office-printers-mono', 12),
+    ('Кольорові БФП', 'office-mfp-color', 21),
+    ('Монохромні БФП', 'office-mfp-mono', 22),
+    ('Сканери', 'office-scanners', 30),
+    ('Копіри', 'office-copiers', 40),
+    ('Ламінатори', 'office-laminators', 50),
+    ('Знищувачі документів', 'office-shredders', 60)
+)
+insert into public.categories (name, slug, parent_id, sort_order, is_active)
+select children.name, children.slug, root.id, children.sort_order, true
+from children cross join root
+on conflict (slug) do update
+set parent_id = excluded.parent_id,
+    sort_order = excluded.sort_order,
+    is_active = true;
+
+-- Спочатку БФП: назви на кшталт «Багатофункціональний пристрій» часто не
+-- містять слова «принтер» або «MFP», тому старе правило їх пропускало.
+with source as (
+  select id, lower(concat_ws(' ', name, description, specifications::text)) as text
+  from public.products
+), classified as (
+  select id,
+    case
+      when text ~ '(бфп|мфу|mfp|multifunction|багатофункціональн[^ ]*[[:space:]]+(пристрій|апарат))'
+           and text ~ '(color|colour|кольоров)' then 'office-mfp-color'
+      when text ~ '(бфп|мфу|mfp|multifunction|багатофункціональн[^ ]*[[:space:]]+(пристрій|апарат))'
+           and text ~ '(mono|monochrome|монохром|чорно[ -]?білий)' then 'office-mfp-mono'
+      when text ~ '(бфп|мфу|mfp|multifunction|багатофункціональн[^ ]*[[:space:]]+(пристрій|апарат))' then 'office-mfp'
+      when text ~ '(принтер|printer)'
+           and text !~ '(картридж|тонер|чорнил|ink|cartridge|drum|фотобарабан)'
+           and text ~ '(color|colour|кольоров)' then 'office-printers-color'
+      when text ~ '(принтер|printer)'
+           and text !~ '(картридж|тонер|чорнил|ink|cartridge|drum|фотобарабан)'
+           and text ~ '(mono|monochrome|монохром|чорно[ -]?білий)' then 'office-printers-mono'
+      when text ~ '(принтер|printer)'
+           and text !~ '(картридж|тонер|чорнил|ink|cartridge|drum|фотобарабан)' then 'office-printers'
+      when text ~ '(сканер|scanner)' then 'office-scanners'
+      when text ~ '(копір|копир|copier)' then 'office-copiers'
+      when text ~ '(ламінатор|ламинатор|laminator)' then 'office-laminators'
+      when text ~ '(знищувач|шредер|shredder)' then 'office-shredders'
+    end as category
+  from source
+)
+update public.products product
+set category = classified.category
+from classified
+where product.id = classified.id
+  and classified.category is not null
+  and product.category is distinct from classified.category;
+
+commit;
+
+-- Контроль після запуску: усі знайдені пристрої й позиції, де ще бракує даних.
+select category, count(*) as "Товарів"
+from public.products
+where category like 'office-%'
+group by category
+order by category;
+
+select id, name, sku,
+  case when nullif(trim(coalesce(description, '')), '') is null then 'немає опису' end as "Опис",
+  case when specifications is null or specifications = '{}'::jsonb then 'немає характеристик' end as "Характеристики"
+from public.products
+where category like 'office-%'
+  and (nullif(trim(coalesce(description, '')), '') is null or specifications is null or specifications = '{}'::jsonb)
+order by name;

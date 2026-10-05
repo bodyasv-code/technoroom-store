@@ -319,7 +319,7 @@ supabase.auth.getSession().then(({data:{session}})=>session?dashboard():view('lo
     const source = [row.name, row.subcategory, row.sourceCategory, ...Object.values(row.specifications || {})]
       .map(cleanImportText).join(' ').toLocaleLowerCase('uk-UA');
     if (/(?:термо|thermal|label printer|етикет)/iu.test(source)) return null;
-    const isMfp = /(?:\bбфп\b|\bмфу\b|\bmfp\b|multifunction)/iu.test(source);
+    const isMfp = /(?:\bбфп\b|\bмфу\b|\bmfp\b|multifunction|багатофункціональн\w*\s+(?:пристрій|апарат))/iu.test(source);
     const isPrinter = /(?:принтер|\bprinter\b)/iu.test(source);
     if (!isMfp && !isPrinter) return null;
     const kind = isMfp ? 'mfp' : 'printers';

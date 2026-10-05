@@ -430,6 +430,11 @@ supabase.auth.getSession().then(({data:{session}})=>session?dashboard():view('lo
     if (standardPlan) return standardPlan;
     const source = (row.subcategory + ' ' + row.sourceCategory).toLocaleLowerCase('uk-UA');
     const roots = [
+      // У старому XML ERC назва «ТВ, засоби відображення інформації,
+      // оргтехніка» є технічною збірною групою, а не категорією магазину.
+      // Не даємо їй створюватися знову: конкретні пристрої розкладає
+      // officeEquipmentCategoryPlan, інші залишаються в «Оргтехніці».
+      [/оргтех|office\s*equipment/i, 'office-equipment', 'Оргтехніка'],
       [/про[єе]ктор|projection screen/i, 'cat-projectors', 'Проєктори та екрани'],
       [/телевізор|\btv\b|монітор|display/i, 'cat-displays', 'Телевізори, монітори та дисплеї'],
       [/акуст|навуш|гарнітур|саундбар|мікрофон|soundbar|headphone/i, 'cat-audio', 'Акустика й звук'],

@@ -321,6 +321,9 @@ supabase.auth.getSession().then(({data:{session}})=>session?dashboard():view('lo
     const source = [row.name, row.subcategory, row.sourceCategory, ...Object.values(row.specifications || {})]
       .map(cleanImportText).join(' ').toLocaleLowerCase('uk-UA');
     if (/(?:термо|thermal|label printer|етикет)/iu.test(source)) return null;
+    if (/(?:навушник|headphone|headset|гарнітур)/iu.test(source)) return { rootSlug: 'audio', rootName: 'Audio', childSlug: 'headphones', childName: 'Навушники' };
+    if (/(?:лоток|підставк|стенд|tray\b|stand\b|accessor|аксесуар|додатковий\s+планшет)/iu.test(source)) return { rootSlug: 'cat-accessories', rootName: 'Кріплення та аксесуари', childSlug: 'office-accessories', childName: 'Аксесуари для оргтехніки' };
+    if (/(?:послуг|service|активац|технічн\w*\s+підтримк)/iu.test(source)) return { rootSlug: 'services', rootName: 'Послуги', childSlug: 'technical-support', childName: 'Технічна підтримка' };
     const isMfp = /(?:\bбфп\b|\bмфу\b|\bmfp\b|multifunction|багатофункціональн\w*\s+(?:пристрій|апарат))/iu.test(source);
     const isPrinter = /(?:принтер|\bprinter\b)/iu.test(source);
     if (!isMfp && !isPrinter) return null;

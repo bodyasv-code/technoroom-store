@@ -17,8 +17,10 @@ with root as (
     ('БФП', 'office-mfp', 20),
     ('Кольорові принтери', 'office-printers-color', 11),
     ('Монохромні принтери', 'office-printers-mono', 12),
+    ('Широкоформатні принтери', 'office-printers-wide', 13),
     ('Кольорові БФП', 'office-mfp-color', 21),
     ('Монохромні БФП', 'office-mfp-mono', 22),
+    ('Широкоформатні БФП', 'office-mfp-wide', 23),
     ('Сканери', 'office-scanners', 30),
     ('Копіри', 'office-copiers', 40),
     ('Ламінатори', 'office-laminators', 50),
@@ -74,6 +76,18 @@ where (product.category in (select slug from public.categories where lower(name)
        or product.category = 'тв-засоби-відображення-інформаціі-оргтехніка')
   and product.name ~* '\m(?:знищувач|шредер|shredder)\M';
 
+-- Широкоформатні моделі мають пріоритет над типом друку: 21" і більше
+-- визначається лише з назви товару.
+update public.products product
+set category = 'office-printers-wide'
+where product.category = 'office-printers'
+  and lower(coalesce(product.name, '')) ~ '(^|[^0-9])(2[1-9]|[3-9][0-9]|[1-9][0-9]{2})[[:space:]]*("|″|”|дюйм|inch|in\.)';
+
+update public.products product
+set category = 'office-mfp-wide'
+where product.category = 'office-mfp'
+  and lower(coalesce(product.name, '')) ~ '(^|[^0-9])(2[1-9]|[3-9][0-9]|[1-9][0-9]{2})[[:space:]]*("|″|”|дюйм|inch|in\.)';
+
 -- Після базового розподілу деталізуємо принтери та БФП за типом друку.
 -- Значення беруться з назви або характеристик. Якщо тип не вказано явно,
 -- товар залишається в загальній категорії «Принтери» чи «БФП».
@@ -103,6 +117,6 @@ commit;
 select category.name as "Підкатегорія", count(product.id) as "Товарів"
 from public.categories category
 left join public.products product on product.category = category.slug
-where category.slug in ('office-printers', 'office-mfp', 'office-printers-color', 'office-printers-mono', 'office-mfp-color', 'office-mfp-mono', 'office-scanners', 'office-copiers', 'office-laminators', 'office-shredders')
+where category.slug in ('office-printers', 'office-mfp', 'office-printers-color', 'office-printers-mono', 'office-printers-wide', 'office-mfp-color', 'office-mfp-mono', 'office-mfp-wide', 'office-scanners', 'office-copiers', 'office-laminators', 'office-shredders')
 group by category.id, category.name, category.sort_order
 order by category.sort_order, category.name;

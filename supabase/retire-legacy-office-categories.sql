@@ -11,7 +11,9 @@ begin;
 -- вдалося визначити однозначно, товар лишається у корені «Оргтехніка» —
 -- не у застарілій категорії ERC.
 with legacy_source as (
-  select id, lower(concat_ws(' ', name, description, specifications::text)) as text
+  select id,
+         lower(coalesce(name, '')) as name_text,
+         lower(concat_ws(' ', name, description, specifications::text)) as text
   from public.products
   where category in (
     'тв-засоби-відображення-інформаціі-оргтехніка',
@@ -19,11 +21,15 @@ with legacy_source as (
   )
 ), distributed as (
   select id, case
+    when name_text ~ '(бфп|мфу|mfp|multifunction|багатофункціональн[^ ]*[[:space:]]+(пристрій|апарат))'
+         and name_text ~ '(^|[^0-9])(2[1-9]|[3-9][0-9]|[1-9][0-9]{2})[[:space:]]*("|″|”|дюйм|inch|in\.)' then 'office-mfp-wide'
     when text ~ '(бфп|мфу|mfp|multifunction|багатофункціональн[^ ]*[[:space:]]+(пристрій|апарат))'
          and text ~ '(color|colour|кольоров)' then 'office-mfp-color'
     when text ~ '(бфп|мфу|mfp|multifunction|багатофункціональн[^ ]*[[:space:]]+(пристрій|апарат))'
          and text ~ '(mono|monochrome|монохром|чорно[ -]?білий)' then 'office-mfp-mono'
     when text ~ '(бфп|мфу|mfp|multifunction|багатофункціональн[^ ]*[[:space:]]+(пристрій|апарат))' then 'office-mfp'
+    when name_text ~ '(принтер|printer)'
+         and name_text ~ '(^|[^0-9])(2[1-9]|[3-9][0-9]|[1-9][0-9]{2})[[:space:]]*("|″|”|дюйм|inch|in\.)' then 'office-printers-wide'
     when text ~ '(принтер|printer)' and text ~ '(color|colour|кольоров)' then 'office-printers-color'
     when text ~ '(принтер|printer)' and text ~ '(mono|monochrome|монохром|чорно[ -]?білий)' then 'office-printers-mono'
     when text ~ '(принтер|printer)' then 'office-printers'

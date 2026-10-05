@@ -16,8 +16,10 @@ with root as (
     ('БФП', 'office-mfp', 20),
     ('Кольорові принтери', 'office-printers-color', 11),
     ('Монохромні принтери', 'office-printers-mono', 12),
+    ('Широкоформатні принтери', 'office-printers-wide', 13),
     ('Кольорові БФП', 'office-mfp-color', 21),
     ('Монохромні БФП', 'office-mfp-mono', 22),
+    ('Широкоформатні БФП', 'office-mfp-wide', 23),
     ('Сканери', 'office-scanners', 30),
     ('Копіри', 'office-copiers', 40),
     ('Ламінатори', 'office-laminators', 50),
@@ -45,11 +47,18 @@ with source as (
 ), classified as (
   select id,
     case
+      -- Формат 21" і більше має пріоритет над кольоровістю: це
+      -- широкоформатний пристрій. Розмір беремо лише з назви.
+      when name_text ~ '(бфп|мфу|mfp|multifunction|багатофункціональн[^ ]*[[:space:]]+(пристрій|апарат))'
+           and name_text ~ '(^|[^0-9])(2[1-9]|[3-9][0-9]|[1-9][0-9]{2})[[:space:]]*("|″|”|дюйм|inch|in\.)' then 'office-mfp-wide'
       when name_text ~ '(бфп|мфу|mfp|multifunction|багатофункціональн[^ ]*[[:space:]]+(пристрій|апарат))'
            and text ~ '(color|colour|кольоров)' then 'office-mfp-color'
       when name_text ~ '(бфп|мфу|mfp|multifunction|багатофункціональн[^ ]*[[:space:]]+(пристрій|апарат))'
            and text ~ '(mono|monochrome|монохром|чорно[ -]?білий)' then 'office-mfp-mono'
       when name_text ~ '(бфп|мфу|mfp|multifunction|багатофункціональн[^ ]*[[:space:]]+(пристрій|апарат))' then 'office-mfp'
+      when name_text ~ '(принтер|printer)'
+           and name_text ~ '(^|[^0-9])(2[1-9]|[3-9][0-9]|[1-9][0-9]{2})[[:space:]]*("|″|”|дюйм|inch|in\.)'
+           and text !~ '(картридж|тонер|чорнил|ink|cartridge|drum|фотобарабан)' then 'office-printers-wide'
       when name_text ~ '(принтер|printer)'
            and text !~ '(картридж|тонер|чорнил|ink|cartridge|drum|фотобарабан)'
            and text ~ '(color|colour|кольоров)' then 'office-printers-color'

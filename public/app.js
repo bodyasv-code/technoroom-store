@@ -1619,6 +1619,50 @@ catalog = function () {
     { id: 'monitor-panel', label: 'Тип матриці', values: devicePanelValues },
     { id: 'monitor-refresh', label: 'Частота оновлення', values: deviceRefreshValues }
   ]);
+  // Для принтерів і БФП частина даних постачальника може бути в назві,
+  // а частина — у характеристиках. Об'єднуємо обидва джерела, щоб фільтр
+  // однаково працював для ERC, ASBIS і вручну створених позицій.
+  const printerSource = (product, keyPattern) => [
+    ...Object.entries(product.specifications || {})
+      .filter(([key]) => keyPattern.test(readableText(key)))
+      .flatMap(([, value]) => Array.isArray(value) ? value : [value]),
+    product.name,
+    product.description
+  ].map(specificationDisplayText).filter(Boolean).join(' ');
+  const printerColorValues = (product) => {
+    const source = printerSource(product, /(?:колір|color|colour|тип\s+друку|print)/iu);
+    if (/(?:кольоров|\bcolor\b|\bcolour\b)/iu.test(source)) return ['Кольоровий'];
+    if (/(?:монохром|чорно[ -]?білий|black[ -]?and[ -]?white|\bmono\b)/iu.test(source)) return ['Монохромний'];
+    return [];
+  };
+  const printerTechnologyValues = (product) => {
+    const source = printerSource(product, /(?:технолог.*друк|тип\s+друку|print.*(?:technolog|type)|технологія|ink|струмен|струйн|лазер|laser)/iu);
+    if (/(?:струмен|струйн|\bink\b|inkjet)/iu.test(source)) return ['Струменевий'];
+    if (/(?:лазер|laser)/iu.test(source)) return ['Лазерний'];
+    return [];
+  };
+  const printerFormatValues = (product) => {
+    const source = printerSource(product, /(?:формат|paper\s*size|розмір\s*паперу|максимальн.*(?:формат|розмір)|a[34])/iu);
+    const values = [];
+    if (/(?:^|[^a-zа-яіїєґ0-9])a3(?:$|[^a-zа-яіїєґ0-9])/iu.test(source)) values.push('A3');
+    if (/(?:^|[^a-zа-яіїєґ0-9])a4(?:$|[^a-zа-яіїєґ0-9])/iu.test(source)) values.push('A4');
+    return values;
+  };
+  const printerInterfaceValues = (product) => {
+    const source = printerSource(product, /(?:інтерфейс|interface|підключ|connection|мереж|network|ethernet|\blan\b|\busb\b|wi[ -]?fi|wireless|wlan|bluetooth)/iu);
+    return [
+      ...( /(?:wi[ -]?fi|wireless|wlan)/iu.test(source) ? ['Wi‑Fi'] : []),
+      ...( /(?:ethernet|\blan\b|rj[ -]?45)/iu.test(source) ? ['Ethernet'] : []),
+      ...( /\busb(?:\s|$|[0-9])?/iu.test(source) ? ['USB'] : []),
+      ...( /bluetooth/iu.test(source) ? ['Bluetooth'] : [])
+    ];
+  };
+  const printerFilterOptions = (categoryProducts) => compactFilterOptions(categoryProducts, [
+    { id: 'printer-color', label: 'Кольоровість', values: printerColorValues },
+    { id: 'printer-technology', label: 'Технологія друку', values: printerTechnologyValues },
+    { id: 'printer-format', label: 'Формат', values: printerFormatValues },
+    { id: 'printer-interface', label: 'Інтерфейси', values: printerInterfaceValues }
+  ]);
   const screenFilterOptions = () => {
     const categoryProducts = products.filter((product) => !product.parentProductId && category !== 'all' && storefrontCategoryMatches(product, category));
     if (!categoryProducts.length) return [];
@@ -1630,6 +1674,7 @@ catalog = function () {
         return options.length ? { ...definition, options } : null;
       }).filter(Boolean);
     }
+    if (/^office-(?:printers|mfp)(?:-|$)/iu.test(category)) return printerFilterOptions(categoryProducts);
     const phoneProducts = categoryProducts.filter((product) => isPhoneProduct(product));
     if (/(?:смартфон|телефон|phone)/iu.test(category) || phoneProducts.length >= Math.max(2, categoryProducts.length * 0.7)) return phoneFilterOptions(phoneProducts.length ? phoneProducts : categoryProducts);
     const projectorProducts = categoryProducts.filter((product) => /(?:про[єе]ктор|projector)/iu.test(readableText(product.name) + ' ' + readableText(product.type)));

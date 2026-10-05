@@ -16,15 +16,14 @@ select 'Аксесуари для смартфонів', 'phone-accessories', id
 from accessories_root
 on conflict (slug) do update set parent_id = excluded.parent_id, is_active = true;
 
--- Повертаємо реальні смартфони, які попередня версія правила могла
--- помилково віднести до аксесуарів через слово з опису чи характеристик.
+-- Повертаємо реальні смартфони, які ранні правила могли помилково
+-- віднести до будь-якої іншої категорії через слово в описі чи параметрах.
 -- Орієнтуємося лише на початок назви, тому чохли на кшталт «iPhone case»
--- не зачіпаються.
+-- або запасні частини не зачіпаються.
 update public.products product
 set category = 'мобільнии-телефон'
-where product.category = 'phone-accessories'
-  and lower(coalesce(product.name, '')) ~ '^[[:space:]]*(смартфон|smartphone|iphone)'
-  and lower(coalesce(product.name, '')) !~ '(чохол|case|cover|захисн[^ ]*[[:space:]]+скло|screen[[:space:]]+protector|кабель|cable|зарядн|charger|адаптер|adapter)';
+where lower(coalesce(product.name, '')) ~ '^[[:space:]]*(смартфон|smartphone|iphone)'
+  and lower(coalesce(product.name, '')) !~ '(чохол|case|cover|захисн[^ ]*[[:space:]]+скло|screen[[:space:]]+protector|кабель|cable|зарядн|charger|адаптер|adapter|дисплей|екран|display|запчастин|repair)';
 
 with source as (
   select id,

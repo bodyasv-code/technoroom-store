@@ -820,6 +820,38 @@ supabase.auth.getSession().then(({data:{session}})=>session?dashboard():view('lo
   };
   window.addEventListener('load', mountImporter, { once: true });
   if (document.readyState !== 'loading') mountImporter();
+  const expectedCategoryFromName = (product) => {
+    const name = String(product?.name || '').trim().toLocaleLowerCase('uk-UA');
+    const details = (name + ' ' + Object.values(product?.specifications || {}).join(' ')).toLocaleLowerCase('uk-UA');
+    if (/^(смартфон|smartphone|iphone|мобільн(?:ий|ого)\s+телефон)/iu.test(name) && !/(чохол|case|cover|кабель|cable|зарядн|charger|адаптер|adapter|дисплей|екран|display|запчастин|repair)/iu.test(name)) return 'мобільнии-телефон';
+    if (/^(бфп|мфу|mfp|multifunction|багатофункціональн\w*\s+(?:пристрій|апарат))/iu.test(name)) {
+      if (/(?:color|colour|кольоров)/iu.test(details)) return 'office-mfp-color';
+      if (/(?:mono|monochrome|монохром|чорно[ -]?білий)/iu.test(details)) return 'office-mfp-mono';
+      return 'office-mfp';
+    }
+    if (/^(принтер|printer)/iu.test(name)) {
+      if (/(?:color|colour|кольоров)/iu.test(details)) return 'office-printers-color';
+      if (/(?:mono|monochrome|монохром|чорно[ -]?білий)/iu.test(details)) return 'office-printers-mono';
+      return 'office-printers';
+    }
+    if (/^(сканер|scanner)/iu.test(name)) return 'office-scanners';
+    return '';
+  };
+  const renderCategoryIntegrityAudit = () => {
+    const host = $('#reports');
+    if (!host) return;
+    let panel = $('#categoryIntegrityAudit');
+    if (!panel) { panel = document.createElement('div'); panel.id = 'categoryIntegrityAudit'; panel.className = 'owner-report-details'; host.append(panel); }
+    const problems = state.products.filter((product) => product.is_active && expectedCategoryFromName(product) && product.category !== expectedCategoryFromName(product));
+    const rows = problems.slice(0, 8).map((product) => {
+      const target = expectedCategoryFromName(product);
+      const currentName = state.categories.find((item) => item.slug === product.category)?.name || product.category || 'Без категорії';
+      const targetName = state.categories.find((item) => item.slug === target)?.name || target;
+      return '<li><button type="button" class="catalog-audit-product" data-catalog-audit-product="' + product.id + '">' + esc(product.name) + '</button><span>' + esc(currentName) + ' → ' + esc(targetName) + '</span></li>';
+    }).join('');
+    panel.innerHTML = '<article><h3>Контроль категорій <small>(' + problems.length + ')</small></h3>' + (rows ? '<p class="owner-report-hint">Назва товару не відповідає категорії. Натисніть позицію, щоб перевірити та виправити.</p><ul class="owner-report-list">' + rows + '</ul>' + (problems.length > 8 ? '<p class="owner-report-empty">Показано 8 із ' + problems.length + ' позицій.</p>' : '') : '<p class="owner-report-empty">Розбіжностей у перевірених типах товарів не знайдено.</p>') + '</article>';
+    panel.querySelectorAll('[data-catalog-audit-product]').forEach((button) => button.onclick = () => productDialog(state.products.find((product) => Number(product.id) === Number(button.dataset.catalogAuditProduct))));
+  };
 const renderAllWithCatalogAudit = renderAll;
-renderAll = () => { renderAllWithCatalogAudit(); renderCatalogAudit(); };
+renderAll = () => { renderAllWithCatalogAudit(); renderCatalogAudit(); renderCategoryIntegrityAudit(); };
 })();

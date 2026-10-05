@@ -470,7 +470,28 @@ async function mountMegaCatalog() {
   const {data:categoryRows,error}=await supabase.from('categories').select('id,name,slug,parent_id,sort_order').eq('is_active',true).order('sort_order');
   const cats=(categoryRows||[]).map((category)=>({ ...category, name: readableText(category.name) }));
   if(error||!cats?.length) return;
+  // На картці товару завантажується лише поточна позиція, тому для меню
+  // окремо отримуємо лише категорії всіх товарів. Інакше лічильники в меню
+  // показували б нулі або кількість тільки поточного товару.
+  const menuRows=[];
+  for(let from=0;;from+=1000){
+    const {data,error:productsError}=await supabase.from('products').select('category,parent_product_id').eq('is_active',true).range(from,from+999);
+    if(productsError) break;
+    menuRows.push(...(data||[]));
+    if(!data||data.length<1000) break;
+  }
+  const menuProducts=menuRows.map((product)=>({type:product.category,parentProductId:product.parent_product_id}));
   const ids=new Set(cats.map(c=>c.id)), roots=cats.filter(c=>!c.parent_id||!ids.has(c.parent_id));
+  const branchFor=(slug)=>{
+    const childrenByParent=new Map();
+    cats.forEach((category)=>{const children=childrenByParent.get(category.parent_id)||[];children.push(category);childrenByParent.set(category.parent_id,children)});
+    const root=cats.find((category)=>category.slug===slug);
+    const branch=new Set(root?[root.slug]:[slug]);
+    const visit=(parentId)=>(childrenByParent.get(parentId)||[]).forEach((child)=>{branch.add(child.slug);visit(child.id)});
+    if(root) visit(root.id);
+    return branch;
+  };
+  const productCount=(slug)=>{const branch=branchFor(slug);return menuProducts.filter((product)=>!product.parentProductId&&branch.has(product.type)).length};
   const compactMenu=()=>window.matchMedia('(max-width:700px)').matches;
   const renderRoots=()=>{
     rootsEl.hidden=false;
@@ -486,7 +507,7 @@ async function mountMegaCatalog() {
     rootsEl.querySelectorAll('button').forEach(b=>b.classList.toggle('active',b.dataset.slug===root.slug));
     const kids=cats.filter(c=>c.parent_id===root.id);
     const back=compactMenu()?'<button type="button" class="mega-back" data-mega-back>← Усі категорії</button>':'';
-    childrenEl.innerHTML=`${back}<div class="mega-title"><h2>${root.name}</h2><a href="catalog.html?category=${encodeURIComponent(root.slug)}">Усі товари →</a></div><div class="mega-grid">${kids.map(c=>`<a href="catalog.html?category=${encodeURIComponent(c.slug)}"><strong>${c.name}</strong><span>${products.filter(p=>!p.parentProductId&&storefrontCategoryMatches(p,c.slug)).length} товарів</span></a>`).join('')}</div>`;
+    childrenEl.innerHTML=`${back}<div class="mega-title"><h2>${root.name}</h2><a href="catalog.html?category=${encodeURIComponent(root.slug)}">Усі товари →</a></div><div class="mega-grid">${kids.map(c=>`<a href="catalog.html?category=${encodeURIComponent(c.slug)}"><strong>${c.name}</strong><span>${productCount(c.slug)} товарів</span></a>`).join('')}</div>`;
     if(compactMenu()){
       rootsEl.hidden=true;
       childrenEl.hidden=false;

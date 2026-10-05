@@ -2,6 +2,19 @@ import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js
 const supabase=createClient(window.TECHNOROOM_SUPABASE.url,window.TECHNOROOM_SUPABASE.publishableKey);
 const state={products:[],orders:[],categories:[],brands:[],promotions:[],banners:[],page:1,brandPage:1,selectedProducts:new Set(),categoryTreeOpen:new Set()};
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
+// Product data often contains long descriptions and many specifications. Keep the
+// editor wide enough to make those fields practical without affecting other dialogs.
+const productDialogStyle=document.createElement('style');
+productDialogStyle.textContent=`
+#productDialog{box-sizing:border-box;width:min(980px,calc(100vw - 32px));max-height:calc(100vh - 32px);overflow-x:hidden;overflow-y:auto}
+#productDialog form{box-sizing:border-box;width:100%;padding:30px 34px}
+#productDialog .dialog-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:0 20px}
+#productDialog label{min-width:0}
+#productDialog input,#productDialog select,#productDialog textarea{box-sizing:border-box;max-width:100%}
+#productDialog textarea{min-height:150px;resize:vertical}
+@media(max-width:700px){#productDialog{width:calc(100vw - 20px);max-height:calc(100vh - 20px)}#productDialog form{padding:20px}#productDialog .dialog-grid{grid-template-columns:1fr}}
+`;
+document.head.append(productDialogStyle);
 const esc=(v='')=>String(v??'').replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));
 const txt=(v='')=>String(v??'').toLocaleLowerCase('uk-UA').replace(/[ʼ'’`]/g,'').replace(/[\s_\-–—/.,]+/g,'');
 const canonicalBrandNames={"2e":"2E",acer:"Acer",asus:"ASUS",dell:"Dell",digitus:"DIGITUS",epos:"EPOS",fsp:"FSP",legrand:"Legrand",ledvance:"LEDVANCE",lg:"LG",msi:"MSI",oneplus:"OnePlus",philips:"Philips",samsung:"Samsung",sony:"Sony",tcl:"TCL"};

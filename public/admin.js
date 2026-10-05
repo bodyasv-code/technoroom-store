@@ -330,19 +330,21 @@ supabase.auth.getSession().then(({data:{session}})=>session?dashboard():view('lo
       .map(cleanImportText).join(' ').toLocaleLowerCase('uk-UA');
     if (/(?:^|[\s-])(?:смартфон|smartphone|iphone|мобільн(?:ий|ого)?\s+телефон)/iu.test(nameSource)) return null;
     if (/(?:^|[\s-])(?:планшет|tablet|ipad)/iu.test(nameSource)) return null;
-    if (/(?:термо|thermal|label printer|етикет)/iu.test(source)) return null;
-    if (/(?:навушник|headphone|headset|гарнітур)/iu.test(source)) return { rootSlug: 'audio', rootName: 'Audio', childSlug: 'headphones', childName: 'Навушники' };
-    if (/(?:лоток|підставк|стенд|tray\b|stand\b|accessor|аксесуар|додатковий\s+планшет)/iu.test(source)) return { rootSlug: 'cat-accessories', rootName: 'Кріплення та аксесуари', childSlug: 'office-accessories', childName: 'Аксесуари для оргтехніки' };
-    if (/(?:послуг|service|активац|технічн\w*\s+підтримк)/iu.test(source)) return { rootSlug: 'services', rootName: 'Послуги', childSlug: 'technical-support', childName: 'Технічна підтримка' };
-    // У JavaScript \b не розпізнає кирилицю як межу слова. Тому БФП/МФУ
-    // перевіряємо без нього й обробляємо раніше за сканери: у БФП часто
-    // є характеристика «сканер» або «копіювання».
+    // Тип основного пристрою має пріоритет над словами «лоток», «стенд» тощо:
+    // базовий блок БФП може містити лотки, але не є аксесуаром.
     const isMfp = /(?:бфп|мфу|\bmfp\b|multifunction|багатофункціональн\w*\s+(?:пристрій|апарат))/iu.test(nameSource);
     const isPrinter = /(?:принтер|\bprinter\b)/iu.test(nameSource);
     const isScanner = /(?:сканер|scanner)/iu.test(nameSource);
     const isCopier = /(?:копір|копир|copier)/iu.test(nameSource);
     const isLaminator = /(?:ламінатор|ламинатор|laminator)/iu.test(nameSource);
     const isShredder = /(?:знищувач|шредер|shredder)/iu.test(nameSource);
+    if (/(?:термо|thermal|label printer|етикет)/iu.test(source)) return null;
+    if (/(?:навушник|headphone|headset|гарнітур)/iu.test(source)) return { rootSlug: 'audio', rootName: 'Audio', childSlug: 'headphones', childName: 'Навушники' };
+    if (!(isMfp || isPrinter || isScanner || isCopier || isLaminator || isShredder) && /(?:лоток|підставк|стенд|tray\b|stand\b|accessor|аксесуар|додатковий\s+планшет)/iu.test(source)) return { rootSlug: 'cat-accessories', rootName: 'Кріплення та аксесуари', childSlug: 'office-accessories', childName: 'Аксесуари для оргтехніки' };
+    if (/(?:послуг|service|активац|технічн\w*\s+підтримк)/iu.test(source)) return { rootSlug: 'services', rootName: 'Послуги', childSlug: 'technical-support', childName: 'Технічна підтримка' };
+    // У JavaScript \b не розпізнає кирилицю як межу слова. Тому БФП/МФУ
+    // перевіряємо без нього й обробляємо раніше за сканери: у БФП часто
+    // є характеристика «сканер» або «копіювання».
     const isColor = /(?:\bcolor\b|\bcolour\b|кольоров)/iu.test(source);
     const isMono = /(?:\bmono\b|monochrome|монохром|чорно[ -]?білий)/iu.test(source);
     if (isMfp || isPrinter) {

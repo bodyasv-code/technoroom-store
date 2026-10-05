@@ -45,15 +45,15 @@ where product.id = classified.id
   and product.category is distinct from classified.category;
 
 -- Попередня версія правила могла створити дві окремі підкатегорії.
--- Об'єднуємо їх у спільну, не змінюючи жодних інших даних товару.
+-- Об'єднуємо їх у спільну, після чого прибираємо порожні старі категорії.
 update public.products
 set category = 'office-wide-format'
 where category in ('office-printers-wide', 'office-mfp-wide');
 
-update public.categories
-set is_active = false
+delete from public.categories legacy
 where slug in ('office-printers-wide', 'office-mfp-wide')
-  and not exists (select 1 from public.products product where product.category = categories.slug);
+  and not exists (select 1 from public.products product where product.category = legacy.slug)
+  and not exists (select 1 from public.categories child where child.parent_id = legacy.id);
 
 commit;
 

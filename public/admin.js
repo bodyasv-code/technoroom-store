@@ -12,6 +12,13 @@ productDialogStyle.textContent=`
 #productDialog label{min-width:0}
 #productDialog input,#productDialog select,#productDialog textarea{box-sizing:border-box;max-width:100%}
 #productDialog textarea{min-height:150px;resize:vertical}
+#productDialog .projector-editor-fields{margin:4px 0 18px;padding:16px;border:1px solid #dbe6f3;border-radius:12px;background:#f8fbff}
+#productDialog .projector-editor-fields legend{padding:0 6px;font-weight:800;color:#102d53}
+#productDialog .projector-editor-fields__grid{display:grid;grid-template-columns:2fr 1fr;gap:14px 20px;align-items:start}
+#productDialog .projector-editor-fields__options{display:flex;flex-wrap:wrap;gap:8px 14px;margin-top:8px}
+#productDialog .projector-editor-fields__options label{display:flex;align-items:center;gap:6px;font-size:14px}
+#productDialog .projector-editor-fields small{display:block;margin-top:10px;color:#60748c;line-height:1.4}
+@media(max-width:700px){#productDialog .projector-editor-fields__grid{grid-template-columns:1fr}}
 @media(max-width:700px){#productDialog{width:calc(100vw - 20px);max-height:calc(100vh - 20px)}#productDialog form{padding:20px}#productDialog .dialog-grid{grid-template-columns:1fr}}
 `;
 document.head.append(productDialogStyle);
@@ -84,6 +91,44 @@ function categoryDialog(c=null,parent=null){const f=$('#categoryForm'),slugField
 async function saveCategory(e){e.preventDefault();const f=e.currentTarget,r=Object.fromEntries(new FormData(f)),message=$('#categoryFormMessage'),current=state.categories.find(c=>Number(c.id)===Number(r.id));let imagePath=String(r.image_path||'').trim()||current?.image_path||null;message.hidden=true;try{const file=f.elements.image_file?.files?.[0];if(file){message.textContent='Завантажую фото категорії…';message.hidden=false;imagePath=await uploadCatalogAsset(file,'categories')}const categorySlug=current?.slug||slug(String(r.slug||'').trim()||r.name);const p={name:r.name.trim(),slug:categorySlug,image_path:imagePath,parent_id:r.parent_id?Number(r.parent_id):null,sort_order:Number(r.sort_order||0),is_active:f.elements.is_active.checked};const x=r.id?await supabase.from('categories').update(p).eq('id',r.id):await supabase.from('categories').insert(p);if(x.error)throw x.error;$('#categoryDialog').close();await loadData();notice(current?'Категорію перейменовано: товари, посилання, фільтри та правила імпорту збережено.':'Категорію збережено.')}catch(error){message.textContent=(error.message||error.code||'Не вдалося зберегти категорію')+(error.code==='42703'?' Запустіть category-media-upgrade.sql у Supabase SQL Editor.':'');message.hidden=false}}
 document.addEventListener('click',e=>{const toggle=e.target.closest('[data-toggle-category]');if(!toggle)return;const id=Number(toggle.dataset.toggleCategory);if(state.categoryTreeOpen.has(id))state.categoryTreeOpen.delete(id);else state.categoryTreeOpen.add(id);renderCategories()});
 document.addEventListener('click',event=>{const card=event.target.closest('[data-owner-report-filter]');if(!card)return;const filter=card.dataset.ownerReportFilter,control=$('#productFilter');if(!control||![...control.options].some(option=>option.value===filter))return;control.value=filter;$('#productSearch').value='';$('#categoryFilter').value='all';$('#brandFilter').value='all';state.page=1;renderProducts();location.hash='products';$('#products').scrollIntoView({behavior:'smooth',block:'start'})});
+// Фільтри проєктора мають бути редаговані й тоді, коли постачальник не передав
+// їх у XML. Значення зберігаємо у звичайних характеристиках товару, тому вони
+// одразу працюють і в каталозі, і в наступних імпортах.
+const projectorCategorySlugs=new Set(['projectors','projector','laser-proj','erc-display-03','erc-display-11','erc-display-12','erc-display-13','home-projectors','short-throw-projectors','installation-projectors','universal-projectors']);
+const projectorPurposeOptions=['Лазерний','Домашній','Короткофокусний','Ультракороткофокусний','Інсталяційний','Універсальний'];
+const parseAdminSpecifications=value=>Object.fromEntries(String(value||'').split('\n').map(line=>{const [key,...parts]=line.split(':');return[key?.trim(),parts.join(':').trim()]}).filter(([key,value])=>key&&value));
+const writeAdminSpecifications=(form,specifications)=>{form.elements.specifications_text.value=Object.entries(specifications).map(([key,value])=>key+': '+value).join('\n')};
+const mountProjectorEditorFields=(form,product)=>{
+  let panel=form.querySelector('#projectorEditorFields');
+  if(!panel){
+    panel=document.createElement('fieldset');panel.id='projectorEditorFields';panel.className='projector-editor-fields';
+    panel.innerHTML='<legend>Фільтри проєктора</legend><div class="projector-editor-fields__grid"><div><b>Тип і призначення</b><div class="projector-editor-fields__options">'+projectorPurposeOptions.map(value=>'<label><input type="checkbox" name="projector_purpose" value="'+value+'"> '+value+'</label>').join('')+'</div></div><label>Джерело світла<select name="projector_light_source"><option value="">— Не вказано —</option><option value="Лампа">Лампа</option><option value="Лазер">Лазер</option><option value="Світлодіод">LED / світлодіодний</option></select></label></div><small>За потреби вкажіть дані вручну: вони мають пріоритет над автоматичним визначенням із XML.</small>';
+    const description=form.elements.description?.closest('label');if(description)description.before(panel);else form.append(panel);
+  }
+  const specifications=product?.specifications||parseAdminSpecifications(form.elements.specifications_text?.value);
+  const purposeText=String(specifications['Призначення']||specifications['Тип / призначення']||'');
+  panel.querySelectorAll('[name="projector_purpose"]').forEach(input=>input.checked=purposeText.includes(input.value));
+  const source=String(specifications['Джерело світла']||specifications['Тип джерела']||'');
+  panel.querySelector('[name="projector_light_source"]').value=/лазер/iu.test(source)?'Лазер':/(?:світлодіод|\bled\b)/iu.test(source)?'Світлодіод':/(?:ламп|lamp)/iu.test(source)?'Лампа':'';
+  const toggle=()=>{panel.hidden=!projectorCategorySlugs.has(form.elements.category.value)};
+  form.elements.category.onchange=toggle;toggle();
+};
+const productDialogElement=$('#productDialog');
+new MutationObserver(()=>{if(productDialogElement.open){const id=$('#productForm').elements.id?.value;mountProjectorEditorFields($('#productForm'),state.products.find(product=>Number(product.id)===Number(id))||null)}}).observe(productDialogElement,{attributes:true,attributeFilter:['open']});
+const originalSaveProduct=saveProduct;
+async function saveProductWithProjectorFields(event){
+  const form=event.currentTarget,panel=form.querySelector('#projectorEditorFields');
+  if(panel&&!panel.hidden){
+    const specifications=parseAdminSpecifications(form.elements.specifications_text.value);
+    delete specifications['Призначення'];delete specifications['Тип / призначення'];delete specifications['Джерело світла'];delete specifications['Тип джерела'];
+    const purposes=[...panel.querySelectorAll('[name="projector_purpose"]:checked')].map(input=>input.value);
+    const source=panel.querySelector('[name="projector_light_source"]').value;
+    if(purposes.length)specifications['Призначення']=purposes.join(' · ');
+    if(source)specifications['Джерело світла']=source;
+    writeAdminSpecifications(form,specifications);
+  }
+  return originalSaveProduct(event);
+}
 async function dashboard(){const {data:{user}}=await supabase.auth.getUser();if(!user){view('login');return}const {data:profile}=await supabase.from('profiles').select('full_name,role').eq('id',user.id).maybeSingle();if(!profile){await supabase.auth.signOut();view('login');notice('Доступ відсутній.',true);return}view('app');$('#adminName').textContent=profile.full_name||'Адміністраторе';await loadData()}
 $('#loginForm').onsubmit=async e=>{e.preventDefault();const r=Object.fromEntries(new FormData(e.currentTarget));const {error}=await supabase.auth.signInWithPassword({email:r.email,password:r.password});if(error){notice('Невірна email-адреса або пароль',true);return}dashboard()};
 $('#requestPasswordReset').onclick=async()=>{const email=$('#loginForm').elements.email.value.trim();if(!email){notice('Введіть email, на який надіслати посилання для відновлення.',true);return}const {error}=await supabase.auth.resetPasswordForEmail(email,{redirectTo:location.origin+'/admin'});if(error){notice('Не вдалося надіслати посилання: '+error.message,true);return}notice('Перевірте пошту: надіслано посилання для створення нового пароля.')};
@@ -93,7 +138,7 @@ $$('[data-add-product]').forEach(b=>b.onclick=()=>productDialog());
 $('#addCategory').onclick=()=>categoryDialog();$('#addBrand').onclick=()=>brandDialog();$('#closeBrandDialog').onclick=()=>$('#brandDialog').close();
 $('#categoryAdminSearch').addEventListener('input',renderCategories);$('#categoryAdminSearch').addEventListener('search',renderCategories);$('#expandAllCategories').onclick=()=>{state.categories.filter(c=>state.categories.some(x=>Number(x.parent_id)===Number(c.id))).forEach(c=>state.categoryTreeOpen.add(Number(c.id)));renderCategories()};$('#collapseAllCategories').onclick=()=>{state.categoryTreeOpen.clear();renderCategories()};
 $$('[data-close-dialog]').forEach(b=>b.onclick=()=>b.closest('dialog').close());
-$('#productForm').onsubmit=saveProduct;$('#categoryForm').onsubmit=saveCategory;$('#brandForm').addEventListener('submit',saveBrand);
+$('#productForm').onsubmit=saveProductWithProjectorFields;$('#categoryForm').onsubmit=saveCategory;$('#brandForm').addEventListener('submit',saveBrand);
 ['#productSearch','#categoryFilter','#brandFilter','#pageSize','#productFilter'].forEach(s=>{const el=$(s);const rerender=()=>{state.page=1;renderProducts()};el.addEventListener('input',rerender);el.addEventListener('change',rerender);if(s==='#productSearch')el.addEventListener('search',rerender)});
 $('#brandAdminSearch').addEventListener('input',()=>{state.brandPage=1;renderBrands()});$('#brandAdminSearch').addEventListener('search',()=>{state.brandPage=1;renderBrands()});$('#brandSort').addEventListener('change',()=>{state.brandPage=1;renderBrands()});$('#brandStatusFilter').addEventListener('change',()=>{state.brandPage=1;renderBrands()});$('#saveOrderStatus').addEventListener('click',async()=>{const id=Number($('#orderDialog').dataset.orderId),status=$('#orderStatusEdit').value,manager_note=$('#orderManagerNote').value.trim();if(!id)return;const r=await supabase.from('orders').update({status,manager_note}).eq('id',id).select('id');if(r.error){notice('Помилка збереження: '+r.error.message+(r.error.code==='42703'?' Запустіть order-workflow-upgrade.sql у Supabase SQL Editor.':'') ,true);return}$('#orderDialog').close();await loadData();notice('Зміни для замовлення #'+id+' збережено.')});$('#orderSearch').addEventListener('input',renderOrders);$('#orderFilter').addEventListener('change',renderOrders);$('#customerSearch').addEventListener('input',renderCustomers);
 $('#brandName').addEventListener('input',()=>{if(!$('#brandId').value)$('#brandSlug').value=slug($('#brandName').value)});
@@ -256,7 +301,16 @@ supabase.auth.getSession().then(({data:{session}})=>session?dashboard():view('lo
     const brightness = text.match(/\b(\d{2,5})\s*(?:лм|lm)\b/iu)?.[1];
     if (/(?:смартфон|телефон|iphone|android)/iu.test(text)) { add('Діагональ', diagonal && diagonal.replace(',', '.') + '″'); add('Вбудована пам’ять', storage); add('Оперативна пам’ять', ram && ram.replace(',', '.') + ' ГБ'); }
     if (/(?:ноутбук|laptop|macbook)/iu.test(text)) { add('Діагональ', diagonal && diagonal.replace(',', '.') + '″'); add('Процесор', processor); add('Оперативна пам’ять', ram && ram.replace(',', '.') + ' ГБ'); add('Накопичувач', storage); }
-    if (/(?:про[єе]ктор|projector)/iu.test(text)) { add('Роздільна здатність', resolution); add('Яскравість', brightness && brightness + ' лм'); add('Технологія проекції', /\bdlp\b/iu.test(text) ? 'DLP' : /(?:3lcd|\blcd\b)/iu.test(text) ? 'LCD' : ''); add('Джерело світла', /лазер|laser/iu.test(text) ? 'Лазер' : /світлодіод|\bled\b/iu.test(text) ? 'Світлодіод' : /ламп|lamp/iu.test(text) ? 'Лампа' : ''); }
+    if (/^\s*(?:про[єе]ктор|projector)\b/iu.test(text)) {
+      const projectorPurposes = [];
+      if (/(?:лазер|laser)/iu.test(text)) projectorPurposes.push('Лазерний');
+      if (/(?:домашн|home\s*(?:cinema|theater|theatre))/iu.test(text)) projectorPurposes.push('Домашній');
+      if (/(?:ультра\s*-?\s*короткофокус|ultra\s*-?\s*short\s*-?\s*throw)/iu.test(text)) projectorPurposes.push('Ультракороткофокусний', 'Короткофокусний');
+      else if (/(?:короткофокус|short\s*-?\s*throw)/iu.test(text)) projectorPurposes.push('Короткофокусний');
+      if (/(?:інсталяційн|installation)/iu.test(text)) projectorPurposes.push('Інсталяційний');
+      if (/(?:універсальн|universal)/iu.test(text)) projectorPurposes.push('Універсальний');
+      add('Роздільна здатність', resolution); add('Яскравість', brightness && brightness + ' лм'); add('Технологія проекції', /\bdlp\b/iu.test(text) ? 'DLP' : /(?:3lcd|\blcd\b)/iu.test(text) ? 'LCD' : ''); add('Призначення', [...new Set(projectorPurposes)].join(' · ')); add('Джерело світла', /лазер|laser/iu.test(text) ? 'Лазер' : /світлодіод|\bled\b/iu.test(text) ? 'Світлодіод' : /ламп|lamp/iu.test(text) ? 'Лампа' : '');
+    }
     if (/(?:телевізор|\btv\b)/iu.test(text)) { add('Діагональ', diagonal && diagonal.replace(',', '.') + '″'); add('Роздільна здатність', resolution); add('Тип матриці', /mini\s*-?\s*led/iu.test(text) ? 'miniLED' : /oled/iu.test(text) ? 'OLED' : /qled/iu.test(text) ? 'QLED' : /\bled\b/iu.test(text) ? 'LED' : ''); add('Smart TV', /(?:smart\s*tv|google\s*tv|android\s*tv|webos|tizen|vidaa)/iu.test(text) ? 'Є' : ''); }
     const officeType = /(?:бфп|мфу|mfp|multifunction|багатофункціональн\w*\s+(?:пристрій|апарат))/iu.test(text) ? 'БФП' : /(?:принтер|printer)/iu.test(text) ? 'Принтер' : /(?:сканер|scanner)/iu.test(text) ? 'Сканер' : /(?:копір|копир|copier)/iu.test(text) ? 'Копір' : /(?:ламінатор|ламинатор|laminator)/iu.test(text) ? 'Ламінатор' : /(?:знищувач|шредер|shredder)/iu.test(text) ? 'Знищувач документів' : '';
     if (officeType) { add('Тип пристрою', officeType); add('Формат', text.match(/\bA([3-6])\b/iu)?.[0]?.toUpperCase()); add('Тип друку', /(?:color|colour|кольоров)/iu.test(text) ? 'Кольоровий' : /(?:mono|monochrome|монохром|чорно[ -]?білий)/iu.test(text) ? 'Монохромний' : ''); }
@@ -400,11 +454,14 @@ supabase.auth.getSession().then(({data:{session}})=>session?dashboard():view('lo
     const source = [row.name, row.subcategory, row.sourceCategory]
       .map(cleanImportText).join(' ').toLocaleLowerCase('uk-UA');
     const isAccessory = /(?:чохол|case\b|cover\b|захисн(?:е|ий)? скло|screen protector|аксесуар|accessor|кабель|cable|адаптер|adapter|кріплен|mount)/iu.test(nameSource);
+    const projectorName = /(?:про[єе]ктор|projector)/iu.test(nameSource);
+    if (!isAccessory && projectorName) {
+      if (/(?:лампа|lamp)/iu.test(nameSource)) return { rootSlug: 'cat-projectors', rootName: 'Проєктори та екрани', childSlug: 'erc-display-14', childName: 'Лампи для проєкторів' };
+      if (/(?:об[’'`]?єктив|оптика|lens)/iu.test(nameSource)) return { rootSlug: 'cat-projectors', rootName: 'Проєктори та екрани', childSlug: 'erc-display-15', childName: 'Оптика для проєкторів' };
+      return { rootSlug: 'cat-projectors', rootName: 'Проєктори та екрани', childSlug: 'projectors', childName: 'Проєктори' };
+    }
     const rules = [
       [/(?:проекційн|projection).*(?:екран|screen)|(?:екран|screen).*(?:проекційн|projection)/iu, 'cat-projectors', 'Проєктори та екрани', 'erc-display-06', 'Проєкційні екрани'],
-      [/(?:лазерн|laser).*(?:про[єе]ктор|projector)|(?:про[єе]ктор|projector).*(?:лазерн|laser)/iu, 'cat-projectors', 'Проєктори та екрани', 'laser-proj', 'Лазерні проєктори'],
-      [/(?:короткофокус|short[ -]?throw).*(?:про[єе]ктор|projector)|(?:про[єе]ктор|projector).*(?:короткофокус|short[ -]?throw)/iu, 'cat-projectors', 'Проєктори та екрани', 'erc-display-12', 'Короткофокусні проєктори'],
-      [/(?:інсталяційн|installation).*(?:про[єе]ктор|projector)|(?:про[єе]ктор|projector).*(?:інсталяційн|installation)/iu, 'cat-projectors', 'Проєктори та екрани', 'erc-display-11', 'Інсталяційні проєктори'],
       [/(?:^|\s)(?:монітор|monitor)\b/iu, 'cat-displays', 'Телевізори, монітори та дисплеї', 'erc-display-01', 'Монітори'],
       [/(?:^|\s)(?:телевізор|television|tv)\b/iu, 'cat-displays', 'Телевізори, монітори та дисплеї', 'erc-display-07', 'Телевізори'],
       [/(?:^|\s)(?:смартфон|smartphone|iphone|мобільн(?:ий|ого)? телефон)\b/iu, 'смартфони-телефони', 'Смартфони/Телефони', 'мобільнии-телефон', 'Мобільний телефон'],
@@ -442,9 +499,7 @@ supabase.auth.getSession().then(({data:{session}})=>session?dashboard():view('lo
     if (exact) return exact.slug;
     const alias = [
       [/екран.*про[єе]кц|projection screen/i, 'erc-display-06'],
-      [/про[єе]ктор.*коротко|short throw projector/i, 'erc-display-12'],
-      [/про[єе]ктор.*інстал|installation projector/i, 'erc-display-11'],
-      [/про[єе]ктор/i, 'projector'],
+      [/про[єе]ктор|projector/i, 'projectors'],
       [/телевізор|tv/i, 'tv'],
       [/монітор/i, 'monitor'],
       [/акуст|навуш|гарнітур|саундбар|мікрофон/i, 'audio'],

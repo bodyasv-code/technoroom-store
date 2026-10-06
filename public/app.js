@@ -46,28 +46,22 @@ const readableText = (value = '') => {
   return text.replace(/&amp;/gi, '&').replace(/&quot;/gi, '"').replace(/&#39;|&apos;/gi, "'").replace(/&nbsp;/gi, ' ').replace(/\s+/g, ' ').trim();
 };
 // Це не категорії товару, а незалежні властивості. Тому, наприклад,
-// короткофокусний лазерний проєктор потрапляє в обидві добірки без дубля SKU.
+// короткофокусний лазерний проєктор одночасно має обидва фільтри без дубля SKU.
 const projectorClassificationValues = (product) => {
   const specifications = Object.entries(product?.specifications || {})
     .flatMap(([key, value]) => [key, ...(Array.isArray(value) ? value : [value])]);
   const source = readableText([product?.name, product?.description, ...specifications].filter(Boolean).join(' '));
-  const projectorTypes = new Set(['projector', 'laser-proj', 'erc-display-03', 'erc-display-11', 'erc-display-12', 'erc-display-13', 'home-projectors', 'short-throw-projectors', 'installation-projectors', 'universal-projectors']);
+  const projectorTypes = new Set(['projector', 'projectors', 'laser-proj', 'erc-display-03', 'erc-display-11', 'erc-display-12', 'erc-display-13', 'home-projectors', 'short-throw-projectors', 'installation-projectors', 'universal-projectors']);
   if (!projectorTypes.has(product?.type) && !/^\s*(?:про[єе]ктор|projector)\b/iu.test(source)) return [];
   const values = [];
   if (product?.type === 'laser-proj' || /(?:лазер|laser)/iu.test(source)) values.push('Лазерний');
+  if (product?.type === 'erc-display-03' || product?.type === 'home-projectors' || /(?:домашн|home\s*(?:cinema|theater|theatre))/iu.test(source)) values.push('Домашній');
   if (/(?:ультра\s*-?\s*короткофокус|ultra\s*-?\s*short\s*-?\s*throw)/iu.test(source)) values.push('Ультракороткофокусний');
   if (product?.type === 'erc-display-12' || product?.type === 'short-throw-projectors' || /(?:короткофокус|short\s*-?\s*throw)/iu.test(source)) values.push('Короткофокусний');
+  if (product?.type === 'erc-display-11' || product?.type === 'installation-projectors' || /(?:інсталяційн|installation)/iu.test(source)) values.push('Інсталяційний');
+  if (product?.type === 'erc-display-13' || product?.type === 'universal-projectors' || /(?:універсальн|universal)/iu.test(source)) values.push('Універсальний');
   return [...new Set(values)];
 };
-const projectorCollectionLinks = (products) => [
-  ['laser', 'Лазерні проєктори', 'Лазерний'],
-  ['short', 'Короткофокусні проєктори', 'Короткофокусний'],
-  ['ultra', 'Ультракороткофокусні проєктори', 'Ультракороткофокусний']
-].map(([value, name, label]) => ({
-  value,
-  name,
-  count: products.filter((product) => !product.parentProductId && projectorClassificationValues(product).includes(label)).length
-})).filter((collection) => collection.count);
 const get = (id) => products.find((product) => product.id === Number(id));
 const save = () => localStorage.setItem('technoroom-cart', JSON.stringify(cart));
 const imageUrl = (product) => product.image?.startsWith('http') ? `/api/product-image?id=${product.id}` : product.image ? supabase.storage.from('product-images').getPublicUrl(product.image).data.publicUrl : '';
@@ -171,10 +165,7 @@ async function home() {
           rootsEl.querySelectorAll('button').forEach(b=>b.classList.toggle('active',b.dataset.slug===r.slug));
           const kids=cats.filter(c=>c.parent_id===r.id);
           const back=compactMenu()?'<button type="button" class="mega-back" data-mega-back>← Усі категорії</button>':'';
-          const projectorCollections = r.slug === 'cat-projectors'
-            ? projectorCollectionLinks(products).map((collection) => `<a href="catalog.html?category=cat-projectors&projector=${encodeURIComponent(collection.value)}"><strong>${escapeHtml(collection.name)}</strong><span>${collection.count} товарів</span></a>`).join('')
-            : '';
-          childrenEl.innerHTML=`${back}<div class="mega-title"><h2>${escapeHtml(r.name)}</h2><a href="catalog.html?category=${encodeURIComponent(r.slug)}">Усі товари →</a></div><div class="mega-grid">${kids.map(c=>`<a href="catalog.html?category=${encodeURIComponent(c.slug)}"><strong>${escapeHtml(c.name)}</strong><span>${products.filter(p=>!p.parentProductId&&storefrontCategoryMatches(p,c.slug)).length} товарів</span></a>`).join('')}${projectorCollections}</div>`;
+          childrenEl.innerHTML=`${back}<div class="mega-title"><h2>${escapeHtml(r.name)}</h2><a href="catalog.html?category=${encodeURIComponent(r.slug)}">Усі товари →</a></div><div class="mega-grid">${kids.map(c=>`<a href="catalog.html?category=${encodeURIComponent(c.slug)}"><strong>${escapeHtml(c.name)}</strong><span>${products.filter(p=>!p.parentProductId&&storefrontCategoryMatches(p,c.slug)).length} товарів</span></a>`).join('')}</div>`;
           if(compactMenu()){
             rootsEl.hidden=true;
             childrenEl.hidden=false;
@@ -645,10 +636,7 @@ async function mountMegaCatalog() {
     rootsEl.querySelectorAll('button').forEach(b=>b.classList.toggle('active',b.dataset.slug===root.slug));
     const kids=cats.filter(c=>c.parent_id===root.id);
     const back=compactMenu()?'<button type="button" class="mega-back" data-mega-back>← Усі категорії</button>':'';
-    const projectorCollections = root.slug === 'cat-projectors' && !isProductPage
-      ? projectorCollectionLinks(products).map((collection) => `<a href="catalog.html?category=cat-projectors&projector=${encodeURIComponent(collection.value)}"><strong>${escapeHtml(collection.name)}</strong><span>${collection.count} товарів</span></a>`).join('')
-      : '';
-    childrenEl.innerHTML=`${back}<div class="mega-title"><h2>${root.name}</h2><a href="catalog.html?category=${encodeURIComponent(root.slug)}">Усі товари →</a></div><div class="mega-grid">${kids.map(c=>{const count=productCount(c.slug);return `<a href="catalog.html?category=${encodeURIComponent(c.slug)}"><strong>${escapeHtml(c.name)}</strong><span>${count===null?'Завантаження…':count+' товарів'}</span></a>`}).join('')}${projectorCollections}</div>`;
+    childrenEl.innerHTML=`${back}<div class="mega-title"><h2>${root.name}</h2><a href="catalog.html?category=${encodeURIComponent(root.slug)}">Усі товари →</a></div><div class="mega-grid">${kids.map(c=>{const count=productCount(c.slug);return `<a href="catalog.html?category=${encodeURIComponent(c.slug)}"><strong>${escapeHtml(c.name)}</strong><span>${count===null?'Завантаження…':count+' товарів'}</span></a>`}).join('')}</div>`;
     if(compactMenu()){
       rootsEl.hidden=true;
       childrenEl.hidden=false;
@@ -1337,7 +1325,13 @@ const renderStorefrontRecommendations = () => {
 /* Каталог будується за реальним деревом категорій, а не за статичним списком у розмітці. */
 let storefrontCategories = [];
 let storefrontCategoriesRequest = null;
-const legacyCategoryAliases = { projector: 'cat-projectors', audio: 'cat-audio', tv: 'cat-displays' };
+const legacyCategoryAliases = {
+  projector: 'cat-projectors', audio: 'cat-audio', tv: 'cat-displays',
+  'laser-proj': 'projectors', 'home-projectors': 'projectors',
+  'short-throw-projectors': 'projectors', 'installation-projectors': 'projectors',
+  'universal-projectors': 'projectors', 'erc-display-03': 'projectors',
+  'erc-display-11': 'projectors', 'erc-display-12': 'projectors', 'erc-display-13': 'projectors'
+};
 const legacyCategoryChildren = {
   'cat-projectors': ['projector', 'laser-proj', 'home-projectors', 'short-throw-projectors', 'installation-projectors', 'universal-projectors', 'projection-screens'],
   'cat-audio': ['audio'],
@@ -1584,7 +1578,7 @@ catalog = function () {
   };
   const projectorFilterOptions = (categoryProducts) => {
     const definitions = [
-      { id: 'projector-classification', label: 'Клас проєкції', values: projectorClassificationValues, normaliseValue: normaliseSpecificationValue },
+      { id: 'projector-classification', label: 'Тип і призначення', values: projectorClassificationValues, normaliseValue: normaliseSpecificationValue },
       { id: 'projector-technology', label: 'Технологія', values: projectorTechnologyValues, normaliseValue: normaliseSpecificationValue },
       { id: 'projector-resolution', label: 'Роздільна здатність', values: projectorResolutionValues, normaliseValue: normaliseSpecificationValue },
       { id: 'projector-light-source', label: 'Джерело світла', keys: ['джерело світла', 'тип джерела'], values: (product) => specificationValues(product, ['джерело світла', 'тип джерела']).map(normaliseLightSource), normaliseValue: normaliseLightSource }

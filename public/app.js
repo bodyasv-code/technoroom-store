@@ -1560,8 +1560,10 @@ catalog = function () {
   const projectorTechnologyValues = (product) => {
     const source = specificationValues(product, ['технологія', 'технологія проекції', 'projection technology']).join(' ');
     return [
-      ...( /dlp/iu.test(source) ? ['DLP'] : []),
-      ...( /(?:3lcd|\blcd\b)/iu.test(source) ? ['LCD'] : [])
+      ...( /\b3lcd\b/iu.test(source) ? ['3LCD'] : []),
+      ...( /\bdlp\b/iu.test(source) ? ['DLP'] : []),
+      ...( /\blcos\b/iu.test(source) ? ['LCoS'] : []),
+      ...( /\blcd\b/iu.test(source) && !/\b3lcd\b/iu.test(source) ? ['LCD'] : [])
     ];
   };
   const projectorResolutionValues = (product) => {

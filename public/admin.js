@@ -102,7 +102,7 @@ const mountProjectorEditorFields=(form,product)=>{
   let panel=form.querySelector('#projectorEditorFields');
   if(!panel){
     panel=document.createElement('fieldset');panel.id='projectorEditorFields';panel.className='projector-editor-fields';
-    panel.innerHTML='<legend>Фільтри проєктора</legend><div class="projector-editor-fields__grid"><div><b>Тип і призначення</b><div class="projector-editor-fields__options">'+projectorPurposeOptions.map(value=>'<label><input type="checkbox" name="projector_purpose" value="'+value+'"> '+value+'</label>').join('')+'</div></div><label>Джерело світла<select name="projector_light_source"><option value="">— Не вказано —</option><option value="Лампа">Лампа</option><option value="Лазер">Лазер</option><option value="Світлодіод">LED / світлодіодний</option></select></label><label>Роздільна здатність<input name="projector_resolution" type="text" placeholder="Напр. 1920 × 1080 або 4K UHD"></label></div><small>За потреби вкажіть дані вручну: вони мають пріоритет над автоматичним визначенням із XML.</small>';
+    panel.innerHTML='<legend>Фільтри проєктора</legend><div class="projector-editor-fields__grid"><div><b>Тип і призначення</b><div class="projector-editor-fields__options">'+projectorPurposeOptions.map(value=>'<label><input type="checkbox" name="projector_purpose" value="'+value+'"> '+value+'</label>').join('')+'</div></div><label>Джерело світла<select name="projector_light_source"><option value="">— Не вказано —</option><option value="Лампа">Лампа</option><option value="Лазер">Лазер</option><option value="Світлодіод">LED / світлодіодний</option></select></label><label>Роздільна здатність<input name="projector_resolution" type="text" placeholder="Напр. 1920 × 1080 або 4K UHD"></label><label>Технологія проекції<select name="projector_technology"><option value="">— Не вказано —</option><option value="DLP">DLP</option><option value="LCD">LCD</option><option value="3LCD">3LCD</option><option value="LCoS">LCoS</option></select></label></div><small>За потреби вкажіть дані вручну: вони мають пріоритет над автоматичним визначенням із XML.</small>';
     const description=form.elements.description?.closest('label');if(description)description.before(panel);else form.append(panel);
   }
   const specifications=product?.specifications||parseAdminSpecifications(form.elements.specifications_text?.value);
@@ -111,6 +111,8 @@ const mountProjectorEditorFields=(form,product)=>{
   const source=String(specifications['Джерело світла']||specifications['Тип джерела']||'');
   panel.querySelector('[name="projector_light_source"]').value=/лазер/iu.test(source)?'Лазер':/(?:світлодіод|\bled\b)/iu.test(source)?'Світлодіод':/(?:ламп|lamp)/iu.test(source)?'Лампа':'';
   panel.querySelector('[name="projector_resolution"]').value=String(specifications['Роздільна здатність']||specifications['Resolution']||'');
+  const technology=String(specifications['Технологія проекції']||specifications['Projection technology']||'');
+  panel.querySelector('[name="projector_technology"]').value=/3lcd/iu.test(technology)?'3LCD':/lcos/iu.test(technology)?'LCoS':/\bdlp\b/iu.test(technology)?'DLP':/\blcd\b/iu.test(technology)?'LCD':'';
   const toggle=()=>{panel.hidden=!projectorCategorySlugs.has(form.elements.category.value)};
   form.elements.category.onchange=toggle;toggle();
 };
@@ -121,13 +123,15 @@ async function saveProductWithProjectorFields(event){
   const form=event.currentTarget,panel=form.querySelector('#projectorEditorFields');
   if(panel&&!panel.hidden){
     const specifications=parseAdminSpecifications(form.elements.specifications_text.value);
-    delete specifications['Призначення'];delete specifications['Тип / призначення'];delete specifications['Джерело світла'];delete specifications['Тип джерела'];delete specifications['Роздільна здатність'];delete specifications['Resolution'];
+    delete specifications['Призначення'];delete specifications['Тип / призначення'];delete specifications['Джерело світла'];delete specifications['Тип джерела'];delete specifications['Роздільна здатність'];delete specifications['Resolution'];delete specifications['Технологія проекції'];delete specifications['Projection technology'];
     const purposes=[...panel.querySelectorAll('[name="projector_purpose"]:checked')].map(input=>input.value);
     const source=panel.querySelector('[name="projector_light_source"]').value;
     const resolution=panel.querySelector('[name="projector_resolution"]').value.trim();
+    const technology=panel.querySelector('[name="projector_technology"]').value;
     if(purposes.length)specifications['Призначення']=purposes.join(' · ');
     if(source)specifications['Джерело світла']=source;
     if(resolution)specifications['Роздільна здатність']=resolution;
+    if(technology)specifications['Технологія проекції']=technology;
     writeAdminSpecifications(form,specifications);
   }
   return originalSaveProduct(event);
@@ -312,7 +316,7 @@ supabase.auth.getSession().then(({data:{session}})=>session?dashboard():view('lo
       else if (/(?:короткофокус|short\s*-?\s*throw)/iu.test(text)) projectorPurposes.push('Короткофокусний');
       if (/(?:інсталяційн|installation)/iu.test(text)) projectorPurposes.push('Інсталяційний');
       if (/(?:універсальн|universal)/iu.test(text)) projectorPurposes.push('Універсальний');
-      add('Роздільна здатність', resolution); add('Яскравість', brightness && brightness + ' лм'); add('Технологія проекції', /\bdlp\b/iu.test(text) ? 'DLP' : /(?:3lcd|\blcd\b)/iu.test(text) ? 'LCD' : ''); add('Призначення', [...new Set(projectorPurposes)].join(' · ')); add('Джерело світла', /лазер|laser/iu.test(text) ? 'Лазер' : /світлодіод|\bled\b/iu.test(text) ? 'Світлодіод' : /ламп|lamp/iu.test(text) ? 'Лампа' : '');
+      add('Роздільна здатність', resolution); add('Яскравість', brightness && brightness + ' лм'); add('Технологія проекції', /\b3lcd\b/iu.test(text) ? '3LCD' : /\bdlp\b/iu.test(text) ? 'DLP' : /\blcos\b/iu.test(text) ? 'LCoS' : /\blcd\b/iu.test(text) ? 'LCD' : ''); add('Призначення', [...new Set(projectorPurposes)].join(' · ')); add('Джерело світла', /лазер|laser/iu.test(text) ? 'Лазер' : /світлодіод|\bled\b/iu.test(text) ? 'Світлодіод' : /ламп|lamp/iu.test(text) ? 'Лампа' : '');
     }
     if (/(?:телевізор|\btv\b)/iu.test(text)) { add('Діагональ', diagonal && diagonal.replace(',', '.') + '″'); add('Роздільна здатність', resolution); add('Тип матриці', /mini\s*-?\s*led/iu.test(text) ? 'miniLED' : /oled/iu.test(text) ? 'OLED' : /qled/iu.test(text) ? 'QLED' : /\bled\b/iu.test(text) ? 'LED' : ''); add('Smart TV', /(?:smart\s*tv|google\s*tv|android\s*tv|webos|tizen|vidaa)/iu.test(text) ? 'Є' : ''); }
     const officeType = /(?:бфп|мфу|mfp|multifunction|багатофункціональн\w*\s+(?:пристрій|апарат))/iu.test(text) ? 'БФП' : /(?:принтер|printer)/iu.test(text) ? 'Принтер' : /(?:сканер|scanner)/iu.test(text) ? 'Сканер' : /(?:копір|копир|copier)/iu.test(text) ? 'Копір' : /(?:ламінатор|ламинатор|laminator)/iu.test(text) ? 'Ламінатор' : /(?:знищувач|шредер|shredder)/iu.test(text) ? 'Знищувач документів' : '';

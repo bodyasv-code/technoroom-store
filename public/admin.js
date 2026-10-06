@@ -102,7 +102,7 @@ const mountProjectorEditorFields=(form,product)=>{
   let panel=form.querySelector('#projectorEditorFields');
   if(!panel){
     panel=document.createElement('fieldset');panel.id='projectorEditorFields';panel.className='projector-editor-fields';
-    panel.innerHTML='<legend>Фільтри проєктора</legend><div class="projector-editor-fields__grid"><div><b>Тип і призначення</b><div class="projector-editor-fields__options">'+projectorPurposeOptions.map(value=>'<label><input type="checkbox" name="projector_purpose" value="'+value+'"> '+value+'</label>').join('')+'</div></div><label>Джерело світла<select name="projector_light_source"><option value="">— Не вказано —</option><option value="Лампа">Лампа</option><option value="Лазер">Лазер</option><option value="Світлодіод">LED / світлодіодний</option></select></label></div><small>За потреби вкажіть дані вручну: вони мають пріоритет над автоматичним визначенням із XML.</small>';
+    panel.innerHTML='<legend>Фільтри проєктора</legend><div class="projector-editor-fields__grid"><div><b>Тип і призначення</b><div class="projector-editor-fields__options">'+projectorPurposeOptions.map(value=>'<label><input type="checkbox" name="projector_purpose" value="'+value+'"> '+value+'</label>').join('')+'</div></div><label>Джерело світла<select name="projector_light_source"><option value="">— Не вказано —</option><option value="Лампа">Лампа</option><option value="Лазер">Лазер</option><option value="Світлодіод">LED / світлодіодний</option></select></label><label>Роздільна здатність<input name="projector_resolution" type="text" placeholder="Напр. 1920 × 1080 або 4K UHD"></label></div><small>За потреби вкажіть дані вручну: вони мають пріоритет над автоматичним визначенням із XML.</small>';
     const description=form.elements.description?.closest('label');if(description)description.before(panel);else form.append(panel);
   }
   const specifications=product?.specifications||parseAdminSpecifications(form.elements.specifications_text?.value);
@@ -110,6 +110,7 @@ const mountProjectorEditorFields=(form,product)=>{
   panel.querySelectorAll('[name="projector_purpose"]').forEach(input=>input.checked=purposeText.includes(input.value));
   const source=String(specifications['Джерело світла']||specifications['Тип джерела']||'');
   panel.querySelector('[name="projector_light_source"]').value=/лазер/iu.test(source)?'Лазер':/(?:світлодіод|\bled\b)/iu.test(source)?'Світлодіод':/(?:ламп|lamp)/iu.test(source)?'Лампа':'';
+  panel.querySelector('[name="projector_resolution"]').value=String(specifications['Роздільна здатність']||specifications['Resolution']||'');
   const toggle=()=>{panel.hidden=!projectorCategorySlugs.has(form.elements.category.value)};
   form.elements.category.onchange=toggle;toggle();
 };
@@ -120,11 +121,13 @@ async function saveProductWithProjectorFields(event){
   const form=event.currentTarget,panel=form.querySelector('#projectorEditorFields');
   if(panel&&!panel.hidden){
     const specifications=parseAdminSpecifications(form.elements.specifications_text.value);
-    delete specifications['Призначення'];delete specifications['Тип / призначення'];delete specifications['Джерело світла'];delete specifications['Тип джерела'];
+    delete specifications['Призначення'];delete specifications['Тип / призначення'];delete specifications['Джерело світла'];delete specifications['Тип джерела'];delete specifications['Роздільна здатність'];delete specifications['Resolution'];
     const purposes=[...panel.querySelectorAll('[name="projector_purpose"]:checked')].map(input=>input.value);
     const source=panel.querySelector('[name="projector_light_source"]').value;
+    const resolution=panel.querySelector('[name="projector_resolution"]').value.trim();
     if(purposes.length)specifications['Призначення']=purposes.join(' · ');
     if(source)specifications['Джерело світла']=source;
+    if(resolution)specifications['Роздільна здатність']=resolution;
     writeAdminSpecifications(form,specifications);
   }
   return originalSaveProduct(event);

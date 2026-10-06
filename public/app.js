@@ -45,6 +45,29 @@ const readableText = (value = '') => {
   try { if (/%[0-9a-f]{2}/i.test(text)) text = decodeURIComponent(text); } catch {}
   return text.replace(/&amp;/gi, '&').replace(/&quot;/gi, '"').replace(/&#39;|&apos;/gi, "'").replace(/&nbsp;/gi, ' ').replace(/\s+/g, ' ').trim();
 };
+// Це не категорії товару, а незалежні властивості. Тому, наприклад,
+// короткофокусний лазерний проєктор потрапляє в обидві добірки без дубля SKU.
+const projectorClassificationValues = (product) => {
+  const specifications = Object.entries(product?.specifications || {})
+    .flatMap(([key, value]) => [key, ...(Array.isArray(value) ? value : [value])]);
+  const source = readableText([product?.name, product?.description, ...specifications].filter(Boolean).join(' '));
+  const projectorTypes = new Set(['projector', 'laser-proj', 'erc-display-03', 'erc-display-11', 'erc-display-12', 'erc-display-13', 'home-projectors', 'short-throw-projectors', 'installation-projectors', 'universal-projectors']);
+  if (!projectorTypes.has(product?.type) && !/^\s*(?:про[єе]ктор|projector)\b/iu.test(source)) return [];
+  const values = [];
+  if (product?.type === 'laser-proj' || /(?:лазер|laser)/iu.test(source)) values.push('Лазерний');
+  if (/(?:ультра\s*-?\s*короткофокус|ultra\s*-?\s*short\s*-?\s*throw)/iu.test(source)) values.push('Ультракороткофокусний');
+  if (product?.type === 'erc-display-12' || product?.type === 'short-throw-projectors' || /(?:короткофокус|short\s*-?\s*throw)/iu.test(source)) values.push('Короткофокусний');
+  return [...new Set(values)];
+};
+const projectorCollectionLinks = (products) => [
+  ['laser', 'Лазерні проєктори', 'Лазерний'],
+  ['short', 'Короткофокусні проєктори', 'Короткофокусний'],
+  ['ultra', 'Ультракороткофокусні проєктори', 'Ультракороткофокусний']
+].map(([value, name, label]) => ({
+  value,
+  name,
+  count: products.filter((product) => !product.parentProductId && projectorClassificationValues(product).includes(label)).length
+})).filter((collection) => collection.count);
 const get = (id) => products.find((product) => product.id === Number(id));
 const save = () => localStorage.setItem('technoroom-cart', JSON.stringify(cart));
 const imageUrl = (product) => product.image?.startsWith('http') ? `/api/product-image?id=${product.id}` : product.image ? supabase.storage.from('product-images').getPublicUrl(product.image).data.publicUrl : '';
@@ -148,7 +171,10 @@ async function home() {
           rootsEl.querySelectorAll('button').forEach(b=>b.classList.toggle('active',b.dataset.slug===r.slug));
           const kids=cats.filter(c=>c.parent_id===r.id);
           const back=compactMenu()?'<button type="button" class="mega-back" data-mega-back>← Усі категорії</button>':'';
-          childrenEl.innerHTML=`${back}<div class="mega-title"><h2>${escapeHtml(r.name)}</h2><a href="catalog.html?category=${encodeURIComponent(r.slug)}">Усі товари →</a></div><div class="mega-grid">${kids.map(c=>`<a href="catalog.html?category=${encodeURIComponent(c.slug)}"><strong>${escapeHtml(c.name)}</strong><span>${products.filter(p=>!p.parentProductId&&storefrontCategoryMatches(p,c.slug)).length} товарів</span></a>`).join('')}</div>`;
+          const projectorCollections = r.slug === 'cat-projectors'
+            ? projectorCollectionLinks(products).map((collection) => `<a href="catalog.html?category=cat-projectors&projector=${encodeURIComponent(collection.value)}"><strong>${escapeHtml(collection.name)}</strong><span>${collection.count} товарів</span></a>`).join('')
+            : '';
+          childrenEl.innerHTML=`${back}<div class="mega-title"><h2>${escapeHtml(r.name)}</h2><a href="catalog.html?category=${encodeURIComponent(r.slug)}">Усі товари →</a></div><div class="mega-grid">${kids.map(c=>`<a href="catalog.html?category=${encodeURIComponent(c.slug)}"><strong>${escapeHtml(c.name)}</strong><span>${products.filter(p=>!p.parentProductId&&storefrontCategoryMatches(p,c.slug)).length} товарів</span></a>`).join('')}${projectorCollections}</div>`;
           if(compactMenu()){
             rootsEl.hidden=true;
             childrenEl.hidden=false;
@@ -619,7 +645,10 @@ async function mountMegaCatalog() {
     rootsEl.querySelectorAll('button').forEach(b=>b.classList.toggle('active',b.dataset.slug===root.slug));
     const kids=cats.filter(c=>c.parent_id===root.id);
     const back=compactMenu()?'<button type="button" class="mega-back" data-mega-back>← Усі категорії</button>':'';
-    childrenEl.innerHTML=`${back}<div class="mega-title"><h2>${root.name}</h2><a href="catalog.html?category=${encodeURIComponent(root.slug)}">Усі товари →</a></div><div class="mega-grid">${kids.map(c=>{const count=productCount(c.slug);return `<a href="catalog.html?category=${encodeURIComponent(c.slug)}"><strong>${c.name}</strong><span>${count===null?'Завантаження…':count+' товарів'}</span></a>`}).join('')}</div>`;
+    const projectorCollections = root.slug === 'cat-projectors' && !isProductPage
+      ? projectorCollectionLinks(products).map((collection) => `<a href="catalog.html?category=cat-projectors&projector=${encodeURIComponent(collection.value)}"><strong>${escapeHtml(collection.name)}</strong><span>${collection.count} товарів</span></a>`).join('')
+      : '';
+    childrenEl.innerHTML=`${back}<div class="mega-title"><h2>${root.name}</h2><a href="catalog.html?category=${encodeURIComponent(root.slug)}">Усі товари →</a></div><div class="mega-grid">${kids.map(c=>{const count=productCount(c.slug);return `<a href="catalog.html?category=${encodeURIComponent(c.slug)}"><strong>${escapeHtml(c.name)}</strong><span>${count===null?'Завантаження…':count+' товарів'}</span></a>`}).join('')}${projectorCollections}</div>`;
     if(compactMenu()){
       rootsEl.hidden=true;
       childrenEl.hidden=false;
@@ -1555,6 +1584,7 @@ catalog = function () {
   };
   const projectorFilterOptions = (categoryProducts) => {
     const definitions = [
+      { id: 'projector-classification', label: 'Клас проєкції', values: projectorClassificationValues, normaliseValue: normaliseSpecificationValue },
       { id: 'projector-technology', label: 'Технологія', values: projectorTechnologyValues, normaliseValue: normaliseSpecificationValue },
       { id: 'projector-resolution', label: 'Роздільна здатність', values: projectorResolutionValues, normaliseValue: normaliseSpecificationValue },
       { id: 'projector-light-source', label: 'Джерело світла', keys: ['джерело світла', 'тип джерела'], values: (product) => specificationValues(product, ['джерело світла', 'тип джерела']).map(normaliseLightSource), normaliseValue: normaliseLightSource }
@@ -1846,8 +1876,18 @@ catalog = function () {
   let page = 1;
   let category = legacyCategoryAliases[params.get('category')] || params.get('category') || 'all';
   if (params.get('search')) search.value = params.get('search');
+  const projectorCollection = params.get('projector');
+  const projectorCollectionLabels = { laser: 'Лазерний', short: 'Короткофокусний', ultra: 'Ультракороткофокусний' };
+  let projectorCollectionPending = Boolean(projectorCollectionLabels[projectorCollection]);
+  const applyProjectorCollection = () => {
+    const label = projectorCollectionLabels[projectorCollection];
+    if (!projectorCollectionPending || !label || !products.some((product) => projectorClassificationValues(product).includes(label))) return;
+    selectedScreenSpecifications.set('projector-classification', new Set([label]));
+    projectorCollectionPending = false;
+  };
 
   const draw = () => {
+    applyProjectorCollection();
     renderScreenSpecificationFilters();
     const categoryProducts = products.filter((product) => !product.parentProductId && (category === 'all' || storefrontCategoryMatches(product, category)));
     const brands = [...new Map(categoryProducts.map((product) => cleanBrand(product.brand)).filter(Boolean).map((value) => [value.toLocaleLowerCase('uk-UA'), value])).values()].sort((left, right) => left.localeCompare(right, 'uk'));
@@ -1933,6 +1973,7 @@ catalog = function () {
     selectedLuminousFlux.min = ''; selectedLuminousFlux.max = '';
     page = 1;
     const url = new URL(location.href);
+    url.searchParams.delete('projector');
     if (category === 'all') url.searchParams.delete('category'); else url.searchParams.set('category', category);
     history.replaceState({}, '', url);
     draw();

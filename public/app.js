@@ -118,8 +118,7 @@ async function home() {
       }
       applyBanner(0);
     }
-    const {data:promos}=await supabase.from('promotions').select('*').eq('is_active',true);
-    const active=(promos||[]).filter(p=>(!p.starts_at||p.starts_at<=now)&&(!p.ends_at||p.ends_at>=now));
+    const active=activePromotions;
     if(active.length){const sale=document.querySelector('.home-tabs a[href*="promo=sale"]');if(sale)sale.textContent='Акції ('+active.length+')'}
   } catch(e){console.warn('Промоблоки головної',e)}
 
@@ -127,8 +126,7 @@ async function home() {
   if(saleSection&&saleGrid){const saleProducts=homeProducts.filter(p=>promotionFor(p)||promotionByProductLink(p));saleSection.hidden=false;if(saleProducts.length){saleGrid.innerHTML=saleProducts.slice(0,6).map(card).join('');bind(saleGrid)}else{saleGrid.innerHTML='<div class="home-sale-empty">Акційні товари з’являться тут після активації акції.</div>'}}
   const cards=document.getElementById('homeCategoryCards');
   try {
-    const res=await supabase.from('categories').select('id,name,slug,parent_id,sort_order,image_path').eq('is_active',true).order('sort_order');
-    cats=(res.data||[]).map((category) => ({ ...category, name: readableText(category.name) }));
+    cats=await loadStorefrontCategories();
     if(cats.length){
       const ids=new Set(cats.map(c=>c.id)), roots=cats.filter(c=>!c.parent_id||!ids.has(c.parent_id));
       if(cards) cards.innerHTML=roots.slice(0,8).map(c=>{const source=c.image_path?(String(c.image_path).startsWith('http')?c.image_path:supabase.storage.from('product-images').getPublicUrl(c.image_path).data.publicUrl):'';return `<a href="catalog.html?category=${encodeURIComponent(c.slug)}"><div class="home-cat-visual">${source?'<img src="'+escapeHtml(source)+'" alt="" loading="lazy">':'▣'}</div><b>${escapeHtml(c.name)}</b><span>Переглянути →</span></a>`}).join('');
@@ -448,15 +446,24 @@ async function loadProducts() { try {
     await loadProductPageProducts();
     return;
   }
+  // Каталог усе ще потрібен цілком для локального пошуку та фільтрів, але
+  // сторінки по 1000 позицій отримуємо паралельно, а не одну за одною.
   const pageSize = 1000;
-  const all = [];
-  for (let from = 0; ; from += pageSize) {
-    const { data, error } = await supabase.from('products').select('*').eq('is_active', true).order('created_at', { ascending: false }).range(from, from + pageSize - 1);
-    if (error) throw error;
-    if (!data?.length) break;
-    all.push(...data);
-    if (data.length < pageSize) break;
-  }
+  const request = (from, withCount = false) => supabase.from('products')
+    .select('*', withCount ? { count: 'exact' } : {})
+    .eq('is_active', true)
+    .order('created_at', { ascending: false })
+    .range(from, from + pageSize - 1);
+  const first = await request(0, true);
+  if (first.error) throw first.error;
+  const total = Number(first.count || first.data?.length || 0);
+  const offsets = Array.from({ length: Math.max(0, Math.ceil(total / pageSize) - 1) }, (_, index) => (index + 1) * pageSize);
+  const following = await Promise.all(offsets.map(async (from) => {
+    const result = await request(from);
+    if (result.error) throw result.error;
+    return result.data || [];
+  }));
+  const all = [...(first.data || []), ...following.flat()];
   if (all.length) products = all.map(storeProductFromRow);
   const now=Date.now(),pr=await supabase.from('promotions').select('*').eq('is_active',true);if(pr.error)console.warn('Акції:',pr.error);else{activePromotions=(pr.data||[]).filter(p=>(!p.starts_at||new Date(p.starts_at).getTime()<=now)&&(!p.ends_at||new Date(p.ends_at).getTime()>=now));promotionProductIds.clear();const targeted=activePromotions.filter(p=>p.target_type==='products').map(p=>p.id);if(targeted.length){const pp=await supabase.from('promotion_products').select('promotion_id,product_id').in('promotion_id',targeted);if(pp.error)console.warn('Товари акцій:',pp.error);else(pp.data||[]).forEach(x=>{const key=Number(x.promotion_id);if(!promotionProductIds.has(key))promotionProductIds.set(key,new Set());promotionProductIds.get(key).add(Number(x.product_id))})}}
 } catch (error) { console.warn('Не вдалося завантажити каталог із Supabase', error); } finally { productsLoaded = true; mount(); await mountMegaCatalog(); } }
@@ -467,20 +474,32 @@ else loadProducts();
 async function mountMegaCatalog() {
   const mega=document.getElementById('catalogMega'), rootsEl=document.getElementById('megaRoots'), childrenEl=document.getElementById('megaChildren');
   if(!mega||!rootsEl||!childrenEl) return;
-  const {data:categoryRows,error}=await supabase.from('categories').select('id,name,slug,parent_id,sort_order').eq('is_active',true).order('sort_order');
-  const cats=(categoryRows||[]).map((category)=>({ ...category, name: readableText(category.name) }));
-  if(error||!cats?.length) return;
+  const cats=await loadStorefrontCategories();
+  if(!cats?.length) return;
   // На картці товару завантажується лише поточна позиція, тому для меню
   // окремо отримуємо лише категорії всіх товарів. Інакше лічильники в меню
   // показували б нулі або кількість тільки поточного товару.
-  const menuRows=[];
-  for(let from=0;;from+=1000){
-    const {data,error:productsError}=await supabase.from('products').select('category,parent_product_id').eq('is_active',true).range(from,from+999);
-    if(productsError) break;
-    menuRows.push(...(data||[]));
-    if(!data||data.length<1000) break;
+  let menuRows=[];
+  if(isProductPage){
+    const pageSize=1000;
+    const menuRequest=(from,withCount=false)=>supabase.from('products')
+      .select('category,parent_product_id',withCount?{count:'exact'}:{})
+      .eq('is_active',true)
+      .range(from,from+pageSize-1);
+    const firstPage=await menuRequest(0,true);
+    if(!firstPage.error){
+      const total=Number(firstPage.count||firstPage.data?.length||0);
+      const offsets=Array.from({length:Math.max(0,Math.ceil(total/pageSize)-1)},(_,index)=>(index+1)*pageSize);
+      const remaining=await Promise.all(offsets.map(async(from)=>{
+        const page=await menuRequest(from);
+        return page.error?[]:(page.data||[]);
+      }));
+      menuRows=[...(firstPage.data||[]),...remaining.flat()];
+    }
   }
-  const menuProducts=menuRows.map((product)=>({type:product.category,parentProductId:product.parent_product_id}));
+  const menuProducts=isProductPage
+    ? menuRows.map((product)=>({type:product.category,parentProductId:product.parent_product_id}))
+    : products;
   const ids=new Set(cats.map(c=>c.id)), roots=cats.filter(c=>!c.parent_id||!ids.has(c.parent_id));
   const branchFor=(slug)=>{
     const childrenByParent=new Map();
@@ -931,16 +950,6 @@ checkout = () => {
   };
 
 };
-async function refreshAvailabilityStatuses() {
-  if (isProductPage) return;
-  const { data, error } = await supabase.from('products').select('*').eq('is_active', true).order('created_at', { ascending: false });
-  if (error || !data?.length) return;
-  products = data.map((item) => ({ ...storeProductFromRow(item), availabilityStatus: item.availability_status || ((item.in_stock && Number(item.stock_quantity || 0) > 0) ? 'in_stock' : 'out_of_stock') }));
-  mount();
-}
-window.addEventListener('load', refreshAvailabilityStatuses, { once: true });
-
-
 // Категорії визначаються за прив’язкою товару, а не за словами в описі.
 categoryMatch = function (product, category) {
   const categoryTree = { projector: ['projector', 'laser-proj'] };
@@ -995,17 +1004,6 @@ product = function () {
 const productVariantsStyle = document.createElement('style');
 productVariantsStyle.textContent = '.product-variants{margin:18px 0 0}.product-variants>b{display:block;margin-bottom:8px;color:#334e68;font-size:12px}.product-variants>div{display:flex;flex-wrap:wrap;gap:8px}.product-variant{border:1px solid #cfd9e6;border-radius:7px;padding:9px 11px;background:#fff;color:#29425c;font-size:12px;font-weight:800}.product-variant:hover{border-color:#0875e9}.product-variant.is-selected{border-color:#0875e9;background:#eaf4ff;color:#075fbe}.product-variants-note{display:inline-block;margin:0 0 9px;color:#526b86;font-size:11px;font-weight:700}@media(max-width:560px){.product-variant{padding:8px 10px}}';
 document.head.append(productVariantsStyle);
-
-async function hydrateProductGallery() {
-  if (isProductPage) return;
-  const { data, error } = await supabase.from('products').select('id,image_path,image_paths').eq('is_active', true);
-  if (!error && data) {
-    galleryByProductId = new Map(data.map((row) => [Number(row.id), row]));
-    product();
-  }
-}
-if (!isProductPage) hydrateProductGallery();
-
 
 /* Сумісна версія галереї з актуальними статусами та характеристиками. */
 product = function () {
@@ -1228,7 +1226,7 @@ const loadStorefrontCategories = async () => {
   if (storefrontCategoriesRequest) return storefrontCategoriesRequest;
   storefrontCategoriesRequest = supabase
     .from('categories')
-    .select('id,name,slug,parent_id,sort_order')
+    .select('id,name,slug,parent_id,sort_order,image_path')
     .eq('is_active', true)
     .order('sort_order')
     .order('name')

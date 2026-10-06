@@ -441,13 +441,42 @@ async function loadProductPageProducts() {
   products = rows.map(storeProductFromRow);
 }
 
+async function loadActivePromotions() {
+  const now = Date.now();
+  const result = await supabase.from('promotions').select('*').eq('is_active', true);
+  if (result.error) {
+    console.warn('Акції:', result.error);
+    return;
+  }
+  activePromotions = (result.data || []).filter((promotion) =>
+    (!promotion.starts_at || new Date(promotion.starts_at).getTime() <= now)
+    && (!promotion.ends_at || new Date(promotion.ends_at).getTime() >= now)
+  );
+  promotionProductIds.clear();
+  const targeted = activePromotions.filter((promotion) => promotion.target_type === 'products').map((promotion) => promotion.id);
+  if (!targeted.length) return;
+  const linked = await supabase.from('promotion_products').select('promotion_id,product_id').in('promotion_id', targeted);
+  if (linked.error) {
+    console.warn('Товари акцій:', linked.error);
+    return;
+  }
+  (linked.data || []).forEach((row) => {
+    const promotionId = Number(row.promotion_id);
+    if (!promotionProductIds.has(promotionId)) promotionProductIds.set(promotionId, new Set());
+    promotionProductIds.get(promotionId).add(Number(row.product_id));
+  });
+}
+
 async function loadProducts() { try {
+  const categoriesPromise = loadStorefrontCategories();
   if (isProductPage) {
-    await loadProductPageProducts();
+    await Promise.all([loadProductPageProducts(), categoriesPromise]);
     return;
   }
   // Каталог усе ще потрібен цілком для локального пошуку та фільтрів, але
   // сторінки по 1000 позицій отримуємо паралельно, а не одну за одною.
+  // Дані меню та акцій не залежать від списку товарів, тож отримуємо їх одночасно.
+  const promotionsPromise = loadActivePromotions();
   const pageSize = 1000;
   const request = (from, withCount = false) => supabase.from('products')
     .select('*', withCount ? { count: 'exact' } : {})
@@ -465,7 +494,7 @@ async function loadProducts() { try {
   }));
   const all = [...(first.data || []), ...following.flat()];
   if (all.length) products = all.map(storeProductFromRow);
-  const now=Date.now(),pr=await supabase.from('promotions').select('*').eq('is_active',true);if(pr.error)console.warn('Акції:',pr.error);else{activePromotions=(pr.data||[]).filter(p=>(!p.starts_at||new Date(p.starts_at).getTime()<=now)&&(!p.ends_at||new Date(p.ends_at).getTime()>=now));promotionProductIds.clear();const targeted=activePromotions.filter(p=>p.target_type==='products').map(p=>p.id);if(targeted.length){const pp=await supabase.from('promotion_products').select('promotion_id,product_id').in('promotion_id',targeted);if(pp.error)console.warn('Товари акцій:',pp.error);else(pp.data||[]).forEach(x=>{const key=Number(x.promotion_id);if(!promotionProductIds.has(key))promotionProductIds.set(key,new Set());promotionProductIds.get(key).add(Number(x.product_id))})}}
+  await Promise.all([categoriesPromise, promotionsPromise]);
 } catch (error) { console.warn('Не вдалося завантажити каталог із Supabase', error); } finally { productsLoaded = true; mount(); await mountMegaCatalog(); } }
 if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', loadProducts, { once: true });
 else loadProducts();

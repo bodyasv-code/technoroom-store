@@ -512,6 +512,16 @@ async function mountMegaCatalog() {
   // На картці товару завантажується лише поточна позиція, тому для меню
   // окремо отримуємо лише категорії всіх товарів. Інакше лічильники в меню
   // показували б нулі або кількість тільки поточного товару.
+  const ids=new Set(cats.map(c=>c.id)), roots=cats.filter(c=>!c.parent_id||!ids.has(c.parent_id));
+  const childrenByParent=new Map();
+  cats.forEach((category)=>{const children=childrenByParent.get(category.parent_id)||[];children.push(category);childrenByParent.set(category.parent_id,children)});
+  const branchFor=(slug)=>{
+    const root=cats.find((category)=>category.slug===slug);
+    const branch=new Set(root?[root.slug]:[slug]);
+    const visit=(parentId)=>(childrenByParent.get(parentId)||[]).forEach((child)=>{branch.add(child.slug);visit(child.id)});
+    if(root) visit(root.id);
+    return branch;
+  };
   let menuRows=[];
   let menuCounts=null;
   if(isProductPage){
@@ -519,37 +529,18 @@ async function mountMegaCatalog() {
     if(!countsResult.error&&Array.isArray(countsResult.data)){
       menuCounts=new Map(countsResult.data.map((row)=>[row.category,Number(row.product_count)||0]));
     }else{
-      // Поки SQL-оптимізація ще не запущена, меню лишається робочим.
-      const pageSize=1000;
-      const menuRequest=(from,withCount=false)=>supabase.from('products')
-        .select('category,parent_product_id',withCount?{count:'exact'}:{})
-        .eq('is_active',true)
-        .range(from,from+pageSize-1);
-      const firstPage=await menuRequest(0,true);
-      if(!firstPage.error){
-        const total=Number(firstPage.count||firstPage.data?.length||0);
-        const offsets=Array.from({length:Math.max(0,Math.ceil(total/pageSize)-1)},(_,index)=>(index+1)*pageSize);
-        const remaining=await Promise.all(offsets.map(async(from)=>{
-          const page=await menuRequest(from);
-          return page.error?[]:(page.data||[]);
-        }));
-        menuRows=[...(firstPage.data||[]),...remaining.flat()];
-      }
+      // Без SQL-функції отримуємо тільки лічильники, а не всі записи каталогу.
+      const countRows=await Promise.all(cats.map(async(category)=>{
+        const result=await supabase.from('products').select('id',{count:'exact',head:true})
+          .eq('is_active',true).is('parent_product_id',null).eq('category',category.slug);
+        return result.error?null:[category.slug,Number(result.count)||0];
+      }));
+      if(countRows.every(Boolean)) menuCounts=new Map(countRows);
     }
   }
   const menuProducts=isProductPage
     ? menuRows.map((product)=>({type:product.category,parentProductId:product.parent_product_id}))
     : products;
-  const ids=new Set(cats.map(c=>c.id)), roots=cats.filter(c=>!c.parent_id||!ids.has(c.parent_id));
-  const branchFor=(slug)=>{
-    const childrenByParent=new Map();
-    cats.forEach((category)=>{const children=childrenByParent.get(category.parent_id)||[];children.push(category);childrenByParent.set(category.parent_id,children)});
-    const root=cats.find((category)=>category.slug===slug);
-    const branch=new Set(root?[root.slug]:[slug]);
-    const visit=(parentId)=>(childrenByParent.get(parentId)||[]).forEach((child)=>{branch.add(child.slug);visit(child.id)});
-    if(root) visit(root.id);
-    return branch;
-  };
   const productCount=(slug)=>{const branch=branchFor(slug);return menuCounts?[...branch].reduce((total,category)=>total+(menuCounts.get(category)||0),0):menuProducts.filter((product)=>!product.parentProductId&&branch.has(product.type)).length};
   const compactMenu=()=>window.matchMedia('(max-width:700px)').matches;
   const renderRoots=()=>{

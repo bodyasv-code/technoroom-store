@@ -468,9 +468,8 @@ async function loadActivePromotions() {
 }
 
 async function loadProducts() { try {
-  const categoriesPromise = loadStorefrontCategories();
   if (isProductPage) {
-    await Promise.all([loadProductPageProducts(), categoriesPromise]);
+    await loadProductPageProducts();
     return;
   }
   // Каталог усе ще потрібен цілком для локального пошуку та фільтрів, але
@@ -478,13 +477,18 @@ async function loadProducts() { try {
   // Дані меню та акцій не залежать від списку товарів, тож отримуємо їх одночасно.
   const promotionsPromise = loadActivePromotions();
   const pageSize = 1000;
+  // Для карток, пошуку та фільтрів не потрібні додаткові фото й службові поля.
+  // Повний запис, включно з галереєю, завантажується окремо лише на сторінці товару.
+  const catalogColumns = 'id,sku,name,description,price,category,brand,brand_id,parent_product_id,variant_label,specifications,availability_status,stock_quantity,in_stock,image_path';
   const request = (from, withCount = false) => supabase.from('products')
-    .select('*', withCount ? { count: 'exact' } : {})
+    .select(catalogColumns, withCount ? { count: 'exact' } : {})
     .eq('is_active', true)
     .order('created_at', { ascending: false })
     .range(from, from + pageSize - 1);
   const first = await request(0, true);
   if (first.error) throw first.error;
+  // Після першого асинхронного запиту модуль категорій уже ініціалізовано.
+  const categoriesPromise = loadStorefrontCategories();
   const total = Number(first.count || first.data?.length || 0);
   const offsets = Array.from({ length: Math.max(0, Math.ceil(total / pageSize) - 1) }, (_, index) => (index + 1) * pageSize);
   const following = await Promise.all(offsets.map(async (from) => {

@@ -22,20 +22,26 @@ set parent_id = excluded.parent_id,
     sort_order = excluded.sort_order,
     is_active = true;
 
--- 21" і більше. Перевіряється лише назва товару, а не опис або параметри.
+-- 21" і більше або формати A0–A2. Перевіряється лише назва товару,
+-- а не опис або параметри.
 -- Це не дає випадковим числам у характеристиках змінити категорію.
-with classified as (
+with source as (
+  select id, lower(replace(coalesce(name, ''), chr(39), '"')) as name_text
+  from public.products
+), classified as (
   select id,
     case
-      when lower(coalesce(name, '')) ~ '(бфп|мфу|mfp|multifunction|багатофункціональн[^ ]*[[:space:]]+(пристрій|апарат))'
-       and lower(coalesce(name, '')) ~ '(^|[^0-9])(2[1-9]|[3-9][0-9]|[1-9][0-9]{2})[[:space:]]*("|″|”|дюйм|inch|in\.)'
+      when name_text ~ '(бфп|мфу|mfp|multifunction|багатофункціональн[^ ]*[[:space:]]+(пристрій|апарат))'
+       and (name_text ~ '(^|[^0-9])(2[1-9]|[3-9][0-9]|[1-9][0-9]{2})[[:space:]]*("|″|”|дюйм|inch|in\.)'
+            or name_text ~ '(^|[^a-z0-9])a[0-2]([^a-z0-9]|$)')
         then 'office-wide-format'
-      when lower(coalesce(name, '')) ~ '(принтер|printer)'
-       and lower(coalesce(name, '')) !~ '(картридж|тонер|чорнил|ink|cartridge|drum|фотобарабан)'
-       and lower(coalesce(name, '')) ~ '(^|[^0-9])(2[1-9]|[3-9][0-9]|[1-9][0-9]{2})[[:space:]]*("|″|”|дюйм|inch|in\.)'
+      when name_text ~ '(принтер|printer)'
+       and name_text !~ '(картридж|тонер|чорнил|ink|cartridge|drum|фотобарабан)'
+       and (name_text ~ '(^|[^0-9])(2[1-9]|[3-9][0-9]|[1-9][0-9]{2})[[:space:]]*("|″|”|дюйм|inch|in\.)'
+            or name_text ~ '(^|[^a-z0-9])a[0-2]([^a-z0-9]|$)')
         then 'office-wide-format'
     end as category
-  from public.products
+  from source
 )
 update public.products product
 set category = classified.category

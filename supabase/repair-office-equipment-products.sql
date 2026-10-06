@@ -38,7 +38,7 @@ set parent_id = excluded.parent_id,
 -- містити «LiDAR Scanner» у смартфона, але це не робить його сканером.
 with source as (
   select id,
-         lower(coalesce(name, '')) as name_text,
+         lower(replace(coalesce(name, ''), chr(39), '"')) as name_text,
          lower(concat_ws(' ', name, description, specifications::text)) as text
   from public.products
   where category like 'office-%'
@@ -46,17 +46,19 @@ with source as (
 ), classified as (
   select id,
     case
-      -- Формат 21" і більше має пріоритет над кольоровістю: це
+      -- Формат 21" і більше або A0–A2 має пріоритет над кольоровістю: це
       -- широкоформатний пристрій. Розмір беремо лише з назви.
       when name_text ~ '(бфп|мфу|mfp|multifunction|багатофункціональн[^ ]*[[:space:]]+(пристрій|апарат))'
-           and name_text ~ '(^|[^0-9])(2[1-9]|[3-9][0-9]|[1-9][0-9]{2})[[:space:]]*("|″|”|дюйм|inch|in\.)' then 'office-wide-format'
+           and (name_text ~ '(^|[^0-9])(2[1-9]|[3-9][0-9]|[1-9][0-9]{2})[[:space:]]*("|″|”|дюйм|inch|in\.)'
+                or name_text ~ '(^|[^a-z0-9])a[0-2]([^a-z0-9]|$)') then 'office-wide-format'
       when name_text ~ '(бфп|мфу|mfp|multifunction|багатофункціональн[^ ]*[[:space:]]+(пристрій|апарат))'
            and name_text ~ '(color|colour|кольоров)' then 'office-mfp-color'
       when name_text ~ '(бфп|мфу|mfp|multifunction|багатофункціональн[^ ]*[[:space:]]+(пристрій|апарат))'
            and name_text ~ '(mono|monochrome|монохром|чорно[ -]?білий|laserjet)' then 'office-mfp-mono'
       when name_text ~ '(бфп|мфу|mfp|multifunction|багатофункціональн[^ ]*[[:space:]]+(пристрій|апарат))' then 'office-mfp'
       when name_text ~ '(принтер|printer)'
-           and name_text ~ '(^|[^0-9])(2[1-9]|[3-9][0-9]|[1-9][0-9]{2})[[:space:]]*("|″|”|дюйм|inch|in\.)'
+           and (name_text ~ '(^|[^0-9])(2[1-9]|[3-9][0-9]|[1-9][0-9]{2})[[:space:]]*("|″|”|дюйм|inch|in\.)'
+                or name_text ~ '(^|[^a-z0-9])a[0-2]([^a-z0-9]|$)')
            and text !~ '(картридж|тонер|чорнил|ink|cartridge|drum|фотобарабан)' then 'office-wide-format'
       when name_text ~ '(принтер|printer)'
            and text !~ '(картридж|тонер|чорнил|ink|cartridge|drum|фотобарабан)'

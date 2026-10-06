@@ -76,16 +76,22 @@ where (product.category in (select slug from public.categories where lower(name)
   and product.name ~* '\m(?:знищувач|шредер|shredder)\M';
 
 -- Широкоформатні моделі мають пріоритет над типом друку: 21" і більше
--- визначається лише з назви товару.
+-- або A0–A2. Визначається лише з назви товару.
 update public.products product
 set category = 'office-wide-format'
 where product.category = 'office-printers'
-  and lower(coalesce(product.name, '')) ~ '(^|[^0-9])(2[1-9]|[3-9][0-9]|[1-9][0-9]{2})[[:space:]]*("|″|”|дюйм|inch|in\.)';
+  and (
+    lower(replace(coalesce(product.name, ''), chr(39), '"')) ~ '(^|[^0-9])(2[1-9]|[3-9][0-9]|[1-9][0-9]{2})[[:space:]]*("|″|”|дюйм|inch|in\.)'
+    or lower(replace(coalesce(product.name, ''), chr(39), '"')) ~ '(^|[^a-z0-9])a[0-2]([^a-z0-9]|$)'
+  );
 
 update public.products product
 set category = 'office-wide-format'
 where product.category = 'office-mfp'
-  and lower(coalesce(product.name, '')) ~ '(^|[^0-9])(2[1-9]|[3-9][0-9]|[1-9][0-9]{2})[[:space:]]*("|″|”|дюйм|inch|in\.)';
+  and (
+    lower(replace(coalesce(product.name, ''), chr(39), '"')) ~ '(^|[^0-9])(2[1-9]|[3-9][0-9]|[1-9][0-9]{2})[[:space:]]*("|″|”|дюйм|inch|in\.)'
+    or lower(replace(coalesce(product.name, ''), chr(39), '"')) ~ '(^|[^a-z0-9])a[0-2]([^a-z0-9]|$)'
+  );
 
 -- Після базового розподілу деталізуємо принтери та БФП за типом друку.
 -- Не використовуємо звичайне поле «Колір»: воно часто містить колір корпусу.

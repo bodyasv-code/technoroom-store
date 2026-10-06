@@ -12,7 +12,7 @@ begin;
 -- не у застарілій категорії ERC.
 with legacy_source as (
   select id,
-         lower(coalesce(name, '')) as name_text,
+         lower(replace(coalesce(name, ''), chr(39), '"')) as name_text,
          lower(concat_ws(' ', name, description, specifications::text)) as text
   from public.products
   where category in (
@@ -22,22 +22,24 @@ with legacy_source as (
 ), distributed as (
   select id, case
     when name_text ~ '(бфп|мфу|mfp|multifunction|багатофункціональн[^ ]*[[:space:]]+(пристрій|апарат))'
-         and name_text ~ '(^|[^0-9])(2[1-9]|[3-9][0-9]|[1-9][0-9]{2})[[:space:]]*("|″|”|дюйм|inch|in\.)' then 'office-wide-format'
-    when text ~ '(бфп|мфу|mfp|multifunction|багатофункціональн[^ ]*[[:space:]]+(пристрій|апарат))'
-         and text ~ '(color|colour|кольоров)' then 'office-mfp-color'
-    when text ~ '(бфп|мфу|mfp|multifunction|багатофункціональн[^ ]*[[:space:]]+(пристрій|апарат))'
-         and text ~ '(mono|monochrome|монохром|чорно[ -]?білий)' then 'office-mfp-mono'
-    when text ~ '(бфп|мфу|mfp|multifunction|багатофункціональн[^ ]*[[:space:]]+(пристрій|апарат))' then 'office-mfp'
+         and (name_text ~ '(^|[^0-9])(2[1-9]|[3-9][0-9]|[1-9][0-9]{2})[[:space:]]*("|″|”|дюйм|inch|in\.)'
+              or name_text ~ '(^|[^a-z0-9])a[0-2]([^a-z0-9]|$)') then 'office-wide-format'
+    when name_text ~ '(бфп|мфу|mfp|multifunction|багатофункціональн[^ ]*[[:space:]]+(пристрій|апарат))'
+         and name_text ~ '(color|colour|кольоров)' then 'office-mfp-color'
+    when name_text ~ '(бфп|мфу|mfp|multifunction|багатофункціональн[^ ]*[[:space:]]+(пристрій|апарат))'
+         and name_text ~ '(mono|monochrome|монохром|чорно[ -]?білий|laserjet)' then 'office-mfp-mono'
+    when name_text ~ '(бфп|мфу|mfp|multifunction|багатофункціональн[^ ]*[[:space:]]+(пристрій|апарат))' then 'office-mfp'
     when name_text ~ '(принтер|printer)'
-         and name_text ~ '(^|[^0-9])(2[1-9]|[3-9][0-9]|[1-9][0-9]{2})[[:space:]]*("|″|”|дюйм|inch|in\.)' then 'office-wide-format'
-    when text ~ '(принтер|printer)' and text ~ '(color|colour|кольоров)' then 'office-printers-color'
-    when text ~ '(принтер|printer)' and text ~ '(mono|monochrome|монохром|чорно[ -]?білий)' then 'office-printers-mono'
-    when text ~ '(принтер|printer)' then 'office-printers'
-    when text ~ '(сканер|scanner)' then 'office-scanners'
-    when text ~ '(копір|копир|copier)' then 'office-copiers'
-    when text ~ '(ламінатор|ламинатор|laminator)' then 'office-laminators'
-    when text ~ '(знищувач|шредер|shredder)' then 'office-shredders'
-    when text ~ '(лоток|підставк|стенд|tray|stand|accessor|аксесуар)' then 'office-accessories'
+         and (name_text ~ '(^|[^0-9])(2[1-9]|[3-9][0-9]|[1-9][0-9]{2})[[:space:]]*("|″|”|дюйм|inch|in\.)'
+              or name_text ~ '(^|[^a-z0-9])a[0-2]([^a-z0-9]|$)') then 'office-wide-format'
+    when name_text ~ '(принтер|printer)' and name_text ~ '(color|colour|кольоров)' then 'office-printers-color'
+    when name_text ~ '(принтер|printer)' and name_text ~ '(mono|monochrome|монохром|чорно[ -]?білий|laserjet)' then 'office-printers-mono'
+    when name_text ~ '(принтер|printer)' then 'office-printers'
+    when name_text ~ '(сканер|scanner)' then 'office-scanners'
+    when name_text ~ '(копір|копир|copier)' then 'office-copiers'
+    when name_text ~ '(ламінатор|ламинатор|laminator)' then 'office-laminators'
+    when name_text ~ '(знищувач|шредер|shredder)' then 'office-shredders'
+    when name_text ~ '(лоток|підставк|стенд|tray|stand|accessor|аксесуар)' then 'office-accessories'
     else 'office-equipment'
   end as category
   from legacy_source

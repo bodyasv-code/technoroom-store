@@ -14,6 +14,7 @@ const fallbackProducts = [
 ];
 let products = fallbackProducts;
 let productsLoaded = false;
+let productsHydrating = false;
 const isProductPage = Boolean(document.getElementById('productView'));
 let activePromotions=[]; let promotionProductIds=new Map();
 const scrollPositionKey = 'technoroom-scroll:' + location.pathname + location.search;
@@ -505,7 +506,7 @@ async function loadActivePromotions() {
   });
 }
 
-async function loadProducts() { let renderedFromCache = false; try {
+async function loadProducts() { let renderedFromCache = false, renderedFirstScreen = false; try {
   if (isProductPage) {
     await loadProductPageProducts();
     return;
@@ -520,37 +521,47 @@ async function loadProducts() { let renderedFromCache = false; try {
     await mountMegaCatalog();
     return;
   }
-  // Каталог усе ще потрібен цілком для локального пошуку та фільтрів, але
-  // сторінки по 1000 позицій отримуємо паралельно, а не одну за одною.
+  // Перший екран отримуємо швидко, а повний набір для локальних фільтрів
+  // догружаємо у фоні великими паралельними сторінками.
   // Дані меню та акцій не залежать від списку товарів, тож отримуємо їх одночасно.
   const promotionsPromise = loadActivePromotions();
   const pageSize = 1000;
+  const firstScreenSize = 60;
   // Для карток, пошуку та фільтрів не потрібні додаткові фото й службові поля.
   // Повний запис, включно з галереєю, завантажується окремо лише на сторінці товару.
   const catalogColumns = 'id,sku,name,description,price,category,brand,brand_id,parent_product_id,variant_label,specifications,availability_status,stock_quantity,in_stock,image_path';
-  const request = (from, withCount = false) => supabase.from('products')
+  const request = (from, withCount = false, size = pageSize) => supabase.from('products')
     .select(catalogColumns, withCount ? { count: 'exact' } : {})
     .eq('is_active', true)
     .order('created_at', { ascending: false })
-    .range(from, from + pageSize - 1);
-  const first = await request(0, true);
+    .range(from, from + size - 1);
+  const first = await request(0, true, firstScreenSize);
   if (first.error) throw first.error;
   // Після першого асинхронного запиту модуль категорій уже ініціалізовано.
   const categoriesPromise = loadStorefrontCategories();
   const total = Number(first.count || first.data?.length || 0);
-  const offsets = Array.from({ length: Math.max(0, Math.ceil(total / pageSize) - 1) }, (_, index) => (index + 1) * pageSize);
+  const initialRows = first.data || [];
+  products = initialRows.map(storeProductFromRow);
+  productsHydrating = total > initialRows.length;
+  await Promise.all([categoriesPromise, promotionsPromise]);
+  productsLoaded = true;
+  renderedFirstScreen = true;
+  mount();
+  await mountMegaCatalog();
+  const offsets = Array.from({ length: Math.max(0, Math.ceil(Math.max(0, total - initialRows.length) / pageSize)) }, (_, index) => firstScreenSize + index * pageSize);
   const following = await Promise.all(offsets.map(async (from) => {
     const result = await request(from);
     if (result.error) throw result.error;
     return result.data || [];
   }));
-  const all = [...(first.data || []), ...following.flat()];
+  const all = [...initialRows, ...following.flat()];
   if (all.length) {
     products = all.map(storeProductFromRow);
     saveStorefrontProductCache(all);
   }
-  await Promise.all([categoriesPromise, promotionsPromise]);
-} catch (error) { console.warn('Не вдалося завантажити каталог із Supabase', error); } finally { if (!renderedFromCache) { productsLoaded = true; mount(); await mountMegaCatalog(); } } }
+  productsHydrating = false;
+  document.getElementById('catalogGrid')?._catalogDraw?.();
+} catch (error) { console.warn('Не вдалося завантажити каталог із Supabase', error); } finally { if (!renderedFromCache && !renderedFirstScreen) { productsLoaded = true; productsHydrating = false; mount(); await mountMegaCatalog(); } } }
 if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', loadProducts, { once: true });
 else loadProducts();
 
@@ -592,7 +603,7 @@ async function mountMegaCatalog() {
   const menuProducts=isProductPage
     ? menuRows.map((product)=>({type:product.category,parentProductId:product.parent_product_id}))
     : products;
-  const productCount=(slug)=>{const branch=branchFor(slug);return menuCounts?[...branch].reduce((total,category)=>total+(menuCounts.get(category)||0),0):menuProducts.filter((product)=>!product.parentProductId&&branch.has(product.type)).length};
+  const productCount=(slug)=>{if(!isProductPage&&productsHydrating)return null;const branch=branchFor(slug);return menuCounts?[...branch].reduce((total,category)=>total+(menuCounts.get(category)||0),0):menuProducts.filter((product)=>!product.parentProductId&&branch.has(product.type)).length};
   const compactMenu=()=>window.matchMedia('(max-width:700px)').matches;
   const renderRoots=()=>{
     rootsEl.hidden=false;
@@ -608,7 +619,7 @@ async function mountMegaCatalog() {
     rootsEl.querySelectorAll('button').forEach(b=>b.classList.toggle('active',b.dataset.slug===root.slug));
     const kids=cats.filter(c=>c.parent_id===root.id);
     const back=compactMenu()?'<button type="button" class="mega-back" data-mega-back>← Усі категорії</button>':'';
-    childrenEl.innerHTML=`${back}<div class="mega-title"><h2>${root.name}</h2><a href="catalog.html?category=${encodeURIComponent(root.slug)}">Усі товари →</a></div><div class="mega-grid">${kids.map(c=>`<a href="catalog.html?category=${encodeURIComponent(c.slug)}"><strong>${c.name}</strong><span>${productCount(c.slug)} товарів</span></a>`).join('')}</div>`;
+    childrenEl.innerHTML=`${back}<div class="mega-title"><h2>${root.name}</h2><a href="catalog.html?category=${encodeURIComponent(root.slug)}">Усі товари →</a></div><div class="mega-grid">${kids.map(c=>{const count=productCount(c.slug);return `<a href="catalog.html?category=${encodeURIComponent(c.slug)}"><strong>${c.name}</strong><span>${count===null?'Завантаження…':count+' товарів'}</span></a>`}).join('')}</div>`;
     if(compactMenu()){
       rootsEl.hidden=true;
       childrenEl.hidden=false;
@@ -1879,10 +1890,12 @@ catalog = function () {
     page = Math.min(page, pages);
     const visible = shown.slice((page - 1) * size, page * size);
     root.innerHTML = visible.length ? visible.map(card).join('') : '<p class="empty-cart">За цими параметрами товарів не знайдено.</p>';
-    document.getElementById('resultCount').textContent = shown.length + ' товарів';
+    document.getElementById('resultCount').textContent = productsHydrating
+      ? 'Завантажуємо решту каталогу…'
+      : shown.length + ' товарів';
     if (pagination) {
-      pagination.hidden = pages <= 1;
-      pagination.innerHTML = pages > 1 ? '<button type="button" data-catalog-page="prev" '+(page === 1 ? 'disabled' : '')+'>← Попередні</button><span>Сторінка '+page+' з '+pages+'</span><button type="button" data-catalog-page="next" '+(page === pages ? 'disabled' : '')+'>Наступні →</button>' : '';
+      pagination.hidden = productsHydrating || pages <= 1;
+      pagination.innerHTML = !productsHydrating && pages > 1 ? '<button type="button" data-catalog-page="prev" '+(page === 1 ? 'disabled' : '')+'>← Попередні</button><span>Сторінка '+page+' з '+pages+'</span><button type="button" data-catalog-page="next" '+(page === pages ? 'disabled' : '')+'>Наступні →</button>' : '';
     }
     bind(root);
   };

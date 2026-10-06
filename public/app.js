@@ -422,6 +422,44 @@ function checkout() { const form = document.getElementById('checkoutForm'); if (
 function mount() { renderCart(); home(); catalog(); product(); checkout(); restoreScrollPosition(); const drawer = document.getElementById('cartDrawer'), overlay = document.getElementById('overlay'), close = () => { drawer?.classList.remove('open'); if (overlay) overlay.hidden = true; }; document.getElementById('cartButton')?.addEventListener('click', () => { drawer?.classList.add('open'); if (overlay) overlay.hidden = false; }); document.getElementById('closeCart')?.addEventListener('click', close); overlay?.addEventListener('click', close); document.getElementById('checkoutButton')?.addEventListener('click', () => location.href = 'checkout.html'); }
 const storeProductFromRow = (item) => ({ id: item.id, sku: item.sku, name: compactProductName(item.name, item.sku, item.brand), description: item.description, price: Number(item.price), type: item.category, brand: item.brand, brand_id:item.brand_id, parentProductId:item.parent_product_id, variantLabel:item.variant_label, specifications: item.specifications, availabilityStatus: item.availability_status, stockQuantity: Number(item.stock_quantity || 0), stock: item.in_stock && Number(item.stock_quantity || 0) > 0, image: item.image_path, imagePaths: item.image_paths });
 
+const storefrontProductCacheKey = 'technoroom-storefront-products-v1';
+const storefrontProductCacheTtl = 60 * 1000;
+const readStorefrontProductCache = () => new Promise((resolve) => {
+  if (!('indexedDB' in window)) return resolve(null);
+  let databaseRequest;
+  try { databaseRequest = window.indexedDB.open('technoroom-storefront-cache', 1); } catch { return resolve(null); }
+  databaseRequest.onupgradeneeded = () => {
+    const database = databaseRequest.result;
+    if (!database.objectStoreNames.contains('entries')) database.createObjectStore('entries');
+  };
+  databaseRequest.onerror = () => resolve(null);
+  databaseRequest.onsuccess = () => {
+    const database = databaseRequest.result;
+    const request = database.transaction('entries', 'readonly').objectStore('entries').get(storefrontProductCacheKey);
+    request.onerror = () => { database.close(); resolve(null); };
+    request.onsuccess = () => {
+      const cached = request.result;
+      database.close();
+      resolve(cached && Date.now() - Number(cached.savedAt || 0) < storefrontProductCacheTtl && Array.isArray(cached.rows) ? cached.rows : null);
+    };
+  };
+});
+const saveStorefrontProductCache = (rows) => {
+  if (!Array.isArray(rows) || !rows.length || !('indexedDB' in window)) return;
+  try {
+    const databaseRequest = window.indexedDB.open('technoroom-storefront-cache', 1);
+    databaseRequest.onupgradeneeded = () => {
+      const database = databaseRequest.result;
+      if (!database.objectStoreNames.contains('entries')) database.createObjectStore('entries');
+    };
+    databaseRequest.onsuccess = () => {
+      const database = databaseRequest.result;
+      database.transaction('entries', 'readwrite').objectStore('entries').put({ savedAt: Date.now(), rows }, storefrontProductCacheKey);
+      database.close();
+    };
+  } catch {}
+};
+
 async function loadProductPageProducts() {
   const id = Number(new URLSearchParams(location.search).get('id'));
   if (!id) { products = []; return; }
@@ -467,9 +505,19 @@ async function loadActivePromotions() {
   });
 }
 
-async function loadProducts() { try {
+async function loadProducts() { let renderedFromCache = false; try {
   if (isProductPage) {
     await loadProductPageProducts();
+    return;
+  }
+  const cachedRows = await readStorefrontProductCache();
+  if (cachedRows) {
+    products = cachedRows.map(storeProductFromRow);
+    await loadActivePromotions();
+    productsLoaded = true;
+    renderedFromCache = true;
+    mount();
+    await mountMegaCatalog();
     return;
   }
   // Каталог усе ще потрібен цілком для локального пошуку та фільтрів, але
@@ -497,9 +545,12 @@ async function loadProducts() { try {
     return result.data || [];
   }));
   const all = [...(first.data || []), ...following.flat()];
-  if (all.length) products = all.map(storeProductFromRow);
+  if (all.length) {
+    products = all.map(storeProductFromRow);
+    saveStorefrontProductCache(all);
+  }
   await Promise.all([categoriesPromise, promotionsPromise]);
-} catch (error) { console.warn('Не вдалося завантажити каталог із Supabase', error); } finally { productsLoaded = true; mount(); await mountMegaCatalog(); } }
+} catch (error) { console.warn('Не вдалося завантажити каталог із Supabase', error); } finally { if (!renderedFromCache) { productsLoaded = true; mount(); await mountMegaCatalog(); } } }
 if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', loadProducts, { once: true });
 else loadProducts();
 

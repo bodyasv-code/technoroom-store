@@ -509,21 +509,28 @@ async function mountMegaCatalog() {
   // окремо отримуємо лише категорії всіх товарів. Інакше лічильники в меню
   // показували б нулі або кількість тільки поточного товару.
   let menuRows=[];
+  let menuCounts=null;
   if(isProductPage){
-    const pageSize=1000;
-    const menuRequest=(from,withCount=false)=>supabase.from('products')
-      .select('category,parent_product_id',withCount?{count:'exact'}:{})
-      .eq('is_active',true)
-      .range(from,from+pageSize-1);
-    const firstPage=await menuRequest(0,true);
-    if(!firstPage.error){
-      const total=Number(firstPage.count||firstPage.data?.length||0);
-      const offsets=Array.from({length:Math.max(0,Math.ceil(total/pageSize)-1)},(_,index)=>(index+1)*pageSize);
-      const remaining=await Promise.all(offsets.map(async(from)=>{
-        const page=await menuRequest(from);
-        return page.error?[]:(page.data||[]);
-      }));
-      menuRows=[...(firstPage.data||[]),...remaining.flat()];
+    const countsResult=await supabase.rpc('storefront_category_product_counts');
+    if(!countsResult.error&&Array.isArray(countsResult.data)){
+      menuCounts=new Map(countsResult.data.map((row)=>[row.category,Number(row.product_count)||0]));
+    }else{
+      // Поки SQL-оптимізація ще не запущена, меню лишається робочим.
+      const pageSize=1000;
+      const menuRequest=(from,withCount=false)=>supabase.from('products')
+        .select('category,parent_product_id',withCount?{count:'exact'}:{})
+        .eq('is_active',true)
+        .range(from,from+pageSize-1);
+      const firstPage=await menuRequest(0,true);
+      if(!firstPage.error){
+        const total=Number(firstPage.count||firstPage.data?.length||0);
+        const offsets=Array.from({length:Math.max(0,Math.ceil(total/pageSize)-1)},(_,index)=>(index+1)*pageSize);
+        const remaining=await Promise.all(offsets.map(async(from)=>{
+          const page=await menuRequest(from);
+          return page.error?[]:(page.data||[]);
+        }));
+        menuRows=[...(firstPage.data||[]),...remaining.flat()];
+      }
     }
   }
   const menuProducts=isProductPage
@@ -539,7 +546,7 @@ async function mountMegaCatalog() {
     if(root) visit(root.id);
     return branch;
   };
-  const productCount=(slug)=>{const branch=branchFor(slug);return menuProducts.filter((product)=>!product.parentProductId&&branch.has(product.type)).length};
+  const productCount=(slug)=>{const branch=branchFor(slug);return menuCounts?[...branch].reduce((total,category)=>total+(menuCounts.get(category)||0),0):menuProducts.filter((product)=>!product.parentProductId&&branch.has(product.type)).length};
   const compactMenu=()=>window.matchMedia('(max-width:700px)').matches;
   const renderRoots=()=>{
     rootsEl.hidden=false;

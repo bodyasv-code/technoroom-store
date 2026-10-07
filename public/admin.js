@@ -406,7 +406,7 @@ supabase.auth.getSession().then(({data:{session}})=>session?dashboard():view('lo
     if (startsWithProductType.test(name) && parts.length >= 2 && (parts.length >= 3 || technicalTail.test(parts.slice(1).join(' ')))) name = parts[0];
     const normaliseToken = (text) => String(text || '').toLocaleLowerCase('uk-UA').replace(/[^\p{L}\p{N}]/gu, '');
     const cleanSku = cleanImportText(sku);
-    if (cleanSku && !normaliseToken(name).includes(normaliseToken(cleanSku))) name += ' — ' + cleanSku;
+    if (cleanSku && !normaliseToken(name).includes(normaliseToken(cleanSku))) name += ' (' + cleanSku + ')';
     return name || cleanImportText(value);
   };
   const isSupportedImageHost = (hostname = '') => supportedImageHosts.has(hostname) || hostname === 'erc.ua' || hostname.endsWith('.erc.ua');
@@ -1013,6 +1013,12 @@ supabase.auth.getSession().then(({data:{session}})=>session?dashboard():view('lo
       if (row.hasStock) Object.assign(inventory, { stock_quantity: row.stock, in_stock: row.stock > 0, availability_status: row.availabilityStatus || (row.stock > 0 ? 'in_stock' : 'out_of_stock') });
       if (current) {
         const payload = { ...inventory };
+        // Коли джерело вже дало коротку назву проєктора, прибираємо лише
+        // очевидний технічний перелік у старій назві. Ручні короткі назви не
+        // перезаписуються.
+        const currentProjectorName = String(current.name || '');
+        const isTechnicalProjectorTail = /^\s*(?:про[єе]ктор|projector)\b.*?,\s*(?:\d{2,5}\s*(?:лм|lm)\b|(?:led|laser|ламп\w*|wi[ -]?fi|wireless|wlan|bluetooth|\bbt\b|hdmi|usb|tizen|android\s*tv)\b|\d+(?:[.,]\d+)?\s*(?::\s*1)?\b)/iu.test(currentProjectorName);
+        if (isTechnicalProjectorTail && row.name && row.name.length < currentProjectorName.length) payload.name = row.name;
         if (updateSpecifications && Object.keys(row.specifications).length) payload.specifications = mergeSpecifications(current.specifications, row.specifications);
         if (row.description && (!current.description || isSupplierPromotionText(current.description))) payload.description = row.description;
         const shouldImportImages = !current.image_path && images.length;

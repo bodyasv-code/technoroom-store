@@ -1,6 +1,7 @@
 -- TECHNOROOM: єдиний формат SKU у назвах товарів.
 -- Для ВСІХ товарів: «Назва — SKU» → «Назва (SKU)».
--- Для проєкторів і оргтехніки додатково забирає технічний перелік після коми.
+-- Для проєкційного обладнання й оргтехніки додатково забирає технічний
+-- перелік після коми.
 -- Характеристики товарів при цьому не змінюються.
 -- Запустіть один раз у Supabase SQL Editor.
 
@@ -11,7 +12,10 @@ with source as (
     id,
     sku,
     name,
+    category,
     coalesce(name, '') ~* '^[[:space:]]*(?:про[єе]ктор|projector)(?:[[:space:][:punct:]]|$)' as is_projector,
+    category in ('cat-projectors', 'projectors', 'erc-display-06', 'erc-display-14', 'erc-display-15')
+      or coalesce(name, '') ~* '^[[:space:]]*(?:екран[[:space:]]+проекційн|проекційн[[:space:]]+екран|projection[[:space:]]+screen)(?:[[:space:][:punct:]]|$)' as is_projection_equipment,
     coalesce(name, '') ~* '^[[:space:]]*(?:принтер|printer|бфп|мфу|mfp|multifunction|багатофункціональн|сканер|scanner|копір|copier)(?:[[:space:][:punct:]]|$)' as is_office
   from public.products
   where nullif(btrim(sku), '') is not null
@@ -21,6 +25,7 @@ with source as (
     sku,
     name,
     is_projector,
+    is_projection_equipment,
     is_office,
     case
       when is_projector then btrim(regexp_replace(
@@ -33,6 +38,11 @@ with source as (
         '[[:space:]]*,[[:space:]]*(?:(?:a[0-9]|color|colour|mono(?:chrome)?|чорно[ -]?білий|кольоров[[:alnum:]_]*|лазер[[:alnum:]_]*|laser|струмен[[:alnum:]_]*|ink(?:jet)?|wi[ -]?fi|wireless|wlan|bluetooth|bt|ethernet|lan|usb|duplex|дуплекс|двосторон|[0-9]{1,4}[[:space:]]*(?:ppm|стр/хв|dpi|т/д))).*$',
         '', 'i'
       ))
+      when is_projection_equipment then btrim(regexp_replace(
+        name,
+        '[[:space:]]*,[[:space:]]*(?:(?:[0-9]+[[:space:]]*(?:x|х|×)[[:space:]]*[0-9]+|[0-9]+[[:space:]]*:[[:space:]]*[0-9]+|manual|motorized|electric|настінн[[:alnum:]_]*|стельов[[:alnum:]_]*|моторизован[[:alnum:]_]*|ручн[[:alnum:]_]*|wi[ -]?fi|wireless|wlan|bluetooth|bt|hdmi|usb)).*$',
+        '', 'i'
+      ))
       else name
     end as short_name
   from source
@@ -42,6 +52,7 @@ with source as (
     sku,
     name,
     is_projector,
+    is_projection_equipment,
     is_office,
     short_name,
     nullif(btrim(sku), '') is not null
@@ -60,7 +71,7 @@ with source as (
     id,
     case
       when has_legacy_suffix then base_name || ' (' || sku || ')'
-      when (is_projector or is_office) and base_name <> name
+      when (is_projector or is_projection_equipment or is_office) and base_name <> name
         and position(lower(sku) in lower(base_name)) = 0
         then base_name || ' (' || sku || ')'
       else base_name

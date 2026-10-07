@@ -1018,9 +1018,10 @@ supabase.auth.getSession().then(({data:{session}})=>session?dashboard():view('lo
         // не перезаписуються.
         const currentProjectorName = String(current.name || '');
         const isTechnicalProjectorTail = /^\s*(?:про[єе]ктор|projector)\b.*?,\s*(?:\d{2,5}\s*(?:лм|lm)\b|(?:led|laser|ламп\w*|wi[ -]?fi|wireless|wlan|bluetooth|\bbt\b|hdmi|usb|tizen|android\s*tv)\b|\d+(?:[.,]\d+)?\s*(?::\s*1)?\b)/iu.test(currentProjectorName);
+        const isTechnicalProjectionTail = /^\s*(?:екран\s+проекційн|проекційн\s+екран|projection\s+screen)\b.*?,\s*(?:(?:\d+\s*(?:x|х|×)\s*\d+|\d+\s*:\s*\d+|manual|motorized|electric|настінн\w*|стельов\w*|моторизован\w*|ручн\w*|wi[ -]?fi|wireless|wlan|bluetooth|bt|hdmi|usb)\b)/iu.test(currentProjectorName);
         const isTechnicalOfficeTail = /^\s*(?:принтер|printer|бфп|мфу|mfp|multifunction|багатофункціональн\w*|сканер|scanner|копір|copier)\b.*?,\s*(?:(?:a[0-9]|color|colour|mono(?:chrome)?|чорно[ -]?білий|кольоров\w*|лазер\w*|laser|струмен\w*|ink(?:jet)?|wi[ -]?fi|wireless|wlan|bluetooth|bt|ethernet|lan|usb|duplex|дуплекс|двосторон)\b|\d{1,4}\s*(?:ppm|стр\/хв|dpi|т\/д)\b)/iu.test(currentProjectorName);
         const hasLegacySkuSuffix = row.sku && ['— ' + row.sku, '- ' + row.sku].some((suffix) => currentProjectorName.trim().toLocaleLowerCase('uk-UA').endsWith(suffix.toLocaleLowerCase('uk-UA')));
-        if ((isTechnicalProjectorTail || isTechnicalOfficeTail || hasLegacySkuSuffix) && row.name && row.name.length <= currentProjectorName.length) payload.name = row.name;
+        if ((isTechnicalProjectorTail || isTechnicalProjectionTail || isTechnicalOfficeTail || hasLegacySkuSuffix) && row.name && row.name.length <= currentProjectorName.length) payload.name = row.name;
         if (updateSpecifications && Object.keys(row.specifications).length) payload.specifications = mergeSpecifications(current.specifications, row.specifications);
         if (row.description && (!current.description || isSupplierPromotionText(current.description))) payload.description = row.description;
         const shouldImportImages = !current.image_path && images.length;

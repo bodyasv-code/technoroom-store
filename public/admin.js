@@ -402,8 +402,9 @@ supabase.auth.getSession().then(({data:{session}})=>session?dashboard():view('lo
     }
     const parts = name.split(/[;,]/).map(cleanImportText).filter(Boolean);
     const startsWithProductType = /^(?:про[єе]ктор|телевізор|монітор|екран|саундбар|акустичн|гарнітур|навушник|мікрофон|портативн|зарядн|джерел|ноутбук|планшет|смартфон|годинник|принтер|роутер|камера|клавіатур|миша|кабель|адаптер|блок\s+живлення|павербанк|power\s*bank)/iu;
-    const technicalTail = /\b(?:usb|hdmi|wifi|wi-fi|bluetooth|bt\s*\d|led|oled|qled|mini\s*-?\s*led|fhd|uhd|4k|8k|ips|va|tn|rgb|hdr|гб|gb|тб|tb|гц|hz|вт|w|лм|lm|кг|kg|м\b|mm\b|чорн|білий|сірий|silver|black|white|gray|grey)\b/iu;
-    if (startsWithProductType.test(name) && parts.length >= 2 && (parts.length >= 3 || technicalTail.test(parts.slice(1).join(' ')))) name = parts[0];
+    const technicalTail = /(?:\b(?:usb|hdmi|wifi|wi-fi|wireless|wlan|bluetooth|bt\s*\d|ethernet|lan|nfc|led|oled|qled|mini\s*-?\s*led|fhd|uhd|4k|8k|ips|va|tn|amoled|rgb|hdr|ram|ssd|hdd|tizen|webos|android|windows|macos|ios|color|colour|mono(?:chrome)?|laser|ink(?:jet)?|duplex|manual|motorized|electric|black|white|gray|grey|silver|чорн|білий|сірий|кольоров|монохром|лазер|струмен|дуплекс|ручн|моторизован)\b|\b(?:a[0-9]|\d{1,5}(?:[.,]\d+)?\s*(?:лм|lm|гб|gb|тб|tb|гц|hz|вт|w|кг|kg|мм|mm|dpi|ppm|mah|маг)|\d+\s*[xх×]\s*\d+|\d+\s*:\s*\d+)\b)/iu;
+    if (parts.length >= 2 && technicalTail.test(parts.slice(1).join(' '))) name = parts[0];
+    else if (startsWithProductType.test(name) && parts.length >= 3) name = parts[0];
     const normaliseToken = (text) => String(text || '').toLocaleLowerCase('uk-UA').replace(/[^\p{L}\p{N}]/gu, '');
     const cleanSku = cleanImportText(sku);
     if (cleanSku && !normaliseToken(name).includes(normaliseToken(cleanSku))) name += ' (' + cleanSku + ')';
@@ -1014,14 +1015,15 @@ supabase.auth.getSession().then(({data:{session}})=>session?dashboard():view('lo
       if (current) {
         const payload = { ...inventory };
         // Коли джерело вже дало коротку назву, прибираємо лише очевидний
-        // технічний перелік у проєкторів та оргтехніки. Ручні короткі назви
+        // технічний перелік у будь-якому товарі. Ручні короткі назви не
         // не перезаписуються.
         const currentProjectorName = String(current.name || '');
         const isTechnicalProjectorTail = /^\s*(?:про[єе]ктор|projector)\b.*?,\s*(?:\d{2,5}\s*(?:лм|lm)\b|(?:led|laser|ламп\w*|wi[ -]?fi|wireless|wlan|bluetooth|\bbt\b|hdmi|usb|tizen|android\s*tv)\b|\d+(?:[.,]\d+)?\s*(?::\s*1)?\b)/iu.test(currentProjectorName);
         const isTechnicalProjectionTail = /^\s*(?:екран\s+проекційн|проекційн\s+екран|projection\s+screen)\b.*?,\s*(?:(?:\d+\s*(?:x|х|×)\s*\d+|\d+\s*:\s*\d+|manual|motorized|electric|настінн\w*|стельов\w*|моторизован\w*|ручн\w*|wi[ -]?fi|wireless|wlan|bluetooth|bt|hdmi|usb)\b)/iu.test(currentProjectorName);
         const isTechnicalOfficeTail = /^\s*(?:принтер|printer|бфп|мфу|mfp|multifunction|багатофункціональн\w*|сканер|scanner|копір|copier)\b.*?,\s*(?:(?:a[0-9]|color|colour|mono(?:chrome)?|чорно[ -]?білий|кольоров\w*|лазер\w*|laser|струмен\w*|ink(?:jet)?|wi[ -]?fi|wireless|wlan|bluetooth|bt|ethernet|lan|usb|duplex|дуплекс|двосторон)\b|\d{1,4}\s*(?:ppm|стр\/хв|dpi|т\/д)\b)/iu.test(currentProjectorName);
+        const hasTechnicalTail = /,\s*(?:\b(?:usb|hdmi|wifi|wi-fi|wireless|wlan|bluetooth|bt\s*\d|ethernet|lan|nfc|led|oled|qled|mini\s*-?\s*led|fhd|uhd|4k|8k|ips|va|tn|amoled|rgb|hdr|ram|ssd|hdd|tizen|webos|android|windows|macos|ios|color|colour|mono(?:chrome)?|laser|ink(?:jet)?|duplex|manual|motorized|electric|black|white|gray|grey|silver|чорн|білий|сірий|кольоров|монохром|лазер|струмен|дуплекс|ручн|моторизован)\b|\b(?:a[0-9]|\d{1,5}(?:[.,]\d+)?\s*(?:лм|lm|гб|gb|тб|tb|гц|hz|вт|w|кг|kg|мм|mm|dpi|ppm|mah|маг)|\d+\s*[xх×]\s*\d+|\d+\s*:\s*\d+)\b)/iu.test(currentProjectorName);
         const hasLegacySkuSuffix = row.sku && ['— ' + row.sku, '- ' + row.sku].some((suffix) => currentProjectorName.trim().toLocaleLowerCase('uk-UA').endsWith(suffix.toLocaleLowerCase('uk-UA')));
-        if ((isTechnicalProjectorTail || isTechnicalProjectionTail || isTechnicalOfficeTail || hasLegacySkuSuffix) && row.name && row.name.length <= currentProjectorName.length) payload.name = row.name;
+        if ((hasTechnicalTail || isTechnicalProjectorTail || isTechnicalProjectionTail || isTechnicalOfficeTail || hasLegacySkuSuffix) && row.name && row.name.length <= currentProjectorName.length) payload.name = row.name;
         if (updateSpecifications && Object.keys(row.specifications).length) payload.specifications = mergeSpecifications(current.specifications, row.specifications);
         if (row.description && (!current.description || isSupplierPromotionText(current.description))) payload.description = row.description;
         const shouldImportImages = !current.image_path && images.length;

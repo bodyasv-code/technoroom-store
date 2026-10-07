@@ -1,52 +1,71 @@
--- TECHNOROOM: короткі назви проєкторів.
--- Прибирає лише технічний перелік після першої коми та додає SKU у дужках.
--- Приклад: «Проєктор ... FHD, 230 lm, LED, Wi-Fi» →
---          «Проєктор ... FHD (SKU)».
+-- TECHNOROOM: єдиний формат SKU у назвах товарів.
+-- Для ВСІХ товарів: «Назва — SKU» → «Назва (SKU)».
+-- Для проєкторів і оргтехніки додатково забирає технічний перелік після коми.
+-- Характеристики товарів при цьому не змінюються.
 -- Запустіть один раз у Supabase SQL Editor.
 
 begin;
 
-with projector_names as (
+with source as (
   select
     id,
     sku,
     name,
-    btrim(regexp_replace(
-      name,
-      '\s*,\s*(?:\d{2,5}\s*(?:лм|lm)\b|(?:led|laser|ламп\w*|wi[ -]?fi|wireless|wlan|bluetooth|\mbt\M|hdmi|usb|tizen|android\s*tv)\b|\d+(?:[.,]\d+)?\s*(?::\s*1)?\b).*$',
-      '',
-      'i'
-    )) as short_name
+    coalesce(name, '') ~* '^[[:space:]]*(?:про[єе]ктор|projector)(?:[[:space:][:punct:]]|$)' as is_projector,
+    coalesce(name, '') ~* '^[[:space:]]*(?:принтер|printer|бфп|мфу|mfp|multifunction|багатофункціональн|сканер|scanner|копір|copier)(?:[[:space:][:punct:]]|$)' as is_office
   from public.products
-  where category in (
-    'projectors', 'projector', 'laser-proj', 'home-projectors',
-    'short-throw-projectors', 'installation-projectors', 'universal-projectors',
-    'erc-display-03', 'erc-display-11', 'erc-display-12', 'erc-display-13'
-  )
-  and coalesce(name, '') ~* '^\s*(?:про[єе]ктор|projector)\b'
-), without_old_sku_suffix as (
+  where nullif(btrim(sku), '') is not null
+), shortened as (
   select
     id,
     sku,
+    name,
+    is_projector,
+    is_office,
     case
-      -- Старий формат: «Назва — SKU». Прибираємо саме SKU в кінці,
-      -- тому дефіси, що є частиною моделі, не зачіпаються.
+      when is_projector then btrim(regexp_replace(
+        name,
+        '[[:space:]]*,[[:space:]]*(?:[0-9]{2,5}[[:space:]]*(?:лм|lm)|(?:led|laser|ламп[[:alnum:]_]*|wi[ -]?fi|wireless|wlan|bluetooth|bt|hdmi|usb|tizen|android[[:space:]]*tv)|[0-9]+(?:[.,][0-9]+)?[[:space:]]*(?::[[:space:]]*1)?).*$',
+        '', 'i'
+      ))
+      when is_office then btrim(regexp_replace(
+        name,
+        '[[:space:]]*,[[:space:]]*(?:(?:a[0-9]|color|colour|mono(?:chrome)?|чорно[ -]?білий|кольоров[[:alnum:]_]*|лазер[[:alnum:]_]*|laser|струмен[[:alnum:]_]*|ink(?:jet)?|wi[ -]?fi|wireless|wlan|bluetooth|bt|ethernet|lan|usb|duplex|дуплекс|двосторон|[0-9]{1,4}[[:space:]]*(?:ppm|стр/хв|dpi|т/д)).*$',
+        '', 'i'
+      ))
+      else name
+    end as short_name
+  from source
+), without_legacy_suffix as (
+  select
+    id,
+    sku,
+    name,
+    is_projector,
+    is_office,
+    short_name,
+    nullif(btrim(sku), '') is not null
+      and lower(right(short_name, length(sku))) = lower(sku)
+      and left(short_name, length(short_name) - length(sku)) ~ '[—–-][[:space:]]*$' as has_legacy_suffix,
+    case
       when nullif(btrim(sku), '') is not null
         and lower(right(short_name, length(sku))) = lower(sku)
-        then btrim(regexp_replace(left(short_name, length(short_name) - length(sku)), '\s*[—–-]\s*$', ''))
+        and left(short_name, length(short_name) - length(sku)) ~ '[—–-][[:space:]]*$'
+        then btrim(regexp_replace(left(short_name, length(short_name) - length(sku)), '[[:space:]]*[—–-][[:space:]]*$', ''))
       else short_name
     end as base_name
-  from projector_names
+  from shortened
 ), prepared as (
   select
     id,
     case
-      when nullif(btrim(sku), '') is not null
+      when has_legacy_suffix then base_name || ' (' || sku || ')'
+      when (is_projector or is_office) and base_name <> name
         and position(lower(sku) in lower(base_name)) = 0
         then base_name || ' (' || sku || ')'
       else base_name
     end as final_name
-  from without_old_sku_suffix
+  from without_legacy_suffix
 )
 update public.products product
 set name = prepared.final_name
@@ -56,8 +75,10 @@ where product.id = prepared.id
 
 commit;
 
--- Перевірка результату.
+-- Перевірка: не має залишитися формату «— SKU» у кінці назви.
 select name, sku, category
 from public.products
-where category = 'projectors'
+where nullif(btrim(sku), '') is not null
+  and lower(right(name, length(sku))) = lower(sku)
+  and left(name, length(name) - length(sku)) ~ '[—–-][[:space:]]*$'
 order by name;

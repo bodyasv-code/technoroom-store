@@ -1013,13 +1013,14 @@ supabase.auth.getSession().then(({data:{session}})=>session?dashboard():view('lo
       if (row.hasStock) Object.assign(inventory, { stock_quantity: row.stock, in_stock: row.stock > 0, availability_status: row.availabilityStatus || (row.stock > 0 ? 'in_stock' : 'out_of_stock') });
       if (current) {
         const payload = { ...inventory };
-        // Коли джерело вже дало коротку назву проєктора, прибираємо лише
-        // очевидний технічний перелік у старій назві. Ручні короткі назви не
-        // перезаписуються.
+        // Коли джерело вже дало коротку назву, прибираємо лише очевидний
+        // технічний перелік у проєкторів та оргтехніки. Ручні короткі назви
+        // не перезаписуються.
         const currentProjectorName = String(current.name || '');
         const isTechnicalProjectorTail = /^\s*(?:про[єе]ктор|projector)\b.*?,\s*(?:\d{2,5}\s*(?:лм|lm)\b|(?:led|laser|ламп\w*|wi[ -]?fi|wireless|wlan|bluetooth|\bbt\b|hdmi|usb|tizen|android\s*tv)\b|\d+(?:[.,]\d+)?\s*(?::\s*1)?\b)/iu.test(currentProjectorName);
-        const hasLegacyProjectorSku = row.sku && ['— ' + row.sku, '- ' + row.sku].some((suffix) => currentProjectorName.trim().toLocaleLowerCase('uk-UA').endsWith(suffix.toLocaleLowerCase('uk-UA')));
-        if ((isTechnicalProjectorTail || hasLegacyProjectorSku) && row.name && row.name.length <= currentProjectorName.length) payload.name = row.name;
+        const isTechnicalOfficeTail = /^\s*(?:принтер|printer|бфп|мфу|mfp|multifunction|багатофункціональн\w*|сканер|scanner|копір|copier)\b.*?,\s*(?:(?:a[0-9]|color|colour|mono(?:chrome)?|чорно[ -]?білий|кольоров\w*|лазер\w*|laser|струмен\w*|ink(?:jet)?|wi[ -]?fi|wireless|wlan|bluetooth|bt|ethernet|lan|usb|duplex|дуплекс|двосторон)\b|\d{1,4}\s*(?:ppm|стр\/хв|dpi|т\/д)\b)/iu.test(currentProjectorName);
+        const hasLegacySkuSuffix = row.sku && ['— ' + row.sku, '- ' + row.sku].some((suffix) => currentProjectorName.trim().toLocaleLowerCase('uk-UA').endsWith(suffix.toLocaleLowerCase('uk-UA')));
+        if ((isTechnicalProjectorTail || isTechnicalOfficeTail || hasLegacySkuSuffix) && row.name && row.name.length <= currentProjectorName.length) payload.name = row.name;
         if (updateSpecifications && Object.keys(row.specifications).length) payload.specifications = mergeSpecifications(current.specifications, row.specifications);
         if (row.description && (!current.description || isSupplierPromotionText(current.description))) payload.description = row.description;
         const shouldImportImages = !current.image_path && images.length;

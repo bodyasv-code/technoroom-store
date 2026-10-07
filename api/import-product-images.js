@@ -13,6 +13,10 @@ const trustedHosts = new Set([
   'www.hp.com', 'www.koss.com', 'yugcontract.ua', 'www.it4profit.com', 'content.it4profit.com', 'erc.ua', 'www.erc.ua',
 ]);
 const isTrustedHost = (hostname = '') => trustedHosts.has(hostname) || hostname === 'erc.ua' || hostname.endsWith('.erc.ua');
+// ERC redirects some official product images through this legacy HTTP-only
+// image gateway. It is permitted only as a redirect target, never as a user
+// supplied image URL.
+const isAllowedRedirect = (url) => (url.protocol === 'https:' && isTrustedHost(url.hostname)) || (url.protocol === 'http:' && url.hostname === 'service-fw.erc.ua');
 
 const extensionFor = (contentType) => ({
   'image/jpeg': 'jpg', 'image/png': 'png', 'image/webp': 'webp',
@@ -39,7 +43,7 @@ const fetchTrustedImage = async (url, redirectsLeft = 2) => {
   if (![301, 302, 303, 307, 308].includes(upstream.status)) return upstream;
   if (!redirectsLeft) return null;
   const redirect = new URL(upstream.headers.get('location') || '', url);
-  const next = safeUrl(redirect);
+  const next = isAllowedRedirect(redirect) ? redirect : null;
   if (!next) throw new Error('перенаправлення на ' + redirect.protocol.replace(':', '').toUpperCase() + '://' + redirect.hostname);
   return next ? fetchTrustedImage(next, redirectsLeft - 1) : null;
 };

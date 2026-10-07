@@ -465,6 +465,20 @@ supabase.auth.getSession().then(({data:{session}})=>session?dashboard():view('lo
     if (/(?:\bcolor\b|\bcolour\b|кольоров)/iu.test(printDetails)) return 'color';
     return '';
   };
+  // У різних XML ERC одна й та сама група може називатися «БФП лазерні
+  // кольорові», «Кольорові БФП» тощо. Для таких назв завжди повертаємо
+  // постійну внутрішню категорію, а не створюємо ще одну підкатегорію.
+  const officeSourceCategoryPlan = (row) => {
+    const source = [row.subcategory, row.sourceCategory].map(cleanImportText).join(' ').toLocaleLowerCase('uk-UA');
+    const name = cleanImportText(row.name).toLocaleLowerCase('uk-UA');
+    if (!source || /(?:картридж|тонер|чорнил|cartridge|drum|фотобарабан|лоток|підставк|стенд|tray\b|stand\b|accessor|аксесуар)/iu.test(name)) return null;
+    const isMfp=/(?:бфп|мфу|\bmfp\b|multifunction|багатофункціональн)/iu.test(source);
+    const isPrinter=!isMfp&&/(?:принтер|\bprinter\b)/iu.test(source);
+    if (!isMfp&&!isPrinter) return null;
+    const mode=/(?:color|colour|кольоров)/iu.test(source)?'color':/(?:mono|monochrome|монохром|чорно[ -]?білий)/iu.test(source)?'mono':'';
+    const kind=isMfp?'mfp':'printers';
+    return { rootSlug: 'office-equipment', rootName: 'Оргтехніка', childSlug: mode?'office-'+kind+'-'+mode:'office-'+kind, childName: mode==='color'?(isMfp?'Кольорові БФП':'Кольорові принтери'):mode==='mono'?(isMfp?'Монохромні БФП':'Монохромні принтери'):(isMfp?'БФП':'Принтери') };
+  };
   // Принтери й БФП розкладаємо одразу під час імпорту: кольорові та
   // монохромні моделі не повинні спочатку потрапляти у стару змішану категорію ERC.
   const officeEquipmentCategoryPlan = (row) => {
@@ -491,7 +505,12 @@ supabase.auth.getSession().then(({data:{session}})=>session?dashboard():view('lo
     // У JavaScript \b не розпізнає кирилицю як межу слова. Тому БФП/МФУ
     // перевіряємо без нього й обробляємо раніше за сканери: у БФП часто
     // є характеристика «сканер» або «копіювання».
-    const printMode = printColourMode(row.name, row.specifications);
+    // Якщо в назві моделі тип друку не вказано, беремо його з назви
+    // вихідної групи ERC: «БФП струменеві кольорові» — це все одно
+    // «Кольорові БФП», а не нова категорія.
+    const sourcePrintMode = /(?:color|colour|кольоров)/iu.test(source) ? 'color'
+      : /(?:mono|monochrome|монохром|чорно[ -]?білий)/iu.test(source) ? 'mono' : '';
+    const printMode = printColourMode(row.name, row.specifications) || sourcePrintMode;
     if (isMfp || isPrinter) {
       const kind = isMfp ? 'mfp' : 'printers';
       if (isWideFormat(nameSource)) return { rootSlug: 'office-equipment', rootName: 'Оргтехніка', childSlug: 'office-wide-format', childName: 'Принтери та БФП широкоформатні' };
@@ -548,6 +567,12 @@ supabase.auth.getSession().then(({data:{session}})=>session?dashboard():view('lo
       const child = root && (state.categories.find((category) => category.slug === officePlan.childSlug) || findImportCategory(officePlan.childName, root.id));
       return child ? child.slug : '';
     }
+    const sourceOfficePlan = officeSourceCategoryPlan(row);
+    if (sourceOfficePlan) {
+      const root = state.categories.find((category) => category.slug === sourceOfficePlan.rootSlug) || findImportCategory(sourceOfficePlan.rootName, null);
+      const child = root && (state.categories.find((category) => category.slug === sourceOfficePlan.childSlug) || findImportCategory(sourceOfficePlan.childName, root.id));
+      return child ? child.slug : '';
+    }
     const standardPlan = standardCategoryPlan(row);
     if (standardPlan) {
       const root = state.categories.find((category) => category.slug === standardPlan.rootSlug) || findImportCategory(standardPlan.rootName, null);
@@ -584,6 +609,8 @@ supabase.auth.getSession().then(({data:{session}})=>session?dashboard():view('lo
     if (aenoPlan) return aenoPlan;
     const officePlan = officeEquipmentCategoryPlan(row);
     if (officePlan) return officePlan;
+    const sourceOfficePlan = officeSourceCategoryPlan(row);
+    if (sourceOfficePlan) return sourceOfficePlan;
     const standardPlan = standardCategoryPlan(row);
     if (standardPlan) return standardPlan;
     const source = (row.subcategory + ' ' + row.sourceCategory).toLocaleLowerCase('uk-UA');
@@ -634,6 +661,14 @@ supabase.auth.getSession().then(({data:{session}})=>session?dashboard():view('lo
       if (!root) root = await createImportCategory(officePlan.rootName, null, officePlan.rootSlug);
       let child = state.categories.find((category) => category.slug === officePlan.childSlug) || findImportCategory(officePlan.childName, root.id);
       if (!child) child = await createImportCategory(officePlan.childName, root.id, officePlan.childSlug);
+      return child.slug;
+    }
+    const sourceOfficePlan = officeSourceCategoryPlan(row);
+    if (sourceOfficePlan) {
+      let root = state.categories.find((category) => category.slug === sourceOfficePlan.rootSlug) || findImportCategory(sourceOfficePlan.rootName, null);
+      if (!root) root = await createImportCategory(sourceOfficePlan.rootName, null, sourceOfficePlan.rootSlug);
+      let child = state.categories.find((category) => category.slug === sourceOfficePlan.childSlug) || findImportCategory(sourceOfficePlan.childName, root.id);
+      if (!child) child = await createImportCategory(sourceOfficePlan.childName, root.id, sourceOfficePlan.childSlug);
       return child.slug;
     }
     const standardPlan = standardCategoryPlan(row);

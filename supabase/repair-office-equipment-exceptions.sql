@@ -28,11 +28,22 @@ update public.products
 set category = case
   when lower(coalesce(name, '')) ~ '(навушник|headphone|headset|гарнітур)' then 'headphones'
   when lower(coalesce(name, '')) ~ '(послуг|service|активац|технічн[^ ]*[[:space:]]+підтримк)' then 'technical-support'
-  when lower(coalesce(name, '')) ~ '(лоток|підставк|стенд|tray|stand|accessor|аксесуар|додатковий[[:space:]]+планшет)' then 'office-accessories'
+  -- «Базовий блок БФП, 1 лоток» і принтер зі стендом у комплекті —
+  -- це основні пристрої. Самі слова «лоток» або «стенд» не є достатньою
+  -- підставою переносити їх у аксесуари.
+  when lower(coalesce(name, '')) ~ '(лоток|підставк|стенд|tray|stand|accessor|аксесуар|додатковий[[:space:]]+планшет)'
+   and lower(trim(coalesce(name, ''))) !~ '^(бфп|мфу|mfp|multifunction|багатофункціональн[^ ]*[[:space:]]+(пристрій|апарат)|принтер|printer)'
+    then 'office-accessories'
   else category
 end
 where category like 'office-%'
-  and lower(coalesce(name, '')) ~ '(навушник|headphone|headset|гарнітур|послуг|service|активац|технічн[^ ]*[[:space:]]+підтримк|лоток|підставк|стенд|tray|stand|accessor|аксесуар|додатковий[[:space:]]+планшет)';
+  and (
+    lower(coalesce(name, '')) ~ '(навушник|headphone|headset|гарнітур|послуг|service|активац|технічн[^ ]*[[:space:]]+підтримк)'
+    or (
+      lower(coalesce(name, '')) ~ '(лоток|підставк|стенд|tray|stand|accessor|аксесуар|додатковий[[:space:]]+планшет)'
+      and lower(trim(coalesce(name, ''))) !~ '^(бфп|мфу|mfp|multifunction|багатофункціональн[^ ]*[[:space:]]+(пристрій|апарат)|принтер|printer)'
+    )
+  );
 
 commit;
 
@@ -40,5 +51,11 @@ commit;
 select id, name, sku, category
 from public.products
 where category like 'office-%'
-  and lower(coalesce(name, '')) ~ '(навушник|headphone|headset|гарнітур|послуг|service|активац|технічн[^ ]*[[:space:]]+підтримк|лоток|підставк|стенд|tray|stand|accessor|аксесуар|додатковий[[:space:]]+планшет)'
+  and (
+    lower(coalesce(name, '')) ~ '(навушник|headphone|headset|гарнітур|послуг|service|активац|технічн[^ ]*[[:space:]]+підтримк)'
+    or (
+      lower(coalesce(name, '')) ~ '(лоток|підставк|стенд|tray|stand|accessor|аксесуар|додатковий[[:space:]]+планшет)'
+      and lower(trim(coalesce(name, ''))) !~ '^(бфп|мфу|mfp|multifunction|багатофункціональн[^ ]*[[:space:]]+(пристрій|апарат)|принтер|printer)'
+    )
+  )
 order by name;

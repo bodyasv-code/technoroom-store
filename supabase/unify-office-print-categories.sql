@@ -45,6 +45,41 @@ on conflict (slug) do update set
   parent_id = excluded.parent_id,
   is_active = true;
 
+-- Відновлюємо основні пристрої, які раннє правило могло помилково
+-- перенести до аксесуарів через «1 лоток», «без тумби» або «зі стендом».
+-- Реальні лотки, стенди та інші окремі аксесуари не зачіпаються.
+with source as (
+  select id, lower(replace(trim(coalesce(name, '')), chr(39), '"')) as name_text
+  from public.products
+  where category = 'office-accessories'
+), restored as (
+  select id,
+    case
+      when (name_text ~ '(бфп|мфу|mfp|multifunction|багатофункціональн[^ ]*[[:space:]]+(пристрій|апарат)|принтер|printer)')
+       and (name_text ~ '(^|[^0-9])(2[1-9]|[3-9][0-9]|[1-9][0-9]{2})[[:space:]]*("|″|”|дюйм|inch|in\.)'
+            or name_text ~ '(^|[^a-z0-9])a[0-2]([^a-z0-9]|$)') then 'office-wide-format'
+      when name_text ~ '^(бфп|мфу|mfp|multifunction|багатофункціональн[^ ]*[[:space:]]+(пристрій|апарат))'
+       and name_text ~ '(color|colour|кольоров)' then 'office-mfp-color'
+      when name_text ~ '^(бфп|мфу|mfp|multifunction|багатофункціональн[^ ]*[[:space:]]+(пристрій|апарат))'
+       and name_text ~ '(mono|monochrome|монохром|чорно[ -]?білий|laserjet)' then 'office-mfp-mono'
+      when name_text ~ '^(бфп|мфу|mfp|multifunction|багатофункціональн[^ ]*[[:space:]]+(пристрій|апарат))' then 'office-mfp'
+      when name_text ~ '^(принтер|printer)'
+       and name_text !~ '^(printer[[:space:]]+(stand|tray)|принтер[[:space:]]+(стенд|лоток))'
+       and name_text ~ '(color|colour|кольоров)' then 'office-printers-color'
+      when name_text ~ '^(принтер|printer)'
+       and name_text !~ '^(printer[[:space:]]+(stand|tray)|принтер[[:space:]]+(стенд|лоток))'
+       and name_text ~ '(mono|monochrome|монохром|чорно[ -]?білий|laserjet)' then 'office-printers-mono'
+      when name_text ~ '^(принтер|printer)'
+       and name_text !~ '^(printer[[:space:]]+(stand|tray)|принтер[[:space:]]+(стенд|лоток))' then 'office-printers'
+    end as new_slug
+  from source
+)
+update public.products p
+set category = restored.new_slug
+from restored
+where p.id = restored.id
+  and restored.new_slug is not null;
+
 -- Перекидаємо товари лише зі старих категорій, де явно зазначено тип
 -- пристрою та колір друку. Широкоформатні товари (A0–A2 / понад 20")
 -- не зачіпаються: для них лишається окрема категорія.

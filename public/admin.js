@@ -471,7 +471,10 @@ supabase.auth.getSession().then(({data:{session}})=>session?dashboard():view('lo
   const officeSourceCategoryPlan = (row) => {
     const source = [row.subcategory, row.sourceCategory].map(cleanImportText).join(' ').toLocaleLowerCase('uk-UA');
     const name = cleanImportText(row.name).toLocaleLowerCase('uk-UA');
-    if (!source || /(?:картридж|тонер|чорнил|cartridge|drum|фотобарабан|лоток|підставк|стенд|tray\b|stand\b|accessor|аксесуар)/iu.test(name)) return null;
+    const mainDevice = /(?:бфп|мфу|\bmfp\b|multifunction|багатофункціональн\w*\s+(?:пристрій|апарат)|принтер|\bprinter\b)/iu.test(name);
+    const accessory = /(?:картридж|тонер|чорнил|cartridge|drum|фотобарабан|лоток|підставк|стенд|tray\b|stand\b|accessor|аксесуар)/iu.test(name);
+    // «Базовий блок БФП, 1 лоток» — це пристрій, а не лоток як аксесуар.
+    if (!source || (accessory && !mainDevice)) return null;
     const isMfp=/(?:бфп|мфу|\bmfp\b|multifunction|багатофункціональн)/iu.test(source);
     const isPrinter=!isMfp&&/(?:принтер|\bprinter\b)/iu.test(source);
     if (!isMfp&&!isPrinter) return null;

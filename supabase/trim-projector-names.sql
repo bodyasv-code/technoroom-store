@@ -30,7 +30,7 @@ with source as (
       ))
       when is_office then btrim(regexp_replace(
         name,
-        '[[:space:]]*,[[:space:]]*(?:(?:a[0-9]|color|colour|mono(?:chrome)?|чорно[ -]?білий|кольоров[[:alnum:]_]*|лазер[[:alnum:]_]*|laser|струмен[[:alnum:]_]*|ink(?:jet)?|wi[ -]?fi|wireless|wlan|bluetooth|bt|ethernet|lan|usb|duplex|дуплекс|двосторон|[0-9]{1,4}[[:space:]]*(?:ppm|стр/хв|dpi|т/д)).*$',
+        '[[:space:]]*,[[:space:]]*(?:(?:a[0-9]|color|colour|mono(?:chrome)?|чорно[ -]?білий|кольоров[[:alnum:]_]*|лазер[[:alnum:]_]*|laser|струмен[[:alnum:]_]*|ink(?:jet)?|wi[ -]?fi|wireless|wlan|bluetooth|bt|ethernet|lan|usb|duplex|дуплекс|двосторон|[0-9]{1,4}[[:space:]]*(?:ppm|стр/хв|dpi|т/д))).*$',
         '', 'i'
       ))
       else name

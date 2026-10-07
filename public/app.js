@@ -1578,11 +1578,18 @@ catalog = function () {
     if (/800\s*[×XХ]\s*600|\bSVGA\b/.test(source.toUpperCase())) return ['SVGA'];
     return normalized ? [normaliseSpecificationValue(source)] : [];
   };
+  const projectorThrowRatioValues = (product) => {
+    const stored = specificationValues(product, ['проекційне співвідношення', 'проекційне відношення', 'projection ratio', 'throw ratio']).join(' ');
+    const source = readableText([stored, product.name, product.description].filter(Boolean).join(' '));
+    const ratio = source.match(/\b(\d+(?:[.,]\d+)?\s*(?:[-–—]\s*\d+(?:[.,]\d+)?)?\s*:\s*1)\b/u)?.[1];
+    return ratio ? [ratio.replace(',', '.').replace(/\s+/g, ' ').replace(/\s*:\s*/, ' : ')] : [];
+  };
   const projectorFilterOptions = (categoryProducts) => {
     const definitions = [
       { id: 'projector-classification', label: 'Тип і призначення', values: projectorClassificationValues, normaliseValue: normaliseSpecificationValue },
       { id: 'projector-technology', label: 'Технологія', values: projectorTechnologyValues, normaliseValue: normaliseSpecificationValue },
       { id: 'projector-resolution', label: 'Роздільна здатність', values: projectorResolutionValues, normaliseValue: normaliseSpecificationValue },
+      { id: 'projector-throw-ratio', label: 'Проекційне співвідношення', values: projectorThrowRatioValues, normaliseValue: normaliseSpecificationValue },
       { id: 'projector-light-source', label: 'Джерело світла', keys: ['джерело світла', 'тип джерела'], values: (product) => specificationValues(product, ['джерело світла', 'тип джерела']).map(normaliseLightSource), normaliseValue: normaliseLightSource }
     ];
     return definitions.map((definition) => {
@@ -1857,8 +1864,9 @@ catalog = function () {
       if (valid.size) selectedScreenSpecifications.set(id, valid); else selectedScreenSpecifications.delete(id);
     });
     screenSpecificationFilters.hidden = false;
+    const selectedFluxPreset = [['', ''], ['0', '1999'], ['2000', '2999'], ['3000', '4999'], ['5000', '']].find(([min, max]) => min === String(selectedLuminousFlux.min) && max === String(selectedLuminousFlux.max))?.join(':') || '';
     const fluxMarkup = fluxRange
-      ? '<fieldset class="screen-specification-filter luminous-flux-filter"><legend>Яскравість, лм</legend><div class="price-values"><input type="number" min="' + fluxRange.min + '" max="' + fluxRange.max + '" placeholder="Від ' + fluxRange.min + '" value="' + selectedLuminousFlux.min + '" data-luminous-flux="min"><input type="number" min="' + fluxRange.min + '" max="' + fluxRange.max + '" placeholder="До ' + fluxRange.max + '" value="' + selectedLuminousFlux.max + '" data-luminous-flux="max"></div></fieldset>'
+      ? '<fieldset class="screen-specification-filter luminous-flux-filter"><legend>Яскравість, лм</legend><label><select data-luminous-preset><option value="">Будь-яка яскравість</option><option value="0:1999"' + (selectedFluxPreset === '0:1999' ? ' selected' : '') + '>До 2 000 лм</option><option value="2000:2999"' + (selectedFluxPreset === '2000:2999' ? ' selected' : '') + '>2 000–2 999 лм</option><option value="3000:4999"' + (selectedFluxPreset === '3000:4999' ? ' selected' : '') + '>3 000–4 999 лм</option><option value="5000:"' + (selectedFluxPreset === '5000:' ? ' selected' : '') + '>Від 5 000 лм</option></select></label><div class="price-values"><input type="number" min="' + fluxRange.min + '" max="' + fluxRange.max + '" placeholder="Від ' + fluxRange.min + '" value="' + selectedLuminousFlux.min + '" data-luminous-flux="min"><input type="number" min="' + fluxRange.min + '" max="' + fluxRange.max + '" placeholder="До ' + fluxRange.max + '" value="' + selectedLuminousFlux.max + '" data-luminous-flux="max"></div></fieldset>'
       : '';
     screenSpecificationFilters.innerHTML = fluxMarkup + groups.map((group) => {
       const selected = selectedScreenSpecifications.get(group.id) || new Set();
@@ -1945,6 +1953,14 @@ catalog = function () {
 
   root._catalogDraw = draw;
   screenSpecificationFilters?.addEventListener('change', (event) => {
+    const luminousPreset = event.target.closest('[data-luminous-preset]');
+    if (luminousPreset) {
+      const [min, max] = luminousPreset.value.split(':');
+      selectedLuminousFlux.min = min || ''; selectedLuminousFlux.max = max || '';
+      page = 1;
+      draw();
+      return;
+    }
     const luminous = event.target.closest('[data-luminous-flux]');
     if (luminous) {
       selectedLuminousFlux[luminous.dataset.luminousFlux] = luminous.value;

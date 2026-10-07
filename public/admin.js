@@ -105,7 +105,7 @@ const mountProjectorEditorFields=(form,product)=>{
   let panel=form.querySelector('#projectorEditorFields');
   if(!panel){
     panel=document.createElement('fieldset');panel.id='projectorEditorFields';panel.className='projector-editor-fields';
-    panel.innerHTML='<legend>Фільтри проєктора</legend><div class="projector-editor-fields__grid"><div><b>Тип і призначення</b><div class="projector-editor-fields__options">'+projectorPurposeOptions.map(value=>'<label><input type="checkbox" name="projector_purpose" value="'+value+'"> '+value+'</label>').join('')+'</div></div><label>Джерело світла<select name="projector_light_source"><option value="">— Не вказано —</option><option value="Лампа">Лампа</option><option value="Лазер">Лазер</option><option value="Світлодіод">LED / світлодіодний</option></select></label><label>Роздільна здатність<select name="projector_resolution_select"><option value="">— Не вказано —</option>'+projectorResolutionOptions.map(value=>'<option value="'+value+'">'+value+'</option>').join('')+'<option value="__custom">Інша — ввести вручну</option></select></label><label data-projector-resolution-custom hidden>Власна роздільна здатність<input name="projector_resolution_custom" type="text" placeholder="Напр. 1366 × 768"></label><label>Технологія проекції<select name="projector_technology"><option value="">— Не вказано —</option><option value="DLP">DLP</option><option value="LCD">LCD</option><option value="3LCD">3LCD</option><option value="LCoS">LCoS</option></select></label></div><small>За потреби вкажіть дані вручну: вони мають пріоритет над автоматичним визначенням із XML.</small>';
+    panel.innerHTML='<legend>Фільтри проєктора</legend><div class="projector-editor-fields__grid"><div><b>Тип і призначення</b><div class="projector-editor-fields__options">'+projectorPurposeOptions.map(value=>'<label><input type="checkbox" name="projector_purpose" value="'+value+'"> '+value+'</label>').join('')+'</div></div><label>Джерело світла<select name="projector_light_source"><option value="">— Не вказано —</option><option value="Лампа">Лампа</option><option value="Лазер">Лазер</option><option value="Світлодіод">LED / світлодіодний</option></select></label><label>Роздільна здатність<select name="projector_resolution_select"><option value="">— Не вказано —</option>'+projectorResolutionOptions.map(value=>'<option value="'+value+'">'+value+'</option>').join('')+'<option value="__custom">Інша — ввести вручну</option></select></label><label data-projector-resolution-custom hidden>Власна роздільна здатність<input name="projector_resolution_custom" type="text" placeholder="Напр. 1366 × 768"></label><label>Проекційне співвідношення<input name="projector_throw_ratio" type="text" placeholder="Напр. 0.5 : 1 або 1.3–2.1 : 1"></label><label>Яскравість, лм<input name="projector_brightness" type="number" min="1" step="1" placeholder="Напр. 4000"></label><label>Технологія проекції<select name="projector_technology"><option value="">— Не вказано —</option><option value="DLP">DLP</option><option value="LCD">LCD</option><option value="3LCD">3LCD</option><option value="LCoS">LCoS</option></select></label></div><small>За потреби вкажіть дані вручну: вони мають пріоритет над автоматичним визначенням із XML.</small>';
     const description=form.elements.description?.closest('label');if(description)description.before(panel);else form.append(panel);
   }
   const specifications=product?.specifications||parseAdminSpecifications(form.elements.specifications_text?.value);
@@ -119,6 +119,8 @@ const mountProjectorEditorFields=(form,product)=>{
   const toggleResolutionCustom=()=>{resolutionCustomLabel.hidden=resolutionSelect.value!=='__custom'};resolutionSelect.onchange=toggleResolutionCustom;toggleResolutionCustom();
   const technology=String(specifications['Технологія проекції']||specifications['Projection technology']||'');
   panel.querySelector('[name="projector_technology"]').value=/3lcd/iu.test(technology)?'3LCD':/lcos/iu.test(technology)?'LCoS':/\bdlp\b/iu.test(technology)?'DLP':/\blcd\b/iu.test(technology)?'LCD':'';
+  panel.querySelector('[name="projector_throw_ratio"]').value=String(specifications['Проекційне співвідношення']||specifications['Проекційне відношення']||specifications['Projection ratio']||specifications['Throw ratio']||'');
+  panel.querySelector('[name="projector_brightness"]').value=String(specifications['Яскравість']||specifications['Світловий потік']||specifications['Brightness']||'').match(/\d{2,5}/)?.[0]||'';
   const toggle=()=>{panel.hidden=!projectorCategorySlugs.has(form.elements.category.value)};
   form.elements.category.onchange=toggle;toggle();
 };
@@ -149,15 +151,19 @@ async function saveProductWithProjectorFields(event){
   const form=event.currentTarget,panel=form.querySelector('#projectorEditorFields');
   if(panel&&!panel.hidden){
     const specifications=parseAdminSpecifications(form.elements.specifications_text.value);
-    delete specifications['Призначення'];delete specifications['Тип / призначення'];delete specifications['Джерело світла'];delete specifications['Тип джерела'];delete specifications['Роздільна здатність'];delete specifications['Resolution'];delete specifications['Технологія проекції'];delete specifications['Projection technology'];
+    delete specifications['Призначення'];delete specifications['Тип / призначення'];delete specifications['Джерело світла'];delete specifications['Тип джерела'];delete specifications['Роздільна здатність'];delete specifications['Resolution'];delete specifications['Проекційне співвідношення'];delete specifications['Проекційне відношення'];delete specifications['Projection ratio'];delete specifications['Throw ratio'];delete specifications['Яскравість'];delete specifications['Світловий потік'];delete specifications['Brightness'];delete specifications['Технологія проекції'];delete specifications['Projection technology'];
     const purposes=[...panel.querySelectorAll('[name="projector_purpose"]:checked')].map(input=>input.value);
     const source=panel.querySelector('[name="projector_light_source"]').value;
     const resolutionChoice=panel.querySelector('[name="projector_resolution_select"]').value;
     const resolution=resolutionChoice==='__custom'?panel.querySelector('[name="projector_resolution_custom"]').value.trim():resolutionChoice;
     const technology=panel.querySelector('[name="projector_technology"]').value;
+    const throwRatio=panel.querySelector('[name="projector_throw_ratio"]').value.trim();
+    const brightness=panel.querySelector('[name="projector_brightness"]').value.trim();
     if(purposes.length)specifications['Призначення']=purposes.join(' · ');
     if(source)specifications['Джерело світла']=source;
     if(resolution)specifications['Роздільна здатність']=resolution;
+    if(throwRatio)specifications['Проекційне співвідношення']=throwRatio;
+    if(brightness)specifications['Яскравість']=brightness+' лм';
     if(technology)specifications['Технологія проекції']=technology;
     writeAdminSpecifications(form,specifications);
   }
@@ -278,6 +284,7 @@ supabase.auth.getSession().then(({data:{session}})=>session?dashboard():view('lo
     if (/накопичувач|\bssd\b|обсяг.*диск/.test(key)) return 'Накопичувач';
     if (/роздільн.*здатн|\bresolution\b/.test(key)) return 'Роздільна здатність';
     if (/технолог.*проекц|projection technology/.test(key)) return 'Технологія проекції';
+    if (/проекційн.*(?:співвіднош|віднош)|throw\s*ratio/.test(key)) return 'Проекційне співвідношення';
     if (/світлов.*потік|яскравість|\bbrightness\b/.test(key)) return 'Яскравість';
     if (/джерел.*світла|тип.*джерела/.test(key)) return 'Джерело світла';
     if (/частота.*(?:оновлення|розгорт)|refresh rate/.test(key)) return 'Частота оновлення';
@@ -350,6 +357,7 @@ supabase.auth.getSession().then(({data:{session}})=>session?dashboard():view('lo
     const storage = storageMatches.map((match) => ({ value: match[1].replace(',', '.') + ' ' + (/тб|tb/iu.test(match[2]) ? 'ТБ' : 'ГБ'), size: Number(match[1].replace(',', '.')) * (/тб|tb/iu.test(match[2]) ? 1024 : 1) })).filter((item) => item.size >= 32).sort((a, b) => b.size - a.size)[0]?.value;
     const processor = /(apple\s+m\d(?:\s+(?:pro|max|ultra))?|intel\s+core\s+(?:i[3-9]|ultra)|amd\s+ryzen\s+\d|snapdragon\s+\d+)/iu.exec(text)?.[0];
     const brightness = text.match(/\b(\d{2,5})\s*(?:лм|lm)\b/iu)?.[1];
+    const throwRatio = text.match(/\b(\d+(?:[.,]\d+)?\s*(?:[-–—]\s*\d+(?:[.,]\d+)?)?\s*:\s*1)\b/u)?.[1]?.replace(/\s+/g, ' ').replace(',', '.');
     if (/(?:смартфон|телефон|iphone|android)/iu.test(text)) { add('Діагональ', diagonal && diagonal.replace(',', '.') + '″'); add('Вбудована пам’ять', storage); add('Оперативна пам’ять', ram && ram.replace(',', '.') + ' ГБ'); }
     if (/(?:ноутбук|laptop|macbook)/iu.test(text)) { add('Діагональ', diagonal && diagonal.replace(',', '.') + '″'); add('Процесор', processor); add('Оперативна пам’ять', ram && ram.replace(',', '.') + ' ГБ'); add('Накопичувач', storage); }
     if (/^\s*(?:про[єе]ктор|projector)\b/iu.test(text)) {
@@ -360,7 +368,7 @@ supabase.auth.getSession().then(({data:{session}})=>session?dashboard():view('lo
       else if (/(?:короткофокус|short\s*-?\s*throw)/iu.test(text)) projectorPurposes.push('Короткофокусний');
       if (/(?:інсталяційн|installation)/iu.test(text)) projectorPurposes.push('Інсталяційний');
       if (/(?:універсальн|universal)/iu.test(text)) projectorPurposes.push('Універсальний');
-      add('Роздільна здатність', resolution); add('Яскравість', brightness && brightness + ' лм'); add('Технологія проекції', /\b3lcd\b/iu.test(text) ? '3LCD' : /\bdlp\b/iu.test(text) ? 'DLP' : /\blcos\b/iu.test(text) ? 'LCoS' : /\blcd\b/iu.test(text) ? 'LCD' : ''); add('Призначення', [...new Set(projectorPurposes)].join(' · ')); add('Джерело світла', /лазер|laser/iu.test(text) ? 'Лазер' : /світлодіод|\bled\b/iu.test(text) ? 'Світлодіод' : /ламп|lamp/iu.test(text) ? 'Лампа' : '');
+      add('Роздільна здатність', resolution); add('Яскравість', brightness && brightness + ' лм'); add('Проекційне співвідношення', throwRatio); add('Технологія проекції', /\b3lcd\b/iu.test(text) ? '3LCD' : /\bdlp\b/iu.test(text) ? 'DLP' : /\blcos\b/iu.test(text) ? 'LCoS' : /\blcd\b/iu.test(text) ? 'LCD' : ''); add('Призначення', [...new Set(projectorPurposes)].join(' · ')); add('Джерело світла', /лазер|laser/iu.test(text) ? 'Лазер' : /світлодіод|\bled\b/iu.test(text) ? 'Світлодіод' : /ламп|lamp/iu.test(text) ? 'Лампа' : '');
     }
     if (/(?:телевізор|\btv\b)/iu.test(text)) { add('Діагональ', diagonal && diagonal.replace(',', '.') + '″'); add('Роздільна здатність', resolution); add('Тип матриці', /mini\s*-?\s*led/iu.test(text) ? 'miniLED' : /oled/iu.test(text) ? 'OLED' : /qled/iu.test(text) ? 'QLED' : /\bled\b/iu.test(text) ? 'LED' : ''); add('Smart TV', /(?:smart\s*tv|google\s*tv|android\s*tv|webos|tizen|vidaa)/iu.test(text) ? 'Є' : ''); }
     const officeType = /(?:бфп|мфу|mfp|multifunction|багатофункціональн\w*\s+(?:пристрій|апарат))/iu.test(text) ? 'БФП' : /(?:принтер|printer)/iu.test(text) ? 'Принтер' : /(?:сканер|scanner)/iu.test(text) ? 'Сканер' : /(?:копір|копир|copier)/iu.test(text) ? 'Копір' : /(?:ламінатор|ламинатор|laminator)/iu.test(text) ? 'Ламінатор' : /(?:знищувач|шредер|shredder)/iu.test(text) ? 'Знищувач документів' : '';

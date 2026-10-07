@@ -13,15 +13,14 @@ with candidates as (
     btrim(sku) as clean_sku,
     rtrim(
       left(btrim(name), length(btrim(name)) - length(btrim(sku))),
-      E' \t\r\n—–-'
+      E' \t\r\n' || chr(160) || '—–-'
     ) as base_name
   from public.products
   where nullif(btrim(sku), '') is not null
     and lower(right(btrim(name), length(btrim(sku)))) = lower(btrim(sku))
-    and right(
-      rtrim(left(btrim(name), length(btrim(name)) - length(btrim(sku))), E' \t\r\n'),
-      1
-    ) in ('—', '–', '-')
+    -- Уже правильний формат не чіпаємо. Роздільник перед старим SKU
+    -- навмисно не перевіряємо: постачальники використовують різні тире й NBSP.
+    and lower(btrim(name)) not like '%(' || lower(btrim(sku)) || ')'
 )
 update public.products as product
 set name = candidates.base_name || ' (' || candidates.clean_sku || ')'
@@ -37,8 +36,5 @@ select name, sku, category
 from public.products
 where nullif(btrim(sku), '') is not null
   and lower(right(btrim(name), length(btrim(sku)))) = lower(btrim(sku))
-  and right(
-    rtrim(left(btrim(name), length(btrim(name)) - length(btrim(sku))), E' \t\r\n'),
-    1
-  ) in ('—', '–', '-')
+  and lower(btrim(name)) not like '%(' || lower(btrim(sku)) || ')'
 order by name;

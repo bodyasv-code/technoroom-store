@@ -1694,7 +1694,7 @@ catalog = function () {
     const values = new Set();
     categoryProducts.forEach((product) => definition.values(product).filter(Boolean).forEach((value) => values.add(normaliseSpecificationValue(value))));
     const options = [...values].filter(Boolean).sort((left, right) => left.localeCompare(right, 'uk', { numeric: true }));
-    return options.length >= 2 ? { ...definition, options, normaliseValue: normaliseSpecificationValue } : null;
+    return options.length >= (definition.minOptions || 2) ? { ...definition, options, normaliseValue: normaliseSpecificationValue } : null;
   }).filter(Boolean);
   const deviceSource = (product, keyPattern, includeName = false) => [
     ...Object.entries(product.specifications || {})
@@ -1791,18 +1791,25 @@ catalog = function () {
   };
   const printerInterfaceValues = (product) => {
     const source = printerSource(product, /(?:інтерфейс|interface|підключ|connection|мереж|network|ethernet|\blan\b|\busb\b|wi[ -]?fi|wireless|wlan|bluetooth)/iu);
+    const optionalWifi=/(?:wi[ -]?fi|wireless|wlan).{0,80}(?:опц|optional|не\s*(?:вход|входить)|докуп|add[ -]?on|модул)|(?:опц|optional|не\s*(?:вход|входить)|докуп|add[ -]?on|модул).{0,80}(?:wi[ -]?fi|wireless|wlan)/iu.test(source);
     return [
-      ...( /(?:wi[ -]?fi|wireless|wlan)/iu.test(source) ? ['Wi‑Fi'] : []),
+      ...( /(?:wi[ -]?fi|wireless|wlan)/iu.test(source) && !optionalWifi ? ['Wi‑Fi'] : []),
       ...( /(?:ethernet|\blan\b|rj[ -]?45)/iu.test(source) ? ['Ethernet'] : []),
       ...( /\busb(?:\s|$|[0-9])?/iu.test(source) ? ['USB'] : []),
       ...( /bluetooth/iu.test(source) ? ['Bluetooth'] : [])
     ];
   };
+  const printerDuplexValues = (product) => {
+    const source=printerSource(product, /(?:дуплекс|двосторон|duplex|two[ -]?sided)/iu);
+    const optional=/(?:дуплекс|двосторон|duplex).{0,80}(?:опц|optional|не\s*(?:вход|входить)|докуп|add[ -]?on|модул)|(?:опц|optional|не\s*(?:вход|входить)|докуп|add[ -]?on|модул).{0,80}(?:дуплекс|двосторон|duplex)/iu.test(source);
+    return /(?:дуплекс|двосторон|duplex|two[ -]?sided)/iu.test(source)&&!optional?['Є']:[];
+  };
   const printerFilterOptions = (categoryProducts) => compactFilterOptions(categoryProducts, [
     { id: 'printer-color', label: 'Кольоровість', values: printerColorValues },
     { id: 'printer-technology', label: 'Технологія друку', values: printerTechnologyValues },
     { id: 'printer-format', label: 'Формат', values: printerFormatValues },
-    { id: 'printer-interface', label: 'Інтерфейси', values: printerInterfaceValues }
+    { id: 'printer-interface', label: 'Інтерфейси', values: printerInterfaceValues },
+    { id: 'printer-duplex', label: 'Дуплексний друк', values: printerDuplexValues, minOptions: 1 }
   ]);
   const screenFilterOptions = () => {
     const categoryProducts = products.filter((product) => !product.parentProductId && category !== 'all' && storefrontCategoryMatches(product, category));

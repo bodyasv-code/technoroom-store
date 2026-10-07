@@ -881,6 +881,82 @@ supabase.auth.getSession().then(({data:{session}})=>session?dashboard():view('lo
     renderImportReport();
     if (!importer.rows.length) throw new Error('У файлі не знайдено товарних позицій.');
   };
+  // ERC also provides selected-vendor workbooks. They are a content supplement:
+  // rows are joined by SKU, so the normal XML/API import remains the source for
+  // price and stock while this file contributes description, specs and photos.
+  const ercWorkbookHeader = (headers, matcher) => headers.findIndex((header) => matcher.test(cleanImportText(header || '')));
+  const ercWorkbookRows = async (file) => {
+    let XLSX;
+    try { XLSX = await import('https://cdn.jsdelivr.net/npm/xlsx@0.18.5/+esm'); XLSX = XLSX.default || XLSX; }
+    catch { throw new Error('Не вдалося відкрити модуль читання Excel. Перевірте з’єднання та спробуйте ще раз.'); }
+    const workbook = XLSX.read(await file.arrayBuffer(), { type: 'array' });
+    const sheet = workbook.Sheets[workbook.SheetNames[0]];
+    const sourceRows = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' });
+    const headerRow = sourceRows.findIndex((row) => row.some((cell) => /^(?:sku|код|артикул|код товару)$/iu.test(cleanImportText(cell || ''))));
+    if (headerRow < 0) throw new Error('У файлі Excel не знайдено колонку SKU / «Код».');
+    const headers = sourceRows[headerRow];
+    const column = (pattern, fallback = -1) => {
+      const index = ercWorkbookHeader(headers, pattern);
+      return index >= 0 ? index : fallback;
+    };
+    const skuColumn = column(/^(?:sku|код|артикул|код товару)$/iu, 4);
+    const nameColumn = column(/^(?:найменування|назва|name|product name)$/iu, 3);
+    const vendorColumn = column(/^(?:виробник|вендор|бренд|vendor|brand)$/iu, 0);
+    const categoryColumn = column(/^(?:категорія|category)$/iu, 1);
+    const subcategoryColumn = column(/^(?:підкатегорія|subcategory|група)$/iu, 2);
+    const imageColumn = column(/(?:url|посилання).*(?:зображ|фото)|(?:зображ|фото).*(?:url|посилання)|^(?:image|photo)$/iu);
+    const descriptionColumn = column(/^(?:опис товару|опис|description|product description)$/iu);
+    const extraDescriptionColumn = column(/(?:повн.*опис|додатк.*опис|marketing)/iu);
+    const weightColumn = column(/^(?:вага|weight)$/iu);
+    const widthColumn = column(/^(?:ширина|width)$/iu);
+    const heightColumn = column(/^(?:висота|height)$/iu);
+    const depthColumn = column(/^(?:глибина|depth)$/iu);
+    const rows = [];
+    sourceRows.slice(headerRow + 1).forEach((source, index) => {
+      const value = (position) => position >= 0 ? cleanImportText(source[position] ?? '') : '';
+      const sku = normaliseSku(value(skuColumn));
+      const sourceName = value(nameColumn);
+      if (!sku || !sourceName) return;
+      const vendor = canonicalBrandName(value(vendorColumn));
+      const description = importDescription(value(descriptionColumn), value(extraDescriptionColumn));
+      const dimensions = [value(widthColumn), value(heightColumn), value(depthColumn)].filter(Boolean).join(' × ');
+      const rawSpecifications = {
+        ...parseSpecifications([value(descriptionColumn), value(extraDescriptionColumn)].filter(Boolean).join('\n')),
+        ...(value(weightColumn) ? { 'Вага': value(weightColumn) } : {}),
+        ...(dimensions ? { 'Габарити': dimensions } : {}),
+      };
+      // The ERC content catalogue uses the SKU as the image file name. A URL
+      // present in the workbook wins; the predictable SKU URL is a fallback.
+      const imageUrl = ercImage(value(imageColumn)) || ercImage('https://www.erc.ua/i/goods/' + encodeURIComponent(sku) + '.jpg');
+      const name = compactImportName(sourceName, sku, vendor);
+      rows.push({
+        key: 'erc-xlsx-' + sku + '-' + index, vendor, name, sku,
+        sourceCategory: value(categoryColumn), subcategory: value(subcategoryColumn),
+        price: 0, hasPrice: false, stock: 0, hasStock: false, availabilityStatus: '',
+        description, specifications: mergeMissingSpecifications(rawSpecifications, templateSpecifications([name, sourceName, description].join(' '))),
+        images: imageUrl ? [imageUrl] : [],
+      });
+    });
+    if (!rows.length) throw new Error('У файлі Excel не знайдено жодного товару з назвою та SKU.');
+    return rows;
+  };
+  const mergeErcWorkbookRows = (contentRows) => {
+    const currentBySku = new Map(importer.rows.map((row) => [normaliseSku(row.sku), row]));
+    let enriched = 0, added = 0;
+    contentRows.forEach((content) => {
+      const current = currentBySku.get(content.sku);
+      if (!current) { importer.rows.push(content); currentBySku.set(content.sku, content); added += 1; return; }
+      if (content.description && content.description.length > String(current.description || '').length) current.description = content.description;
+      current.vendor ||= content.vendor;
+      current.sourceCategory ||= content.sourceCategory;
+      current.subcategory ||= content.subcategory;
+      current.specifications = { ...content.specifications, ...(current.specifications || {}) };
+      current.images = [...new Set([...(current.images || []), ...(content.images || [])])];
+      enriched += 1;
+    });
+    importer.selected.clear(); importer.meta.clear(); importer.report = null; importer.page = 1;
+    return { enriched, added };
+  };
   const newSlug = (name, sku, used) => {
     const base = (slug(name) || 'product') + '-' + (slug(sku) || 'item');
     let result = base, index = 2;
@@ -971,7 +1047,7 @@ supabase.auth.getSession().then(({data:{session}})=>session?dashboard():view('lo
   const mountImporter = () => {
     const anchor = $('#products');
     if (!anchor || $('#supplierImport')) return;
-    anchor.insertAdjacentHTML('afterend', `<section class="admin-section" id="supplierImport"><div class="admin-title"><div><h2>Імпорт ERC та ASBIS XML</h2><span>Товари, характеристики, ціни, залишки та посилання на фото від постачальників</span></div></div><p class="recovery-help"><b>ERC:</b> оберіть лише основний XML-файл — імпорт працює як раніше. <b>ASBIS:</b> оберіть <b>itemList.xml</b> і додатково <b>PriceAvail.xml</b>; вони з’єднаються за SKU. Характеристики додаються лише до порожніх полів, а вручну внесені значення залишаються без змін.</p><div class="admin-controls"><label>Основний XML (ERC або ASBIS itemList) <input id="supplierImportFile" type="file" accept=".xml,application/xml,text/xml"></label><label>Ціни та наявність ASBIS — необов’язково <input id="supplierImportPriceFile" type="file" accept=".xml,application/xml,text/xml"></label><input id="supplierImportLimit" type="number" min="1" max="100" value="50" title="Товарів на сторінці попереднього перегляду"></div><div class="admin-controls"><label>Пошук у попередньому перегляді <input id="supplierImportSearch" type="search" placeholder="Назва, SKU, бренд або категорія" autocomplete="off"></label><label>Показати <select id="supplierImportStatus"><option value="all">Усі товари</option><option value="new">Нові товари</option><option value="update">Оновити наявні</option><option value="ready">Зіставлені з категорією</option><option value="problem">Проблемні — без категорії</option></select></label></div><div class="admin-controls"><button class="button outline" type="button" id="supplierImportBrands">Створити відсутні бренди</button><button class="button outline" type="button" id="supplierImportSelectNew">Вибрати нові на сторінці</button><button class="button outline" type="button" id="supplierImportSelectVisible">Вибрати всі на сторінці</button><button class="button outline" type="button" id="supplierImportSelectMatched">Виділити всі знайдені (до 100)</button><button class="button outline" type="button" id="supplierImportClear">Очистити вибір</button><label class="check"><input id="supplierImportSpecifications" type="checkbox" checked> Додати відсутні характеристики</label><label class="check"><input id="supplierImportImages" type="checkbox"> Додати доступні фото</label><label class="check"><input id="supplierImportPublish" type="checkbox"> Публікувати нові товари</label><button class="button primary" type="button" id="supplierImportApply">Імпортувати вибрані</button></div><p class="admin-message" id="supplierImportMessage" hidden></p><p class="recovery-help" id="supplierImportSummary">Оберіть XML-файл для попереднього перегляду.</p><div id="supplierImportReport" class="import-report" hidden></div><div class="admin-controls" id="supplierImportPagination" hidden></div><div class="admin-table-wrap"><table><thead><tr><th></th><th>Товар / джерело</th><th>SKU</th><th>Категорія</th><th>Дані джерела</th><th>Дія</th></tr></thead><tbody id="supplierImportRows"></tbody></table></div></section>`);
+    anchor.insertAdjacentHTML('afterend', `<section class="admin-section" id="supplierImport"><div class="admin-title"><div><h2>Імпорт ERC та ASBIS XML</h2><span>Товари, характеристики, ціни, залишки та посилання на фото від постачальників</span></div></div><p class="recovery-help"><b>ERC:</b> оберіть лише основний XML-файл — імпорт працює як раніше. <b>ASBIS:</b> оберіть <b>itemList.xml</b> і додатково <b>PriceAvail.xml</b>; вони з’єднаються за SKU. Характеристики додаються лише до порожніх полів, а вручну внесені значення залишаються без змін.</p><div class="admin-controls"><label>Основний XML (ERC або ASBIS itemList) <input id="supplierImportFile" type="file" accept=".xml,application/xml,text/xml"></label><label>Ціни та наявність ASBIS — необов’язково <input id="supplierImportPriceFile" type="file" accept=".xml,application/xml,text/xml"></label><label>Контент ERC Excel — необов’язково <input id="supplierImportContentFile" type="file" accept=".xlsx,.xls,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel"></label><input id="supplierImportLimit" type="number" min="1" max="100" value="50" title="Товарів на сторінці попереднього перегляду"></div><div class="admin-controls"><label>Пошук у попередньому перегляді <input id="supplierImportSearch" type="search" placeholder="Назва, SKU, бренд або категорія" autocomplete="off"></label><label>Показати <select id="supplierImportStatus"><option value="all">Усі товари</option><option value="new">Нові товари</option><option value="update">Оновити наявні</option><option value="ready">Зіставлені з категорією</option><option value="problem">Проблемні — без категорії</option></select></label></div><div class="admin-controls"><button class="button outline" type="button" id="supplierImportBrands">Створити відсутні бренди</button><button class="button outline" type="button" id="supplierImportSelectNew">Вибрати нові на сторінці</button><button class="button outline" type="button" id="supplierImportSelectVisible">Вибрати всі на сторінці</button><button class="button outline" type="button" id="supplierImportSelectMatched">Виділити всі знайдені (до 100)</button><button class="button outline" type="button" id="supplierImportClear">Очистити вибір</button><label class="check"><input id="supplierImportSpecifications" type="checkbox" checked> Додати відсутні характеристики</label><label class="check"><input id="supplierImportImages" type="checkbox"> Додати доступні фото</label><label class="check"><input id="supplierImportPublish" type="checkbox"> Публікувати нові товари</label><button class="button primary" type="button" id="supplierImportApply">Імпортувати вибрані</button></div><p class="admin-message" id="supplierImportMessage" hidden></p><p class="recovery-help" id="supplierImportSummary">Оберіть XML-файл для попереднього перегляду.</p><div id="supplierImportReport" class="import-report" hidden></div><div class="admin-controls" id="supplierImportPagination" hidden></div><div class="admin-table-wrap"><table><thead><tr><th></th><th>Товар / джерело</th><th>SKU</th><th>Категорія</th><th>Дані джерела</th><th>Дія</th></tr></thead><tbody id="supplierImportRows"></tbody></table></div></section>`);
     document.querySelector('.admin-nav').insertAdjacentHTML('beforeend', '<a href="#supplierImport">Імпорт ERC / ASBIS</a>');
     const section = $('#supplierImport');
     $('#supplierImportFile').addEventListener('change', async (event) => {
@@ -989,6 +1065,16 @@ supabase.auth.getSession().then(({data:{session}})=>session?dashboard():view('lo
         renderImportPreview();
         importerStatus('Файл цін прочитано: ' + count + ' позицій. Дані з’єднано за SKU.');
       } catch (error) { importerStatus(error.message || 'Не вдалося прочитати XML цін.', true); }
+    });
+    $('#supplierImportContentFile').addEventListener('change', async (event) => {
+      const file = event.target.files?.[0]; if (!file) return;
+      importerStatus('Читаю контент ERC з ' + file.name + '…');
+      try {
+        const contentRows = await ercWorkbookRows(file);
+        const result = mergeErcWorkbookRows(contentRows);
+        renderImportPreview();
+        importerStatus(`Контент ERC додано: ${result.enriched} зіставлено за SKU, ${result.added} додано до перегляду. Увімкніть «Додати доступні фото» перед імпортом.`);
+      } catch (error) { importerStatus(error.message || 'Не вдалося прочитати Excel ERC.', true); }
     });
     section.addEventListener('input', (event) => { if (event.target.matches('#supplierImportLimit, #supplierImportSearch')) { importer.page = 1; renderImportPreview(); } });
     section.addEventListener('change', (event) => { if (event.target.matches('#supplierImportStatus')) { importer.page = 1; renderImportPreview(); return; } const checkbox = event.target.closest('[data-import-select]'); if (!checkbox) return; if (checkbox.checked) importer.selected.add(checkbox.dataset.importSelect); else importer.selected.delete(checkbox.dataset.importSelect); updateImportSelectionSummary(); });

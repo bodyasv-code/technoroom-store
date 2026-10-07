@@ -38,7 +38,9 @@ const fetchTrustedImage = async (url, redirectsLeft = 2) => {
   });
   if (![301, 302, 303, 307, 308].includes(upstream.status)) return upstream;
   if (!redirectsLeft) return null;
-  const next = safeUrl(new URL(upstream.headers.get('location') || '', url));
+  const redirect = new URL(upstream.headers.get('location') || '', url);
+  const next = safeUrl(redirect);
+  if (!next) throw new Error('перенаправлення на ' + redirect.protocol.replace(':', '').toUpperCase() + '://' + redirect.hostname);
   return next ? fetchTrustedImage(next, redirectsLeft - 1) : null;
 };
 
@@ -80,7 +82,7 @@ export default async function handler(request, response) {
       const path = `products/import-${productId}-${Date.now()}-${index}.${extensionFor(type)}`;
       const { error } = await supabase.storage.from('product-images').upload(path, image, { contentType: type, upsert: false });
       if (!error) uploaded.push(path); else failures.push('не вдалося зберегти у сховище');
-    } catch { failures.push('помилка з’єднання з джерелом'); }
+    } catch (error) { failures.push(error?.message || 'помилка з’єднання з джерелом'); }
   }
 
   if (!uploaded.length) return response.status(422).json({ error: 'Жодне зображення не вдалося завантажити: ' + [...new Set(failures)].join('; ') + '.' });

@@ -230,7 +230,7 @@ supabase.auth.getSession().then(({data:{session}})=>session?dashboard():view('lo
 // Універсальний імпорт XML: читає поширені структури постачальників і не перезаписує ручні дані.
 (() => {
   const importer = { rows: [], selected: new Set(), page: 1, prices: new Map(), meta: new Map(), report: null };
-  const supportedImageHosts = new Set(['www.tradeinn.com','www.audiotrends.com.au','static-ecapac.acer.com','media4home.com.pl','media.sonos.com','images.samsung.com','assets2.razerzone.com','d7qztf2ityad6.cloudfront.net','hp.widen.net','img06.en25.com','koss.com.ua','ssl-product-images.www8-hp.com','www.3ona51.com','www.hp.com','www.koss.com','yugcontract.ua','www.it4profit.com','content.it4profit.com']);
+  const supportedImageHosts = new Set(['www.tradeinn.com','www.audiotrends.com.au','static-ecapac.acer.com','media4home.com.pl','media.sonos.com','images.samsung.com','assets2.razerzone.com','d7qztf2ityad6.cloudfront.net','hp.widen.net','img06.en25.com','koss.com.ua','ssl-product-images.www8-hp.com','www.3ona51.com','www.hp.com','www.koss.com','yugcontract.ua','www.it4profit.com','content.it4profit.com','erc.ua','www.erc.ua']);
   const cleanImportText = (value = '') => String(value).replace(/\s+/g, ' ').trim();
   const decodeEntities = (value = '') => {
     let text = String(value || '');
@@ -1006,8 +1006,71 @@ supabase.auth.getSession().then(({data:{session}})=>session?dashboard():view('lo
     $('#supplierImportBrands').onclick = createImportedBrands;
     $('#supplierImportApply').onclick = importSelected;
   };
-  window.addEventListener('load', mountImporter, { once: true });
-  if (document.readyState !== 'loading') mountImporter();
+  const ercImage = (value = '') => allowedImage(String(value).replace(/^http:\/\/(www\.)?erc\.ua\//i, 'https://$1erc.ua/'));
+  const ercRow = (item, index) => {
+    const source = item && typeof item === 'object' ? item : {};
+    const sku = normaliseSku(source.code || source.Code || source.sku || source.SKU || source.ware || source.Ware);
+    const vendor = canonicalBrandName(source.vendor || source.Vendor || source.vendorName || source.VendorName || '');
+    const sourceName = cleanImportText(source.gname || source.GName || source.name || source.Name || '');
+    const name = compactImportName(sourceName, sku, vendor);
+    const warehouses = Array.isArray(source.whs) ? source.whs : Array.isArray(source.WHS) ? source.WHS : [];
+    const stock = warehouses.reduce((total, entry) => total + importQuantity(entry?.q ?? entry?.Q ?? entry?.quantity ?? entry?.Quantity), 0);
+    const hasStock = warehouses.length > 0 || source.stock != null || source.Stock != null;
+    const rawPrice = source.sprice ?? source.SPrice ?? source.price ?? source.Price;
+    const price = importNumber(rawPrice);
+    const rawSpecs = {
+      ...(source.warranty || source.Warranty ? { 'Гарантія': cleanImportText(source.warranty || source.Warranty) } : {}),
+      ...(source.weight || source.Weight ? { 'Вага': cleanImportText(source.weight || source.Weight) } : {}),
+      ...(source.width || source.Width || source.height || source.Height || source.depth || source.Depth ? { 'Габарити': [source.width || source.Width, source.height || source.Height, source.depth || source.Depth].filter(Boolean).join(' × ') } : {}),
+    };
+    return {
+      key: 'erc-' + (sku || index), vendor, name, sku, sourceCategory: cleanImportText(source.category || source.Category || source.categoryName || ''), subcategory: cleanImportText(source.subcategory || source.Subcategory || ''),
+      price, hasPrice: rawPrice != null && price > 0, stock: hasStock ? stock : 0, hasStock, availabilityStatus: hasStock ? (stock > 0 ? 'in_stock' : 'out_of_stock') : '',
+      description: '', specifications: mergeMissingSpecifications(rawSpecs, templateSpecifications([name, sourceName].join(' '))), images: [ercImage(source.pic || source.Pic || source.image || source.Image)].filter(Boolean),
+    };
+  };
+  const setErcMessage = (message, error = false) => {
+    const element = $('#ercApiMessage'); if (!element) return;
+    element.textContent = message; element.classList.toggle('error', error); element.hidden = !message;
+  };
+  const ercRequest = async (payload) => {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session?.access_token) throw new Error('Потрібно знову увійти в адмінку.');
+    const response = await fetch('/api/erc-catalog', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + session.access_token }, body: JSON.stringify(payload) });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(data.error || 'Не вдалося отримати дані ERC.');
+    return data;
+  };
+  const mountErcCatalogApi = () => {
+    const anchor = $('#supplierImport');
+    if (!anchor || $('#ercCatalogApi')) return;
+    anchor.insertAdjacentHTML('afterend', `<section class="admin-section" id="ercCatalogApi"><div class="admin-title"><div><h2>ERC API</h2><span>Завантаження каталогу ERC у звичний попередній перегляд імпорту</span></div></div><p class="recovery-help">Дані входу ERC не зберігаються в браузері. Для першої перевірки вкажіть один SKU; після цього товари можна переглянути, зіставити з категоріями та імпортувати у розділі вище.</p><div class="admin-controls"><label>SKU ERC <input id="ercApiSku" type="text" placeholder="Напр. C11CJ88405"></label><label>Коди брендів ERC <input id="ercApiVendors" type="text" placeholder="Через кому"></label><label>Коди категорій ERC <input id="ercApiCategories" type="text" placeholder="Через кому"></label></div><div class="admin-controls"><label class="check"><input id="ercApiOnlyFree" type="checkbox"> Лише доступні товари</label><label class="check"><input id="ercApiNew" type="checkbox"> Лише новинки</label><button class="button outline" type="button" id="ercApiCheck">Перевірити підключення</button><button class="button primary" type="button" id="ercApiLoad">Завантажити у попередній перегляд</button></div><p class="admin-message" id="ercApiMessage" hidden></p></section>`);
+    document.querySelector('.admin-nav')?.insertAdjacentHTML('beforeend', '<a href="#ercCatalogApi">ERC API</a>');
+    $('#ercApiCheck').onclick = async () => {
+      const button = $('#ercApiCheck'); button.disabled = true;
+      try { const result = await ercRequest({ action: 'status' }); setErcMessage(result.configured ? 'Підключення налаштоване. Для фактичної перевірки введіть SKU і завантажте товар.' : 'Потрібно додати облікові дані ERC у налаштування сервера.'); }
+      catch (error) { setErcMessage(error.message, true); } finally { button.disabled = false; }
+    };
+    $('#ercApiLoad').onclick = async () => {
+      const button = $('#ercApiLoad');
+      const sku = $('#ercApiSku').value.trim(), vendorIds = $('#ercApiVendors').value.trim(), categoryIds = $('#ercApiCategories').value.trim();
+      if (!sku && !vendorIds && !categoryIds) { setErcMessage('Вкажіть SKU або код бренду чи категорії ERC.', true); return; }
+      button.disabled = true; setErcMessage('Завантажую дані ERC…');
+      try {
+        const result = await ercRequest({ action: 'catalog', sku, vendorIds, categoryIds, onlyFree: $('#ercApiOnlyFree').checked, isNew: $('#ercApiNew').checked });
+        importer.rows = (result.items || []).map(ercRow).filter((row) => row.sku && row.name);
+        importer.selected.clear(); importer.meta.clear(); importer.report = null; importer.page = 1;
+        renderImportPreview();
+        importerStatus('ERC: отримано ' + importer.rows.length + ' товарів. Перевірте їх у попередньому перегляді нижче перед імпортом.');
+        $('#supplierImport')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        setErcMessage('Готово: ' + importer.rows.length + ' товарів передано у попередній перегляд.');
+      } catch (error) { setErcMessage(error.message || 'Не вдалося завантажити дані ERC.', true); }
+      finally { button.disabled = false; }
+    };
+  };
+  const mountImportTools = () => { mountImporter(); mountErcCatalogApi(); };
+  window.addEventListener('load', mountImportTools, { once: true });
+  if (document.readyState !== 'loading') mountImportTools();
   const expectedCategoryFromName = (product) => {
     const name = String(product?.name || '').trim().toLocaleLowerCase('uk-UA');
     const printMode = printColourMode(product?.name, product?.specifications);

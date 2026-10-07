@@ -10,7 +10,7 @@ const trustedHosts = new Set([
   'www.tradeinn.com', 'www.audiotrends.com.au', 'static-ecapac.acer.com', 'media4home.com.pl',
   'media.sonos.com', 'images.samsung.com', 'assets2.razerzone.com', 'd7qztf2ityad6.cloudfront.net',
   'hp.widen.net', 'img06.en25.com', 'koss.com.ua', 'ssl-product-images.www8-hp.com', 'www.3ona51.com',
-  'www.hp.com', 'www.koss.com', 'yugcontract.ua', 'www.it4profit.com', 'content.it4profit.com',
+  'www.hp.com', 'www.koss.com', 'yugcontract.ua', 'www.it4profit.com', 'content.it4profit.com', 'erc.ua', 'www.erc.ua',
 ]);
 
 const extensionFor = (contentType) => ({

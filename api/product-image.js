@@ -23,6 +23,10 @@ const trustedHosts = new Set([
   'www.hp.com',
   'www.koss.com',
   'yugcontract.ua',
+  'www.it4profit.com',
+  'content.it4profit.com',
+  'erc.ua',
+  'www.erc.ua',
 ]);
 
 const fetchTrustedImage = async (url, redirectsLeft = 2) => {

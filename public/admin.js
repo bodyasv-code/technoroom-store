@@ -1018,7 +1018,8 @@ supabase.auth.getSession().then(({data:{session}})=>session?dashboard():view('lo
         // перезаписуються.
         const currentProjectorName = String(current.name || '');
         const isTechnicalProjectorTail = /^\s*(?:про[єе]ктор|projector)\b.*?,\s*(?:\d{2,5}\s*(?:лм|lm)\b|(?:led|laser|ламп\w*|wi[ -]?fi|wireless|wlan|bluetooth|\bbt\b|hdmi|usb|tizen|android\s*tv)\b|\d+(?:[.,]\d+)?\s*(?::\s*1)?\b)/iu.test(currentProjectorName);
-        if (isTechnicalProjectorTail && row.name && row.name.length < currentProjectorName.length) payload.name = row.name;
+        const hasLegacyProjectorSku = row.sku && ['— ' + row.sku, '- ' + row.sku].some((suffix) => currentProjectorName.trim().toLocaleLowerCase('uk-UA').endsWith(suffix.toLocaleLowerCase('uk-UA')));
+        if ((isTechnicalProjectorTail || hasLegacyProjectorSku) && row.name && row.name.length <= currentProjectorName.length) payload.name = row.name;
         if (updateSpecifications && Object.keys(row.specifications).length) payload.specifications = mergeSpecifications(current.specifications, row.specifications);
         if (row.description && (!current.description || isSupplierPromotionText(current.description))) payload.description = row.description;
         const shouldImportImages = !current.image_path && images.length;

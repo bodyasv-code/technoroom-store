@@ -24,16 +24,29 @@ with projector_names as (
     'erc-display-03', 'erc-display-11', 'erc-display-12', 'erc-display-13'
   )
   and coalesce(name, '') ~* '^\s*(?:про[єе]ктор|projector)\b'
+), without_old_sku_suffix as (
+  select
+    id,
+    sku,
+    case
+      -- Старий формат: «Назва — SKU». Прибираємо саме SKU в кінці,
+      -- тому дефіси, що є частиною моделі, не зачіпаються.
+      when nullif(btrim(sku), '') is not null
+        and lower(right(short_name, length(sku))) = lower(sku)
+        then btrim(regexp_replace(left(short_name, length(short_name) - length(sku)), '\s*[—–-]\s*$', ''))
+      else short_name
+    end as base_name
+  from projector_names
 ), prepared as (
   select
     id,
     case
       when nullif(btrim(sku), '') is not null
-        and position(lower(sku) in lower(short_name)) = 0
-        then short_name || ' (' || sku || ')'
-      else short_name
+        and position(lower(sku) in lower(base_name)) = 0
+        then base_name || ' (' || sku || ')'
+      else base_name
     end as final_name
-  from projector_names
+  from without_old_sku_suffix
 )
 update public.products product
 set name = prepared.final_name

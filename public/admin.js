@@ -1012,6 +1012,29 @@ supabase.auth.getSession().then(({data:{session}})=>session?dashboard():view('lo
     const absolute = source.startsWith('//') ? 'https:' + source : source.startsWith('/') ? 'https://www.erc.ua' + source : source;
     return allowedImage(absolute.replace(/^http:\/\/((?:[a-z0-9-]+\.)?erc\.ua)\//i, 'https://$1/'));
   };
+  const ercSpecifications = (source = {}) => {
+    const specifications = {};
+    const add = (key, value) => {
+      const label = canonicalSpecKey(key || ''), text = cleanImportText(value || '');
+      if (label && text && label.length <= 120 && text.length <= 700) specifications[label] = text;
+    };
+    const visit = (value, depth = 0) => {
+      if (depth > 4 || value == null) return;
+      if (typeof value === 'string') { Object.assign(specifications, parseSpecifications(value)); return; }
+      if (Array.isArray(value)) { value.forEach((entry) => visit(entry, depth + 1)); return; }
+      if (typeof value !== 'object') return;
+      const key = value.name || value.Name || value.key || value.Key || value.title || value.Title || value.label || value.Label || value.parameter || value.Parameter;
+      const fieldValue = value.value ?? value.Value ?? value.data ?? value.Data ?? value.content ?? value.Content ?? value.text ?? value.Text;
+      if (key && fieldValue != null && typeof fieldValue !== 'object') add(key, fieldValue);
+      Object.entries(value).forEach(([entryKey, entryValue]) => {
+        if (entryValue == null || entryKey === key || /^(?:name|key|title|label|parameter|value|data|content|text)$/i.test(entryKey)) return;
+        if (typeof entryValue === 'string' || typeof entryValue === 'number' || typeof entryValue === 'boolean') add(entryKey, entryValue);
+        else visit(entryValue, depth + 1);
+      });
+    };
+    ['specifications', 'Specifications', 'characteristics', 'Characteristics', 'attributes', 'Attributes', 'attrs', 'Attrs', 'parameters', 'Parameters', 'features', 'Features'].forEach((key) => visit(source[key]));
+    return specifications;
+  };
   const ercRow = (item, index) => {
     const source = item && typeof item === 'object' ? item : {};
     const sku = normaliseSku(source.code || source.Code || source.sku || source.SKU || source.ware || source.Ware);
@@ -1028,10 +1051,12 @@ supabase.auth.getSession().then(({data:{session}})=>session?dashboard():view('lo
       ...(source.weight || source.Weight ? { 'Вага': cleanImportText(source.weight || source.Weight) } : {}),
       ...(source.width || source.Width || source.height || source.Height || source.depth || source.Depth ? { 'Габарити': [source.width || source.Width, source.height || source.Height, source.depth || source.Depth].filter(Boolean).join(' × ') } : {}),
     };
+    const description = importDescription(source.description, source.Description, source.fullDescription, source.FullDescription, source.gdesc, source.GDesc);
+    const sourceSpecifications = { ...parseSpecifications(description), ...ercSpecifications(source), ...rawSpecs };
     return {
       key: 'erc-' + (sku || index), vendor, name, sku, sourceCategory: cleanImportText(source.category || source.Category || source.categoryName || ''), subcategory: cleanImportText(source.subcategory || source.Subcategory || ''),
       price, hasPrice: rawPrice != null && price > 0, stock: hasStock ? stock : 0, hasStock, availabilityStatus: hasStock ? (stock > 0 ? 'in_stock' : 'out_of_stock') : '',
-      description: '', specifications: mergeMissingSpecifications(rawSpecs, templateSpecifications([name, sourceName].join(' '))), images: [ercImage(source.pic || source.Pic || source.image || source.Image)].filter(Boolean),
+      description, specifications: mergeMissingSpecifications(sourceSpecifications, templateSpecifications([name, sourceName, description].join(' '))), images: [ercImage(source.pic || source.Pic || source.image || source.Image)].filter(Boolean),
     };
   };
   const setErcMessage = (message, error = false) => {

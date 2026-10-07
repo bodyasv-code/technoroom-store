@@ -97,6 +97,8 @@ document.addEventListener('click',event=>{const card=event.target.closest('[data
 const projectorCategorySlugs=new Set(['projectors','projector','laser-proj','erc-display-03','erc-display-11','erc-display-12','erc-display-13','home-projectors','short-throw-projectors','installation-projectors','universal-projectors']);
 const projectorPurposeOptions=['Лазерний','Домашній','Короткофокусний','Ультракороткофокусний','Інсталяційний','Універсальний'];
 const projectorResolutionOptions=['SVGA','XGA','WXGA','HD','Full HD','WUXGA','WQXGA','4K UHD','8K UHD','1920 × 1080','3840 × 2160'];
+const officePrintCategorySlugs=new Set(['office-printers','office-printers-color','office-printers-mono','office-mfp','office-mfp-color','office-mfp-mono','office-wide-format']);
+const officeInterfaceOptions=['Wi‑Fi','Ethernet','USB','Bluetooth'];
 const parseAdminSpecifications=value=>Object.fromEntries(String(value||'').split('\n').map(line=>{const [key,...parts]=line.split(':');return[key?.trim(),parts.join(':').trim()]}).filter(([key,value])=>key&&value));
 const writeAdminSpecifications=(form,specifications)=>{form.elements.specifications_text.value=Object.entries(specifications).map(([key,value])=>key+': '+value).join('\n')};
 const mountProjectorEditorFields=(form,product)=>{
@@ -120,8 +122,24 @@ const mountProjectorEditorFields=(form,product)=>{
   const toggle=()=>{panel.hidden=!projectorCategorySlugs.has(form.elements.category.value)};
   form.elements.category.onchange=toggle;toggle();
 };
+const mountOfficePrinterEditorFields=(form,product)=>{
+  let panel=form.querySelector('#officePrinterEditorFields');
+  if(!panel){
+    panel=document.createElement('fieldset');panel.id='officePrinterEditorFields';panel.className='projector-editor-fields';
+    panel.innerHTML='<legend>Фільтри принтера / БФП</legend><div class="projector-editor-fields__grid"><label>Кольоровість<select name="office_print_color"><option value="">— Не вказано —</option><option value="Монохромний">Монохромний</option><option value="Кольоровий">Кольоровий</option></select></label><label>Технологія друку<select name="office_print_technology"><option value="">— Не вказано —</option><option value="Лазерний">Лазерний</option><option value="Струменевий">Струменевий</option></select></label><label>Формат<select name="office_print_format"><option value="">— Не вказано —</option><option value="A4">A4</option><option value="A3">A3</option></select></label><div><b>Інтерфейси</b><div class="projector-editor-fields__options">'+officeInterfaceOptions.map(value=>'<label><input type="checkbox" name="office_print_interface" value="'+value+'"> '+value+'</label>').join('')+'</div></div></div><small>Значення зберігаються у характеристиках товару та мають пріоритет над даними XML.</small>';
+    const description=form.elements.description?.closest('label');if(description)description.before(panel);else form.append(panel);
+  }
+  const specifications=product?.specifications||parseAdminSpecifications(form.elements.specifications_text?.value);
+  const color=String(specifications['Тип друку']||specifications['Кольоровість']||'');
+  panel.querySelector('[name="office_print_color"]').value=/кольоров|\bcolor\b|\bcolour\b/iu.test(color)?'Кольоровий':/(?:моно|чорно[ -]?білий)/iu.test(color)?'Монохромний':'';
+  const technology=String(specifications['Технологія друку']||specifications['Технологія']||'');
+  panel.querySelector('[name="office_print_technology"]').value=/(?:струмен|струйн|\bink\b|inkjet)/iu.test(technology)?'Струменевий':/(?:лазер|laser)/iu.test(technology)?'Лазерний':'';
+  panel.querySelector('[name="office_print_format"]').value=String(specifications['Формат']||'').match(/\bA[34]\b/iu)?.[0]?.toUpperCase()||'';
+  const interfaces=String(specifications['Інтерфейси']||specifications['Інтерфейс']||specifications['Interface']||'');
+  panel.querySelectorAll('[name="office_print_interface"]').forEach(input=>input.checked=(input.value==='Wi‑Fi'?/(?:wi[ -]?fi|wireless|wlan)/iu:input.value==='Ethernet'?/ethernet|\blan\b|rj[ -]?45/iu:input.value==='USB'?/\busb(?:\s|$|[0-9])?/iu:/bluetooth/iu).test(interfaces));
+};
 const productDialogElement=$('#productDialog');
-new MutationObserver(()=>{if(productDialogElement.open){const id=$('#productForm').elements.id?.value;mountProjectorEditorFields($('#productForm'),state.products.find(product=>Number(product.id)===Number(id))||null)}}).observe(productDialogElement,{attributes:true,attributeFilter:['open']});
+new MutationObserver(()=>{if(productDialogElement.open){const form=$('#productForm'),id=form.elements.id?.value;const product=state.products.find(item=>Number(item.id)===Number(id))||null;mountProjectorEditorFields(form,product);mountOfficePrinterEditorFields(form,product);const sync=()=>{form.querySelector('#projectorEditorFields').hidden=!projectorCategorySlugs.has(form.elements.category.value);form.querySelector('#officePrinterEditorFields').hidden=!officePrintCategorySlugs.has(form.elements.category.value)};form.elements.category.onchange=sync;sync()}}).observe(productDialogElement,{attributes:true,attributeFilter:['open']});
 const originalSaveProduct=saveProduct;
 async function saveProductWithProjectorFields(event){
   const form=event.currentTarget,panel=form.querySelector('#projectorEditorFields');
@@ -137,6 +155,17 @@ async function saveProductWithProjectorFields(event){
     if(source)specifications['Джерело світла']=source;
     if(resolution)specifications['Роздільна здатність']=resolution;
     if(technology)specifications['Технологія проекції']=technology;
+    writeAdminSpecifications(form,specifications);
+  }
+  const officePanel=form.querySelector('#officePrinterEditorFields');
+  if(officePanel&&!officePanel.hidden){
+    const specifications=parseAdminSpecifications(form.elements.specifications_text.value);
+    delete specifications['Тип друку'];delete specifications['Кольоровість'];delete specifications['Технологія друку'];delete specifications['Технологія'];delete specifications['Формат'];delete specifications['Інтерфейси'];delete specifications['Інтерфейс'];delete specifications['Interface'];
+    const color=officePanel.querySelector('[name="office_print_color"]').value,technology=officePanel.querySelector('[name="office_print_technology"]').value,format=officePanel.querySelector('[name="office_print_format"]').value,interfaces=[...officePanel.querySelectorAll('[name="office_print_interface"]:checked')].map(input=>input.value);
+    if(color)specifications['Тип друку']=color;
+    if(technology)specifications['Технологія друку']=technology;
+    if(format)specifications['Формат']=format;
+    if(interfaces.length)specifications['Інтерфейси']=interfaces.join(', ');
     writeAdminSpecifications(form,specifications);
   }
   return originalSaveProduct(event);
@@ -325,7 +354,14 @@ supabase.auth.getSession().then(({data:{session}})=>session?dashboard():view('lo
     }
     if (/(?:телевізор|\btv\b)/iu.test(text)) { add('Діагональ', diagonal && diagonal.replace(',', '.') + '″'); add('Роздільна здатність', resolution); add('Тип матриці', /mini\s*-?\s*led/iu.test(text) ? 'miniLED' : /oled/iu.test(text) ? 'OLED' : /qled/iu.test(text) ? 'QLED' : /\bled\b/iu.test(text) ? 'LED' : ''); add('Smart TV', /(?:smart\s*tv|google\s*tv|android\s*tv|webos|tizen|vidaa)/iu.test(text) ? 'Є' : ''); }
     const officeType = /(?:бфп|мфу|mfp|multifunction|багатофункціональн\w*\s+(?:пристрій|апарат))/iu.test(text) ? 'БФП' : /(?:принтер|printer)/iu.test(text) ? 'Принтер' : /(?:сканер|scanner)/iu.test(text) ? 'Сканер' : /(?:копір|копир|copier)/iu.test(text) ? 'Копір' : /(?:ламінатор|ламинатор|laminator)/iu.test(text) ? 'Ламінатор' : /(?:знищувач|шредер|shredder)/iu.test(text) ? 'Знищувач документів' : '';
-    if (officeType) { add('Тип пристрою', officeType); add('Формат', text.match(/\bA([3-6])\b/iu)?.[0]?.toUpperCase()); add('Тип друку', /(?:color|colour|кольоров)/iu.test(text) ? 'Кольоровий' : /(?:mono|monochrome|монохром|чорно[ -]?білий)/iu.test(text) ? 'Монохромний' : ''); }
+    if (officeType) {
+      const interfaces=[];
+      if (/(?:wi[ -]?fi|wireless|wlan)/iu.test(text)) interfaces.push('Wi‑Fi');
+      if (/(?:ethernet|\blan\b|rj[ -]?45)/iu.test(text)) interfaces.push('Ethernet');
+      if (/\busb(?:\s|$|[0-9])?/iu.test(text)) interfaces.push('USB');
+      if (/bluetooth/iu.test(text)) interfaces.push('Bluetooth');
+      add('Тип пристрою', officeType); add('Формат', text.match(/\bA([3-6])\b/iu)?.[0]?.toUpperCase()); add('Тип друку', /(?:color|colour|кольоров)/iu.test(text) ? 'Кольоровий' : /(?:mono|monochrome|монохром|чорно[ -]?білий)/iu.test(text) ? 'Монохромний' : ''); add('Технологія друку', /(?:струмен|струйн|\bink\b|inkjet)/iu.test(text) ? 'Струменевий' : /(?:лазер|laser)/iu.test(text) ? 'Лазерний' : ''); add('Інтерфейси', interfaces.join(', '));
+    }
     return specifications;
   };
   const mergeMissingSpecifications = (specifications, inferred) => ({ ...inferred, ...specifications });

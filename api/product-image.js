@@ -28,6 +28,7 @@ const trustedHosts = new Set([
   'erc.ua',
   'www.erc.ua',
 ]);
+const isTrustedHost = (hostname = '') => trustedHosts.has(hostname) || hostname === 'erc.ua' || hostname.endsWith('.erc.ua');
 
 const fetchTrustedImage = async (url, redirectsLeft = 2) => {
   const upstream = await fetch(url, {
@@ -41,7 +42,7 @@ const fetchTrustedImage = async (url, redirectsLeft = 2) => {
   const location = upstream.headers.get('location');
   if (!location) return null;
   const next = new URL(location, url);
-  if (next.protocol !== 'https:' || !trustedHosts.has(next.hostname)) return null;
+  if (next.protocol !== 'https:' || !isTrustedHost(next.hostname)) return null;
   return fetchTrustedImage(next, redirectsLeft - 1);
 };
 
@@ -60,7 +61,7 @@ export default async function handler(request, response) {
 
   let url;
   try { url = new URL(product.image_path); } catch { return response.status(404).end('Image not found'); }
-  if (url.protocol !== 'https:' || !trustedHosts.has(url.hostname)) return response.status(403).end('Image source not allowed');
+  if (url.protocol !== 'https:' || !isTrustedHost(url.hostname)) return response.status(403).end('Image source not allowed');
 
   try {
     const upstream = await fetchTrustedImage(url);

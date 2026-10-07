@@ -401,11 +401,12 @@ supabase.auth.getSession().then(({data:{session}})=>session?dashboard():view('lo
     if (cleanSku && !normaliseToken(name).includes(normaliseToken(cleanSku))) name += ' — ' + cleanSku;
     return name || cleanImportText(value);
   };
+  const isSupportedImageHost = (hostname = '') => supportedImageHosts.has(hostname) || hostname === 'erc.ua' || hostname.endsWith('.erc.ua');
   const allowedImage = (value) => {
     try {
       const url = new URL(value);
       const isAsbisPlaceholder = url.hostname === 'www.it4profit.com' && /^\/catalogimg\/wic\//i.test(url.pathname);
-      return url.protocol === 'https:' && supportedImageHosts.has(url.hostname) && !isAsbisPlaceholder ? url.href : '';
+      return url.protocol === 'https:' && isSupportedImageHost(url.hostname) && !isAsbisPlaceholder ? url.href : '';
     } catch { return ''; }
   };
   const imagesFrom = (node, markup) => {
@@ -1006,7 +1007,11 @@ supabase.auth.getSession().then(({data:{session}})=>session?dashboard():view('lo
     $('#supplierImportBrands').onclick = createImportedBrands;
     $('#supplierImportApply').onclick = importSelected;
   };
-  const ercImage = (value = '') => allowedImage(String(value).replace(/^http:\/\/(www\.)?erc\.ua\//i, 'https://$1erc.ua/'));
+  const ercImage = (value = '') => {
+    const source = String(value || '').trim();
+    const absolute = source.startsWith('//') ? 'https:' + source : source.startsWith('/') ? 'https://www.erc.ua' + source : source;
+    return allowedImage(absolute.replace(/^http:\/\/((?:[a-z0-9-]+\.)?erc\.ua)\//i, 'https://$1/'));
+  };
   const ercRow = (item, index) => {
     const source = item && typeof item === 'object' ? item : {};
     const sku = normaliseSku(source.code || source.Code || source.sku || source.SKU || source.ware || source.Ware);

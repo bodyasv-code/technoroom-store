@@ -12,6 +12,7 @@ const trustedHosts = new Set([
   'hp.widen.net', 'img06.en25.com', 'koss.com.ua', 'ssl-product-images.www8-hp.com', 'www.3ona51.com',
   'www.hp.com', 'www.koss.com', 'yugcontract.ua', 'www.it4profit.com', 'content.it4profit.com', 'erc.ua', 'www.erc.ua',
 ]);
+const isTrustedHost = (hostname = '') => trustedHosts.has(hostname) || hostname === 'erc.ua' || hostname.endsWith('.erc.ua');
 
 const extensionFor = (contentType) => ({
   'image/jpeg': 'jpg', 'image/png': 'png', 'image/webp': 'webp',
@@ -20,7 +21,7 @@ const extensionFor = (contentType) => ({
 const safeUrl = (value) => {
   try {
     const url = new URL(value);
-    return url.protocol === 'https:' && trustedHosts.has(url.hostname) ? url : null;
+    return url.protocol === 'https:' && isTrustedHost(url.hostname) ? url : null;
   } catch {
     return null;
   }

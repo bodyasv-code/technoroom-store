@@ -306,7 +306,12 @@ supabase.auth.getSession().then(({data:{session}})=>session?dashboard():view('lo
       const cells = [...row.querySelectorAll('th,td')].map((cell) => cleanImportText(cell.textContent)).filter(Boolean);
       if (cells.length >= 2) add(cells[0], cells.slice(1).join(' '));
     });
-    (parsed.body.innerText || '').split(/[\n;]+/).forEach((line) => {
+    // ERC нерідко передає параметри не окремим XML-блоком, а рядками у
+    // ProductDescription: <br>, абзацами чи списком. Зберігаємо межі цих
+    // рядків, щоб «Параметр: значення» також став характеристикою.
+    const lineMarkup=decodeEntities(markup).replace(/<(?:br\s*\/?|\/(?:p|div|li|tr|h[1-6]))\s*[^>]*>/giu, '\n');
+    const lineDocument=new DOMParser().parseFromString(lineMarkup, 'text/html');
+    [parsed.body.innerText || '', lineDocument.body.textContent || ''].join('\n').split(/[\n;]+/).forEach((line) => {
       const match = cleanImportText(line).match(/^([^:]{2,120}):\s*(.+)$/);
       if (match) add(match[1], match[2]);
     });
@@ -816,8 +821,11 @@ supabase.auth.getSession().then(({data:{session}})=>session?dashboard():view('lo
       const stockValue = textFrom(node, ['stock','quantity','qty','available','Stock']);
       const availabilityValue = textFrom(node, ['availability','Availability','AVAIL','avail','stock_status','StockStatus','availability_status','AvailabilityStatus','in_stock','InStock']);
       const availabilityStatus = importAvailabilityStatus(availabilityValue) || importAvailabilityStatus(stockValue);
-      const importedSpecifications = { ...parseSpecifications(comment), ...attributeSpecifications(node), ...titleSpecifications(name) };
-      const specifications = mergeMissingSpecifications(importedSpecifications, templateSpecifications([sourceName, sourceCategory, subcategory].filter(Boolean).join(' ')));
+      // У ERC технічні дані можуть бути як у MarketingInfo, так і прямо в
+      // ProductDescription. Обидва джерела доповнюють XML-атрибути, але не
+      // перезаписують уже надану виробником характеристику.
+      const importedSpecifications = { ...parseSpecifications(shortDescription), ...parseSpecifications(comment), ...attributeSpecifications(node), ...titleSpecifications(name) };
+      const specifications = mergeMissingSpecifications(importedSpecifications, templateSpecifications([sourceName, sourceCategory, subcategory, shortDescription, comment].filter(Boolean).join(' ')));
       const parsedStock = importQuantity(stockValue);
       const stock = parsedStock || (/^(in_stock|limited_stock)$/i.test(availabilityStatus) ? 1 : 0);
       const row = { key: sku + '-' + index, vendor, name: cleanImportText(name), sku, sourceCategory, subcategory, price: importNumber(priceValue), hasPrice: Boolean(cleanImportText(priceValue)), stock, hasStock: Boolean(cleanImportText(stockValue) || availabilityStatus), availabilityStatus: availabilityStatus || undefined, description: importDescription(shortDescription, comment) || cleanImportText(sourceName), specifications, images: imagesFrom(node, comment) };

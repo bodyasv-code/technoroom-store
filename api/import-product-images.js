@@ -29,7 +29,11 @@ const safeUrl = (value) => {
 
 const fetchTrustedImage = async (url, redirectsLeft = 2) => {
   const upstream = await fetch(url, {
-    headers: { 'User-Agent': 'TECHNOROOM catalog importer' },
+    headers: {
+      'User-Agent': 'Mozilla/5.0 (compatible; TECHNOROOM catalog importer)',
+      Accept: 'image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8',
+      Referer: 'https://www.erc.ua/',
+    },
     redirect: 'manual',
   });
   if (![301, 302, 303, 307, 308].includes(upstream.status)) return upstream;
@@ -61,22 +65,25 @@ export default async function handler(request, response) {
   if (productError || !product) return response.status(404).json({ error: 'Товар не знайдено.' });
 
   const uploaded = [];
+  const failures = [];
   for (let index = 0; index < urls.length; index += 1) {
     try {
       const upstream = await fetchTrustedImage(urls[index]);
-      if (!upstream) continue;
+      if (!upstream) { failures.push('заблоковане перенаправлення'); continue; }
       const type = upstream.headers.get('content-type') || '';
       const length = Number(upstream.headers.get('content-length') || 0);
-      if (!upstream.ok || !['image/jpeg', 'image/png', 'image/webp'].includes(type.split(';')[0].toLowerCase()) || length > 10 * 1024 * 1024) continue;
+      if (!upstream.ok) { failures.push('HTTP ' + upstream.status + ' (' + urls[index].hostname + ')'); continue; }
+      if (!['image/jpeg', 'image/png', 'image/webp'].includes(type.split(';')[0].toLowerCase())) { failures.push('непідтримуваний формат ' + (type || 'без типу')); continue; }
+      if (length > 10 * 1024 * 1024) { failures.push('файл понад 10 МБ'); continue; }
       const image = Buffer.from(await upstream.arrayBuffer());
-      if (image.length > 10 * 1024 * 1024) continue;
+      if (image.length > 10 * 1024 * 1024) { failures.push('файл понад 10 МБ'); continue; }
       const path = `products/import-${productId}-${Date.now()}-${index}.${extensionFor(type)}`;
       const { error } = await supabase.storage.from('product-images').upload(path, image, { contentType: type, upsert: false });
-      if (!error) uploaded.push(path);
-    } catch {}
+      if (!error) uploaded.push(path); else failures.push('не вдалося зберегти у сховище');
+    } catch { failures.push('помилка з’єднання з джерелом'); }
   }
 
-  if (!uploaded.length) return response.status(422).json({ error: 'Жодне зображення не вдалося безпечно завантажити.' });
+  if (!uploaded.length) return response.status(422).json({ error: 'Жодне зображення не вдалося завантажити: ' + [...new Set(failures)].join('; ') + '.' });
   const imagePaths = [...new Set([product.image_path, ...(Array.isArray(product.image_paths) ? product.image_paths : []), ...uploaded].filter(Boolean))];
   const { error: updateError } = await supabase.from('products').update({ image_path: product.image_path || uploaded[0], image_paths: imagePaths }).eq('id', productId);
   if (updateError) return response.status(500).json({ error: updateError.message });

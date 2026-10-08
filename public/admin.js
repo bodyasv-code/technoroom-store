@@ -618,6 +618,32 @@ supabase.auth.getSession().then(({data:{session}})=>session?dashboard():view('lo
     const match = rules.find(([pattern]) => pattern.test(nameSource));
     return match ? { rootSlug: match[1], rootName: match[2], childSlug: match[3], childName: match[4] } : null;
   };
+  // Явні синоніми джерельних груп ERC. Вони застосовуються до назви
+  // групи, а не до назви товару: порядок слів на кшталт «Дошки
+  // інтерактивні» не може створити ще одну категорію.
+  const projectorSourceCategoryPlan = (row) => {
+    const source = [row.subcategory, row.sourceCategory]
+      .map(normaliseCategory).filter(Boolean).join(' ');
+    if (/(?:аксесуар|accessor|опці)/iu.test(source) && /(?:про[єе]кційн|про[єе]ктор|projector)/iu.test(source)) {
+      return { rootSlug: 'cat-projectors', rootName: 'Проєктори та екрани', childSlug: 'erc-display-08', childName: 'Аксесуари для проєкторів' };
+    }
+    if (/(?:дошк.*інтерактивн|інтерактивн.*дошк)/iu.test(source)) {
+      return { rootSlug: 'cat-projectors', rootName: 'Проєктори та екрани', childSlug: 'erc-display-09', childName: 'Інтерактивні дошки' };
+    }
+    if (/(?:ламп.*про[єе]ктор|про[єе]ктор.*ламп)/iu.test(source)) {
+      return { rootSlug: 'cat-projectors', rootName: 'Проєктори та екрани', childSlug: 'erc-display-14', childName: 'Лампи для проєкторів' };
+    }
+    if (/(?:кріплен|mount|bracket)/iu.test(source) && /(?:про[єе]ктор|projector)/iu.test(source)) {
+      return { rootSlug: 'cat-projectors', rootName: 'Проєктори та екрани', childSlug: 'erc-display-10', childName: 'Кріплення для проєкторів' };
+    }
+    if (/(?:оптика|об[’'`]?єктив|объектив|lens)/iu.test(source) && /(?:про[єе]ктор|projector)/iu.test(source)) {
+      return { rootSlug: 'cat-projectors', rootName: 'Проєктори та екрани', childSlug: 'erc-display-15', childName: 'Оптика для проєкторів' };
+    }
+    if (/(?:екран.*про[єе]кційн|про[єе]кційн.*екран|projection.*screen|screen.*projection)/iu.test(source)) {
+      return { rootSlug: 'cat-projectors', rootName: 'Проєктори та екрани', childSlug: 'erc-display-06', childName: 'Проєкційні екрани' };
+    }
+    return null;
+  };
   // ERC має дві назви однієї групи: «Аксесуари для проєкторів» та
   // «Аксесуари та опції проєкційного обладнання». Це не дві категорії.
   // Виносимо перевірку окремо, щоб вона мала пріоритет і в перегляді, і
@@ -634,7 +660,7 @@ supabase.auth.getSession().then(({data:{session}})=>session?dashboard():view('lo
       : null;
   };
   const categoryFor = (row) => {
-    const projectorAccessoryPlan = projectorAccessoryCategoryPlan(row);
+    const projectorAccessoryPlan = projectorSourceCategoryPlan(row) || projectorAccessoryCategoryPlan(row);
     // Це сталий внутрішній код наявної категорії. Не шукаємо її за назвою,
     // інакше старе формулювання ERC може помилково показувати «Буде створено».
     if (projectorAccessoryPlan) return projectorAccessoryPlan.childSlug;
@@ -690,7 +716,7 @@ supabase.auth.getSession().then(({data:{session}})=>session?dashboard():view('lo
     return labels[normaliseCategory(source)] || source;
   };
   const categoryPlan = (row) => {
-    const projectorAccessoryPlan = projectorAccessoryCategoryPlan(row);
+    const projectorAccessoryPlan = projectorSourceCategoryPlan(row) || projectorAccessoryCategoryPlan(row);
     if (projectorAccessoryPlan) return projectorAccessoryPlan;
     const aenoPlan = aenoCategoryPlan(row);
     if (aenoPlan) return aenoPlan;
@@ -763,7 +789,7 @@ supabase.auth.getSession().then(({data:{session}})=>session?dashboard():view('lo
     return result.data;
   };
   const ensureImportCategory = async (row) => {
-    const projectorAccessoryPlan = projectorAccessoryCategoryPlan(row);
+    const projectorAccessoryPlan = projectorSourceCategoryPlan(row) || projectorAccessoryCategoryPlan(row);
     if (projectorAccessoryPlan) {
       let root = state.categories.find((category) => category.slug === projectorAccessoryPlan.rootSlug) || findImportCategory(projectorAccessoryPlan.rootName, null);
       if (!root) root = await createImportCategory(projectorAccessoryPlan.rootName, null, projectorAccessoryPlan.rootSlug);

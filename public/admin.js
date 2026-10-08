@@ -647,7 +647,37 @@ supabase.auth.getSession().then(({data:{session}})=>session?dashboard():view('lo
     if (!rawRoot || /^(other|інше|misc|n\/a)$/i.test(rawRoot)) return null;
     return { rootSlug: slug(rawRoot), rootName: translatedImportCategory(rawRoot), childName: rawChild && !ignored && normaliseCategory(rawChild) !== normaliseCategory(rawRoot) ? translatedImportCategory(rawChild) : '' };
   };
-  const findImportCategory = (name, parentId = undefined) => state.categories.find((category) => normaliseCategory(category.name) === normaliseCategory(name) && (parentId === undefined || Number(category.parent_id || 0) === Number(parentId || 0)));
+  // Постачальники нерідко міняють слова місцями («Екрани проєкційні» /
+  // «Проєкційні екрани») або пишуть «е» замість «є». Для імпорту це одна
+  // й та сама категорія. Порівнюємо нормалізовані тематичні слова, але не
+  // застосовуємо неточний пошук: усі слова мають збігтися.
+  const importCategoryKey = (value = '') => {
+    const stopWords = new Set(['для', 'та', 'і', 'й', 'з', 'до', 'на', 'по']);
+    const family = [
+      [/^екран/u, 'екран'], [/^проекц/u, 'проекц'], [/^проектор/u, 'проектор'],
+      [/^монітор/u, 'монітор'], [/^телевіз/u, 'телевізор'], [/^диспле/u, 'дисплей'],
+      [/^принтер/u, 'принтер'], [/^(?:бфп|мфу)$/u, 'бфп'], [/^сканер/u, 'сканер'],
+      [/^копір|^копир/u, 'копір'], [/^ламінатор/u, 'ламінатор'], [/^аксесуар/u, 'аксесуар'],
+      [/^кабел/u, 'кабель'], [/^адаптер/u, 'адаптер'], [/^навуш/u, 'навушники'],
+      [/^гарнітур/u, 'гарнітура'], [/^акумулятор/u, 'акумулятор']
+    ];
+    return normaliseCategory(value)
+      .replace(/є/gu, 'е')
+      .split(/[^\p{L}\p{N}]+/u)
+      .filter(Boolean)
+      .filter((word) => !stopWords.has(word))
+      .map((word) => family.find(([pattern]) => pattern.test(word))?.[1] || word)
+      .sort()
+      .join(' ');
+  };
+  const findImportCategory = (name, parentId = undefined) => {
+    const exact = state.categories.find((category) => normaliseCategory(category.name) === normaliseCategory(name) && (parentId === undefined || Number(category.parent_id || 0) === Number(parentId || 0)));
+    if (exact) return exact;
+    const identity = importCategoryKey(name);
+    if (!identity) return undefined;
+    const semantic = state.categories.filter((category) => importCategoryKey(category.name) === identity);
+    return semantic.find((category) => parentId === undefined || Number(category.parent_id || 0) === Number(parentId || 0)) || semantic[0];
+  };
   const createImportCategory = async (name, parentId = null, preferredSlug = '') => {
     const base = preferredSlug || slug(name) || 'category';
     let categorySlug = base, index = 2;
@@ -694,6 +724,10 @@ supabase.auth.getSession().then(({data:{session}})=>session?dashboard():view('lo
     }
     const direct = state.categories.find((category) => [row.subcategory, row.sourceCategory].map(normaliseCategory).includes(normaliseCategory(category.name)));
     if (direct) return direct.slug;
+    // Якщо categoryFor уже знайшов сталу категорію за правилом або
+    // псевдонімом, не даємо нижньому загальному плану створювати дубль.
+    const resolved = categoryFor(row);
+    if (resolved) return resolved;
     const plan = categoryPlan(row);
     if (!plan) return categoryFor(row);
     let root = state.categories.find((category) => category.slug === plan.rootSlug) || findImportCategory(plan.rootName, null);

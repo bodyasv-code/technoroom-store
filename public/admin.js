@@ -597,7 +597,28 @@ supabase.auth.getSession().then(({data:{session}})=>session?dashboard():view('lo
     const match = rules.find(([pattern]) => pattern.test(nameSource));
     return match ? { rootSlug: match[1], rootName: match[2], childSlug: match[3], childName: match[4] } : null;
   };
+  // ERC має дві назви однієї групи: «Аксесуари для проєкторів» та
+  // «Аксесуари та опції проєкційного обладнання». Це не дві категорії.
+  // Виносимо перевірку окремо, щоб вона мала пріоритет і в перегляді, і
+  // під час фактичного імпорту, навіть якщо в каталозі ще існує старий дубль.
+  const projectorAccessoryCategoryPlan = (row) => {
+    const source = [row.name, row.subcategory, row.sourceCategory]
+      .map(cleanImportText).join(' ').toLocaleLowerCase('uk-UA');
+    const name = cleanImportText(row.name).toLocaleLowerCase('uk-UA');
+    const projectionRelated = /(?:про[єе]ктор|projector|проекційн|projection)/iu.test(source);
+    const accessoryRelated = /(?:аксесуар|accessor|опці)/iu.test(source);
+    const separateItem = /(?:об[’'`]?єктив|объектив|\blens\b|оптика|кріплен|mount|bracket)/iu.test(name);
+    return projectionRelated && accessoryRelated && !separateItem
+      ? { rootSlug: 'cat-projectors', rootName: 'Проєктори та екрани', childSlug: 'erc-display-08', childName: 'Аксесуари для проєкторів' }
+      : null;
+  };
   const categoryFor = (row) => {
+    const projectorAccessoryPlan = projectorAccessoryCategoryPlan(row);
+    if (projectorAccessoryPlan) {
+      const root = state.categories.find((category) => category.slug === projectorAccessoryPlan.rootSlug) || findImportCategory(projectorAccessoryPlan.rootName, null);
+      const child = root && (state.categories.find((category) => category.slug === projectorAccessoryPlan.childSlug) || findImportCategory(projectorAccessoryPlan.childName, root.id));
+      return child ? child.slug : '';
+    }
     const aenoPlan = aenoCategoryPlan(row);
     if (aenoPlan) {
       const root = state.categories.find((category) => category.slug === aenoPlan.rootSlug) || findImportCategory(aenoPlan.rootName, null);
@@ -650,6 +671,8 @@ supabase.auth.getSession().then(({data:{session}})=>session?dashboard():view('lo
     return labels[normaliseCategory(source)] || source;
   };
   const categoryPlan = (row) => {
+    const projectorAccessoryPlan = projectorAccessoryCategoryPlan(row);
+    if (projectorAccessoryPlan) return projectorAccessoryPlan;
     const aenoPlan = aenoCategoryPlan(row);
     if (aenoPlan) return aenoPlan;
     const officePlan = officeEquipmentCategoryPlan(row);
@@ -721,6 +744,14 @@ supabase.auth.getSession().then(({data:{session}})=>session?dashboard():view('lo
     return result.data;
   };
   const ensureImportCategory = async (row) => {
+    const projectorAccessoryPlan = projectorAccessoryCategoryPlan(row);
+    if (projectorAccessoryPlan) {
+      let root = state.categories.find((category) => category.slug === projectorAccessoryPlan.rootSlug) || findImportCategory(projectorAccessoryPlan.rootName, null);
+      if (!root) root = await createImportCategory(projectorAccessoryPlan.rootName, null, projectorAccessoryPlan.rootSlug);
+      let child = state.categories.find((category) => category.slug === projectorAccessoryPlan.childSlug) || findImportCategory(projectorAccessoryPlan.childName, root.id);
+      if (!child) child = await createImportCategory(projectorAccessoryPlan.childName, root.id, projectorAccessoryPlan.childSlug);
+      return child.slug;
+    }
     const aenoPlan = aenoCategoryPlan(row);
     if (aenoPlan) {
       let root = state.categories.find((category) => category.slug === aenoPlan.rootSlug) || findImportCategory(aenoPlan.rootName, null);

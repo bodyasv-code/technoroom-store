@@ -1018,7 +1018,13 @@ supabase.auth.getSession().then(({data:{session}})=>session?dashboard():view('lo
       const specifications = mergeMissingSpecifications(importedSpecifications, templateSpecifications([sourceName, sourceCategory, subcategory, shortDescription, comment].filter(Boolean).join(' ')));
       const parsedStock = importQuantity(stockValue);
       const stock = parsedStock || (/^(in_stock|limited_stock)$/i.test(availabilityStatus) ? 1 : 0);
-      const row = { key: sku + '-' + index, vendor, name: cleanImportText(name), sku, sourceCategory, subcategory, price: importNumber(priceValue), hasPrice: Boolean(cleanImportText(priceValue)), stock, hasStock: Boolean(cleanImportText(stockValue) || availabilityStatus), availabilityStatus: availabilityStatus || undefined, description: importDescription(shortDescription, comment) || cleanImportText(sourceName), specifications, images: imagesFrom(node, comment) };
+      // ERC зберігає основне фото за передбачуваною адресою SKU.jpg. Навіть
+      // коли XML не містить окремого тега картинки, додаємо цю адресу для
+      // подальшого безпечного завантаження у наше сховище.
+      const sourceImages = imagesFrom(node, comment);
+      const ercSkuImage = !isAsbis && sku ? ercImage('https://www.erc.ua/i/goods/' + encodeURIComponent(sku) + '.jpg') : '';
+      const images = [...new Set([...sourceImages, ercSkuImage].filter(Boolean))];
+      const row = { key: sku + '-' + index, vendor, name: cleanImportText(name), sku, sourceCategory, subcategory, price: importNumber(priceValue), hasPrice: Boolean(cleanImportText(priceValue)), stock, hasStock: Boolean(cleanImportText(stockValue) || availabilityStatus), availabilityStatus: availabilityStatus || undefined, description: importDescription(shortDescription, comment) || cleanImportText(sourceName), specifications, images };
       if (row.name && row.sku) importer.rows.push(row);
       index += 1;
     }
@@ -1026,6 +1032,7 @@ supabase.auth.getSession().then(({data:{session}})=>session?dashboard():view('lo
     importer.meta.clear();
     importer.report = null;
     importer.page = 1;
+    if (!isAsbis && importer.rows.some((row) => row.images.length)) $('#supplierImportImages').checked = true;
     $('#supplierImportSearch').value = '';
     $('#supplierImportStatus').value = 'all';
     applyPriceData();
@@ -1177,7 +1184,10 @@ supabase.auth.getSession().then(({data:{session}})=>session?dashboard():view('lo
         if ((hasTechnicalTail || isTechnicalProjectorTail || isTechnicalProjectionTail || isTechnicalOfficeTail || hasLegacySkuSuffix) && row.name && row.name.length <= currentProjectorName.length) payload.name = row.name;
         if (updateSpecifications && Object.keys(row.specifications).length) payload.specifications = mergeSpecifications(current.specifications, row.specifications);
         if (row.description && (!current.description || isSupplierPromotionText(current.description))) payload.description = row.description;
-        const shouldImportImages = !current.image_path && images.length;
+        // Фото постачальника часто є зовнішнім URL із тимчасовими
+        // перенаправленнями. Повторно завантажуємо його до нашого storage,
+        // якщо головного фото немає або воно ще зовнішнє.
+        const shouldImportImages = images.length && (!current.image_path || /^https?:\/\//i.test(String(current.image_path)));
         const result = await supabase.from('products').update(payload).eq('id', current.id);
         if (result.error) fail(row, result.error.message || result.error.code);
         else {

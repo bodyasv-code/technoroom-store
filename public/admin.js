@@ -581,6 +581,12 @@ supabase.auth.getSession().then(({data:{session}})=>session?dashboard():view('lo
     if (projectorRelatedName && /(?:кріплен|mount|bracket|стельов(?:е|ий)?\s+кріплен)/iu.test(nameSource)) {
       return { rootSlug: 'cat-projectors', rootName: 'Проєктори та екрани', childSlug: 'erc-display-10', childName: 'Кріплення для проєкторів' };
     }
+    // ERC у групі «Кріплення проєкторів» має не лише кронштейни, а й
+    // адаптери та інші монтажні елементи. Джерельна група тут точніша за
+    // коротку назву товару, тому всі її позиції лишаються у кріпленнях.
+    if (projectionRelatedSource && /(?:кріплен|mount|bracket)/iu.test(source)) {
+      return { rootSlug: 'cat-projectors', rootName: 'Проєктори та екрани', childSlug: 'erc-display-10', childName: 'Кріплення для проєкторів' };
+    }
     // Стійки, рами, труби й страхувальні троси є елементами кріплення,
     // а не самими проєкторами.
     if (projectionRelatedSource && /(?:стійк|rack|рам[аи]|frame|труб[аи]|pipe|трос|safety\s*cable)/iu.test(nameSource)) {

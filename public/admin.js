@@ -1212,8 +1212,12 @@ supabase.auth.getSession().then(({data:{session}})=>session?dashboard():view('lo
         await new Promise((resolve) => setTimeout(resolve, 0));
         const contentRows = await ercWorkbookRows(file, allowedSkus);
         const result = mergeErcWorkbookRows(contentRows);
+        // Контентний Excel ERC містить посилання на фото, тому вмикаємо
+        // завантаження автоматично. Користувач не має окремо згадувати про
+        // цю опцію після вибору файлу з контентом.
+        $('#supplierImportImages').checked = true;
         renderImportPreview();
-        importerStatus(`Контент ERC додано до ${result.enriched} вибраних товарів за SKU. Нові товари й категорії з Excel не створюються. Увімкніть «Додати доступні фото» перед імпортом.`);
+        importerStatus(`Контент ERC додано до ${result.enriched} вибраних товарів за SKU. Фото буде завантажено під час імпорту. Нові товари й категорії з Excel не створюються.`);
       } catch (error) { importerStatus(error.message || 'Не вдалося прочитати Excel ERC.', true); }
     });
     section.addEventListener('input', (event) => { if (event.target.matches('#supplierImportLimit, #supplierImportSearch')) { importer.page = 1; renderImportPreview(); } });

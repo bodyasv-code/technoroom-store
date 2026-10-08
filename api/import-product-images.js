@@ -90,8 +90,14 @@ export default async function handler(request, response) {
   }
 
   if (!uploaded.length) return response.status(422).json({ error: 'Жодне зображення не вдалося завантажити: ' + [...new Set(failures)].join('; ') + '.' });
-  const imagePaths = [...new Set([product.image_path, ...(Array.isArray(product.image_paths) ? product.image_paths : []), ...uploaded].filter(Boolean))];
-  const { error: updateError } = await supabase.from('products').update({ image_path: product.image_path || uploaded[0], image_paths: imagePaths }).eq('id', productId);
+  // Посилання постачальника може бути тимчасовим або вести через кілька
+  // редиректів. Після успішного завантаження у наше сховище саме локальна
+  // копія має стати головним фото, інакше вітрина продовжить показувати
+  // старе зовнішнє посилання замість щойно отриманого зображення.
+  const externalMainImage = /^https?:\/\//i.test(String(product.image_path || ''));
+  const mainImage = !product.image_path || externalMainImage ? uploaded[0] : product.image_path;
+  const imagePaths = [...new Set([mainImage, ...(Array.isArray(product.image_paths) ? product.image_paths : []), ...uploaded].filter(Boolean))];
+  const { error: updateError } = await supabase.from('products').update({ image_path: mainImage, image_paths: imagePaths }).eq('id', productId);
   if (updateError) return response.status(500).json({ error: updateError.message });
   return response.status(200).json({ uploaded: uploaded.length });
 }

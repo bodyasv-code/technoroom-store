@@ -555,10 +555,16 @@ supabase.auth.getSession().then(({data:{session}})=>session?dashboard():view('lo
     const projectorRelatedName = /(?:про[єе]ктор|projector)/iu.test(nameSource);
     // \b не працює як межа кириличного слова в JavaScript. Тому окремо
     // шукаємо точне слово «проєктор», «проектoр» або «projector».
-    // Це відрізняє сам пристрій від «кріплення проєктора».
-    const projectorDeviceName = /(?:^|[^\p{L}\p{N}])(?:про[єе]ктор|projector)(?=$|[^\p{L}\p{N}])/iu.test(nameSource);
+    // Це відрізняє сам пристрій від «кріплення проєктора». Враховуємо
+    // українські та російські відмінки: проєктор / проєктора / проектор.
+    const projectorDeviceName = /(?:^|[^\p{L}\p{N}])(?:про[єе]ктор(?:а|у|ом|і|и|ів)?|projectors?)(?=$|[^\p{L}\p{N}])/iu.test(nameSource);
     const projectorRelatedSource = /(?:про[єе]ктор|projector)/iu.test(source);
     const projectionRelatedSource = /(?:про[єе]ктор|projector|проекційн|projection)/iu.test(source);
+    // Лампа належить до ламп, незалежно від написання «проєктор» /
+    // «проектор» або відмінка «проєктора».
+    if (projectionRelatedSource && /(?:лампа|lamp)/iu.test(nameSource)) {
+      return { rootSlug: 'cat-projectors', rootName: 'Проєктори та екрани', childSlug: 'erc-display-14', childName: 'Лампи для проєкторів' };
+    }
     // Об'єктив — окремий товар, навіть коли в його назві немає слова
     // «проєктор». Джерельна категорія ERC «Оптика проєкторів» підтверджує
     // сумісність і не повинна переносити його до самих проєкторів.
@@ -568,6 +574,11 @@ supabase.auth.getSession().then(({data:{session}})=>session?dashboard():view('lo
     // Спершу відокремлюємо оснащення від самих проєкторів: слово
     // «проєктор» у «кріплення проєктора» описує сумісність, а не товар.
     if (projectorRelatedName && /(?:кріплен|mount|bracket|стельов(?:е|ий)?\s+кріплен)/iu.test(nameSource)) {
+      return { rootSlug: 'cat-projectors', rootName: 'Проєктори та екрани', childSlug: 'erc-display-10', childName: 'Кріплення для проєкторів' };
+    }
+    // Стійки, рами, труби й страхувальні троси є елементами кріплення,
+    // а не самими проєкторами.
+    if (projectionRelatedSource && /(?:стійк|rack|рам[аи]|frame|труб[аи]|pipe|трос|safety\s*cable)/iu.test(nameSource)) {
       return { rootSlug: 'cat-projectors', rootName: 'Проєктори та екрани', childSlug: 'erc-display-10', childName: 'Кріплення для проєкторів' };
     }
     // ERC називає цю саму групу «Аксесуари та опції проєкційного
@@ -580,7 +591,6 @@ supabase.auth.getSession().then(({data:{session}})=>session?dashboard():view('lo
       return { rootSlug: 'cat-projectors', rootName: 'Проєктори та екрани', childSlug: 'erc-display-08', childName: 'Аксесуари для проєкторів' };
     }
     if (!isAccessory && projectorDeviceName) {
-      if (/(?:лампа|lamp)/iu.test(nameSource)) return { rootSlug: 'cat-projectors', rootName: 'Проєктори та екрани', childSlug: 'erc-display-14', childName: 'Лампи для проєкторів' };
       if (/(?:об[’'`]?єктив|оптика|lens)/iu.test(nameSource)) return { rootSlug: 'cat-projectors', rootName: 'Проєктори та екрани', childSlug: 'erc-display-15', childName: 'Оптика для проєкторів' };
       return { rootSlug: 'cat-projectors', rootName: 'Проєктори та екрани', childSlug: 'projectors', childName: 'Проєктори' };
     }
@@ -614,11 +624,9 @@ supabase.auth.getSession().then(({data:{session}})=>session?dashboard():view('lo
   };
   const categoryFor = (row) => {
     const projectorAccessoryPlan = projectorAccessoryCategoryPlan(row);
-    if (projectorAccessoryPlan) {
-      const root = state.categories.find((category) => category.slug === projectorAccessoryPlan.rootSlug) || findImportCategory(projectorAccessoryPlan.rootName, null);
-      const child = root && (state.categories.find((category) => category.slug === projectorAccessoryPlan.childSlug) || findImportCategory(projectorAccessoryPlan.childName, root.id));
-      return child ? child.slug : '';
-    }
+    // Це сталий внутрішній код наявної категорії. Не шукаємо її за назвою,
+    // інакше старе формулювання ERC може помилково показувати «Буде створено».
+    if (projectorAccessoryPlan) return projectorAccessoryPlan.childSlug;
     const aenoPlan = aenoCategoryPlan(row);
     if (aenoPlan) {
       const root = state.categories.find((category) => category.slug === aenoPlan.rootSlug) || findImportCategory(aenoPlan.rootName, null);

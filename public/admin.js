@@ -481,6 +481,13 @@ supabase.auth.getSession().then(({data:{session}})=>session?dashboard():view('lo
   const officeSourceCategoryPlan = (row) => {
     const source = [row.subcategory, row.sourceCategory].map(cleanImportText).join(' ').toLocaleLowerCase('uk-UA');
     const name = cleanImportText(row.name).toLocaleLowerCase('uk-UA');
+    // ERC називає одну й ту саму групу надто довго: «Аксесуари та
+    // опції для сканерів і пристроїв друку». Не створюємо її копію —
+    // ролики, адаптери та інші такі товари йдуть до єдиної категорії
+    // «Аксесуари для оргтехніки».
+    if (/(?:аксесуар|accessor|опці)/iu.test(source) && /(?:сканер|scanner|пристро[їй]\s*друк|принтер|printer)/iu.test(source)) {
+      return { rootSlug: 'cat-accessories', rootName: 'Кріплення та аксесуари', childSlug: 'office-accessories', childName: 'Аксесуари для оргтехніки' };
+    }
     const mainDevice = /(?:бфп|мфу|\bmfp\b|multifunction|багатофункціональн\w*\s+(?:пристрій|апарат)|принтер|\bprinter\b)/iu.test(name);
     const accessory = /(?:картридж|тонер|чорнил|cartridge|drum|фотобарабан|лоток|підставк|стенд|tray\b|stand\b|accessor|аксесуар)/iu.test(name);
     // «Базовий блок БФП, 1 лоток» — це пристрій, а не лоток як аксесуар.

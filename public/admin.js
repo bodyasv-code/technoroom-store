@@ -553,6 +553,14 @@ supabase.auth.getSession().then(({data:{session}})=>session?dashboard():view('lo
       .map(cleanImportText).join(' ').toLocaleLowerCase('uk-UA');
     const isAccessory = /(?:чохол|case\b|cover\b|захисн(?:е|ий)? скло|screen protector|аксесуар|accessor|кабель|cable|адаптер|adapter|кріплен|mount)/iu.test(nameSource);
     const projectorName = /(?:про[єе]ктор|projector)/iu.test(nameSource);
+    // Спершу відокремлюємо оснащення від самих проєкторів: слово
+    // «проєктор» у «кріплення проєктора» описує сумісність, а не товар.
+    if (projectorName && /(?:кріплен|mount|bracket|стельов(?:е|ий)?\s+кріплен)/iu.test(nameSource)) {
+      return { rootSlug: 'cat-projectors', rootName: 'Проєктори та екрани', childSlug: 'erc-display-10', childName: 'Кріплення для проєкторів' };
+    }
+    if (projectorName && /(?:аксесуар|accessor|пульт|remote|кейс|case|сумк|bag)/iu.test(nameSource)) {
+      return { rootSlug: 'cat-projectors', rootName: 'Проєктори та екрани', childSlug: 'erc-display-08', childName: 'Аксесуари для проєкторів' };
+    }
     if (!isAccessory && projectorName) {
       if (/(?:лампа|lamp)/iu.test(nameSource)) return { rootSlug: 'cat-projectors', rootName: 'Проєктори та екрани', childSlug: 'erc-display-14', childName: 'Лампи для проєкторів' };
       if (/(?:об[’'`]?єктив|оптика|lens)/iu.test(nameSource)) return { rootSlug: 'cat-projectors', rootName: 'Проєктори та екрани', childSlug: 'erc-display-15', childName: 'Оптика для проєкторів' };

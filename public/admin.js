@@ -506,7 +506,7 @@ supabase.auth.getSession().then(({data:{session}})=>session?dashboard():view('lo
     // Проєктор може мати в характеристиках Bluetooth-аудіо, роз'єм для
     // навушників або згадку техпідтримки. Це не змінює тип товару, тому
     // не даємо правилам оргтехніки аналізувати такі позиції.
-    if (/(?:^|[\s-])(?:про[єе]ктор|projector)/iu.test(nameSource)) return null;
+    if (/(?:^|[\s-])(?:про[єе]ктор(?:[а-яіїєґ]*)?|projectors?)/iu.test(nameSource)) return null;
     // Тип основного пристрою має пріоритет над словами «лоток», «стенд» тощо:
     // базовий блок БФП може містити лотки, але не є аксесуаром.
     const isMfp = /(?:бфп|мфу|\bmfp\b|multifunction|багатофункціональн\w*\s+(?:пристрій|апарат))/iu.test(nameSource);
@@ -552,14 +552,19 @@ supabase.auth.getSession().then(({data:{session}})=>session?dashboard():view('lo
     const source = [row.name, row.subcategory, row.sourceCategory]
       .map(cleanImportText).join(' ').toLocaleLowerCase('uk-UA');
     const isAccessory = /(?:чохол|case\b|cover\b|захисн(?:е|ий)? скло|screen protector|аксесуар|accessor|кабель|cable|адаптер|adapter|кріплен|mount)/iu.test(nameSource);
-    const projectorRelatedName = /(?:про[єе]ктор|projector)/iu.test(nameSource);
-    // \b не працює як межа кириличного слова в JavaScript. Тому окремо
-    // шукаємо точне слово «проєктор», «проектoр» або «projector».
-    // Це відрізняє сам пристрій від «кріплення проєктора». Враховуємо
-    // українські та російські відмінки: проєктор / проєктора / проектор.
-    const projectorDeviceName = /(?:^|[^\p{L}\p{N}])(?:про[єе]ктор(?:а|у|ом|і|и|ів)?|projectors?)(?=$|[^\p{L}\p{N}])/iu.test(nameSource);
-    const projectorRelatedSource = /(?:про[єе]ктор|projector)/iu.test(source);
-    const projectionRelatedSource = /(?:про[єе]ктор|projector|проекційн|projection)/iu.test(source);
+    // Зводимо всі відмінки до однієї основи: «проєктор», «проєктора»,
+    // «проєкторів», а також варіанти через «е» та англійське projector.
+    // Це важливо для товарів на кшталт «лампа для проєктора» й
+    // «кріплення проектора» — вони не є самими проєкторами.
+    const projectorTerm = '(?:про[єе]ктор(?:[а-яіїєґ]*)?|projectors?)';
+    const projectorRelatedName = new RegExp(projectorTerm, 'iu').test(nameSource);
+    // До категорії «Проєктори» відносимо тільки сам пристрій: окреме
+    // слово «проєктор» / «проектор» / «projector», після якого є пробіл.
+    // «Лампа для проєктора», «кріплення проектора» та інші відмінки не
+    // можуть за цією перевіркою потрапити до самих проєкторів.
+    const projectorDeviceName = /(?:^|[^\p{L}\p{N}])(?:про[єе]ктор|projector)(?=\s)/iu.test(nameSource);
+    const projectorRelatedSource = new RegExp(projectorTerm, 'iu').test(source);
+    const projectionRelatedSource = new RegExp('(?:' + projectorTerm + '|проекційн|projection)', 'iu').test(source);
     // Лампа належить до ламп, незалежно від написання «проєктор» /
     // «проектор» або відмінка «проєктора».
     if (projectionRelatedSource && /(?:лампа|lamp)/iu.test(nameSource)) {
@@ -615,7 +620,7 @@ supabase.auth.getSession().then(({data:{session}})=>session?dashboard():view('lo
     const source = [row.name, row.subcategory, row.sourceCategory]
       .map(cleanImportText).join(' ').toLocaleLowerCase('uk-UA');
     const name = cleanImportText(row.name).toLocaleLowerCase('uk-UA');
-    const projectionRelated = /(?:про[єе]ктор|projector|проекційн|projection)/iu.test(source);
+    const projectionRelated = /(?:про[єе]ктор(?:[а-яіїєґ]*)?|projectors?|проекційн|projection)/iu.test(source);
     const accessoryRelated = /(?:аксесуар|accessor|опці)/iu.test(source);
     const separateItem = /(?:об[’'`]?єктив|объектив|\blens\b|оптика|кріплен|mount|bracket)/iu.test(name);
     return projectionRelated && accessoryRelated && !separateItem

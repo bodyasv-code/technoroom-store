@@ -557,6 +557,13 @@ supabase.auth.getSession().then(({data:{session}})=>session?dashboard():view('lo
     // шукаємо точне слово «проєктор», «проектoр» або «projector».
     // Це відрізняє сам пристрій від «кріплення проєктора».
     const projectorDeviceName = /(?:^|[^\p{L}\p{N}])(?:про[єе]ктор|projector)(?=$|[^\p{L}\p{N}])/iu.test(nameSource);
+    const projectorRelatedSource = /(?:про[єе]ктор|projector)/iu.test(source);
+    // Об'єктив — окремий товар, навіть коли в його назві немає слова
+    // «проєктор». Джерельна категорія ERC «Оптика проєкторів» підтверджує
+    // сумісність і не повинна переносити його до самих проєкторів.
+    if (projectorRelatedSource && /(?:об[’'`]?єктив|объектив|\blens\b|оптика)/iu.test(nameSource + ' ' + source)) {
+      return { rootSlug: 'cat-projectors', rootName: 'Проєктори та екрани', childSlug: 'erc-display-15', childName: 'Оптика для проєкторів' };
+    }
     // Спершу відокремлюємо оснащення від самих проєкторів: слово
     // «проєктор» у «кріплення проєктора» описує сумісність, а не товар.
     if (projectorRelatedName && /(?:кріплен|mount|bracket|стельов(?:е|ий)?\s+кріплен)/iu.test(nameSource)) {

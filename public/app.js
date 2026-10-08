@@ -798,7 +798,7 @@ const compactProductName = (value = '', sku = '', brand = '') => {
   if (startsWithProductType.test(name) && parts.length >= 2 && (parts.length >= 3 || technicalTail.test(parts.slice(1).join(' ')))) name = parts[0];
   const normaliseToken = (text) => String(text || '').toLocaleLowerCase('uk-UA').replace(/[^\p{L}\p{N}]/gu, '');
   const cleanSku = readableText(sku);
-  if (cleanSku && !/^(?:null|undefined|none|—|-)$/iu.test(cleanSku) && !normaliseToken(name).includes(normaliseToken(cleanSku))) name += ' — ' + cleanSku;
+  if (cleanSku && !/^(?:null|undefined|none|—|-)$/iu.test(cleanSku) && !normaliseToken(name).includes(normaliseToken(cleanSku))) name += ' (' + cleanSku + ')';
   return name || readableText(value);
 };
 const fillBrandSelect = (select, source) => {

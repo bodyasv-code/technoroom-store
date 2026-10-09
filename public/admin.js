@@ -132,8 +132,13 @@ const mountOfficePrinterEditorFields=(form,product)=>{
     const description=form.elements.description?.closest('label');if(description)description.before(panel);else form.append(panel);
   }
   const specifications=product?.specifications||parseAdminSpecifications(form.elements.specifications_text?.value);
+  const productTitle=String(product?.name||form.elements.name?.value||'');
   const color=String(specifications['Тип друку']||specifications['Кольоровість']||'');
-  panel.querySelector('[name="office_print_color"]').value=/кольоров|\bcolor\b|\bcolour\b/iu.test(color)?'Кольоровий':/(?:моно|чорно[ -]?білий)/iu.test(color)?'Монохромний':'';
+  // «HP Color LaserJet» — кольоровий, а «HP LaserJet» без слова Color —
+  // монохромний. Назва моделі має перевагу над помилковим старим полем XML.
+  const namedColor=/(?:\bcolor\b|\bcolour\b|кольоров)/iu.test(productTitle);
+  const namedMono=/(?:\bmono\b|monochrome|монохром|чорно[ -]?білий)/iu.test(productTitle)||(/\blaserjet\b/iu.test(productTitle)&&!namedColor);
+  panel.querySelector('[name="office_print_color"]').value=namedColor?'Кольоровий':namedMono?'Монохромний':/кольоров|\bcolor\b|\bcolour\b/iu.test(color)?'Кольоровий':/(?:моно|чорно[ -]?білий)/iu.test(color)?'Монохромний':'';
   const technology=String(specifications['Технологія друку']||specifications['Технологія']||'');
   panel.querySelector('[name="office_print_technology"]').value=/(?:струмен|струйн|\bink\b|inkjet)/iu.test(technology)?'Струменевий':/(?:лазер|laser)/iu.test(technology)?'Лазерний':'';
   // Дані одного пристрою можуть бути розкладені на кілька полів. Об’єднуємо
@@ -141,7 +146,7 @@ const mountOfficePrinterEditorFields=(form,product)=>{
   const printerDetails=[product?.name||form.elements.name?.value||'',...Object.entries(specifications).filter(([key])=>/(?:інтерфейс|interface|мережев|network|ethernet|\blan\b|\busb\b|wi[ -]?fi|wireless|wlan|bluetooth|формат|paper\s*size|розмір\s*паперу)/iu.test(String(key))).flatMap(([,value])=>Array.isArray(value)?value:[value])].map(String).join(' ');
   const formatMatch=printerDetails.match(/(?:^|[^\p{L}\p{N}])[AА]([34])(?=$|[^\p{L}\p{N}])/u);
   panel.querySelector('[name="office_print_format"]').value=formatMatch?'A'+formatMatch[1]:String(specifications['Формат']||'').match(/\bA[34]\b/iu)?.[0]?.toUpperCase()||'';
-  const interfaces=printerDetails;
+  const interfaces=printerDetails + (/\blaserjet\b/iu.test(productTitle)&&/\bdn\b/iu.test(productTitle.replace(/(\d)(dn)\b/iu,'$1 $2'))?' Ethernet':'');
   const optionalWifi=/(?:wi[ -]?fi|wireless|wlan).{0,80}(?:опц|optional|не\s*(?:вход|входить)|докуп|add[ -]?on|модул)|(?:опц|optional|не\s*(?:вход|входить)|докуп|add[ -]?on|модул).{0,80}(?:wi[ -]?fi|wireless|wlan)/iu.test(interfaces);
   panel.querySelectorAll('[name="office_print_interface"]').forEach(input=>{const pattern=input.value==='Wi‑Fi'?/(?:wi[ -]?fi|wireless|wlan)/iu:input.value==='Ethernet'?/ethernet|\blan\b|rj[ -]?45/iu:input.value==='USB'?/\busb(?:\s|$|[0-9])?/iu:/bluetooth/iu;input.checked=pattern.test(interfaces)&&!(input.value==='Wi‑Fi'&&optionalWifi)});
   const duplex=String(specifications['Дуплексний друк']||specifications['Дуплекс']||'');
@@ -382,12 +387,13 @@ supabase.auth.getSession().then(({data:{session}})=>session?dashboard():view('lo
       const optionalDuplex=/(?:дуплекс|двосторон|duplex).{0,80}(?:опц|optional|не\s*(?:вход|входить)|докуп|add[ -]?on|модул)|(?:опц|optional|не\s*(?:вход|входить)|докуп|add[ -]?on|модул).{0,80}(?:дуплекс|двосторон|duplex)/iu.test(text);
       if (/(?:wi[ -]?fi|wireless|wlan)/iu.test(text)&&!optionalWifi) interfaces.push('Wi‑Fi');
       if (/(?:ethernet|\blan\b|rj[ -]?45)/iu.test(text)) interfaces.push('Ethernet');
+      if (/\blaserjet\b/iu.test(text) && /\d(?:dn)\b/iu.test(text)) interfaces.push('Ethernet');
       if (/\busb(?:\s|$|[0-9])?/iu.test(text)) interfaces.push('USB');
       if (/bluetooth/iu.test(text)) interfaces.push('Bluetooth');
       const formatMatch=text.match(/(?:^|[^\p{L}\p{N}])[AА]([3-6])(?=$|[^\p{L}\p{N}])/iu);
       const mono=/(?:mono|monochrome|монохром|чорно[ -]?білий)/iu.test(text);
       const color=/(?:color|colour|кольоров)/iu.test(text);
-      add('Тип пристрою', officeType); add('Формат', formatMatch?'A'+formatMatch[1]:''); add('Тип друку', mono ? 'Монохромний' : color ? 'Кольоровий' : ''); add('Технологія друку', /(?:струмен|струйн|\bink\b|inkjet)/iu.test(text) ? 'Струменевий' : /(?:лазер|laser)/iu.test(text) ? 'Лазерний' : ''); add('Інтерфейси', interfaces.join(', ')); add('Дуплексний друк', /(?:дуплекс|двосторон|duplex|two[ -]?sided)/iu.test(text)&&!optionalDuplex?'Є':'');
+      add('Тип пристрою', officeType); add('Формат', formatMatch?'A'+formatMatch[1]:''); add('Тип друку', mono ? 'Монохромний' : color ? 'Кольоровий' : ''); add('Технологія друку', /(?:струмен|струйн|\bink\b|inkjet)/iu.test(text) ? 'Струменевий' : /(?:лазер|laser)/iu.test(text) ? 'Лазерний' : ''); add('Інтерфейси', [...new Set(interfaces)].join(', ')); add('Дуплексний друк', /(?:дуплекс|двосторон|duplex|two[ -]?sided)/iu.test(text)&&!optionalDuplex?'Є':'');
     }
     return specifications;
   };
@@ -473,8 +479,8 @@ supabase.auth.getSession().then(({data:{session}})=>session?dashboard():view('lo
   // кольоровість визначаємо з назви або лише з профільного поля про друк.
   const printColourMode = (name = '', specifications = {}) => {
     const title = cleanImportText(name).toLocaleLowerCase('uk-UA');
-    if (/(?:\bmono\b|monochrome|монохром|чорно[ -]?білий)/iu.test(title)) return 'mono';
     if (/(?:\bcolor\b|\bcolour\b|кольоров)/iu.test(title)) return 'color';
+    if (/(?:\bmono\b|monochrome|монохром|чорно[ -]?білий|\blaserjet\b)/iu.test(title)) return 'mono';
     // PIXMA — кольорова струменева лінійка Canon. Це правило потрібне й
     // для вже імпортованих моделей, у назві яких немає слова «Color».
     if (/\bpixma\b/iu.test(title)) return 'color';

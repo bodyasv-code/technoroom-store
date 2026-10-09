@@ -1568,20 +1568,26 @@ catalog = function () {
   };
   const projectorResolutionValues = (product) => {
     const source = specificationValues(product, ['роздільна здатність', 'resolution']).join(' ');
-    const normalized = normaliseSpecificationValue(source).toUpperCase().replace(/\s+/g, '');
-    if (/3840\s*[×XХ]\s*2160|\b4K\b|\bUHD\b/.test(source.toUpperCase())) return ['4K UHD'];
-    if (/2560\s*[×XХ]\s*1600|\bWQXGA\b/.test(source.toUpperCase())) return ['WQXGA'];
-    if (/1920\s*[×XХ]\s*1200|\bWUXGA\b/.test(source.toUpperCase())) return ['WUXGA'];
-    if (/1920\s*[×XХ]\s*1080|FULL\s*HD|\bFHD\b/.test(source.toUpperCase())) return ['Full HD'];
-    if (/1280\s*[×XХ]\s*800|\bWXGA\b/.test(source.toUpperCase())) return ['WXGA'];
-    if (/1024\s*[×XХ]\s*768|\bXGA\b/.test(source.toUpperCase())) return ['XGA'];
-    if (/800\s*[×XХ]\s*600|\bSVGA\b/.test(source.toUpperCase())) return ['SVGA'];
-    return normalized ? [normaliseSpecificationValue(source)] : [];
+    // До поля іноді потрапляє повний опис об’єктива. Для фільтра допускаємо
+    // лише відомий стандарт роздільності, а не довільний текст.
+    const normalized = source.toUpperCase();
+    if (/3840\s*[×XХx]\s*2160|\b4K\b|\bUHD\b/.test(normalized)) return ['4K UHD'];
+    if (/2560\s*[×XХx]\s*1600|\bWQXGA\b/.test(normalized)) return ['WQXGA'];
+    if (/1920\s*[×XХx]\s*1200|\bWUXGA\b/.test(normalized)) return ['WUXGA'];
+    if (/1920\s*[×XХx]\s*1080|FULL\s*HD|\bFHD\b/.test(normalized)) return ['Full HD'];
+    if (/1280\s*[×XХx]\s*800|\bWXGA\b/.test(normalized)) return ['WXGA'];
+    if (/1280\s*[×XХx]\s*720|\bHD\b/.test(normalized)) return ['HD'];
+    if (/1024\s*[×XХx]\s*768|\bXGA\b/.test(normalized)) return ['XGA'];
+    if (/800\s*[×XХx]\s*600|\bSVGA\b/.test(normalized)) return ['SVGA'];
+    if (/854\s*[×XХx]\s*480|\bWVGA\b/.test(normalized)) return ['WVGA'];
+    return [];
   };
   const projectorThrowRatioValues = (product) => {
     const stored = specificationValues(product, ['проекційне співвідношення', 'проекційне відношення', 'projection ratio', 'throw ratio']).join(' ');
-    const source = readableText([stored, product.name, product.description].filter(Boolean).join(' '));
-    const ratio = source.match(/\b(\d+(?:[.,]\d+)?\s*(?:[-–—]\s*\d+(?:[.,]\d+)?)?\s*:\s*1)\b/u)?.[1];
+    const source = readableText(stored);
+    // Не читаємо назву або опис: там часто є контрастність 100000:1,
+    // яка не є проекційним співвідношенням. Межі проєктора — 0–10 : 1.
+    const ratio = source.match(/(?:^|[^\d])(\d(?:[.,]\d+)?\s*(?:[-–—]\s*\d(?:[.,]\d+)?)?\s*:\s*1)(?!\d)/u)?.[1];
     return ratio ? [ratio.replace(',', '.').replace(/\s+/g, ' ').replace(/\s*:\s*/, ' : ')] : [];
   };
   const projectorFilterOptions = (categoryProducts) => {

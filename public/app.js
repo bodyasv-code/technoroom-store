@@ -1825,14 +1825,21 @@ catalog = function () {
     { id: 'printer-duplex', label: 'Дуплексний друк', values: printerDuplexValues, minOptions: 1 }
   ]);
   const printConsumableTechnologyValues = (product) => {
+    const category = readableText(product.type);
+    // Для спеціалізованих підкатегорій не покладаємось на слова в сумісних
+    // моделях: «Inkjet paper» або назва принтера не мають змінити тип самого
+    // витратника.
+    if (category === 'office-consumables-ink') return ['Струменевий'];
+    if (/^office-consumables-(?:toner|drums)$/iu.test(category)) return ['Лазерний'];
+    if (category === 'office-consumables-ribbons') return ['Термотрансферний / матричний'];
     const source = readableText([product.name, product.description, ...Object.values(product.specifications || {})].join(' '));
-    if (/(?:чорнил|\bink\b|inkjet|ink\s*(?:tank|bottle|container|cartridge)|контейнер\w*\s+(?:з\s+)?чорнил)/iu.test(source)) return ['Струменевий'];
+    if (/(?:стрічк[аи]|ribbon|термотрансферн)/iu.test(source)) return ['Термотрансферний / матричний'];
     if (/(?:тонер|\btoner\b|фотобарабан|photo\s*conductor|\bdrum\s*(?:unit|kit)?\b|imaging\s*drum)/iu.test(source)) return ['Лазерний'];
-    if (/(?:стрічк[аи]|ribbon|термотрансферн)/iu.test(source)) return ['Матричний / термотрансферний'];
+    if (/(?:чорнил|\bink\b|inkjet|ink\s*(?:tank|bottle|container|cartridge)|контейнер\w*\s+(?:з\s+)?чорнил)/iu.test(source)) return ['Струменевий'];
     return [];
   };
   const printConsumableFilterOptions = (categoryProducts) => compactFilterOptions(categoryProducts, [
-    { id: 'consumable-technology', label: 'Технологія друку', values: printConsumableTechnologyValues }
+    { id: 'consumable-technology', label: 'Тип друку', values: printConsumableTechnologyValues }
   ]);
   const screenFilterOptions = () => {
     const categoryProducts = products.filter((product) => !product.parentProductId && category !== 'all' && storefrontCategoryMatches(product, category));

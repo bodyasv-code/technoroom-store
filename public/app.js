@@ -1776,8 +1776,8 @@ catalog = function () {
   ].map(specificationDisplayText).filter(Boolean).join(' ');
   const printerColorValues = (product) => {
     const title = readableText(product.name).toLocaleLowerCase('uk-UA');
-    if (/(?:\bcolor\b|\bcolour\b|кольоров)/iu.test(title)) return ['Кольоровий'];
     if (/(?:монохром|чорно[ -]?білий|black[ -]?and[ -]?white|\bmono\b|\blaserjet\b)/iu.test(title)) return ['Монохромний'];
+    if (/(?:\bcolor\b|\bcolour\b|кольоров)/iu.test(title)) return ['Кольоровий'];
     const source = printerSource(product, /(?:тип\s+друку|технолог.*друку|print\s*(?:type|mode|technolog)|color\s*mode|кольоровість)/iu);
     if (/(?:монохром|чорно[ -]?білий|black[ -]?and[ -]?white|\bmono\b)/iu.test(source)) return ['Монохромний'];
     if (/(?:кольоров|\bcolor\b|\bcolour\b)/iu.test(source)) return ['Кольоровий'];
@@ -1790,10 +1790,10 @@ catalog = function () {
     return [];
   };
   const printerFormatValues = (product) => {
-    const source = printerSource(product, /(?:формат|paper\s*size|розмір\s*паперу|максимальн.*(?:формат|розмір)|a[34])/iu);
+    const source = printerSource(product, /(?:формат|paper\s*size|розмір\s*паперу|максимальн.*(?:формат|розмір)|[aа][34])/iu);
     const values = [];
-    if (/(?:^|[^a-zа-яіїєґ0-9])a3(?:$|[^a-zа-яіїєґ0-9])/iu.test(source)) values.push('A3');
-    if (/(?:^|[^a-zа-яіїєґ0-9])a4(?:$|[^a-zа-яіїєґ0-9])/iu.test(source)) values.push('A4');
+    if (/(?:^|[^a-zа-яіїєґ0-9])[aа]3(?:$|[^a-zа-яіїєґ0-9])/iu.test(source)) values.push('A3');
+    if (/(?:^|[^a-zа-яіїєґ0-9])[aа]4(?:$|[^a-zа-яіїєґ0-9])/iu.test(source)) values.push('A4');
     return values;
   };
   const printerInterfaceValues = (product) => {

@@ -136,8 +136,12 @@ const mountOfficePrinterEditorFields=(form,product)=>{
   panel.querySelector('[name="office_print_color"]').value=/кольоров|\bcolor\b|\bcolour\b/iu.test(color)?'Кольоровий':/(?:моно|чорно[ -]?білий)/iu.test(color)?'Монохромний':'';
   const technology=String(specifications['Технологія друку']||specifications['Технологія']||'');
   panel.querySelector('[name="office_print_technology"]').value=/(?:струмен|струйн|\bink\b|inkjet)/iu.test(technology)?'Струменевий':/(?:лазер|laser)/iu.test(technology)?'Лазерний':'';
-  panel.querySelector('[name="office_print_format"]').value=String(specifications['Формат']||'').match(/\bA[34]\b/iu)?.[0]?.toUpperCase()||'';
-  const interfaces=String(specifications['Інтерфейси']||specifications['Інтерфейс']||specifications['Interface']||'');
+  // Дані одного пристрою можуть бути розкладені на кілька полів. Об’єднуємо
+  // всі інтерфейси та формат із характеристик і назви товару.
+  const printerDetails=[product?.name||form.elements.name?.value||'',...Object.entries(specifications).filter(([key])=>/(?:інтерфейс|interface|мережев|network|ethernet|\blan\b|\busb\b|wi[ -]?fi|wireless|wlan|bluetooth|формат|paper\s*size|розмір\s*паперу)/iu.test(String(key))).flatMap(([,value])=>Array.isArray(value)?value:[value])].map(String).join(' ');
+  const formatMatch=printerDetails.match(/(?:^|[^\p{L}\p{N}])[AА]([34])(?=$|[^\p{L}\p{N}])/u);
+  panel.querySelector('[name="office_print_format"]').value=formatMatch?'A'+formatMatch[1]:String(specifications['Формат']||'').match(/\bA[34]\b/iu)?.[0]?.toUpperCase()||'';
+  const interfaces=printerDetails;
   const optionalWifi=/(?:wi[ -]?fi|wireless|wlan).{0,80}(?:опц|optional|не\s*(?:вход|входить)|докуп|add[ -]?on|модул)|(?:опц|optional|не\s*(?:вход|входить)|докуп|add[ -]?on|модул).{0,80}(?:wi[ -]?fi|wireless|wlan)/iu.test(interfaces);
   panel.querySelectorAll('[name="office_print_interface"]').forEach(input=>{const pattern=input.value==='Wi‑Fi'?/(?:wi[ -]?fi|wireless|wlan)/iu:input.value==='Ethernet'?/ethernet|\blan\b|rj[ -]?45/iu:input.value==='USB'?/\busb(?:\s|$|[0-9])?/iu:/bluetooth/iu;input.checked=pattern.test(interfaces)&&!(input.value==='Wi‑Fi'&&optionalWifi)});
   const duplex=String(specifications['Дуплексний друк']||specifications['Дуплекс']||'');
@@ -170,7 +174,7 @@ async function saveProductWithProjectorFields(event){
   const officePanel=form.querySelector('#officePrinterEditorFields');
   if(officePanel&&!officePanel.hidden){
     const specifications=parseAdminSpecifications(form.elements.specifications_text.value);
-    delete specifications['Тип друку'];delete specifications['Кольоровість'];delete specifications['Технологія друку'];delete specifications['Технологія'];delete specifications['Формат'];delete specifications['Інтерфейси'];delete specifications['Інтерфейс'];delete specifications['Interface'];delete specifications['Дуплексний друк'];delete specifications['Дуплекс'];
+    delete specifications['Тип друку'];delete specifications['Кольоровість'];delete specifications['Технологія друку'];delete specifications['Технологія'];delete specifications['Формат'];delete specifications['Інтерфейси'];delete specifications['Дуплексний друк'];delete specifications['Дуплекс'];
     const color=officePanel.querySelector('[name="office_print_color"]').value,technology=officePanel.querySelector('[name="office_print_technology"]').value,format=officePanel.querySelector('[name="office_print_format"]').value,interfaces=[...officePanel.querySelectorAll('[name="office_print_interface"]:checked')].map(input=>input.value);
     if(color)specifications['Тип друку']=color;
     if(technology)specifications['Технологія друку']=technology;
@@ -380,7 +384,10 @@ supabase.auth.getSession().then(({data:{session}})=>session?dashboard():view('lo
       if (/(?:ethernet|\blan\b|rj[ -]?45)/iu.test(text)) interfaces.push('Ethernet');
       if (/\busb(?:\s|$|[0-9])?/iu.test(text)) interfaces.push('USB');
       if (/bluetooth/iu.test(text)) interfaces.push('Bluetooth');
-      add('Тип пристрою', officeType); add('Формат', text.match(/\bA([3-6])\b/iu)?.[0]?.toUpperCase()); add('Тип друку', /(?:color|colour|кольоров)/iu.test(text) ? 'Кольоровий' : /(?:mono|monochrome|монохром|чорно[ -]?білий)/iu.test(text) ? 'Монохромний' : ''); add('Технологія друку', /(?:струмен|струйн|\bink\b|inkjet)/iu.test(text) ? 'Струменевий' : /(?:лазер|laser)/iu.test(text) ? 'Лазерний' : ''); add('Інтерфейси', interfaces.join(', ')); add('Дуплексний друк', /(?:дуплекс|двосторон|duplex|two[ -]?sided)/iu.test(text)&&!optionalDuplex?'Є':'');
+      const formatMatch=text.match(/(?:^|[^\p{L}\p{N}])[AА]([3-6])(?=$|[^\p{L}\p{N}])/iu);
+      const mono=/(?:mono|monochrome|монохром|чорно[ -]?білий)/iu.test(text);
+      const color=/(?:color|colour|кольоров)/iu.test(text);
+      add('Тип пристрою', officeType); add('Формат', formatMatch?'A'+formatMatch[1]:''); add('Тип друку', mono ? 'Монохромний' : color ? 'Кольоровий' : ''); add('Технологія друку', /(?:струмен|струйн|\bink\b|inkjet)/iu.test(text) ? 'Струменевий' : /(?:лазер|laser)/iu.test(text) ? 'Лазерний' : ''); add('Інтерфейси', interfaces.join(', ')); add('Дуплексний друк', /(?:дуплекс|двосторон|duplex|two[ -]?sided)/iu.test(text)&&!optionalDuplex?'Є':'');
     }
     return specifications;
   };
@@ -466,8 +473,8 @@ supabase.auth.getSession().then(({data:{session}})=>session?dashboard():view('lo
   // кольоровість визначаємо з назви або лише з профільного поля про друк.
   const printColourMode = (name = '', specifications = {}) => {
     const title = cleanImportText(name).toLocaleLowerCase('uk-UA');
-    if (/(?:\bcolor\b|\bcolour\b|кольоров)/iu.test(title)) return 'color';
     if (/(?:\bmono\b|monochrome|монохром|чорно[ -]?білий|\blaserjet\b)/iu.test(title)) return 'mono';
+    if (/(?:\bcolor\b|\bcolour\b|кольоров)/iu.test(title)) return 'color';
     const printDetails = Object.entries(specifications || {})
       .filter(([key]) => /(?:тип\s+друку|технолог.*друку|print\s*(?:type|mode|technolog)|color\s*mode|кольоровість)/iu.test(cleanImportText(key)))
       .flatMap(([, value]) => Array.isArray(value) ? value : [value]).map(cleanImportText).join(' ').toLocaleLowerCase('uk-UA');
@@ -534,8 +541,8 @@ supabase.auth.getSession().then(({data:{session}})=>session?dashboard():view('lo
     // Якщо в назві моделі тип друку не вказано, беремо його з назви
     // вихідної групи ERC: «БФП струменеві кольорові» — це все одно
     // «Кольорові БФП», а не нова категорія.
-    const sourcePrintMode = /(?:color|colour|кольоров)/iu.test(source) ? 'color'
-      : /(?:mono|monochrome|монохром|чорно[ -]?білий)/iu.test(source) ? 'mono' : '';
+    const sourcePrintMode = /(?:mono|monochrome|монохром|чорно[ -]?білий)/iu.test(source) ? 'mono'
+      : /(?:color|colour|кольоров)/iu.test(source) ? 'color' : '';
     const printMode = printColourMode(row.name, row.specifications) || sourcePrintMode;
     if (isMfp || isPrinter) {
       const kind = isMfp ? 'mfp' : 'printers';

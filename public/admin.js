@@ -501,6 +501,9 @@ supabase.auth.getSession().then(({data:{session}})=>session?dashboard():view('lo
     // Для класифікації береться тільки назва позиції та назва її групи ERC,
     // без довільних технічних характеристик сумісного обладнання.
     const source = [name, row.subcategory, row.sourceCategory].map(cleanImportText).join(' ').toLocaleLowerCase('uk-UA');
+    // Inkjet coated paper — це папір для струменевого друку, а не чорнила.
+    // Так само плівка, калька та етикетки не є картриджами чи контейнерами.
+    if (/(?:папір|\bpaper\b|плівк|\bfilm\b|кальк|\btracing\b|етикет|\blabel\b)/iu.test(source)) return null;
     const root = { rootSlug: 'office-consumables', rootName: 'Витратні матеріали для друку' };
     if (/(?:фотобарабан|photo\s*conductor|\bdrum\s*(?:unit|kit)?\b|imaging\s*drum)/iu.test(source)) return { ...root, childSlug: 'office-consumables-drums', childName: 'Фотобарабани' };
     if (/(?:стрічк[аи]|ribbon|термотрансферн\w*\s+стрічк)/iu.test(source)) return { ...root, childSlug: 'office-consumables-ribbons', childName: 'Стрічки для принтерів' };
@@ -717,9 +720,10 @@ supabase.auth.getSession().then(({data:{session}})=>session?dashboard():view('lo
     }
     const consumablesPlan = officeConsumablesCategoryPlan(row);
     if (consumablesPlan) {
-      const root = state.categories.find((category) => category.slug === consumablesPlan.rootSlug) || findImportCategory(consumablesPlan.rootName, null);
-      const child = root && (state.categories.find((category) => category.slug === consumablesPlan.childSlug) || findImportCategory(consumablesPlan.childName, root.id));
-      return child ? child.slug : '';
+      // Повертаємо сталий slug навіть до першого імпорту. ensureImportCategory
+      // створить лише заплановану категорію, а загальне правило для принтерів
+      // не встигне перехопити картридж зі стрічкою.
+      return consumablesPlan.childSlug;
     }
     const officePlan = officeEquipmentCategoryPlan(row);
     if (officePlan) {
@@ -969,7 +973,7 @@ supabase.auth.getSession().then(({data:{session}})=>session?dashboard():view('lo
     const cached = importer.meta.get(row.key);
     if (cached) return cached;
     const category = categoryFor(row), plan = categoryPlan(row);
-    const categoryName = category ? (state.categories.find((item) => item.slug === category)?.name || category) : (plan?.childName || plan?.rootName || '');
+    const categoryName = plan?.childName || plan?.rootName || (category ? (state.categories.find((item) => item.slug === category)?.name || category) : '');
     const meta = { category, plan, categoryName, mapped: Boolean(category || plan) };
     importer.meta.set(row.key, meta);
     return meta;

@@ -475,6 +475,9 @@ supabase.auth.getSession().then(({data:{session}})=>session?dashboard():view('lo
     const title = cleanImportText(name).toLocaleLowerCase('uk-UA');
     if (/(?:\bmono\b|monochrome|монохром|чорно[ -]?білий)/iu.test(title)) return 'mono';
     if (/(?:\bcolor\b|\bcolour\b|кольоров)/iu.test(title)) return 'color';
+    // PIXMA — кольорова струменева лінійка Canon. Це правило потрібне й
+    // для вже імпортованих моделей, у назві яких немає слова «Color».
+    if (/\bpixma\b/iu.test(title)) return 'color';
     const printDetails = Object.entries(specifications || {})
       .filter(([key]) => /(?:тип\s+друку|технолог.*друку|print\s*(?:type|mode|technolog)|color\s*mode|кольоровість)/iu.test(cleanImportText(key)))
       .flatMap(([, value]) => Array.isArray(value) ? value : [value]).map(cleanImportText).join(' ').toLocaleLowerCase('uk-UA');
@@ -513,8 +516,6 @@ supabase.auth.getSession().then(({data:{session}})=>session?dashboard():view('lo
     // «scanner» у характеристиках смартфона (наприклад LiDAR Scanner)
     // не повинні перетворювати його на сканер.
     const nameSource = cleanImportText(row.name).toLocaleLowerCase('uk-UA');
-    const source = [row.name, row.subcategory, row.sourceCategory, ...Object.values(row.specifications || {})]
-      .map(cleanImportText).join(' ').toLocaleLowerCase('uk-UA');
     if (/(?:^|[\s-])(?:смартфон|smartphone|iphone|мобільн(?:ий|ого)?\s+телефон)/iu.test(nameSource)) return null;
     if (/(?:^|[\s-])(?:планшет|tablet|ipad)/iu.test(nameSource)) return null;
     // Проєктор може мати в характеристиках Bluetooth-аудіо, роз'єм для
@@ -541,9 +542,13 @@ supabase.auth.getSession().then(({data:{session}})=>session?dashboard():view('lo
     // Якщо в назві моделі тип друку не вказано, беремо його з назви
     // вихідної групи ERC: «БФП струменеві кольорові» — це все одно
     // «Кольорові БФП», а не нова категорія.
-    const sourcePrintMode = /(?:mono|monochrome|монохром|чорно[ -]?білий)/iu.test(source) ? 'mono'
-      : /(?:color|colour|кольоров)/iu.test(source) ? 'color' : '';
-    const printMode = printColourMode(row.name, row.specifications) || sourcePrintMode;
+    // Чітко вказаний тип у вихідній групі ERC має найвищий пріоритет.
+    // Не змішуємо його з характеристиками: вони іноді містять застаріле
+    // «mono» і не повинні перетворювати «БФП … кольорові» на монохромні.
+    const sourceGroup = [row.subcategory, row.sourceCategory].map(cleanImportText).join(' ').toLocaleLowerCase('uk-UA');
+    const sourcePrintMode = /(?:color|colour|кольоров)/iu.test(sourceGroup) ? 'color'
+      : /(?:mono|monochrome|монохром|чорно[ -]?білий)/iu.test(sourceGroup) ? 'mono' : '';
+    const printMode = sourcePrintMode || printColourMode(row.name, row.specifications);
     if (isMfp || isPrinter) {
       const kind = isMfp ? 'mfp' : 'printers';
       if (isWideFormat(nameSource)) return { rootSlug: 'office-equipment', rootName: 'Оргтехніка', childSlug: 'office-wide-format', childName: 'Принтери та БФП широкоформатні' };

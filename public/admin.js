@@ -494,7 +494,13 @@ supabase.auth.getSession().then(({data:{session}})=>session?dashboard():view('lo
   // Витратні матеріали для друку не є «аксесуарами». Точна стала схема
   // не дає XML ERC створювати дублікати довгих назв постачальника.
   const officeConsumablesCategoryPlan = (row) => {
-    const source = [row.name, row.subcategory, row.sourceCategory, ...Object.values(row.specifications || {})].map(cleanImportText).join(' ').toLocaleLowerCase('uk-UA');
+    const name = cleanImportText(row.name).toLocaleLowerCase('uk-UA');
+    // У характеристиках самого пристрою часто згадуються сумісні чорнила,
+    // картриджі або тонер. Це не робить БФП/принтер витратним матеріалом.
+    if (/(?:бфп|мфу|\bmfp\b|multifunction|багатофункціональн|принтер|\bprinter\b|сканер|\bscanner\b|копір|копир|\bcopier\b)/iu.test(name)) return null;
+    // Для класифікації береться тільки назва позиції та назва її групи ERC,
+    // без довільних технічних характеристик сумісного обладнання.
+    const source = [name, row.subcategory, row.sourceCategory].map(cleanImportText).join(' ').toLocaleLowerCase('uk-UA');
     const root = { rootSlug: 'office-consumables', rootName: 'Витратні матеріали для друку' };
     if (/(?:фотобарабан|photo\s*conductor|\bdrum\s*(?:unit|kit)?\b|imaging\s*drum)/iu.test(source)) return { ...root, childSlug: 'office-consumables-drums', childName: 'Фотобарабани' };
     if (/(?:стрічк[аи]|ribbon|термотрансферн\w*\s+стрічк)/iu.test(source)) return { ...root, childSlug: 'office-consumables-ribbons', childName: 'Стрічки для принтерів' };

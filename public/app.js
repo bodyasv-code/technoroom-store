@@ -1824,6 +1824,16 @@ catalog = function () {
     { id: 'printer-interface', label: 'Інтерфейси', values: printerInterfaceValues },
     { id: 'printer-duplex', label: 'Дуплексний друк', values: printerDuplexValues, minOptions: 1 }
   ]);
+  const printConsumableTechnologyValues = (product) => {
+    const source = readableText([product.name, product.description, ...Object.values(product.specifications || {})].join(' '));
+    if (/(?:чорнил|\bink\b|inkjet|ink\s*(?:tank|bottle|container|cartridge)|контейнер\w*\s+(?:з\s+)?чорнил)/iu.test(source)) return ['Струменевий'];
+    if (/(?:тонер|\btoner\b|фотобарабан|photo\s*conductor|\bdrum\s*(?:unit|kit)?\b|imaging\s*drum)/iu.test(source)) return ['Лазерний'];
+    if (/(?:стрічк[аи]|ribbon|термотрансферн)/iu.test(source)) return ['Матричний / термотрансферний'];
+    return [];
+  };
+  const printConsumableFilterOptions = (categoryProducts) => compactFilterOptions(categoryProducts, [
+    { id: 'consumable-technology', label: 'Технологія друку', values: printConsumableTechnologyValues }
+  ]);
   const screenFilterOptions = () => {
     const categoryProducts = products.filter((product) => !product.parentProductId && category !== 'all' && storefrontCategoryMatches(product, category));
     if (!categoryProducts.length) return [];
@@ -1836,6 +1846,7 @@ catalog = function () {
       }).filter(Boolean);
     }
     if (/^office-(?:printers|mfp)(?:-|$)|^office-wide-format$/iu.test(category)) return printerFilterOptions(categoryProducts);
+    if (/^office-consumables(?:-|$)/iu.test(category)) return printConsumableFilterOptions(categoryProducts);
     const phoneProducts = categoryProducts.filter((product) => isPhoneProduct(product));
     if (/(?:смартфон|телефон|phone)/iu.test(category) || phoneProducts.length >= Math.max(2, categoryProducts.length * 0.7)) return phoneFilterOptions(phoneProducts.length ? phoneProducts : categoryProducts);
     const projectorProducts = categoryProducts.filter((product) => /(?:про[єе]ктор|projector)/iu.test(readableText(product.name) + ' ' + readableText(product.type)));

@@ -491,6 +491,18 @@ supabase.auth.getSession().then(({data:{session}})=>session?dashboard():view('lo
     if (/(?:\bcolor\b|\bcolour\b|кольоров)/iu.test(printDetails)) return 'color';
     return '';
   };
+  // Витратні матеріали для друку не є «аксесуарами». Точна стала схема
+  // не дає XML ERC створювати дублікати довгих назв постачальника.
+  const officeConsumablesCategoryPlan = (row) => {
+    const source = [row.name, row.subcategory, row.sourceCategory, ...Object.values(row.specifications || {})].map(cleanImportText).join(' ').toLocaleLowerCase('uk-UA');
+    const root = { rootSlug: 'office-consumables', rootName: 'Витратні матеріали для друку' };
+    if (/(?:фотобарабан|photo\s*conductor|\bdrum\s*(?:unit|kit)?\b|imaging\s*drum)/iu.test(source)) return { ...root, childSlug: 'office-consumables-drums', childName: 'Фотобарабани' };
+    if (/(?:стрічк[аи]|ribbon|термотрансферн\w*\s+стрічк)/iu.test(source)) return { ...root, childSlug: 'office-consumables-ribbons', childName: 'Стрічки для принтерів' };
+    if (/(?:чорнил|\bink\b|inkjet|ink\s*(?:tank|bottle|container|cartridge)|контейнер\w*\s+(?:з\s+)?чорнил)/iu.test(source)) return { ...root, childSlug: 'office-consumables-ink', childName: 'Чорнила та контейнери' };
+    if (/(?:тонер|\btoner\b)/iu.test(source)) return { ...root, childSlug: 'office-consumables-toner', childName: 'Тонери та тонер-картриджі' };
+    if (/(?:картридж|\bcartridge\b)/iu.test(source)) return { ...root, childSlug: 'office-consumables-cartridges', childName: 'Картриджі' };
+    return null;
+  };
   // У різних XML ERC одна й та сама група може називатися «БФП лазерні
   // кольорові», «Кольорові БФП» тощо. Для таких назв завжди повертаємо
   // постійну внутрішню категорію, а не створюємо ще одну підкатегорію.
@@ -697,6 +709,12 @@ supabase.auth.getSession().then(({data:{session}})=>session?dashboard():view('lo
       const child = root && aenoPlan.childName ? (findImportCategory(aenoPlan.childName, root.id) || findImportCategory(aenoPlan.childName)) : null;
       return child ? child.slug : '';
     }
+    const consumablesPlan = officeConsumablesCategoryPlan(row);
+    if (consumablesPlan) {
+      const root = state.categories.find((category) => category.slug === consumablesPlan.rootSlug) || findImportCategory(consumablesPlan.rootName, null);
+      const child = root && (state.categories.find((category) => category.slug === consumablesPlan.childSlug) || findImportCategory(consumablesPlan.childName, root.id));
+      return child ? child.slug : '';
+    }
     const officePlan = officeEquipmentCategoryPlan(row);
     if (officePlan) {
       const root = state.categories.find((category) => category.slug === officePlan.rootSlug) || findImportCategory(officePlan.rootName, null);
@@ -745,6 +763,8 @@ supabase.auth.getSession().then(({data:{session}})=>session?dashboard():view('lo
     if (projectorAccessoryPlan) return projectorAccessoryPlan;
     const aenoPlan = aenoCategoryPlan(row);
     if (aenoPlan) return aenoPlan;
+    const consumablesPlan = officeConsumablesCategoryPlan(row);
+    if (consumablesPlan) return consumablesPlan;
     const officePlan = officeEquipmentCategoryPlan(row);
     if (officePlan) return officePlan;
     const sourceOfficePlan = officeSourceCategoryPlan(row);
@@ -829,6 +849,14 @@ supabase.auth.getSession().then(({data:{session}})=>session?dashboard():view('lo
       if (!aenoPlan.childName) return root.slug;
       let child = findImportCategory(aenoPlan.childName, root.id) || findImportCategory(aenoPlan.childName);
       if (!child) child = await createImportCategory(aenoPlan.childName, root.id);
+      return child.slug;
+    }
+    const consumablesPlan = officeConsumablesCategoryPlan(row);
+    if (consumablesPlan) {
+      let root = state.categories.find((category) => category.slug === consumablesPlan.rootSlug) || findImportCategory(consumablesPlan.rootName, null);
+      if (!root) root = await createImportCategory(consumablesPlan.rootName, null, consumablesPlan.rootSlug);
+      let child = state.categories.find((category) => category.slug === consumablesPlan.childSlug) || findImportCategory(consumablesPlan.childName, root.id);
+      if (!child) child = await createImportCategory(consumablesPlan.childName, root.id, consumablesPlan.childSlug);
       return child.slug;
     }
     const officePlan = officeEquipmentCategoryPlan(row);

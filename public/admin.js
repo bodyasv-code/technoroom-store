@@ -473,7 +473,7 @@ supabase.auth.getSession().then(({data:{session}})=>session?dashboard():view('lo
   // кольоровість визначаємо з назви або лише з профільного поля про друк.
   const printColourMode = (name = '', specifications = {}) => {
     const title = cleanImportText(name).toLocaleLowerCase('uk-UA');
-    if (/(?:\bmono\b|monochrome|монохром|чорно[ -]?білий|\blaserjet\b)/iu.test(title)) return 'mono';
+    if (/(?:\bmono\b|monochrome|монохром|чорно[ -]?білий)/iu.test(title)) return 'mono';
     if (/(?:\bcolor\b|\bcolour\b|кольоров)/iu.test(title)) return 'color';
     const printDetails = Object.entries(specifications || {})
       .filter(([key]) => /(?:тип\s+друку|технолог.*друку|print\s*(?:type|mode|technolog)|color\s*mode|кольоровість)/iu.test(cleanImportText(key)))
@@ -1423,8 +1423,21 @@ supabase.auth.getSession().then(({data:{session}})=>session?dashboard():view('lo
       const targetName = state.categories.find((item) => item.slug === target)?.name || target;
       return '<li><button type="button" class="catalog-audit-product" data-catalog-audit-product="' + product.id + '">' + esc(product.name) + '</button><span>' + esc(currentName) + ' → ' + esc(targetName) + '</span></li>';
     }).join('');
-    panel.innerHTML = '<article><h3>Контроль категорій <small>(' + problems.length + ')</small></h3>' + (rows ? '<p class="owner-report-hint">Назва товару не відповідає категорії. Натисніть позицію, щоб перевірити та виправити.</p><ul class="owner-report-list">' + rows + '</ul>' + (problems.length > 8 ? '<p class="owner-report-empty">Показано 8 із ' + problems.length + ' позицій.</p>' : '') : '<p class="owner-report-empty">Розбіжностей у перевірених типах товарів не знайдено.</p>') + '</article>';
+    panel.innerHTML = '<article><h3>Контроль категорій <small>(' + problems.length + ')</small></h3>' + (rows ? '<p class="owner-report-hint">Назва товару не відповідає категорії. Натисніть позицію, щоб перевірити, або застосуйте безпечні виправлення за правилами.</p><p><button class="button outline" type="button" data-fix-category-audit>Виправити всі визначені категорії (' + problems.length + ')</button></p><ul class="owner-report-list">' + rows + '</ul>' + (problems.length > 8 ? '<p class="owner-report-empty">Показано 8 із ' + problems.length + ' позицій.</p>' : '') : '<p class="owner-report-empty">Розбіжностей у перевірених типах товарів не знайдено.</p>') + '</article>';
     panel.querySelectorAll('[data-catalog-audit-product]').forEach((button) => button.onclick = () => productDialog(state.products.find((product) => Number(product.id) === Number(button.dataset.catalogAuditProduct))));
+    panel.querySelector('[data-fix-category-audit]')?.addEventListener('click', async () => {
+      if (!confirm('Виправити категорії для ' + problems.length + ' товарів за визначеними правилами?')) return;
+      const groups = new Map();
+      problems.forEach((product) => { const target = expectedCategoryFromName(product); if (!groups.has(target)) groups.set(target, []); groups.get(target).push(product.id); });
+      let updated = 0;
+      for (const [category, ids] of groups) {
+        const result = await supabase.from('products').update({ category }).in('id', ids).select('id');
+        if (result.error) { notice('Не вдалося виправити категорію: ' + result.error.message, true); return; }
+        updated += (result.data || []).length;
+      }
+      await loadData();
+      notice('Виправлено категорій товарів: ' + updated + '.');
+    });
   };
 const renderAllWithCatalogAudit = renderAll;
 renderAll = () => { renderAllWithCatalogAudit(); renderCatalogAudit(); renderCategoryIntegrityAudit(); };

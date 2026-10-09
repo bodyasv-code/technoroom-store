@@ -1776,7 +1776,7 @@ catalog = function () {
   ].map(specificationDisplayText).filter(Boolean).join(' ');
   const printerColorValues = (product) => {
     const title = readableText(product.name).toLocaleLowerCase('uk-UA');
-    if (/(?:монохром|чорно[ -]?білий|black[ -]?and[ -]?white|\bmono\b|\blaserjet\b)/iu.test(title)) return ['Монохромний'];
+    if (/(?:монохром|чорно[ -]?білий|black[ -]?and[ -]?white|\bmono\b)/iu.test(title)) return ['Монохромний'];
     if (/(?:\bcolor\b|\bcolour\b|кольоров)/iu.test(title)) return ['Кольоровий'];
     const source = printerSource(product, /(?:тип\s+друку|технолог.*друку|print\s*(?:type|mode|technolog)|color\s*mode|кольоровість)/iu);
     if (/(?:монохром|чорно[ -]?білий|black[ -]?and[ -]?white|\bmono\b)/iu.test(source)) return ['Монохромний'];

@@ -1595,7 +1595,6 @@ catalog = function () {
       { id: 'projector-classification', label: 'Тип і призначення', values: projectorClassificationValues, normaliseValue: normaliseSpecificationValue },
       { id: 'projector-technology', label: 'Технологія', values: projectorTechnologyValues, normaliseValue: normaliseSpecificationValue },
       { id: 'projector-resolution', label: 'Роздільна здатність', values: projectorResolutionValues, normaliseValue: normaliseSpecificationValue },
-      { id: 'projector-throw-ratio', label: 'Проекційне співвідношення', values: projectorThrowRatioValues, normaliseValue: normaliseSpecificationValue },
       { id: 'projector-light-source', label: 'Джерело світла', keys: ['джерело світла', 'тип джерела'], values: (product) => specificationValues(product, ['джерело світла', 'тип джерела']).map(normaliseLightSource), normaliseValue: normaliseLightSource }
     ];
     return definitions.map((definition) => {

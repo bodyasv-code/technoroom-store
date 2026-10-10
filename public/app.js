@@ -106,6 +106,28 @@ function promotionByProductLink(product){for(const p of activePromotions){if(pro
 function salePrice(product){const p=promotionFor(product);if(!p)return Number(product.price);return Math.max(0,p.discount_type==='percent'?Number(product.price)*(1-Number(p.discount_value)/100):Number(product.price)-Number(p.discount_value))}
 function card(product) { const promo=promotionFor(product)||promotionByProductLink(product),price=promo?Math.max(0,promo.discount_type==='percent'?Number(product.price)*(1-Number(promo.discount_value)/100):Number(product.price)-Number(promo.discount_value)):Number(product.price),badge=promo?'<span class="sale-badge">'+(promo.discount_type==='percent'?'-'+Number(promo.discount_value)+'%':'АКЦІЯ')+'</span>':'',promoName=promo?'<div class="promotion-name">🏷 Акція: <b>'+escapeHtml(promo.name||'Спеціальна пропозиція')+'</b></div>':''; return `<article class="product">${badge}<div class="product-image ${product.type}">${image(product)}</div>${promoName}<h3><a href="product.html?id=${product.id}">${product.name}</a></h3><p class="availability">${product.stock ? 'В наявності' : 'Немає в наявності'}</p><p>${product.description || ''}</p><div class="product-footer"><div>${promo?'<del class="old-price">'+money(product.price)+'</del>':''}<strong class="price">${money(price)}</strong></div><button class="add-button" data-add="${product.id}" ${product.stock ? '' : 'disabled'}>${product.stock ? 'У кошик' : 'Немає'}</button></div></article>`; }
 function bind(root = document) { root.querySelectorAll('[data-add]').forEach((button) => button.onclick = () => add(button.dataset.add)); root.querySelectorAll('[data-inquiry]').forEach((button) => button.onclick = () => openInquiry(button.dataset.inquiry)); root.querySelectorAll('.product-image img').forEach((image) => image.onclick = () => openLightbox(image.currentSrc || image.src, image.alt)); }
+async function loadHomeSaleProducts(initialProducts) {
+  const selectedIds = [...promotionProductIds.values()].flatMap((ids) => [...ids]);
+  const categoryTargets = activePromotions.filter((promotion) => promotion.target_type === 'category').map((promotion) => promotion.target_value).filter(Boolean);
+  const brandTargets = activePromotions.filter((promotion) => promotion.target_type === 'brand').map((promotion) => Number(promotion.target_value)).filter(Number.isFinite);
+  const hasStorewidePromotion = activePromotions.some((promotion) => (promotion.target_type || 'all') === 'all');
+  if (!selectedIds.length && !categoryTargets.length && !brandTargets.length && !hasStorewidePromotion) {
+    return [];
+  }
+  const requests = [];
+  if (selectedIds.length) requests.push(supabase.from('products').select('*').in('id', selectedIds).eq('is_active', true));
+  if (categoryTargets.length) requests.push(supabase.from('products').select('*').in('category', categoryTargets).eq('is_active', true).order('in_stock', { ascending: false }).limit(6));
+  if (brandTargets.length) requests.push(supabase.from('products').select('*').in('brand_id', brandTargets).eq('is_active', true).order('in_stock', { ascending: false }).limit(6));
+  if (hasStorewidePromotion) requests.push(supabase.from('products').select('*').eq('is_active', true).order('in_stock', { ascending: false }).order('created_at', { ascending: false }).limit(6));
+  const results = await Promise.all(requests);
+  if (results.some((result) => result.error)) {
+    console.warn('Не вдалося завантажити товари акції', results.find((result) => result.error)?.error);
+    return initialProducts.filter((product) => promotionFor(product) || promotionByProductLink(product));
+  }
+  const merged = [...initialProducts, ...results.flatMap((result) => (result.data || []).map(storeProductFromRow))];
+  const unique = [...new Map(merged.map((product) => [Number(product.id), product])).values()];
+  return unique.filter((product) => promotionFor(product) || promotionByProductLink(product));
+}
 async function home() {
   const root=document.getElementById('productGrid'); if(!root || !productsLoaded) return;
   if(root.dataset.homeReady==='true') return;
@@ -148,7 +170,7 @@ async function home() {
   } catch(e){console.warn('Промоблоки головної',e)}
 
   const saleSection=document.getElementById('homeSaleSection'),saleGrid=document.getElementById('homeSaleGrid');
-  if(saleSection&&saleGrid){const saleProducts=homeProducts.filter(p=>promotionFor(p)||promotionByProductLink(p));saleSection.hidden=false;if(saleProducts.length){saleGrid.innerHTML=saleProducts.slice(0,6).map(card).join('');bind(saleGrid)}else{saleGrid.innerHTML='<div class="home-sale-empty">Акційні товари з’являться тут після активації акції.</div>'}}
+  if(saleSection&&saleGrid){const saleProducts=await loadHomeSaleProducts(homeProducts);saleSection.hidden=false;if(saleProducts.length){saleGrid.innerHTML=saleProducts.slice(0,6).map(card).join('');bind(saleGrid)}else{saleGrid.innerHTML='<div class="home-sale-empty">Акційні товари з’являться тут після активації акції.</div>'}}
   const cards=document.getElementById('homeCategoryCards');
   try {
     cats=await loadStorefrontCategories();
@@ -499,9 +521,25 @@ async function loadProductPageProducts() {
   }
   const { data: variants, error: variantsError } = await supabase.from('products').select('*').eq('parent_product_id', base.id).eq('is_active', true).order('id');
   if (variantsError) throw variantsError;
-  const rows = [base, ...(variants || [])];
+  // На картці товару раніше були тільки сама позиція та її варіанти.
+  // Тому блоки «Популярні» й «Нещодавно переглянуті» не мали з чого
+  // побудуватися. Довантажуємо невелику добірку з цієї ж категорії та
+  // товари, які відвідувач вже відкривав у цьому браузері.
+  const [categoryResult, recentResult] = await Promise.all([
+    supabase.from('products').select('*').eq('category', base.category).eq('is_active', true)
+      .order('in_stock', { ascending: false }).order('created_at', { ascending: false }).limit(8),
+    (() => {
+      const recentIds = readRecentlyViewed();
+      return recentIds.length
+        ? supabase.from('products').select('*').in('id', recentIds).eq('is_active', true)
+        : Promise.resolve({ data: [], error: null });
+    })()
+  ]);
+  if (categoryResult.error) throw categoryResult.error;
+  if (recentResult.error) throw recentResult.error;
+  const rows = [base, ...(variants || []), ...(categoryResult.data || []), ...(recentResult.data || [])];
   if (!rows.some((row) => Number(row.id) === Number(requested.id))) rows.push(requested);
-  products = rows.map(storeProductFromRow);
+  products = [...new Map(rows.map((row) => [Number(row.id), row])).values()].map(storeProductFromRow);
 }
 
 async function loadActivePromotions() {
@@ -1313,7 +1351,9 @@ const renderStorefrontRecommendations = () => {
   const currentId = currentStoreProductId();
   const available = products.filter(product => product.stock !== false);
   const popular = available.filter(product => Number(product.id) !== currentId).slice(0, 4);
-  const recent = readRecentlyViewed().filter(id => id !== currentId).map(id => get(id)).filter(Boolean).slice(0, 4);
+  // Поточний товар теж показуємо: він щойно переглянутий і це дає
+  // зрозумілий результат вже під час першого відкриття картки.
+  const recent = readRecentlyViewed().map(id => get(id)).filter(Boolean).slice(0, 4);
   root.innerHTML = '<section class="storefront-recommendation-section">'
     + '<div class="storefront-recommendation-heading"><h2>Популярні товари</h2><p>Добірка техніки, яку найчастіше обирають для сучасного дому та бізнесу.</p></div>'
     + '<div class="storefront-recommendation-grid">' + (popular.length ? popular.map(recommendationCard).join('') : '<p class="storefront-recommendation-empty">Товари з’являться після оновлення каталогу.</p>') + '</div></section>'

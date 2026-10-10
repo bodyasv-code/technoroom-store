@@ -8,11 +8,11 @@
   <style>
     .catalog-refine{margin-top:22px;border-top:1px solid var(--line);padding-top:14px}.catalog-refine label{display:block;margin:0 0 12px;font-size:11px;font-weight:800}.catalog-refine input,.catalog-refine select,.sort-label select{box-sizing:border-box;width:100%;margin-top:6px;padding:9px;border:1px solid var(--line);background:#fff;color:var(--ink);font:12px Manrope}.catalog-refine label.check{display:flex;align-items:center;gap:8px}.catalog-refine label.check input{width:auto;margin:0}.filters .clear-filters{padding:8px 0;color:var(--muted);font-size:11px}.sort-label{display:flex;align-items:center;gap:8px;font-weight:700}.sort-label select{width:auto;margin:0}@media(max-width:780px){.catalog-refine{min-width:210px;padding:12px;border:1px solid var(--line);background:#fff}.catalog-toolbar{align-items:flex-start;gap:12px}.sort-label{display:grid;gap:3px}}
   </style>
-</head>
+<link rel="icon" type="image/svg+xml" href="favicon.svg"></head>
 <body>
   <div class="home-top shared-store-top"><div class="home-wide"><span>Техніка, що створює можливості</span><nav><span>⌖ Київ</span><span>▣ Доставка і оплата</span><span>♢ Гарантія</span><span>◉ Підтримка</span><span>⌕ Контакти</span></nav></div></div><header class="compact-header store-shared-header"><div class="home-wide header-row"><a class="home-logo" href="index.html"><b>TR</b><span>TECHNO<strong>ROOM</strong><small>НАДІЙНІ РІШЕННЯ СЬОГОДНІ</small></span></a><button class="catalog-menu-toggle" id="catalogMenuToggle" type="button">▦ Каталог⌄</button><div class="header-search"><span>⌕</span><input id="headerCatalogSearch" type="search" placeholder="Я шукаю... (наприклад, проектор, ноутбук, зарядна станція)"><button type="button" id="headerCatalogSearchGo">⌕</button></div><a class="cart-button shared-cart-button" href="checkout.html">🛒 <span>Кошик</span> <b id="cartCount">0</b></a></div><div class="catalog-mega" id="catalogMega" hidden><div class="home-wide catalog-mega-inner"><div class="mega-roots" id="megaRoots"></div><div class="mega-children" id="megaChildren"></div></div></div></header>
   <main class="catalog-page"><div class="container">
-    <p class="breadcrumbs"><a href="index.html">Головна</a> / Каталог</p><h1>Каталог техніки</h1>
+    <p class="breadcrumbs" id="catalogBreadcrumbs"><a href="index.html">Головна</a> / Каталог</p><h1 id="catalogTitle">Каталог техніки</h1>
     <div class="catalog-layout catalog-layout-no-sidebar">
       <aside class="filters filters-only">
         <div class="catalog-refine">
@@ -27,6 +27,6 @@
       <section><div class="catalog-toolbar"><span id="resultCount"></span><div class="catalog-toolbar-actions"><label class="sort-label">Показувати<select id="catalogPageSize"><option value="10">10 товарів</option><option value="12" selected>12 товарів</option><option value="20">20 товарів</option><option value="40">40 товарів</option><option value="80">80 товарів</option></select></label><label class="sort-label">Сортування<select id="catalogSort"><option value="popular">Популярні</option><option value="price-asc">Ціна: від нижчої</option><option value="price-desc">Ціна: від вищої</option><option value="name">Назва: А–Я</option></select></label></div></div><div class="active-catalog-filters" id="activeCatalogFilters" hidden></div><div class="catalog-grid" id="catalogGrid"></div><nav class="catalog-pagination" id="catalogPagination" aria-label="Сторінки каталогу"></nav></section>
     </div>
   </div></main>
-  <script src="supabase-config.js"></script><script type="module" src="app.js?v=20261010-clean-product-text"></script>
+  <script src="supabase-config.js"></script><script type="module" src="app.js?v=20261010-category-heading"></script>
 </body>
 </html>

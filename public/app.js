@@ -1952,11 +1952,39 @@ catalog = function () {
       }).join('') + '<button type="button" class="active-catalog-filters__clear" data-clear-catalog-filter="all">Скинути все</button>'
       : '';
   };
+  const renderCatalogHeading = () => {
+    const heading = document.getElementById('catalogTitle');
+    const breadcrumbs = document.getElementById('catalogBreadcrumbs');
+    if (!heading || !breadcrumbs) return;
+    const current = storefrontCategories.find((item) => item.slug === category);
+    const fallbackTitle = saleOnly ? 'Акційні товари' : 'Каталог техніки';
+    if (!current) {
+      heading.textContent = fallbackTitle;
+      breadcrumbs.innerHTML = '<a href="index.html">Головна</a> / ' + (saleOnly ? '<a href="catalog.html">Каталог</a> / Акційні товари' : 'Каталог');
+      return;
+    }
+    const path = [];
+    const visited = new Set();
+    let item = current;
+    while (item && !visited.has(Number(item.id))) {
+      path.unshift(item);
+      visited.add(Number(item.id));
+      item = item.parent_id == null ? null : storefrontCategories.find((candidate) => Number(candidate.id) === Number(item.parent_id));
+    }
+    heading.textContent = current.name;
+    const crumbs = ['<a href="index.html">Головна</a>', '<a href="catalog.html">Каталог</a>'];
+    path.forEach((entry, index) => {
+      const isCurrent = index === path.length - 1;
+      crumbs.push(isCurrent ? escapeHtml(entry.name) : '<a href="catalog.html?category=' + encodeURIComponent(entry.slug) + '">' + escapeHtml(entry.name) + '</a>');
+    });
+    breadcrumbs.innerHTML = crumbs.join(' / ');
+  };
 
   const draw = () => {
     applyProjectorCollection();
     renderScreenSpecificationFilters();
     renderActiveCatalogFilters();
+    renderCatalogHeading();
     const categoryProducts = products.filter((product) => !product.parentProductId && (category === 'all' || storefrontCategoryMatches(product, category)));
     const brands = [...new Map(categoryProducts.map((product) => cleanBrand(product.brand)).filter(Boolean).map((value) => [value.toLocaleLowerCase('uk-UA'), value])).values()].sort((left, right) => left.localeCompare(right, 'uk'));
     const selectedBrand = brand.value;

@@ -1,5 +1,5 @@
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
-import {renderArticleContent,safeArticleUrl} from './article-format.js?v=20261011-editor';
+import {renderArticleContent,safeArticleUrl} from './article-format.js?v=20261011-article-links';
 const supabase=createClient(window.TECHNOROOM_SUPABASE.url,window.TECHNOROOM_SUPABASE.publishableKey);
 const esc=value=>String(value||'').replace(/[&<>"']/g,char=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
 const root=document.querySelector('#articleView'),slug=new URLSearchParams(location.search).get('slug');

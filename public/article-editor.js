@@ -1,4 +1,4 @@
-import {renderArticleContent,serializeArticleContent,sanitizeArticleHtml,plainTextToHtml,safeArticleUrl} from './article-format.js?v=20261011-editor';
+import {renderArticleContent,serializeArticleContent,sanitizeArticleHtml,plainTextToHtml,safeArticleUrl} from './article-format.js?v=20261011-article-links';
 
 export function createArticleEditor(textarea,{uploadImage}={}){
   if(textarea.parentElement.tagName==='LABEL'){

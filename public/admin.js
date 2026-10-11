@@ -1,6 +1,6 @@
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
-import {createArticleEditor} from './article-editor.js?v=20261011-editor';
-import {articleHasContent} from './article-format.js?v=20261011-editor';
+import {createArticleEditor} from './article-editor.js?v=20261011-article-links';
+import {articleHasContent} from './article-format.js?v=20261011-article-links';
 const supabase=createClient(window.TECHNOROOM_SUPABASE.url,window.TECHNOROOM_SUPABASE.publishableKey);
 const state={products:[],orders:[],categories:[],brands:[],promotions:[],banners:[],articles:[],page:1,brandPage:1,selectedProducts:new Set(),categoryTreeOpen:new Set()};
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];

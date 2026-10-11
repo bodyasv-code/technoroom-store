@@ -46,7 +46,24 @@ export function plainTextToHtml(value){
 }
 export function renderArticleContent(value){
   const content=String(value||'');
-  return content.startsWith(marker)?sanitizeArticleHtml(content.slice(marker.length)):plainTextToHtml(content);
+  const root=document.createElement('div');
+  root.innerHTML=content.startsWith(marker)?sanitizeArticleHtml(content.slice(marker.length)):plainTextToHtml(content);
+  const walker=document.createTreeWalker(root,NodeFilter.SHOW_TEXT),nodes=[];
+  while(walker.nextNode())if(!walker.currentNode.parentElement.closest('a'))nodes.push(walker.currentNode);
+  for(const node of nodes){
+    const text=node.textContent,fragment=document.createDocumentFragment();let offset=0;
+    for(const match of text.matchAll(/https?:\/\/[^\s<>"']+/gi)){
+      let address=match[0].replace(/[.,!?;:]+$/,'');
+      // Keep balanced parentheses in URLs, but not surrounding sentence punctuation.
+      while(address.endsWith(')')&&(address.match(/\)/g)||[]).length>(address.match(/\(/g)||[]).length)address=address.slice(0,-1);
+      const href=safeArticleUrl(address);if(!href)continue;
+      fragment.append(document.createTextNode(text.slice(offset,match.index)));
+      const link=document.createElement('a');link.href=href;link.textContent=address;link.target='_blank';link.rel='noopener noreferrer';fragment.append(link);
+      offset=match.index+address.length;
+    }
+    if(offset){fragment.append(document.createTextNode(text.slice(offset)));node.replaceWith(fragment)}
+  }
+  return root.innerHTML;
 }
 export function serializeArticleContent(html){return marker+sanitizeArticleHtml(html)}
 export function articleHasContent(value){

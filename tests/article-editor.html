@@ -1,0 +1,26 @@
+<!doctype html><html lang="uk"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Перевірка редактора статті</title><link rel="stylesheet" href="../public/article-editor.css">
+<style>body{max-width:900px;margin:28px auto;padding:0 20px;font-family:Arial;color:#183451}textarea[hidden]{display:none}#results{white-space:pre-wrap;background:#eef8ef;padding:16px}</style>
+<h1>Редактор статті TECHNOROOM</h1><textarea name="content" hidden></textarea><button id="roundtrip">Перевірити збереження</button><div id="rendered" class="article-rich-content"></div><pre id="results"></pre>
+<script type="module">
+import {createArticleEditor} from '../public/article-editor.js';
+import {renderArticleContent,serializeArticleContent,sanitizeArticleHtml,articleHasContent} from '../public/article-format.js';
+const results=[];
+function check(name,test){if(!test)throw new Error(name);results.push('✓ '+name)}
+const attack='<script>alert(1)</'+'script><svg onload="alert(1)"><circle/></svg><p onclick="alert(1)" style="text-align:center;background:url(x)">Текст <b>жирний</b></p><a href="javascript:alert(1)">Посилання</a><img src="https://example.com/a.jpg" onerror="alert(1)"><iframe src="https://example.com"></iframe>';
+const cleaned=sanitizeArticleHtml(attack);
+check('Скрипти та небезпечні теги прибрані',!/<script|<svg|<iframe|onerror|onclick|javascript:|background/.test(cleaned));
+check('Безпечне форматування збережене',cleaned.includes('<b>жирний</b>')&&cleaned.includes('text-align: center'));
+check('Старий текст не виконується як HTML',renderArticleContent('<img src=x onerror=alert(1)>').includes('&lt;img'));
+check('Порожній текст не приймається',!articleHasContent(serializeArticleContent('<p><br></p>')));
+const html='<h2>Знову до школи</h2><p>Текст із <strong>жирним</strong> та <em>курсивним</em> форматуванням.</p><ul><li>Перший пункт</li><li>Другий пункт</li></ul><p style="text-align:center"><a href="https://technoroom.com.ua">TECHNOROOM</a></p>';
+check('Збереження та повторне відкриття без втрати HTML',renderArticleContent(serializeArticleContent(html))===sanitizeArticleHtml(html));
+const field=document.querySelector('textarea');
+const editor=createArticleEditor(field,{uploadImage:async()=>{throw new Error('У тесті завантаження вимкнено')}});
+editor.setValue('Стара стаття\n\nДругий абзац');
+check('Старі статті відкриваються абзацами',document.querySelectorAll('.article-editor-body p').length===2);
+editor.setValue('Тест форматування');
+document.querySelector('#rendered').innerHTML=renderArticleContent(serializeArticleContent(html));
+document.querySelector('#roundtrip').onclick=()=>{document.querySelector('#rendered').innerHTML=renderArticleContent(editor.getValue());document.querySelector('#results').textContent=results.join('\n')+'\n✓ Поточний текст збережено та відображено нижче'};
+document.querySelector('#results').textContent=results.join('\n');
+</script></html>

@@ -144,6 +144,7 @@ async function home() {
       const applyBanner=(index)=>{
         bannerIndex=(index+activeBanners.length)%activeBanners.length;
         const banner=activeBanners[bannerIndex];
+        hero.classList.toggle('has-long-banner-title',Array.from(banner.title||'').length>90);
         if(copy){
           const title=escapeHtml(banner.title||'TECHNOROOM'), subtitle=escapeHtml(banner.subtitle||''), button=escapeHtml(banner.button_text||'Переглянути');
           copy.innerHTML='<small>TECHNOROOM</small><h1>'+title+'</h1>'+(subtitle?'<p>'+subtitle+'</p>':'')+'<a href="'+escapeHtml(banner.link_url||'catalog.html')+'">'+button+' →</a>';

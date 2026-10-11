@@ -148,8 +148,15 @@ async function home() {
           const title=escapeHtml(banner.title||'TECHNOROOM'), subtitle=escapeHtml(banner.subtitle||''), button=escapeHtml(banner.button_text||'Переглянути');
           copy.innerHTML='<small>TECHNOROOM</small><h1>'+title+'</h1>'+(subtitle?'<p>'+subtitle+'</p>':'')+'<a href="'+escapeHtml(banner.link_url||'catalog.html')+'">'+button+' →</a>';
         }
-        hero.style.backgroundImage=banner.image_url?'linear-gradient(90deg,rgba(8,27,56,.96),rgba(8,27,56,.60)),url("'+String(banner.image_url).replace(/["\\]/g,'')+'")':'';
-        hero.style.backgroundSize=banner.image_url?'cover':''; hero.style.backgroundPosition=banner.image_url?'center':'';
+        hero.style.backgroundImage='';
+        hero.style.backgroundSize=''; hero.style.backgroundPosition='';
+        hero.classList.toggle('has-banner-image',Boolean(banner.image_url));
+        hero.querySelector('.hero-benefits').hidden=true;
+        let bannerVisual=hero.querySelector('.home-banner-visual');
+        if(!bannerVisual){bannerVisual=document.createElement('a');bannerVisual.className='home-banner-visual';hero.append(bannerVisual)}
+        bannerVisual.hidden=!banner.image_url;
+        bannerVisual.href=banner.link_url||'catalog.html';
+        bannerVisual.innerHTML=banner.image_url?'<img src="'+escapeHtml(banner.image_url)+'" alt="'+escapeHtml(banner.title||'Банер TECHNOROOM')+'">':'';
         if(art) art.style.display=banner.image_url?'none':'';
         hero.querySelectorAll('[data-banner-dot]').forEach((dot,position)=>dot.classList.toggle('is-active',position===bannerIndex));
       };

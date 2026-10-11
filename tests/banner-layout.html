@@ -1,0 +1,11 @@
+<!doctype html><html lang="uk"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Перевірка однакової висоти банерів</title><link rel="stylesheet" href="../public/styles.css">
+<body class="store-home"><main class="home-wide"><div class="home-hero has-banner-image"><div class="home-hero-copy"></div><a class="home-banner-visual"><img src="../public/favicon.svg" alt="Тестове зображення"></a></div><button id="short">Короткий банер</button><button id="long">Довгий банер</button><pre id="results"></pre></main>
+<script type="module">
+import {sizeBannerSlides} from '../public/banner-layout.js';
+const banners=[{title:'Epson Print',subtitle:'Back to School'},{title:'РОЗУМНІ КОМПАКТНІ ЛАЗЕРНІ ПРОЄКТОРИ EPSON EPIQVISION. Пориньте в нову епоху домашніх розваг разом із нашими сучасними компактними розумними лазерними проєкторами. Ці проєктори створені, щоб забезпечити неперевершений досвід перегляду, вони поєднують передові технології з елегантним та сучасним дизайном.',subtitle:'Epson PROJECTS'}];
+const hero=document.querySelector('.home-hero'),copy=hero.querySelector('.home-hero-copy');
+const render=b=>'<small>TECHNOROOM</small><h1>'+b.title+'</h1><p>'+b.subtitle+'</p><a href="#">Переглянути →</a>';
+const refresh=sizeBannerSlides(hero,copy,banners,render);let previous=0;
+function apply(index){copy.classList.toggle('has-long-banner-title',banners[index].title.length>90);copy.innerHTML=render(banners[index]);refresh();const height=hero.getBoundingClientRect().height;document.querySelector('#results').textContent=JSON.stringify({height,sameAsPrevious:!previous||Math.abs(height-previous)<1,textFits:copy.scrollHeight<=copy.clientHeight+1,buttonFits:copy.querySelector('a').getBoundingClientRect().bottom<=hero.getBoundingClientRect().bottom},null,2);previous=height}
+document.querySelector('#short').onclick=()=>apply(0);document.querySelector('#long').onclick=()=>apply(1);apply(0);
+</script></body></html>

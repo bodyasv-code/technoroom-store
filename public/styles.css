@@ -316,19 +316,19 @@ body:not(.admin-body){background:#f5f8fc;color:#081b38}
 .store-home .home-stage{grid-template-columns:minmax(0,1fr)!important}
 .store-home .home-hero{width:100%;min-width:0}
 .home-banner-controls{position:absolute;right:18px;bottom:16px;z-index:3;display:flex;align-items:center;gap:10px}.home-banner-controls>button{width:32px;height:32px;border:1px solid rgba(255,255,255,.6);border-radius:50%;background:rgba(6,24,44,.45);color:#fff;cursor:pointer}.home-banner-controls>div{display:flex;gap:6px}.home-banner-controls [data-banner-dot]{width:8px;height:8px;padding:0;border:0;border-radius:50%;background:rgba(255,255,255,.45);cursor:pointer}.home-banner-controls [data-banner-dot].is-active{background:#54b4ff;transform:scale(1.2)}
-.store-home .home-hero.has-banner-image{display:grid;grid-template-columns:minmax(0,38%) minmax(0,62%);height:auto;max-height:none;min-height:320px;overflow:hidden;background:#fff;border:1px solid #e1e8f1}
-.store-home .home-hero.has-banner-image .home-hero-copy{display:flex;flex-direction:column;align-items:flex-start;justify-content:center;align-self:stretch;min-width:0;padding:28px 34px;background:linear-gradient(120deg,#081b38,#10385c);position:relative;z-index:1;overflow:visible}
+.store-home .home-hero.has-banner-image{display:grid;grid-template-columns:minmax(0,38%) minmax(0,62%);height:var(--banner-slide-height,auto);max-height:none;min-height:320px;overflow:hidden;background:linear-gradient(110deg,#081b38,#10385c);border:1px solid #e1e8f1}
+.store-home .home-hero.has-banner-image .home-hero-copy{display:flex;flex-direction:column;align-items:flex-start;justify-content:center;align-self:stretch;min-width:0;padding:28px 34px;background:transparent;position:relative;z-index:1;overflow:visible}
 .store-home .home-hero.has-banner-image .home-hero-copy>*{flex-shrink:0;max-width:100%;white-space:normal}
 .store-home .home-hero.has-banner-image .home-hero-copy small{font-size:10px;letter-spacing:.12em}
 .store-home .home-hero.has-banner-image .home-hero-copy h1{font-size:clamp(24px,2.6vw,36px);line-height:1.12;margin:12px 0;overflow-wrap:anywhere}
-.store-home .home-hero.has-banner-image.has-long-banner-title .home-hero-copy h1{font-size:22px!important;line-height:1.35;letter-spacing:normal}
+.store-home .home-hero.has-banner-image .home-hero-copy.has-long-banner-title h1{font-size:22px!important;line-height:1.35;letter-spacing:normal}
 .store-home .home-hero.has-banner-image .home-hero-copy p{font-size:14px;line-height:1.5;margin:0 0 18px;overflow-wrap:anywhere}
 .store-home .home-hero.has-banner-image .home-hero-copy a{padding:11px 18px;font-size:12px;line-height:1.4;max-width:100%;box-sizing:border-box;overflow-wrap:anywhere}
 .home-hero .hero-benefits[hidden],.home-banner-visual[hidden]{display:none!important}
-.store-home .home-hero .home-banner-visual{position:relative;display:block;align-self:stretch;width:100%;height:auto;min-width:0;min-height:0;overflow:hidden;background:#fff}
+.store-home .home-hero .home-banner-visual{position:relative;display:block;align-self:stretch;width:100%;height:auto;min-width:0;min-height:0;overflow:hidden;background:transparent}
 .store-home .home-hero .home-banner-visual img{position:absolute;inset:0;display:block;width:100%;height:100%;max-width:100%;max-height:100%;object-fit:contain;object-position:center}
 .has-banner-image .home-banner-controls{background:rgba(8,27,56,.85);border-radius:24px;padding:6px}
-@media(max-width:700px){.store-home .home-hero.has-banner-image{grid-template-columns:minmax(0,1fr);grid-template-rows:auto 200px;height:auto;max-height:none}.store-home .home-hero.has-banner-image .home-hero-copy{padding:22px 24px}.store-home .home-hero.has-banner-image .home-hero-copy h1{font-size:26px}.store-home .home-hero.has-banner-image .home-hero-copy p{margin-bottom:14px}.has-banner-image .home-banner-controls{right:8px;bottom:8px;padding:4px;gap:6px}.has-banner-image .home-banner-controls>button{width:26px;height:26px}}
+@media(max-width:700px){.store-home .home-hero.has-banner-image{grid-template-columns:minmax(0,1fr);grid-template-rows:var(--banner-copy-height,auto) 200px;height:var(--banner-slide-height,auto);max-height:none}.store-home .home-hero.has-banner-image .home-hero-copy{padding:22px 24px}.store-home .home-hero.has-banner-image .home-hero-copy h1{font-size:26px}.store-home .home-hero.has-banner-image .home-hero-copy p{margin-bottom:14px}.has-banner-image .home-banner-controls{right:8px;bottom:8px;padding:4px;gap:6px}.has-banner-image .home-banner-controls>button{width:26px;height:26px}}
 .store-home .home-service-strip,.store-home .home-category-cards,.store-home .home-products{min-width:0}
 .store-home .home-product-grid{min-width:0}
 .store-home .home-product-grid .product{min-width:0}

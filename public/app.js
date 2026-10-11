@@ -1,4 +1,5 @@
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
+import {sizeBannerSlides} from './banner-layout.js?v=20261011-uniform';
 
 const supabase = createClient(window.TECHNOROOM_SUPABASE.url, window.TECHNOROOM_SUPABASE.publishableKey);
 const catalogImageStyles = document.createElement('style');
@@ -140,14 +141,19 @@ async function home() {
     const activeBanners=(banners||[]), hero=document.querySelector('.home-hero');
     if(activeBanners.length&&hero){
       const copy=hero.querySelector('.home-hero-copy'), art=hero.querySelector('.home-projector-art');
+      const renderBannerCopy=banner=>{
+        const title=escapeHtml(banner.title||'TECHNOROOM'),subtitle=escapeHtml(banner.subtitle||''),button=escapeHtml(banner.button_text||'Переглянути');
+        return '<small>TECHNOROOM</small><h1>'+title+'</h1>'+(subtitle?'<p>'+subtitle+'</p>':'')+'<a href="'+escapeHtml(banner.link_url||'catalog.html')+'">'+button+' →</a>';
+      };
+      const refreshBannerSize=sizeBannerSlides(hero,copy,activeBanners,renderBannerCopy);
       let bannerIndex=0;
       const applyBanner=(index)=>{
         bannerIndex=(index+activeBanners.length)%activeBanners.length;
         const banner=activeBanners[bannerIndex];
         hero.classList.toggle('has-long-banner-title',Array.from(banner.title||'').length>90);
         if(copy){
-          const title=escapeHtml(banner.title||'TECHNOROOM'), subtitle=escapeHtml(banner.subtitle||''), button=escapeHtml(banner.button_text||'Переглянути');
-          copy.innerHTML='<small>TECHNOROOM</small><h1>'+title+'</h1>'+(subtitle?'<p>'+subtitle+'</p>':'')+'<a href="'+escapeHtml(banner.link_url||'catalog.html')+'">'+button+' →</a>';
+          copy.classList.toggle('has-long-banner-title',Array.from(banner.title||'').length>90);
+          copy.innerHTML=renderBannerCopy(banner);
         }
         hero.style.backgroundImage='';
         hero.style.backgroundSize=''; hero.style.backgroundPosition='';
@@ -159,6 +165,7 @@ async function home() {
         bannerVisual.href=banner.link_url||'catalog.html';
         bannerVisual.innerHTML=banner.image_url?'<img src="'+escapeHtml(banner.image_url)+'" alt="'+escapeHtml(banner.title||'Банер TECHNOROOM')+'">':'';
         if(art) art.style.display=banner.image_url?'none':'';
+        refreshBannerSize();
         hero.querySelectorAll('[data-banner-dot]').forEach((dot,position)=>dot.classList.toggle('is-active',position===bannerIndex));
       };
       if(activeBanners.length>1){

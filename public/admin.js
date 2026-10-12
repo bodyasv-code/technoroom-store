@@ -1,11 +1,11 @@
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
 import {createArticleEditor} from './article-editor.js?v=20261011-article-links';
 import {articleHasContent} from './article-format.js?v=20261011-article-links';
-import {productNameWithSku, officeSupplyCategoryPlan} from './product-identity.js?v=20261012';
+import {productNameWithSku, officeSupplyCategoryPlan, isSpecializedPrinterName} from './product-identity.js?v=20261012-quality-rules';
 import {resolveProjectorSpecifications, normalizeProjectorResolution, isProjectorProduct} from './projector-specs.js?v=20261012-dedup';
 import {resolveEditorBrand} from './brand-editor.js?v=20261012';
 import {normalizeSpecifications} from './specification-normalization.js?v=20261012-dedup';
-import {createQualityAudit, mountQualityPanel} from './catalog-quality.js?v=20261012-quality';
+import {createQualityAudit, mountQualityPanel} from './catalog-quality.js?v=20261012-quality-rules';
 import {createImportAudit, auditEligible, auditMarkup, showImportReview} from './import-audit.js?v=20261012-guard-4';
 const supabase=createClient(window.TECHNOROOM_SUPABASE.url,window.TECHNOROOM_SUPABASE.publishableKey);
 const state={catalogReady:false,products:[],orders:[],categories:[],brands:[],promotions:[],banners:[],articles:[],page:1,brandPage:1,selectedProducts:new Set(),categoryTreeOpen:new Set()};
@@ -537,6 +537,7 @@ supabase.auth.getSession().then(({data:{session}})=>session?dashboard():view('lo
   // кольорові», «Кольорові БФП» тощо. Для таких назв завжди повертаємо
   // постійну внутрішню категорію, а не створюємо ще одну підкатегорію.
   const officeSourceCategoryPlan = (row) => {
+    if(isSpecializedPrinterName(row.name))return null;
     const source = [row.subcategory, row.sourceCategory].map(cleanImportText).join(' ').toLocaleLowerCase('uk-UA');
     const name = cleanImportText(row.name).toLocaleLowerCase('uk-UA');
     // ERC називає одну й ту саму групу надто довго: «Аксесуари та
@@ -560,6 +561,7 @@ supabase.auth.getSession().then(({data:{session}})=>session?dashboard():view('lo
   // Принтери й БФП розкладаємо одразу під час імпорту: кольорові та
   // монохромні моделі не повинні спочатку потрапляти у стару змішану категорію ERC.
   const officeEquipmentCategoryPlan = (row) => {
+    if(isSpecializedPrinterName(row.name))return null;
     // Тип пристрою визначаємо виключно за назвою. Слова на кшталт
     // «scanner» у характеристиках смартфона (наприклад LiDAR Scanner)
     // не повинні перетворювати його на сканер.
@@ -1505,6 +1507,8 @@ supabase.auth.getSession().then(({data:{session}})=>session?dashboard():view('lo
   window.addEventListener('load', mountImportTools, { once: true });
   if (document.readyState !== 'loading') mountImportTools();
   const expectedCategoryFromName = (product) => {
+    // Label/thermal printers are specialized devices, not ordinary office color printers.
+    if(isSpecializedPrinterName(product?.name))return '';
     const supplyPlan = officeSupplyCategoryPlan(product?.name);
     if (supplyPlan) return supplyPlan.childSlug;
     const name = String(product?.name || '').trim().toLocaleLowerCase('uk-UA');

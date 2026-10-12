@@ -1,6 +1,8 @@
 import {auditSku} from './import-audit.js?v=20261012-guard-4';
 import {normalizeSpecificationEntries} from './specification-normalization.js?v=20261012-dedup';
 import {isProjectorProduct, resolveProjectorSpecifications, normalizeProjectorResolution} from './projector-specs.js?v=20261012-dedup';
+import {equivalentSpecification} from './specification-comparison.js?v=20261012-quality-rules';
+import {isSpecializedPrinterName} from './product-identity.js?v=20261012-quality-rules';
 
 export const qualityLabels = {duplicate_sku:'Повтор SKU', conflict:'Суперечливі характеристики', no_brand:'Без бренду', no_image:'Без фото', no_price:'Без ціни', category:'Перевірити категорію', filters:'Неповні фільтри'};
 const text = value => String(value ?? '').trim();
@@ -20,7 +22,7 @@ export function createQualityAudit(products, categories=[], brands=[], expectedC
     else if(target&&target!==product.category&&categoryMap.has(target))add('category','За назвою може підходити «'+categoryMap.get(target).name+'». Зараз: «'+current.name+'». Потрібна ручна перевірка.');
     const projector=isProjectorProduct(product), entries=normalizeSpecificationEntries(product.specifications,{projector}), grouped=new Map();
     for(const [key,value] of entries){const folded=normalized(key).replace(/\s*\(інше значення \d+\)$/u,'');if(!grouped.has(folded))grouped.set(folded,[]);grouped.get(folded).push({key,value});}
-    const conflicts=[...grouped.values()].filter(group=>group.length>1);
+    const conflicts=[...grouped.values()].filter(group=>group.some((item,index)=>group.slice(index+1).some(other=>!equivalentSpecification(group[0].key.replace(/\s*\(інше значення \d+\)$/u,''),item.value,other.value,{projector}))));
     if(conflicts.length)add('conflict',conflicts.map(group=>group[0].key+': '+group.map(item=>Array.isArray(item.value)?item.value.join(', '):text(item.value)).join(' / ')).join('; '));
     if(projector){
       const spec=resolveProjectorSpecifications(product), missing=[];
@@ -29,7 +31,7 @@ export function createQualityAudit(products, categories=[], brands=[], expectedC
       if(!text(spec['Джерело світла']))missing.push('джерело світла');
       if(!text(spec['Призначення']))missing.push('призначення');
       if(missing.length)add('filters','Для проєктора не визначено: '+missing.join(', ')+'.');
-    }else if(/^(?:office-printers|office-mfp|office-wide-format)(?:-|$)/u.test(text(product.category))){
+    }else if(!isSpecializedPrinterName(product.name)&&/^(?:office-printers|office-mfp|office-wide-format)(?:-|$)/u.test(text(product.category))){
       const spec=new Map(entries.map(([key,value])=>[normalized(key),text(value)])), missing=[];
       if(!spec.get('тип друку')&&!spec.get('кольоровість'))missing.push('кольоровість');
       if(!spec.get('технологія друку')&&!spec.get('технологія'))missing.push('технологія друку');

@@ -9,6 +9,11 @@ export function productNameWithSku(value = '', sku = '') {
   return name + ' (' + code + ')';
 }
 
+export function isSpecializedPrinterName(value = '') {
+  const name=String(value??'').trim();
+  return /^(?:принтер|printer)(?=\s|$)/iu.test(name) && /етикет|\blabels?\b|термо|\bthermal\b|\bcolorworks\b/iu.test(name);
+}
+
 export function officeSupplyCategoryPlan(value = '') {
   const name = String(value ?? '').trim().toLocaleLowerCase('uk-UA');
   if (/^(?:термо[еэ]тикет|термічн[а-яіїєґ]*\s+етикет|thermal\s+labels?)/iu.test(name)) {

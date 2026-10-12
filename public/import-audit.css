@@ -1,0 +1,8 @@
+.import-audit-issues{list-style:none;display:grid;gap:6px;margin:10px 0 0;padding:0;max-width:440px;white-space:normal}
+.import-audit-issues li{padding:8px 10px;border-radius:7px;font-size:12px;line-height:1.5;background:#fff4dc;color:#845511;border-left:3px solid #eab348}
+.import-audit-issues .is-block{background:#fff0f0;color:#a13238;border-color:#e77379}
+.import-audit-issues .is-review{background:#eef5ff;color:#265d97;border-color:#73a9ea}
+.import-audit-ok{display:block;margin-top:9px;color:#258242;font-size:12px}
+.import-audit-review{display:block;margin-top:10px;border:1px solid #b4d0f0;border-radius:7px;padding:8px 12px;background:#f1f7ff;color:#1467b4;cursor:pointer;font:700 12px Manrope,Arial,sans-serif}
+.import-audit-reviewed{display:block;margin-top:8px;color:#258242;font-size:12px}
+#supplierImportRows tr:has(.is-block){background:#fffafa}

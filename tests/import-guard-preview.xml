@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Preview only. Do not import these synthetic test records into production. -->
+<catalog>
+  <goods><code>TEST-GUARD-DUP</code><gname>Картридж тестовий A</gname><category>Витратні матеріали для друку</category><subcategory>Картриджі</subcategory><price>500</price></goods>
+  <goods><code>test-guard-dup</code><gname>Картридж тестовий B</gname><category>Витратні матеріали для друку</category><subcategory>Картриджі</subcategory><price>600</price></goods>
+  <goods><code>TEST-GUARD-PRINT</code><gname>Принтер тестовий монохромний</gname><subcategory>Принтери кольорові</subcategory><price>8000</price><attribute name="Тип друку">Кольоровий</attribute></goods>
+  <goods><code>TEST-GUARD-DRAFT</code><gname>Картридж тестовий без ціни</gname><subcategory>Картриджі</subcategory></goods>
+  <goods><code>TEST-GUARD-REVIEW</code><gname>Принтер тестовий невідомий тип друку</gname><subcategory>Принтери</subcategory><price>9000</price></goods>
+  <goods><gname>Картридж тестовий без SKU</gname><subcategory>Картриджі</subcategory><price>300</price></goods>
+</catalog>

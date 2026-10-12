@@ -1,0 +1,6 @@
+<!doctype html><html lang="uk"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Перевірка якості каталогу — тест</title><link rel="stylesheet" href="../public/catalog-quality.css"><style>body{margin:0;padding:30px;background:#f5f8fc;font-family:Arial,sans-serif;color:#10243e}main{max-width:1100px;margin:auto}@media(max-width:640px){body{padding:16px}}</style><main id="quality"></main><dialog id="edit"><p id="edited"></p><button id="close">Закрити</button></dialog><script type="module">
+import {createQualityAudit,mountQualityPanel} from '../public/catalog-quality.js';
+const products=Array.from({length:24},(_,index)=>({id:index+1,name:index===0?'Проєктор Epson EB-X':'Тестовий товар '+(index+1),sku:index<2?'DUPE':'TEST-'+index,brand:'Epson',category:'projectors',is_active:index!==1,price:index===2?0:15000,image_path:index%3?'test.jpg':'',specifications:{'Контраст':'1000:1','Контраст:':index===0?'2000:1':'1000:1'}}));
+const update=mountQualityPanel(document.getElementById('quality'),id=>{document.getElementById('edited').textContent='Редагування тестового товару ID '+id;document.getElementById('edit').showModal();});
+update(createQualityAudit(products,[{slug:'projectors',name:'Проєктори'}]));document.getElementById('close').onclick=()=>document.getElementById('edit').close();
+</script></html>

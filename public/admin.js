@@ -5,6 +5,7 @@ import {productNameWithSku, officeSupplyCategoryPlan} from './product-identity.j
 import {resolveProjectorSpecifications, normalizeProjectorResolution, isProjectorProduct} from './projector-specs.js?v=20261012-dedup';
 import {resolveEditorBrand} from './brand-editor.js?v=20261012';
 import {normalizeSpecifications} from './specification-normalization.js?v=20261012-dedup';
+import {createQualityAudit, mountQualityPanel} from './catalog-quality.js?v=20261012-quality';
 import {createImportAudit, auditEligible, auditMarkup, showImportReview} from './import-audit.js?v=20261012-guard-4';
 const supabase=createClient(window.TECHNOROOM_SUPABASE.url,window.TECHNOROOM_SUPABASE.publishableKey);
 const state={catalogReady:false,products:[],orders:[],categories:[],brands:[],promotions:[],banners:[],articles:[],page:1,brandPage:1,selectedProducts:new Set(),categoryTreeOpen:new Set()};
@@ -1553,5 +1554,13 @@ supabase.auth.getSession().then(({data:{session}})=>session?dashboard():view('lo
     });
   };
 const renderAllWithCatalogAudit = renderAll;
-renderAll = () => { renderAllWithCatalogAudit(); renderCatalogAudit(); renderCategoryIntegrityAudit(); };
+let updateQualityPanel;
+const renderQualityAudit=()=>{
+  const host=$('#quality');if(!host)return;
+  if(!updateQualityPanel)updateQualityPanel=mountQualityPanel(host,id=>{const product=state.products.find(p=>Number(p.id)===id);if(product)productDialog(product);});
+  const audit=createQualityAudit(state.products,state.categories,state.brands,expectedCategoryFromName);
+  updateQualityPanel(audit);
+  $('#qualityNavCount').textContent=audit.filter(row=>row.product.is_active&&row.issues.length).length;
+};
+renderAll = () => { renderAllWithCatalogAudit(); renderCatalogAudit(); renderCategoryIntegrityAudit(); renderQualityAudit(); };
 })();

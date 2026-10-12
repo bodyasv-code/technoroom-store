@@ -4,7 +4,7 @@ import {articleHasContent} from './article-format.js?v=20261011-article-links';
 import {productNameWithSku, officeSupplyCategoryPlan} from './product-identity.js?v=20261012';
 import {createImportAudit, auditEligible, auditMarkup} from './import-audit.js?v=20261012-guard-2';
 const supabase=createClient(window.TECHNOROOM_SUPABASE.url,window.TECHNOROOM_SUPABASE.publishableKey);
-const state={products:[],orders:[],categories:[],brands:[],promotions:[],banners:[],articles:[],page:1,brandPage:1,selectedProducts:new Set(),categoryTreeOpen:new Set()};
+const state={catalogReady:false,products:[],orders:[],categories:[],brands:[],promotions:[],banners:[],articles:[],page:1,brandPage:1,selectedProducts:new Set(),categoryTreeOpen:new Set()};
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 // Product data often contains long descriptions and many specifications. Keep the
 // editor wide enough to make those fields practical without affecting other dialogs.
@@ -39,7 +39,7 @@ const inventory=p=>p.availability_status||((p.in_stock&&Number(p.stock_quantity|
 async function allProducts(){const a=[];for(let from=0;;from+=1000){const r=await supabase.from('products').select('*').order('created_at',{ascending:false}).range(from,from+999);if(r.error)throw r.error;a.push(...(r.data||[]));if(!r.data||r.data.length<1000)break}return a}
 async function loadArticles(){const result=await supabase.from('articles').select('*').order('published_at',{ascending:false}).order('created_at',{ascending:false});if(result.error){if(['42P01','PGRST205'].includes(result.error.code))return [];throw result.error}return result.data||[]}
 async function loadData(){
- try{const [products,orders,categories,brands,promotions,banners,articles]=await Promise.all([allProducts(),supabase.from('orders').select('*,order_items(product_name,quantity,unit_price)').order('created_at',{ascending:false}),supabase.from('categories').select('*').order('sort_order').order('name'),supabase.from('brands').select('*').order('name'),supabase.from('promotions').select('*').order('created_at',{ascending:false}),supabase.from('banners').select('*').order('sort_order').order('created_at',{ascending:false}),loadArticles()]);for(const r of [orders,categories,brands,promotions,banners])if(r.error)throw r.error;state.products=products;state.orders=orders.data||[];state.categories=categories.data||[];state.brands=brands.data||[];state.promotions=promotions.data||[];state.banners=banners.data||[];state.articles=articles;renderAll()}catch(e){notice('Помилка завантаження адмінки: '+e.message,true)}
+ try{const [products,orders,categories,brands,promotions,banners,articles]=await Promise.all([allProducts(),supabase.from('orders').select('*,order_items(product_name,quantity,unit_price)').order('created_at',{ascending:false}),supabase.from('categories').select('*').order('sort_order').order('name'),supabase.from('brands').select('*').order('name'),supabase.from('promotions').select('*').order('created_at',{ascending:false}),supabase.from('banners').select('*').order('sort_order').order('created_at',{ascending:false}),loadArticles()]);for(const r of [orders,categories,brands,promotions,banners])if(r.error)throw r.error;state.products=products;state.orders=orders.data||[];state.categories=categories.data||[];state.brands=brands.data||[];state.promotions=promotions.data||[];state.banners=banners.data||[];state.articles=articles;state.catalogReady=true;renderAll();document.dispatchEvent(new Event('technoroom:admin-catalog-loaded'))}catch(e){notice('Помилка завантаження адмінки: '+e.message,true)}
 }
 function renderMetrics(){const active=state.products.filter(p=>p.is_active).length,newOrders=state.orders.filter(o=>o.status==='new').length,revenue=state.orders.filter(o=>o.status!=='cancelled').reduce((s,o)=>s+Number(o.total||0),0);$('#productMetric').textContent=active;$('#productMetricHint').textContent='із '+state.products.length+' усіх товарів';$('#orderMetric').textContent=newOrders;$('#orderMetricHint').textContent=newOrders?'потребують уваги':'нових заявок немає';$('#revenueMetric').textContent=money(revenue);$('#lowStockMetric').textContent=state.products.filter(p=>Number(p.stock_quantity||0)<=3).length;$('#productsNavCount').textContent=state.products.length||'';$('#ordersNavCount').textContent=newOrders||''}
 const missingCategory=p=>!p.category||!state.categories.some(c=>c.slug===p.category);
@@ -258,6 +258,7 @@ supabase.auth.getSession().then(({data:{session}})=>session?dashboard():view('lo
 (() => {
   const importer = { rows: [], selected: new Set(), page: 1, prices: new Map(), meta: new Map(), report: null };
   const reviewedImports = new Set();
+  let importRunning = false;
   let assessImport;
   const importAssessment = row => (assessImport ||= createImportAudit(importer.rows,state.products))(row,importRowMeta(row));
   const canImportRow = row => auditEligible(importAssessment(row),reviewedImports);
@@ -1025,6 +1026,8 @@ supabase.auth.getSession().then(({data:{session}})=>session?dashboard():view('lo
   const updateImportSelectionSummary = () => {
     const target = $('#supplierImportSelectedCount');
     if (target) target.textContent = importer.selected.size;
+    const apply=$('#supplierImportApply');
+    if(apply) {apply.disabled=importRunning || !state.catalogReady || !importer.selected.size; apply.title=!state.catalogReady?'Дочекайтеся завантаження каталогу для перевірки SKU':'Імпортувати перевірені вибрані позиції';}
   };
   const importFilteredRows = (existing = knownBySku()) => {
     const query = txt($('#supplierImportSearch')?.value || '');
@@ -1069,6 +1072,7 @@ supabase.auth.getSession().then(({data:{session}})=>session?dashboard():view('lo
         : (plannedCategory ? `Буде створено: ${plannedCategory.childName || plannedCategory.rootName}` : 'Немає зіставлення');
       return `<tr><td><input type="checkbox" data-import-select="${esc(row.key)}" ${importer.selected.has(row.key) ? 'checked ' : ''}${disabled ? 'disabled' : ''}></td><td><b>${esc(row.name)}</b><small>${esc(sourceInfo || 'Постачальник не вказаний')}</small></td><td>${esc(row.sku || '—')}</td><td>${esc(categoryLabel)}</td><td>${Object.keys(row.specifications).length} хар. · ${row.images.length} фото${row.hasPrice ? '' : ' · без ціни'}${auditMarkup(assessment,esc)}${assessment.needsReview && !assessment.blocked ? (reviewedImports.has(assessment.fingerprint) ? '<span class="import-audit-reviewed">✓ Перевірено вручну</span>' : '<button type="button" class="import-audit-review" data-review-import="'+esc(row.key)+'">Перевірити позицію</button>') : ''}</td><td><span class="visibility ${group === 'update' ? 'visible' : group === 'problem' ? 'hidden-status' : ''}">${mode}</span></td></tr>`;
     }).join('') : `<tr><td colspan="6" class="empty-row">${importer.rows.length ? 'За заданими умовами товарів не знайдено' : 'Даних для імпорту немає'}</td></tr>`;
+    updateImportSelectionSummary();
   };
   const parseFile = (content) => {
     const isAsbis = /<ProductCatalog(?:\s|>)/i.test(content);
@@ -1233,6 +1237,8 @@ supabase.auth.getSession().then(({data:{session}})=>session?dashboard():view('lo
     }
   };
   const importSelected = async () => {
+    if(importRunning) return;
+    if(!state.catalogReady) return importerStatus('Дочекайтеся повного завантаження каталогу: без нього перевірка повторів SKU неповна.',true);
     assessImport = createImportAudit(importer.rows,state.products);
     const selectedRows = importer.rows.filter((row) => importer.selected.has(row.key));
     if (!selectedRows.length) return importerStatus('Виберіть хоча б один товар.', true);
@@ -1251,7 +1257,7 @@ supabase.auth.getSession().then(({data:{session}})=>session?dashboard():view('lo
     const unmapped = importer.rows.filter((row) => !importRowMeta(row).mapped).length;
     const skipped = importer.rows.filter((row) => !selectedKeys.has(row.key) && importRowMeta(row).mapped).length;
     const reportBase = { attempted: selectedRows.length, total: importer.rows.length, skipped, unmapped, missing: missingFromSourceFile().length };
-    const button = $('#supplierImportApply'); button.disabled = true; button.textContent = 'Імпорт…';
+    const button = $('#supplierImportApply'); importRunning=true; button.disabled = true; button.textContent = 'Імпорт…';
     importerStatus(`Починаю імпорт: 0 із ${selectedRows.length}. Не закривайте сторінку до завершення.`);
     try {
     for (const [index, row] of selectedRows.entries()) {
@@ -1313,7 +1319,8 @@ supabase.auth.getSession().then(({data:{session}})=>session?dashboard():view('lo
       renderImportReport();
       importerStatus(`Імпорт зупинено: ${error.message || error.code || 'невідома помилка'}. Створено: ${created}, оновлено: ${updated}.`, true);
     } finally {
-      button.disabled = false;
+      importRunning = false;
+      updateImportSelectionSummary();
       button.textContent = 'Імпортувати вибрані';
     }
   };
@@ -1323,6 +1330,8 @@ supabase.auth.getSession().then(({data:{session}})=>session?dashboard():view('lo
     anchor.insertAdjacentHTML('afterend', `<section class="admin-section" id="supplierImport"><div class="admin-title"><div><h2>Імпорт ERC та ASBIS XML</h2><span>Товари, характеристики, ціни, залишки та посилання на фото від постачальників</span></div></div><p class="recovery-help"><b>ERC:</b> оберіть лише основний XML-файл — імпорт працює як раніше. <b>ASBIS:</b> оберіть <b>itemList.xml</b> і додатково <b>PriceAvail.xml</b>; вони з’єднаються за SKU. Позиції з дублікатами SKU або явними суперечностями заблоковано. Зміни категорії треба перевірити вручну. Товари без ціни створюються лише як приховані чернетки. Характеристики додаються лише до порожніх полів, а вручну внесені значення залишаються без змін. <b>Контент ERC Excel</b> лише доповнює вже вибрані позиції за SKU — не створює товарів або категорій.</p><div class="admin-controls"><label>Основний XML (ERC або ASBIS itemList) <input id="supplierImportFile" type="file" accept=".xml,application/xml,text/xml"></label><label>Ціни та наявність ASBIS — необов’язково <input id="supplierImportPriceFile" type="file" accept=".xml,application/xml,text/xml"></label><label>Контент ERC Excel — необов’язково <input id="supplierImportContentFile" type="file" accept=".xlsx,.xls,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel"></label><input id="supplierImportLimit" type="number" min="1" max="100" value="50" title="Товарів на сторінці попереднього перегляду"></div><div class="admin-controls"><label>Пошук у попередньому перегляді <input id="supplierImportSearch" type="search" placeholder="Назва, SKU, бренд або категорія" autocomplete="off"></label><label>Показати <select id="supplierImportStatus"><option value="all">Усі товари</option><option value="new">Нові товари</option><option value="update">Оновити наявні</option><option value="ready">Готові до імпорту</option><option value="problem">Потребують уваги</option></select></label></div><div class="admin-controls"><button class="button outline" type="button" id="supplierImportBrands">Створити відсутні бренди</button><button class="button outline" type="button" id="supplierImportSelectNew">Вибрати нові на сторінці</button><button class="button outline" type="button" id="supplierImportSelectVisible">Вибрати всі на сторінці</button><button class="button outline" type="button" id="supplierImportSelectMatched">Виділити всі знайдені (до 100)</button><button class="button outline" type="button" id="supplierImportClear">Очистити вибір</button><label class="check"><input id="supplierImportSpecifications" type="checkbox" checked> Додати відсутні характеристики</label><label class="check"><input id="supplierImportImages" type="checkbox"> Додати доступні фото</label><label class="check"><input id="supplierImportPublish" type="checkbox"> Публікувати нові товари</label><button class="button primary" type="button" id="supplierImportApply">Імпортувати вибрані</button></div><p class="admin-message" id="supplierImportMessage" hidden></p><p class="recovery-help" id="supplierImportSummary">Оберіть XML-файл для попереднього перегляду.</p><div id="supplierImportReport" class="import-report" hidden></div><div class="admin-controls" id="supplierImportPagination" hidden></div><div class="admin-table-wrap"><table><thead><tr><th></th><th>Товар / джерело</th><th>SKU</th><th>Категорія</th><th>Дані джерела</th><th>Дія</th></tr></thead><tbody id="supplierImportRows"></tbody></table></div></section>`);
     document.querySelector('.admin-nav').insertAdjacentHTML('beforeend', '<a href="#supplierImport">Імпорт ERC / ASBIS</a>');
     const section = $('#supplierImport');
+    document.addEventListener('technoroom:admin-catalog-loaded', () => {importer.meta.clear();renderImportPreview();});
+    updateImportSelectionSummary();
     section.addEventListener('click', event => {
       const button=event.target.closest('[data-review-import]');
       if(!button) return;

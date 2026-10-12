@@ -7,6 +7,8 @@ const codes=result=>result.issues.map(issue=>issue.code);
 assert.equal(check(row()).blocked,false);
 assert.equal(check(row()).issues.length,0);
 assert.equal(check(row({sku:''})).blocked,true);
+assert(codes(check(row({sku:'NULL'}))).includes('missing-sku'));
+assert(codes(check(row({sku:'undefined'}))).includes('missing-sku'));
 assert.equal(check(row({name:''})).blocked,true);
 assert.equal(check(row(),[],{mapped:false}).blocked,true);
 assert(codes(check(row({price:-1}))).includes('invalid-price'));

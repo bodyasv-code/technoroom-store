@@ -1,5 +1,8 @@
 import {officeSupplyCategoryPlan} from './product-identity.js?v=20261012';
-export const auditSku = value => String(value ?? '').trim().replace(/^\*+|\*+$/g,'').toUpperCase();
+export const auditSku = value => {
+  const sku=String(value ?? '').trim().replace(/^\*+|\*+$/g,'').toUpperCase();
+  return /^(?:NULL|UNDEFINED|NONE|—|-)$/.test(sku) ? '' : sku;
+};
 const text = value => String(value ?? '').trim().toLocaleLowerCase('uk-UA');
 const mode = value => {
   const source = text(value);

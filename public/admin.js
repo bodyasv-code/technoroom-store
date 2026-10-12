@@ -2,7 +2,7 @@ import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js
 import {createArticleEditor} from './article-editor.js?v=20261011-article-links';
 import {articleHasContent} from './article-format.js?v=20261011-article-links';
 import {productNameWithSku, officeSupplyCategoryPlan} from './product-identity.js?v=20261012';
-import {createImportAudit, auditEligible, auditMarkup} from './import-audit.js?v=20261012-guard';
+import {createImportAudit, auditEligible, auditMarkup} from './import-audit.js?v=20261012-guard-2';
 const supabase=createClient(window.TECHNOROOM_SUPABASE.url,window.TECHNOROOM_SUPABASE.publishableKey);
 const state={products:[],orders:[],categories:[],brands:[],promotions:[],banners:[],articles:[],page:1,brandPage:1,selectedProducts:new Set(),categoryTreeOpen:new Set()};
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
@@ -262,7 +262,7 @@ supabase.auth.getSession().then(({data:{session}})=>session?dashboard():view('lo
   const importAssessment = row => (assessImport ||= createImportAudit(importer.rows,state.products))(row,importRowMeta(row));
   const canImportRow = row => auditEligible(importAssessment(row),reviewedImports);
   const supportedImageHosts = new Set(['www.tradeinn.com','www.audiotrends.com.au','static-ecapac.acer.com','media4home.com.pl','media.sonos.com','images.samsung.com','assets2.razerzone.com','d7qztf2ityad6.cloudfront.net','hp.widen.net','img06.en25.com','koss.com.ua','ssl-product-images.www8-hp.com','www.3ona51.com','www.hp.com','www.koss.com','yugcontract.ua','www.it4profit.com','content.it4profit.com','erc.ua','www.erc.ua']);
-  const cleanImportText = (value = '') => String(value).replace(/\s+/g, ' ').trim();
+  const cleanImportText = (value = '') => String(value ?? '').replace(/\s+/g, ' ').trim();
   const decodeEntities = (value = '') => {
     let text = String(value || '');
     for (let pass = 0; pass < 3; pass += 1) {

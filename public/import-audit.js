@@ -1,4 +1,4 @@
-import {officeSupplyCategoryPlan} from './product-identity.js?v=20261012';
+import {officeSupplyCategoryPlan} from './product-identity.js?v=20261012-consumables-brands';
 export const auditSku = value => {
   const sku=String(value ?? '').trim().replace(/^\*+|\*+$/g,'').toUpperCase();
   return /^(?:NULL|UNDEFINED|NONE|—|-)$/.test(sku) ? '' : sku;

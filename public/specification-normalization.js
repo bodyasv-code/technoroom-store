@@ -1,3 +1,4 @@
+import {comparableSpecificationValue} from './specification-values.js?v=20261012-spec-format';
 const cleanLabel = raw => String(raw ?? '').normalize('NFKC').trim().replace(/\s+/g, ' ').replace(/\s*[:：]+\s*$/u, '');
 const folded = raw => cleanLabel(raw).toLocaleLowerCase('uk-UA');
 const projectorAliases = new Map([
@@ -7,14 +8,6 @@ const projectorAliases = new Map([
   ['Проекційне співвідношення', ['Проекційне відношення', 'Проєкційне співвідношення', 'Throw ratio', 'Projection ratio']],
   ['Джерело світла', ['Тип джерела', 'Джерело світла (тип, термін роботи)', 'Light source']]
 ].flatMap(([canonical, aliases]) => [canonical, ...aliases].map(alias => [folded(alias), canonical])));
-
-function comparable(raw, key) {
-  const value = Array.isArray(raw) ? raw.join(' · ') : String(raw ?? '');
-  let result = value.normalize('NFKC').trim().toLocaleLowerCase('uk-UA').replace(/\s+/g, ' ').replace(/(\d)\s*[xх×]\s*(?=\d)/gu, '$1×');
-  // Units are implicit only for the brightness field; do not strip units from arbitrary specs.
-  if (key === 'Яскравість') result = result.replace(/\s*(?:лм|lm)\s*$/u, '');
-  return result;
-}
 
 export function normalizeSpecificationEntries(specifications = {}, {projector = false} = {}) {
   const entries = [], seen = new Set();
@@ -26,7 +19,7 @@ export function normalizeSpecificationEntries(specifications = {}, {projector = 
   for (const [rawKey, rawValue] of source) {
     const label = cleanLabel(rawKey);
     const key = projector ? projectorAliases.get(folded(label)) || label : label;
-    const comparison = comparable(rawValue, key);
+    const comparison = comparableSpecificationValue(key,rawValue);
     if (!key || !comparison) continue;
     const identity = folded(key) + '\u0000' + comparison;
     if (seen.has(identity)) continue;

@@ -1,4 +1,4 @@
-import {normalizeSpecifications} from './specification-normalization.js?v=20261012-dedup';
+import {normalizeSpecifications} from './specification-normalization.js?v=20261012-spec-format';
 const value = item => Array.isArray(item) ? item.join(' · ') : String(item ?? '');
 const get = (specifications, keys) => {
   const entries=Object.entries(specifications||{});

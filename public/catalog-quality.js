@@ -1,8 +1,8 @@
-import {auditSku} from './import-audit.js?v=20261012-guard-4';
-import {normalizeSpecificationEntries} from './specification-normalization.js?v=20261012-dedup';
-import {isProjectorProduct, resolveProjectorSpecifications, normalizeProjectorResolution} from './projector-specs.js?v=20261012-light-source';
-import {equivalentSpecification} from './specification-comparison.js?v=20261012-light-source';
-import {isSpecializedPrinterName} from './product-identity.js?v=20261012-quality-rules';
+import {auditSku} from './import-audit.js?v=20261012-consumables-brands';
+import {normalizeSpecificationEntries} from './specification-normalization.js?v=20261012-spec-format';
+import {isProjectorProduct, resolveProjectorSpecifications, normalizeProjectorResolution} from './projector-specs.js?v=20261012-spec-format';
+import {equivalentSpecification} from './specification-comparison.js?v=20261012-spec-format';
+import {isSpecializedPrinterName,officeSupplyCategoryPlan} from './product-identity.js?v=20261012-consumables-brands';
 
 export const qualityLabels = {duplicate_sku:'Повтор SKU', conflict:'Суперечливі характеристики', no_brand:'Без бренду', no_image:'Без фото', no_price:'Без ціни', category:'Перевірити категорію', filters:'Неповні фільтри'};
 const text = value => String(value ?? '').trim();
@@ -17,7 +17,8 @@ export function createQualityAudit(products, categories=[], brands=[], expectedC
     if(!text(product.brand)&&!brandIds.has(Number(product.brand_id)))add('no_brand','Не вказано бренд і немає зв’язку з довідником брендів.');
     if(!text(product.image_path)&&!(Array.isArray(product.image_paths)&&product.image_paths.some(path=>text(path))))add('no_image','Немає головного фото або фото в галереї.');
     if(!Number.isFinite(Number(product.price))||Number(product.price)<=0)add('no_price','Ціна відсутня, нульова або некоректна.');
-    const current=categoryMap.get(product.category), target=expectedCategory(product);
+    const supply=officeSupplyCategoryPlan(product.name,product.category);
+    const current=categoryMap.get(product.category), target=supply?.childSlug||expectedCategory(product);
     if(!current)add('category','Категорія відсутня або не знайдена в довіднику.');
     else if(target&&target!==product.category&&categoryMap.has(target))add('category','За назвою може підходити «'+categoryMap.get(target).name+'». Зараз: «'+current.name+'». Потрібна ручна перевірка.');
     const projector=isProjectorProduct(product), entries=normalizeSpecificationEntries(product.specifications,{projector}), grouped=new Map();
@@ -31,7 +32,7 @@ export function createQualityAudit(products, categories=[], brands=[], expectedC
       if(!text(spec['Джерело світла']))missing.push('джерело світла');
       if(!text(spec['Призначення']))missing.push('призначення');
       if(missing.length)add('filters','Для проєктора не визначено: '+missing.join(', ')+'.');
-    }else if(!isSpecializedPrinterName(product.name)&&/^(?:office-printers|office-mfp|office-wide-format)(?:-|$)/u.test(text(product.category))){
+    }else if(!supply&&!isSpecializedPrinterName(product.name)&&/^(?:office-printers|office-mfp|office-wide-format)(?:-|$)/u.test(text(product.category))){
       const spec=new Map(entries.map(([key,value])=>[normalized(key),text(value)])), missing=[];
       if(!spec.get('тип друку')&&!spec.get('кольоровість'))missing.push('кольоровість');
       if(!spec.get('технологія друку')&&!spec.get('технологія'))missing.push('технологія друку');

@@ -14,8 +14,19 @@ export function isSpecializedPrinterName(value = '') {
   return /^(?:принтер|printer)(?=\s|$)/iu.test(name) && /етикет|\blabels?\b|термо|\bthermal\b|\bcolorworks\b/iu.test(name);
 }
 
-export function officeSupplyCategoryPlan(value = '') {
+export function officeSupplyCategoryPlan(value = '', currentCategory = '') {
   const name = String(value ?? '').trim().toLocaleLowerCase('uk-UA');
+  const root={rootSlug:'office-consumables',rootName:'Витратні матеріали для друку'};
+  // Leading product type wins over MFP/printer models mentioned as compatibility.
+  if(/^(?:тонер(?:[\s-]+картридж)?|toner(?:[\s-]+cartridge)?)(?=\s|$|[-(])/iu.test(name))return {...root,childSlug:'office-consumables-toner',childName:'Тонери та тонер-картриджі'};
+  if(/^(?:картридж\s+(?:зі?|із)\s+стрічкою|ribbon\s+cartridge)(?=\s|$|[-(])/iu.test(name))return {...root,childSlug:'office-consumables-ribbons',childName:'Стрічки для принтерів'};
+  if(/^(?:картридж|cartridge)(?=\s|$|[-(])/iu.test(name)){
+    // A generic cartridge title does not justify moving an already classified ink/toner.
+    if(['office-consumables-ink','office-consumables-toner','office-consumables-ribbons','office-consumables-drums'].includes(currentCategory))return null;
+    return {...root,childSlug:'office-consumables-cartridges',childName:'Картриджі'};
+  }
+  if(/^(?:фотобарабан|drum(?:\s+unit)?|imaging\s+drum)(?=\s|$|[-(])/iu.test(name))return {...root,childSlug:'office-consumables-drums',childName:'Фотобарабани'};
+  if(/^(?:чорнил[ао]|ink\s+(?:bottle|tank)|контейнер\s+(?:з\s+)?чорнилами)(?=\s|$|[-(])/iu.test(name))return {...root,childSlug:'office-consumables-ink',childName:'Чорнила та контейнери'};
   if (/^(?:термо[еэ]тикет|термічн[а-яіїєґ]*\s+етикет|thermal\s+labels?)/iu.test(name)) {
     return {rootSlug:'office-consumables',rootName:'Витратні матеріали для друку',childSlug:'office-consumables-labels',childName:'Етикетки та термоетикетки'};
   }

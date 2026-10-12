@@ -1,12 +1,13 @@
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
 import {createArticleEditor} from './article-editor.js?v=20261011-article-links';
 import {articleHasContent} from './article-format.js?v=20261011-article-links';
-import {productNameWithSku, officeSupplyCategoryPlan, isSpecializedPrinterName} from './product-identity.js?v=20261012-quality-rules';
-import {resolveProjectorSpecifications, normalizeProjectorResolution, isProjectorProduct, normalizeProjectorLightSource} from './projector-specs.js?v=20261012-light-source';
+import {productNameWithSku, officeSupplyCategoryPlan, isSpecializedPrinterName} from './product-identity.js?v=20261012-consumables-brands';
+import {resolveProjectorSpecifications, normalizeProjectorResolution, isProjectorProduct, normalizeProjectorLightSource} from './projector-specs.js?v=20261012-spec-format';
 import {resolveEditorBrand} from './brand-editor.js?v=20261012';
-import {normalizeSpecifications} from './specification-normalization.js?v=20261012-dedup';
-import {createQualityAudit, mountQualityPanel} from './catalog-quality.js?v=20261012-light-source';
-import {createImportAudit, auditEligible, auditMarkup, showImportReview} from './import-audit.js?v=20261012-guard-4';
+import {normalizeSpecifications} from './specification-normalization.js?v=20261012-spec-format';
+import {canonicalBrandName, brandConsolidationPlan} from './brand-normalization.js?v=20261012-consumables-brands';
+import {createQualityAudit, mountQualityPanel} from './catalog-quality.js?v=20261012-consumables-brands';
+import {createImportAudit, auditEligible, auditMarkup, showImportReview} from './import-audit.js?v=20261012-consumables-brands';
 const supabase=createClient(window.TECHNOROOM_SUPABASE.url,window.TECHNOROOM_SUPABASE.publishableKey);
 const state={catalogReady:false,products:[],orders:[],categories:[],brands:[],promotions:[],banners:[],articles:[],page:1,brandPage:1,selectedProducts:new Set(),categoryTreeOpen:new Set()};
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
@@ -32,8 +33,6 @@ productDialogStyle.textContent=`
 document.head.append(productDialogStyle);
 const esc=(v='')=>String(v??'').replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));
 const txt=(v='')=>String(v??'').toLocaleLowerCase('uk-UA').replace(/[ʼ'’`]/g,'').replace(/[\s_\-–—/.,]+/g,'');
-const canonicalBrandNames={"2e":"2E",acer:"Acer",asus:"ASUS",dell:"Dell",digitus:"DIGITUS",epos:"EPOS",fsp:"FSP",legrand:"Legrand",ledvance:"LEDVANCE",lg:"LG",msi:"MSI",oneplus:"OnePlus",philips:"Philips",samsung:"Samsung",sony:"Sony",tcl:"TCL"};
-const canonicalBrandName=(v='')=>{const name=String(v??'').replace(/\s+/g,' ').trim(),root=name.replace(/\s+(?:accessories|audio|displays|energy(?:\s+ups)?|gaming|lfd|mobile|monitors|mounts|multimedia|projectors|retail|screens|scs|tv|ups)\s*$/i,'').trim();return canonicalBrandNames[txt(root)]||root};
 const money=v=>new Intl.NumberFormat('uk-UA',{maximumFractionDigits:2}).format(Number(v||0))+' ₴';
 const date=v=>new Intl.DateTimeFormat('uk-UA',{dateStyle:'medium',timeStyle:'short'}).format(new Date(v));
 const notice=(m,e=false)=>{const n=$('#notice');if(!n)return;n.textContent=m;n.hidden=false;n.classList.toggle('error',e)};
@@ -168,7 +167,7 @@ const mountOfficePrinterEditorFields=(form,product)=>{
   panel.querySelector('[name="office_print_duplex"]').checked=/(?:є|так|yes|true|дуплекс|двосторон|duplex)/iu.test(duplex)&&!optionalDuplex;
 };
 const productDialogElement=$('#productDialog');
-new MutationObserver(()=>{if(productDialogElement.open){const form=$('#productForm'),id=form.elements.id?.value;const product=state.products.find(item=>Number(item.id)===Number(id))||null;mountProjectorEditorFields(form,product);mountOfficePrinterEditorFields(form,product);const sync=()=>{form.querySelector('#projectorEditorFields').hidden=!projectorCategorySlugs.has(form.elements.category.value);form.querySelector('#officePrinterEditorFields').hidden=!officePrintCategorySlugs.has(form.elements.category.value)};form.elements.category.onchange=sync;sync()}}).observe(productDialogElement,{attributes:true,attributeFilter:['open']});
+new MutationObserver(()=>{if(productDialogElement.open){const form=$('#productForm'),id=form.elements.id?.value;const product=state.products.find(item=>Number(item.id)===Number(id))||null;mountProjectorEditorFields(form,product);mountOfficePrinterEditorFields(form,product);const sync=()=>{form.querySelector('#projectorEditorFields').hidden=!projectorCategorySlugs.has(form.elements.category.value);form.querySelector('#officePrinterEditorFields').hidden=!!officeSupplyCategoryPlan(form.elements.name.value)||!officePrintCategorySlugs.has(form.elements.category.value)};form.elements.category.onchange=sync;sync()}}).observe(productDialogElement,{attributes:true,attributeFilter:['open']});
 const originalSaveProduct=saveProduct;
 async function saveProductWithProjectorFields(event){
   const form=event.currentTarget,panel=form.querySelector('#projectorEditorFields');
@@ -231,16 +230,10 @@ document.addEventListener('click',async event=>{const edit=event.target.closest(
 $('#promotionForm').addEventListener('submit',async e=>{e.preventDefault();const f=e.currentTarget,r=Object.fromEntries(new FormData(f)),type=r.target_type;const p={name:r.name.trim(),code:r.code.trim()||null,discount_type:r.discount_type,discount_value:Number(r.discount_value),starts_at:r.starts_at||null,ends_at:r.ends_at||null,is_active:f.elements.is_active.checked,target_type:type,target_value:(type==='category'||type==='brand')?(r.target_value||null):null};let id=Number(r.id)||null,z;if(id)z=await supabase.from('promotions').update(p).eq('id',id).select('id').single();else z=await supabase.from('promotions').insert(p).select('id').single();if(z.error){notice('Помилка акції: '+z.error.message,true);return}id=z.data.id;if(type==='products'){await supabase.from('promotion_products').delete().eq('promotion_id',id);const ids=[...$('#promotionProducts').selectedOptions].map(o=>Number(o.value));if(ids.length){const q=await supabase.from('promotion_products').insert(ids.map(product_id=>({promotion_id:id,product_id})));if(q.error){notice('Акцію збережено, але товари не прив’язано: '+q.error.message,true);return}}}else await supabase.from('promotion_products').delete().eq('promotion_id',id);$('#promotionDialog').close();await loadData();notice('Акцію збережено.')});
 $('#bannerForm').addEventListener('submit',async e=>{e.preventDefault();const f=e.currentTarget,r=Object.fromEntries(new FormData(f)),message=$('#bannerFormMessage');let imageUrl=r.image_url.trim()||null;message.hidden=true;try{const file=f.elements.image_file.files?.[0];if(file){message.textContent='Завантажую зображення банера…';message.hidden=false;const key=await uploadCatalogAsset(file,'banners');imageUrl=supabase.storage.from('product-images').getPublicUrl(key).data.publicUrl}if(imageUrl&&/^[a-z]:[\\/]/i.test(imageUrl))throw new Error('Локальний шлях C:\\... не працює на сайті. Виберіть файл у полі «Завантажити зображення».');const p={title:r.title.trim(),subtitle:r.subtitle.trim()||null,image_url:imageUrl,link_url:r.link_url.trim()||null,button_text:r.button_text.trim()||null,sort_order:Number(r.sort_order||0),is_active:f.elements.is_active.checked};const q=r.id?supabase.from('banners').update(p).eq('id',r.id):supabase.from('banners').insert(p);const z=await q;if(z.error)throw z.error;$('#bannerDialog').close();await loadData();notice('Банер збережено.')}catch(error){message.textContent='Помилка банера: '+(error.message||'не вдалося зберегти');message.hidden=false}});
 $('#normalizeBrands').onclick=async()=>{
- const grouped=new Map();
- const ensureGroup=canonical=>{if(!grouped.has(canonical))grouped.set(canonical,{canonical,brands:[],products:[]});return grouped.get(canonical)};
- state.brands.forEach(brand=>ensureGroup(canonicalBrandName(brand.name)).brands.push(brand));
- state.products.filter(product=>product.brand||product.brand_id).forEach(product=>{const linked=state.brands.find(brand=>Number(brand.id)===Number(product.brand_id));ensureGroup(canonicalBrandName(product.brand||linked?.name)).products.push(product)});
- const groups=[...grouped.values()].filter(group=>group.canonical&&(
-   group.brands.length>1||group.brands.some(brand=>brand.name!==group.canonical||brand.slug!==slug(group.canonical))||group.products.some(product=>product.brand!==group.canonical)
- ));
+ const groups=brandConsolidationPlan(state.products,state.brands);
  const affected=groups.reduce((total,group)=>total+group.products.length,0);
  if(!groups.length){notice('Назви брендів уже впорядковано.');return}
- if(!confirm('Впорядкувати '+groups.length+' груп брендів і переприв’язати до канонічних назв '+affected+' товарів? Старі записи не видалятимуться — вони будуть приховані.'))return;
+ if(!confirm('Об’єднати варіанти брендів:\n'+groups.map(group=>group.canonical+' ← '+[...new Set([...group.brands.map(brand=>brand.name),...group.products.map(product=>product.brand)].filter(name=>name&&name!==group.canonical))].join(', ')+' ('+group.products.length+' товарів)').join('\n')+'\nВсього '+affected+' товарів. Старі записи не видалятимуться — вони будуть приховані.'))return;
  let updated=0,hidden=0;
  for(const group of groups){
    let canonical=group.brands.find(brand=>brand.name===group.canonical);
@@ -253,7 +246,8 @@ $('#normalizeBrands').onclick=async()=>{
    for(let offset=0;offset<products.length;offset+=100){const ids=products.slice(offset,offset+100).map(product=>product.id),result=await supabase.from('products').update({brand_id:canonical.id,brand:group.canonical}).in('id',ids).select('id');if(result.error){notice('Оновлено '+updated+' товарів, але сталася помилка: '+result.error.message,true);await loadData();return}changed+=(result.data||[]).length}
    if(changed!==products.length){notice('Оновлено '+updated+changed+' з '+affected+' товарів. Старі бренди залишено активними для безпеки.',true);await loadData();return}
    updated+=changed;
-   const duplicates=group.brands.filter(brand=>Number(brand.id)!==Number(canonical.id));
+   const movedIds=new Set(group.products.map(product=>Number(product.id)));
+   const duplicates=group.brands.filter(brand=>Number(brand.id)!==Number(canonical.id)&&!state.products.some(product=>Number(product.brand_id)===Number(brand.id)&&!movedIds.has(Number(product.id))));
    if(duplicates.length){const deactivated=await supabase.from('brands').update({is_active:false,updated_at:new Date().toISOString()}).in('id',duplicates.map(brand=>brand.id));if(deactivated.error){notice('Товари для «'+group.canonical+'» уже оновлено, але старі записи не приховано: '+deactivated.error.message,true);await loadData();return}hidden+=duplicates.length}
  }
  await loadData();notice('Готово: оновлено '+updated+' товарів, приховано дублікати брендів: '+hidden+'.')
@@ -404,7 +398,7 @@ supabase.auth.getSession().then(({data:{session}})=>session?dashboard():view('lo
       add('Роздільна здатність', resolution); add('Яскравість', brightness && brightness + ' лм'); add('Проекційне співвідношення', throwRatio); add('Технологія проекції', /\b3lcd\b/iu.test(text) ? '3LCD' : /\bdlp\b/iu.test(text) ? 'DLP' : /\blcos\b/iu.test(text) ? 'LCoS' : /\blcd\b/iu.test(text) ? 'LCD' : ''); add('Призначення', [...new Set(projectorPurposes)].join(' · ')); add('Джерело світла', /лазер|laser/iu.test(text) ? 'Лазер' : /світлодіод|\bled\b/iu.test(text) ? 'Світлодіод' : /ламп|lamp/iu.test(text) ? 'Лампа' : '');
     }
     if (/(?:телевізор|\btv\b)/iu.test(text)) { add('Діагональ', diagonal && diagonal.replace(',', '.') + '″'); add('Роздільна здатність', resolution); add('Тип матриці', /mini\s*-?\s*led/iu.test(text) ? 'miniLED' : /oled/iu.test(text) ? 'OLED' : /qled/iu.test(text) ? 'QLED' : /\bled\b/iu.test(text) ? 'LED' : ''); add('Smart TV', /(?:smart\s*tv|google\s*tv|android\s*tv|webos|tizen|vidaa)/iu.test(text) ? 'Є' : ''); }
-    const officeType = /(?:бфп|мфу|mfp|multifunction|багатофункціональн\w*\s+(?:пристрій|апарат))/iu.test(text) ? 'БФП' : /(?:принтер|printer)/iu.test(text) ? 'Принтер' : /(?:сканер|scanner)/iu.test(text) ? 'Сканер' : /(?:копір|копир|copier)/iu.test(text) ? 'Копір' : /(?:ламінатор|ламинатор|laminator)/iu.test(text) ? 'Ламінатор' : /(?:знищувач|шредер|shredder)/iu.test(text) ? 'Знищувач документів' : '';
+    const officeType = officeSupplyCategoryPlan(text) ? '' : /(?:бфп|мфу|mfp|multifunction|багатофункціональн\w*\s+(?:пристрій|апарат))/iu.test(text) ? 'БФП' : /(?:принтер|printer)/iu.test(text) ? 'Принтер' : /(?:сканер|scanner)/iu.test(text) ? 'Сканер' : /(?:копір|копир|copier)/iu.test(text) ? 'Копір' : /(?:ламінатор|ламинатор|laminator)/iu.test(text) ? 'Ламінатор' : /(?:знищувач|шредер|shredder)/iu.test(text) ? 'Знищувач документів' : '';
     if (officeType) {
       const interfaces=[];
       const optionalWifi=/(?:wi[ -]?fi|wireless|wlan).{0,80}(?:опц|optional|не\s*(?:вход|входить)|докуп|add[ -]?on|модул)|(?:опц|optional|не\s*(?:вход|входить)|докуп|add[ -]?on|модул).{0,80}(?:wi[ -]?fi|wireless|wlan)/iu.test(text);
@@ -516,6 +510,8 @@ supabase.auth.getSession().then(({data:{session}})=>session?dashboard():view('lo
   // Витратні матеріали для друку не є «аксесуарами». Точна стала схема
   // не дає XML ERC створювати дублікати довгих назв постачальника.
   const officeConsumablesCategoryPlan = (row) => {
+    const primary=officeSupplyCategoryPlan(row.name);
+    if(primary)return primary;
     const name = cleanImportText(row.name).toLocaleLowerCase('uk-UA');
     // У характеристиках самого пристрою часто згадуються сумісні чорнила,
     // картриджі або тонер. Це не робить БФП/принтер витратним матеріалом.
@@ -1510,7 +1506,7 @@ supabase.auth.getSession().then(({data:{session}})=>session?dashboard():view('lo
   const expectedCategoryFromName = (product) => {
     // Label/thermal printers are specialized devices, not ordinary office color printers.
     if(isSpecializedPrinterName(product?.name))return '';
-    const supplyPlan = officeSupplyCategoryPlan(product?.name);
+    const supplyPlan = officeSupplyCategoryPlan(product?.name,product?.category);
     if (supplyPlan) return supplyPlan.childSlug;
     const name = String(product?.name || '').trim().toLocaleLowerCase('uk-UA');
     const printMode = printColourMode(product?.name, product?.specifications);

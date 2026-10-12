@@ -5,6 +5,14 @@ const get = (specifications, keys) => {
   for(const key of keys){const found=entries.find(([name])=>name.trim().toLowerCase()===key.toLowerCase());if(found&&value(found[1]).trim())return value(found[1]).trim();}
   return '';
 };
+export function normalizeProjectorLightSource(raw='') {
+  const source=value(raw);
+  // Store policy: RGB laser and LED/laser hybrids share the simplified Laser filter.
+  if(/лазер|\blaser\b/iu.test(source))return 'Лазер';
+  if(/світлодіод|\b(?:led|wled)\b/iu.test(source))return 'LED';
+  if(/ламп|\b(?:lamp|uhp|uhe|hid)\b/iu.test(source))return 'Лампа';
+  return '';
+}
 export function normalizeProjectorResolution(raw='') {
   const source=value(raw).trim();
   const dimensions=/^(\d{3,5})\s*[×xхXХ]\s*(\d{3,5})(?:\s*\((?:FHD|Full HD|HD|4K|UHD|WXGA|WUXGA|XGA)\))?\s*$/iu.exec(source);
@@ -35,8 +43,9 @@ export function resolveProjectorSpecifications(product={}) {
   else if(!technology && isProjectorProduct(product) && /\bepson\b/iu.test([product.brand,name].join(' '))) specifications['Технологія проекції']='3LCD';
   const source=get(specifications,['Джерело світла','Тип джерела','Light source']);
   const lightText=source||[name,description].join(' ');
-  let light=/лазер|\blaser\b/iu.test(lightText)?'Лазер':/світлодіод|\bled\b/iu.test(lightText)?'Світлодіод':/ламп|\blamp\b/iu.test(lightText)?'Лампа':'';
-  if(light) specifications['Джерело світла']=light;
+  const light=normalizeProjectorLightSource(lightText);
+  // Keep lifespan, RGB/hybrid details and original wording when supplied.
+  if(light&&!source) specifications['Джерело світла']=light;
   const purposeSource=[get(specifications,['Призначення','Тип / призначення']),name,description].join(' ');
   const purposes=[];
   if(light==='Лазер'||/лазерн|\blaser\b/iu.test(purposeSource)) purposes.push('Лазерний');

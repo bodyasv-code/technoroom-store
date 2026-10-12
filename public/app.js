@@ -2,7 +2,7 @@ import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js
 import {sizeBannerSlides} from './banner-layout.js?v=20261011-uniform';
 import {attachStoreSearch, searchScore, normalizeSearch} from './store-search.js?v=20261012-search';
 import {productNameWithSku} from './product-identity.js?v=20261012';
-import {resolveProjectorSpecifications, isProjectorProduct} from './projector-specs.js?v=20261012-dedup';
+import {resolveProjectorSpecifications, isProjectorProduct, normalizeProjectorLightSource} from './projector-specs.js?v=20261012-light-source';
 import {normalizeSpecificationEntries} from './specification-normalization.js?v=20261012-dedup';
 
 const supabase = createClient(window.TECHNOROOM_SUPABASE.url, window.TECHNOROOM_SUPABASE.publishableKey);
@@ -1544,11 +1544,7 @@ catalog = function () {
     .replace(/\s+/gu, ' ')
     .trim();
   const normaliseLightSource = (value) => {
-    const text = normaliseSpecificationValue(value);
-    if (/laser|лазер/iu.test(text)) return 'Лазер';
-    if (/led|світлодіод/iu.test(text)) return 'Світлодіод';
-    if (/lamp|ламп/iu.test(text)) return 'Лампа';
-    return '';
+    return normalizeProjectorLightSource(normaliseSpecificationValue(value));
   };
   const luminousFluxFor = (product) => {
     const values = Object.entries(product.specifications || {})

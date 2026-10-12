@@ -1,12 +1,9 @@
-import {normalizeProjectorResolution} from './projector-specs.js?v=20261012-dedup';
+import {normalizeProjectorResolution, normalizeProjectorLightSource} from './projector-specs.js?v=20261012-light-source';
 const text = value => String(Array.isArray(value) ? value.join(' · ') : value ?? '').normalize('NFKC').trim().toLocaleLowerCase('uk-UA').replace(/\s+/g,' ');
 const resolutionDimensions={'svga':'800 × 600','xga':'1024 × 768','wxga':'1280 × 800','hd':'1280 × 720','full hd':'1920 × 1080','wuxga':'1920 × 1200','wqxga':'2560 × 1600','4k uhd':'3840 × 2160','8k uhd':'7680 × 4320','wvga':'854 × 480'};
 function lightSource(raw) {
-  const value=text(raw), kinds=[];
-  if(/\b(?:led|wled)\b|світлодіод/iu.test(value))kinds.push('led');
-  if(/\blaser\b|лазер/iu.test(value))kinds.push('laser');
-  if(/\b(?:lamp|uhp|uhe|hid)\b|ламп/iu.test(value))kinds.push('lamp');
-  return kinds.length?{type:kinds.join('+'),numbers:value.match(/\d+(?:[.,]\d+)?/gu)||[]}:null;
+  const value=text(raw), type=normalizeProjectorLightSource(value);
+  return type?{type,numbers:value.match(/\d+(?:[.,]\d+)?/gu)||[]}:null;
 }
 // Used only by the read-only audit. Never discard or rewrite supplier details.
 export function equivalentSpecification(key,left,right,{projector=false}={}) {

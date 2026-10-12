@@ -8,6 +8,8 @@ assert.equal(equivalent('Джерело світла','Світлодіод','WL
 assert.equal(equivalent('Джерело світла','Лазер','Laser, 20000/30000',option),true);
 assert.equal(equivalent('Джерело світла','Лампа','UHP 210W, 6000/12000',option),true);
 assert.equal(equivalent('Джерело світла','Світлодіод','LED+LASER, 20000/30000',option),false);
+assert.equal(equivalent('Джерело світла','Лазер','LED+LASER, 20000/30000',option),true);
+assert.equal(equivalent('Джерело світла','RGB Laser, 20000/30000','LASER+LED, 20000/30000',option),true);
 assert.equal(equivalent('Джерело світла','LED, 20000','LED, 30000',option),false);
 assert.equal(equivalent('Джерело світла','LED','Лазер',option),false);
 assert.equal(equivalent('Роздільна здатність','Full HD','1920x1080 (FHD)',option),true);

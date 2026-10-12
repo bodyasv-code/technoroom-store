@@ -2,10 +2,10 @@ import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js
 import {createArticleEditor} from './article-editor.js?v=20261011-article-links';
 import {articleHasContent} from './article-format.js?v=20261011-article-links';
 import {productNameWithSku, officeSupplyCategoryPlan, isSpecializedPrinterName} from './product-identity.js?v=20261012-quality-rules';
-import {resolveProjectorSpecifications, normalizeProjectorResolution, isProjectorProduct} from './projector-specs.js?v=20261012-dedup';
+import {resolveProjectorSpecifications, normalizeProjectorResolution, isProjectorProduct, normalizeProjectorLightSource} from './projector-specs.js?v=20261012-light-source';
 import {resolveEditorBrand} from './brand-editor.js?v=20261012';
 import {normalizeSpecifications} from './specification-normalization.js?v=20261012-dedup';
-import {createQualityAudit, mountQualityPanel} from './catalog-quality.js?v=20261012-quality-rules';
+import {createQualityAudit, mountQualityPanel} from './catalog-quality.js?v=20261012-light-source';
 import {createImportAudit, auditEligible, auditMarkup, showImportReview} from './import-audit.js?v=20261012-guard-4';
 const supabase=createClient(window.TECHNOROOM_SUPABASE.url,window.TECHNOROOM_SUPABASE.publishableKey);
 const state={catalogReady:false,products:[],orders:[],categories:[],brands:[],promotions:[],banners:[],articles:[],page:1,brandPage:1,selectedProducts:new Set(),categoryTreeOpen:new Set()};
@@ -119,14 +119,14 @@ const mountProjectorEditorFields=(form,product)=>{
   let panel=form.querySelector('#projectorEditorFields');
   if(!panel){
     panel=document.createElement('fieldset');panel.id='projectorEditorFields';panel.className='projector-editor-fields';
-    panel.innerHTML='<legend>Фільтри проєктора</legend><div class="projector-editor-fields__grid"><div><b>Тип і призначення</b><div class="projector-editor-fields__options">'+projectorPurposeOptions.map(value=>'<label><input type="checkbox" name="projector_purpose" value="'+value+'"> '+value+'</label>').join('')+'</div></div><label>Джерело світла<select name="projector_light_source"><option value="">— Не вказано —</option><option value="Лампа">Лампа</option><option value="Лазер">Лазер</option><option value="Світлодіод">LED / світлодіодний</option></select></label><label>Роздільна здатність<select name="projector_resolution_select"><option value="">— Не вказано —</option>'+projectorResolutionOptions.map(value=>'<option value="'+value+'">'+value+'</option>').join('')+'<option value="__custom">Інша — ввести вручну</option></select></label><label data-projector-resolution-custom hidden>Власна роздільна здатність<input name="projector_resolution_custom" type="text" placeholder="Напр. 1366 × 768"></label><label>Проекційне співвідношення<input name="projector_throw_ratio" type="text" placeholder="Напр. 0.5 : 1 або 1.3–2.1 : 1"></label><label>Яскравість, лм<input name="projector_brightness" type="number" min="1" step="1" placeholder="Напр. 4000"></label><label>Технологія проекції<select name="projector_technology"><option value="">— Не вказано —</option><option value="DLP">DLP</option><option value="LCD">LCD</option><option value="3LCD">3LCD</option><option value="LCoS">LCoS</option></select></label></div><small>За потреби вкажіть дані вручну: вони мають пріоритет над автоматичним визначенням із XML.</small>';
+    panel.innerHTML='<legend>Фільтри проєктора</legend><div class="projector-editor-fields__grid"><div><b>Тип і призначення</b><div class="projector-editor-fields__options">'+projectorPurposeOptions.map(value=>'<label><input type="checkbox" name="projector_purpose" value="'+value+'"> '+value+'</label>').join('')+'</div></div><label>Джерело світла<select name="projector_light_source"><option value="">— Не вказано —</option><option value="Лампа">Лампа</option><option value="Лазер">Лазер</option><option value="LED">LED</option></select></label><label>Роздільна здатність<select name="projector_resolution_select"><option value="">— Не вказано —</option>'+projectorResolutionOptions.map(value=>'<option value="'+value+'">'+value+'</option>').join('')+'<option value="__custom">Інша — ввести вручну</option></select></label><label data-projector-resolution-custom hidden>Власна роздільна здатність<input name="projector_resolution_custom" type="text" placeholder="Напр. 1366 × 768"></label><label>Проекційне співвідношення<input name="projector_throw_ratio" type="text" placeholder="Напр. 0.5 : 1 або 1.3–2.1 : 1"></label><label>Яскравість, лм<input name="projector_brightness" type="number" min="1" step="1" placeholder="Напр. 4000"></label><label>Технологія проекції<select name="projector_technology"><option value="">— Не вказано —</option><option value="DLP">DLP</option><option value="LCD">LCD</option><option value="3LCD">3LCD</option><option value="LCoS">LCoS</option></select></label></div><small>За потреби вкажіть дані вручну: вони мають пріоритет над автоматичним визначенням із XML.</small>';
     const description=form.elements.description?.closest('label');if(description)description.before(panel);else form.append(panel);
   }
   const specifications=resolveProjectorSpecifications({...product,name:product?.name||form.elements.name.value,brand:product?.brand||'',category:form.elements.category.value,description:product?.description||form.elements.description.value,specifications:product?.specifications||parseAdminSpecifications(form.elements.specifications_text?.value)});
   const purposeText=String(specifications['Призначення']||specifications['Тип / призначення']||'');
   panel.querySelectorAll('[name="projector_purpose"]').forEach(input=>input.checked=purposeText.includes(input.value));
   const source=String(specifications['Джерело світла']||specifications['Тип джерела']||'');
-  panel.querySelector('[name="projector_light_source"]').value=/лазер/iu.test(source)?'Лазер':/(?:світлодіод|\bled\b)/iu.test(source)?'Світлодіод':/(?:ламп|lamp)/iu.test(source)?'Лампа':'';
+  panel.querySelector('[name="projector_light_source"]').value=normalizeProjectorLightSource(source);
   const resolution=String(specifications['Роздільна здатність']||specifications['Resolution']||'');
   const resolutionSelect=panel.querySelector('[name="projector_resolution_select"]'),resolutionCustom=panel.querySelector('[name="projector_resolution_custom"]'),resolutionCustomLabel=panel.querySelector('[data-projector-resolution-custom]');
   resolutionSelect.value=projectorResolutionOptions.includes(resolution)?resolution:(resolution?'__custom':'');resolutionCustom.value=projectorResolutionOptions.includes(resolution)?'':resolution;
@@ -174,6 +174,7 @@ async function saveProductWithProjectorFields(event){
   const form=event.currentTarget,panel=form.querySelector('#projectorEditorFields');
   if(panel&&!panel.hidden){
     const specifications=parseAdminSpecifications(form.elements.specifications_text.value);
+    const originalSource=specifications['Джерело світла']||specifications['Тип джерела']||'';
     delete specifications['Призначення'];delete specifications['Тип / призначення'];delete specifications['Джерело світла'];delete specifications['Тип джерела'];delete specifications['Роздільна здатність'];delete specifications['Resolution'];delete specifications['Проекційне співвідношення'];delete specifications['Проекційне відношення'];delete specifications['Projection ratio'];delete specifications['Throw ratio'];delete specifications['Яскравість'];delete specifications['Світловий потік'];delete specifications['Brightness'];delete specifications['Технологія проекції'];delete specifications['Projection technology'];
     const purposes=[...panel.querySelectorAll('[name="projector_purpose"]:checked')].map(input=>input.value);
     const source=panel.querySelector('[name="projector_light_source"]').value;
@@ -185,7 +186,7 @@ async function saveProductWithProjectorFields(event){
     const throwRatio=panel.querySelector('[name="projector_throw_ratio"]').value.trim();
     const brightness=panel.querySelector('[name="projector_brightness"]').value.trim();
     if(purposes.length)specifications['Призначення']=purposes.join(' · ');
-    if(source)specifications['Джерело світла']=source;
+    if(source)specifications['Джерело світла']=normalizeProjectorLightSource(originalSource)===source?originalSource:source;
     if(resolution)specifications['Роздільна здатність']=resolution;
     if(throwRatio)specifications['Проекційне співвідношення']=throwRatio;
     if(brightness)specifications['Яскравість']=brightness+' лм';

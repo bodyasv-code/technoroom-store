@@ -1,7 +1,7 @@
 import {auditSku} from './import-audit.js?v=20261012-consumables-brands';
 import {normalizeSpecificationEntries} from './specification-normalization.js?v=20261012-spec-format';
 import {isProjectorProduct, resolveProjectorSpecifications, normalizeProjectorResolution} from './projector-specs.js?v=20261012-spec-format';
-import {equivalentSpecification} from './specification-comparison.js?v=20261012-spec-format';
+import {equivalentSpecification} from './specification-comparison.js?v=20261012-focus';
 import {isSpecializedPrinterName,officeSupplyCategoryPlan} from './product-identity.js?v=20261012-consumables-brands';
 
 export const qualityLabels = {duplicate_sku:'Повтор SKU', conflict:'Суперечливі характеристики', no_brand:'Без бренду', no_image:'Без фото', no_price:'Без ціни', category:'Перевірити категорію', filters:'Неповні фільтри'};

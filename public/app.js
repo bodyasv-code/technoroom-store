@@ -2,7 +2,8 @@ import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js
 import {sizeBannerSlides} from './banner-layout.js?v=20261011-uniform';
 import {attachStoreSearch, searchScore, normalizeSearch} from './store-search.js?v=20261012-search';
 import {productNameWithSku} from './product-identity.js?v=20261012';
-import {resolveProjectorSpecifications, isProjectorProduct} from './projector-specs.js?v=20261012-epson';
+import {resolveProjectorSpecifications, isProjectorProduct} from './projector-specs.js?v=20261012-dedup';
+import {normalizeSpecificationEntries} from './specification-normalization.js?v=20261012-dedup';
 
 const supabase = createClient(window.TECHNOROOM_SUPABASE.url, window.TECHNOROOM_SUPABASE.publishableKey);
 const catalogImageStyles = document.createElement('style');
@@ -940,7 +941,7 @@ const inferredScreenSpecifications = (product) => {
 };
 const isPhoneProduct = (product) => /(?:iphone|смартфон|smartphone|мобільн\w*\s+телефон)/iu.test(readableText([product.name, product.type, product.description].join(' ')));
 const displaySpecificationEntries = (product) => {
-  const stored = Object.entries(product.specifications || {})
+  const stored = normalizeSpecificationEntries(product.specifications, {projector:isProjectorProduct(product)})
     .map(([key, value]) => [readableText(key), specificationDisplayText(value)])
     .filter(([key, value]) => key && value);
   if (!stored.length) return Object.entries(inferredScreenSpecifications(product));

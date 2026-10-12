@@ -1,3 +1,4 @@
+import {normalizeSpecifications} from './specification-normalization.js?v=20261012-dedup';
 const value = item => Array.isArray(item) ? item.join(' · ') : String(item ?? '');
 const get = (specifications, keys) => {
   const entries=Object.entries(specifications||{});
@@ -15,7 +16,7 @@ export function isProjectorProduct(product={}) {
   return /^(?:про[єе]ктор|projector)(?=\s|$)/iu.test(value(product.name).trim()) || ['projector','projectors','laser-projectors','home-projectors','short-throw-projectors','installation-projectors','universal-projectors','erc-display-03','erc-display-11','erc-display-12','erc-display-13'].includes(product.category||product.type);
 }
 export function resolveProjectorSpecifications(product={}) {
-  const specifications={...(product.specifications||{})};
+  const specifications=normalizeSpecifications(product.specifications, {projector:true});
   const description=value(product.description), name=value(product.name);
   const resolution=get(specifications,['Роздільна здатність','Native resolution','Resolution']);
   let normalized=normalizeProjectorResolution(resolution);

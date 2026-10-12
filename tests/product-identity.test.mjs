@@ -1,0 +1,15 @@
+import assert from 'node:assert/strict';
+import {productNameWithSku, officeSupplyCategoryPlan} from '../public/product-identity.js';
+assert.equal(productNameWithSku('Canon MF664Cdw','6928C008'),'Canon MF664Cdw (6928C008)');
+assert.equal(productNameWithSku('Canon (6928C008)','6928C008'),'Canon (6928C008)');
+assert.equal(productNameWithSku('Canon — 6928C008','6928C008'),'Canon (6928C008)');
+assert.equal(productNameWithSku('Canon ABC','ABC'),'Canon (ABC)');
+assert.equal(productNameWithSku('Canon XABC','ABC'),'Canon XABC (ABC)');
+assert.equal(productNameWithSku('Термоетикетка 2E TL-75x50 (3 рулони)','2E-TL-75X50'),'Термоетикетка 2E TL-75x50 (3 рулони) (2E-TL-75X50)');
+assert.equal(productNameWithSku('Товар','null'),'Товар');
+assert.equal(officeSupplyCategoryPlan('Термоетикетка 2E TL-75x50').childSlug,'office-consumables-labels');
+assert.equal(officeSupplyCategoryPlan('Комплект ресурсних матеріалів для сканерів Ricoh').childSlug,'office-accessories');
+assert.equal(officeSupplyCategoryPlan('Підкладка для сканера Ricoh SV600').childSlug,'office-accessories');
+assert.equal(officeSupplyCategoryPlan('Сканер Ricoh з комплектом ресурсних матеріалів'),null);
+assert.equal(officeSupplyCategoryPlan('Принтер для етикеток Epson'),null);
+console.log('Product identity: 12 checks passed');

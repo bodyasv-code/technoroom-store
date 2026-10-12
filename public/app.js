@@ -1,5 +1,7 @@
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
 import {sizeBannerSlides} from './banner-layout.js?v=20261011-uniform';
+import {attachStoreSearch, searchScore, normalizeSearch} from './store-search.js?v=20261012-search';
+import {productNameWithSku} from './product-identity.js?v=20261012';
 
 const supabase = createClient(window.TECHNOROOM_SUPABASE.url, window.TECHNOROOM_SUPABASE.publishableKey);
 const catalogImageStyles = document.createElement('style');
@@ -134,55 +136,8 @@ async function home() {
   if(root.dataset.homeReady==='true') return;
   root.dataset.homeReady='true';
   let homeProducts=[...products], cats=[];
-  try {
-    const now=new Date().toISOString();
-    const {data:banners,error:bannerError}=await supabase.from('banners').select('*').eq('is_active',true).order('sort_order').order('created_at',{ascending:false});
-    if(bannerError) throw bannerError;
-    const activeBanners=(banners||[]), hero=document.querySelector('.home-hero');
-    if(activeBanners.length&&hero){
-      const copy=hero.querySelector('.home-hero-copy'), art=hero.querySelector('.home-projector-art');
-      const renderBannerCopy=banner=>{
-        const title=escapeHtml(banner.title||'TECHNOROOM'),subtitle=escapeHtml(banner.subtitle||''),button=escapeHtml(banner.button_text||'Переглянути');
-        return '<small>TECHNOROOM</small><h1>'+title+'</h1>'+(subtitle?'<p>'+subtitle+'</p>':'')+'<a href="'+escapeHtml(banner.link_url||'catalog.html')+'">'+button+' →</a>';
-      };
-      const refreshBannerSize=sizeBannerSlides(hero,copy,activeBanners,renderBannerCopy);
-      let bannerIndex=0;
-      const applyBanner=(index)=>{
-        bannerIndex=(index+activeBanners.length)%activeBanners.length;
-        const banner=activeBanners[bannerIndex];
-        hero.classList.toggle('has-long-banner-title',Array.from(banner.title||'').length>90);
-        if(copy){
-          copy.classList.toggle('has-long-banner-title',Array.from(banner.title||'').length>90);
-          copy.innerHTML=renderBannerCopy(banner);
-        }
-        hero.style.backgroundImage='';
-        hero.style.backgroundSize=''; hero.style.backgroundPosition='';
-        hero.classList.toggle('has-banner-image',Boolean(banner.image_url));
-        hero.querySelector('.hero-benefits').hidden=true;
-        let bannerVisual=hero.querySelector('.home-banner-visual');
-        if(!bannerVisual){bannerVisual=document.createElement('a');bannerVisual.className='home-banner-visual';hero.append(bannerVisual)}
-        bannerVisual.hidden=!banner.image_url;
-        bannerVisual.href=banner.link_url||'catalog.html';
-        bannerVisual.innerHTML=banner.image_url?'<img src="'+escapeHtml(banner.image_url)+'" alt="'+escapeHtml(banner.title||'Банер TECHNOROOM')+'">':'';
-        if(art) art.style.display=banner.image_url?'none':'';
-        refreshBannerSize();
-        hero.querySelectorAll('[data-banner-dot]').forEach((dot,position)=>dot.classList.toggle('is-active',position===bannerIndex));
-      };
-      if(activeBanners.length>1){
-        const controls=document.createElement('div');
-        controls.className='home-banner-controls';
-        controls.innerHTML='<button type="button" data-banner-prev aria-label="Попередній банер">←</button><div>'+activeBanners.map((_,index)=>'<button type="button" data-banner-dot aria-label="Банер '+(index+1)+'"></button>').join('')+'</div><button type="button" data-banner-next aria-label="Наступний банер">→</button>';
-        hero.append(controls);
-        controls.querySelector('[data-banner-prev]').onclick=()=>applyBanner(bannerIndex-1);
-        controls.querySelector('[data-banner-next]').onclick=()=>applyBanner(bannerIndex+1);
-        controls.querySelectorAll('[data-banner-dot]').forEach((dot,index)=>dot.onclick=()=>applyBanner(index));
-        window.setInterval(()=>applyBanner(bannerIndex+1),6500);
-      }
-      applyBanner(0);
-    }
-    const active=activePromotions;
-    if(active.length){const sale=document.querySelector('.home-tabs a[href*="promo=sale"]');if(sale)sale.textContent='Акції ('+active.length+')'}
-  } catch(e){console.warn('Промоблоки головної',e)}
+  const active=activePromotions;
+  if(active.length){const sale=document.querySelector('.home-tabs a[href*="promo=sale"]');if(sale)sale.textContent='Акції ('+active.length+')'}
 
   const saleSection=document.getElementById('homeSaleSection'),saleGrid=document.getElementById('homeSaleGrid');
   if(saleSection&&saleGrid){const saleProducts=await loadHomeSaleProducts(homeProducts);saleSection.hidden=false;if(saleProducts.length){saleGrid.innerHTML=saleProducts.slice(0,6).map(card).join('');bind(saleGrid)}else{saleGrid.innerHTML='<div class="home-sale-empty">Акційні товари з’являться тут після активації акції.</div>'}}
@@ -209,7 +164,7 @@ async function home() {
           rootsEl.querySelectorAll('button').forEach(b=>b.classList.toggle('active',b.dataset.slug===r.slug));
           const kids=cats.filter(c=>c.parent_id===r.id);
           const back=compactMenu()?'<button type="button" class="mega-back" data-mega-back>← Усі категорії</button>':'';
-          childrenEl.innerHTML=`${back}<div class="mega-title"><h2>${escapeHtml(r.name)}</h2><a href="catalog.html?category=${encodeURIComponent(r.slug)}">Усі товари →</a></div><div class="mega-grid">${kids.map(c=>`<a href="catalog.html?category=${encodeURIComponent(c.slug)}"><strong>${escapeHtml(c.name)}</strong><span>${products.filter(p=>!p.parentProductId&&storefrontCategoryMatches(p,c.slug)).length} товарів</span></a>`).join('')}</div>`;
+          childrenEl.innerHTML=`${back}<div class="mega-title"><h2>${escapeHtml(r.name)}</h2><a href="catalog.html?category=${encodeURIComponent(r.slug)}">Усі товари →</a></div><div class="mega-grid">${kids.map(c=>`<a href="catalog.html?category=${encodeURIComponent(c.slug)}"><strong>${escapeHtml(c.name)}</strong><span>Переглянути →</span></a>`).join('')}</div>`;
           if(compactMenu()){
             rootsEl.hidden=true;
             childrenEl.hidden=false;
@@ -245,8 +200,10 @@ async function home() {
   document.getElementById('homeApplyFilters').onclick=render; document.getElementById('homeSideSearchGo').onclick=render; q.onkeydown=e=>{if(e.key==='Enter')render()}; [brand,stock,sort].forEach(x=>x.onchange=render);
   document.getElementById('homeClearFilters').onclick=()=>{q.value='';brand.value='';minI.value=minR.value=0;maxI.value=maxR.value=rangeMax;stock.checked=false;sort.value='popular';render()};
   sync('render');render();
-  const search=document.getElementById('homeSearch'),go=document.getElementById('homeSearchGo'),run=()=>{const term=search?.value.trim();location.href='catalog.html'+(term?'?search='+encodeURIComponent(term):'')};
-  if(search){const wrap=search.closest('.home-search'),results=document.createElement('div');results.className='home-search-results';results.hidden=true;wrap?.append(results);const normalize=v=>String(v||'').toLocaleLowerCase('uk-UA').replace(/є/g,'е').replace(/['’\-_/.,()]+/g,' ').replace(/\s+/g,' ').trim();const show=()=>{const term=search.value.trim(),query=normalize(term);if(query.length<2){results.hidden=true;return}const words=query.split(' ').filter(Boolean),matches=products.filter(p=>{const hay=normalize([p.name,p.brand,p.sku,p.description].join(' '));return words.every(word=>hay.includes(word))}).slice(0,6),categories=cats.filter(category=>words.every(word=>normalize(category.name+' '+category.slug).includes(word))).slice(0,4),categoryMarkup=categories.length?'<div class="home-search-categories"><b>Категорії</b><div>'+categories.map(category=>'<a href="catalog.html?category='+encodeURIComponent(category.slug)+'">▦ '+escapeHtml(category.name)+'</a>').join('')+'</div></div>':'';results.innerHTML='<div class="home-search-results__head"><b>Знайдено: '+matches.length+(matches.length===6?'+':'')+'</b><span>назва, бренд або SKU</span></div>'+categoryMarkup+(matches.length?matches.map(p=>{const src=imageUrl(p);return '<a href="product.html?id='+p.id+'">'+(src?'<img src="'+escapeHtml(src)+'" alt="" draggable="false">':'<i>▣</i>')+'<span><b>'+escapeHtml(p.name)+'</b><small>'+escapeHtml(p.brand||'TECHNOROOM')+' · '+money(p.price)+'</small></span><em>'+availability(p).label+'</em></a>'}).join(''):'<p>Нічого не знайдено. Спробуйте іншу назву або SKU.</p>')+'<button type="button">Переглянути всі результати для «'+escapeHtml(term)+'» →</button>';results.hidden=false;results.querySelector('button')?.addEventListener('click',run)};search.addEventListener('input',show);search.addEventListener('focus',show);search.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();run()}if(e.key==='Escape')results.hidden=true});document.addEventListener('pointerdown',e=>{if(!wrap?.contains(e.target))results.hidden=true})}if(go)go.onclick=run;
+  attachStoreSearch(document.getElementById('homeSearch'), document.getElementById('homeSearchGo'), {
+    products:()=>products, escape:escapeHtml, image:imageUrl, price:money, availability, text:readableText,
+    categories:()=>cats, lookup:lookupStoreSearch,
+  });
 }
 const normalizeStoreSearch=(v='')=>String(v).toLowerCase().replace(/['’\-_/.,()]+/g,' ').replace(/\s+/g,' ').trim();
 function categoryMatch(product, category) { return product.type === category || (categoryChildren.get(category) || []).includes(product.type); }
@@ -484,7 +441,21 @@ function checkout() { const form = document.getElementById('checkoutForm'); if (
 function mount() { renderCart(); home(); catalog(); product(); checkout(); restoreScrollPosition(); const drawer = document.getElementById('cartDrawer'), overlay = document.getElementById('overlay'), close = () => { drawer?.classList.remove('open'); if (overlay) overlay.hidden = true; }; document.getElementById('cartButton')?.addEventListener('click', () => { drawer?.classList.add('open'); if (overlay) overlay.hidden = false; }); document.getElementById('closeCart')?.addEventListener('click', close); overlay?.addEventListener('click', close); document.getElementById('checkoutButton')?.addEventListener('click', () => location.href = 'checkout.html'); }
 const storeProductFromRow = (item) => ({ id: item.id, sku: readableText(item.sku), name: compactProductName(item.name, item.sku, item.brand), description: readableText(item.description), price: Number(item.price), type: item.category, brand: readableText(item.brand), brand_id:item.brand_id, parentProductId:item.parent_product_id, variantLabel:readableText(item.variant_label), specifications: item.specifications, availabilityStatus: item.availability_status, stockQuantity: Number(item.stock_quantity || 0), stock: item.in_stock && Number(item.stock_quantity || 0) > 0, image: item.image_path, imagePaths: item.image_paths, createdAt:item.created_at });
 
-const storefrontProductCacheKey = 'technoroom-storefront-products-v1';
+const storefrontProductCacheKey = 'technoroom-storefront-products-v2';
+async function lookupStoreSearch(query) {
+  if (!isProductPage && !productsHydrating) return null;
+  let request = supabase.from('products')
+    .select('id,sku,name,brand,price,description,category,image_path,in_stock,stock_quantity,availability_status')
+    .eq('is_active', true).is('parent_product_id', null);
+  const words = normalizeSearch(query).split(' ').filter(Boolean);
+  const clauses = words.map(word => 'or(' + ['name','sku','brand','description']
+    .map(field => field + '.ilike.%' + word + '%').join(',') + ')');
+  const modelPattern = '%' + words.join('%') + '%';
+  request = request.or('sku.ilike.' + modelPattern + ',name.ilike.' + modelPattern + ',and(' + clauses.join(',') + ')');
+  const {data,error} = await request.limit(100);
+  if (error) throw error;
+  return (data || []).map(storeProductFromRow);
+}
 const storefrontProductCacheTtl = 60 * 1000;
 const readStorefrontProductCache = () => new Promise((resolve) => {
   if (!('indexedDB' in window)) return resolve(null);
@@ -638,9 +609,64 @@ async function loadProducts() { let renderedFromCache = false, renderedFirstScre
   }
   productsHydrating = false;
   document.getElementById('catalogGrid')?._catalogDraw?.();
+  document.dispatchEvent(new Event('technoroom:catalog-ready'));
 } catch (error) { console.warn('Не вдалося завантажити каталог із Supabase', error); } finally { if (!renderedFromCache && !renderedFirstScreen) { productsLoaded = true; productsHydrating = false; mount(); await mountMegaCatalog(); } } }
 if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', loadProducts, { once: true });
 else loadProducts();
+
+async function mountHomeBanners() {
+  if (!document.querySelector('.home-hero')) return;
+  try {
+    const {data:banners,error:bannerError}=await supabase.from('banners').select('*').eq('is_active',true).order('sort_order').order('created_at',{ascending:false});
+    if(bannerError) throw bannerError;
+    const activeBanners=(banners||[]), hero=document.querySelector('.home-hero');
+    if(activeBanners.length&&hero){
+      const copy=hero.querySelector('.home-hero-copy'), art=hero.querySelector('.home-projector-art');
+      const renderBannerCopy=banner=>{
+        const title=escapeHtml(banner.title||'TECHNOROOM'),subtitle=escapeHtml(banner.subtitle||''),button=escapeHtml(banner.button_text||'Переглянути');
+        return '<small>TECHNOROOM</small><h1>'+title+'</h1>'+(subtitle?'<p>'+subtitle+'</p>':'')+'<a href="'+escapeHtml(banner.link_url||'catalog.html')+'">'+button+' →</a>';
+      };
+      const refreshBannerSize=sizeBannerSlides(hero,copy,activeBanners,renderBannerCopy);
+      let bannerIndex=0;
+      const applyBanner=(index)=>{
+        bannerIndex=(index+activeBanners.length)%activeBanners.length;
+        const banner=activeBanners[bannerIndex];
+        hero.classList.toggle('has-long-banner-title',Array.from(banner.title||'').length>90);
+        if(copy){
+          copy.classList.toggle('has-long-banner-title',Array.from(banner.title||'').length>90);
+          copy.innerHTML=renderBannerCopy(banner);
+        }
+        hero.style.backgroundImage='';
+        hero.style.backgroundSize=''; hero.style.backgroundPosition='';
+        hero.classList.toggle('has-banner-image',Boolean(banner.image_url));
+        hero.querySelector('.hero-benefits').hidden=true;
+        let bannerVisual=hero.querySelector('.home-banner-visual');
+        if(!bannerVisual){bannerVisual=document.createElement('a');bannerVisual.className='home-banner-visual';hero.append(bannerVisual)}
+        bannerVisual.hidden=!banner.image_url;
+        bannerVisual.href=banner.link_url||'catalog.html';
+        bannerVisual.innerHTML=banner.image_url?'<img src="'+escapeHtml(banner.image_url)+'" alt="'+escapeHtml(banner.title||'Банер TECHNOROOM')+'">':'';
+        if(art) art.style.display=banner.image_url?'none':'';
+        refreshBannerSize();
+        hero.querySelectorAll('[data-banner-dot]').forEach((dot,position)=>dot.classList.toggle('is-active',position===bannerIndex));
+      };
+      if(activeBanners.length>1){
+        const controls=document.createElement('div');
+        controls.className='home-banner-controls';
+        controls.innerHTML='<button type="button" data-banner-prev aria-label="Попередній банер">←</button><div>'+activeBanners.map((_,index)=>'<button type="button" data-banner-dot aria-label="Банер '+(index+1)+'"></button>').join('')+'</div><button type="button" data-banner-next aria-label="Наступний банер">→</button>';
+        hero.append(controls);
+        controls.querySelector('[data-banner-prev]').onclick=()=>applyBanner(bannerIndex-1);
+        controls.querySelector('[data-banner-next]').onclick=()=>applyBanner(bannerIndex+1);
+        controls.querySelectorAll('[data-banner-dot]').forEach((dot,index)=>dot.onclick=()=>applyBanner(index));
+        window.setInterval(()=>applyBanner(bannerIndex+1),6500);
+      }
+      applyBanner(0);
+      hero.setAttribute('aria-busy', 'false');
+    } else if (hero) {
+      hero.hidden = true;
+    }
+  } catch(e){console.warn('Промоблоки головної',e); const hero=document.querySelector('.home-hero'); if(hero)hero.hidden=true;}
+}
+mountHomeBanners();
 
 
 async function mountMegaCatalog() {
@@ -648,39 +674,7 @@ async function mountMegaCatalog() {
   if(!mega||!rootsEl||!childrenEl) return;
   const cats=await loadStorefrontCategories();
   if(!cats?.length) return;
-  // На картці товару завантажується лише поточна позиція, тому для меню
-  // окремо отримуємо лише категорії всіх товарів. Інакше лічильники в меню
-  // показували б нулі або кількість тільки поточного товару.
   const ids=new Set(cats.map(c=>c.id)), roots=cats.filter(c=>!c.parent_id||!ids.has(c.parent_id));
-  const childrenByParent=new Map();
-  cats.forEach((category)=>{const children=childrenByParent.get(category.parent_id)||[];children.push(category);childrenByParent.set(category.parent_id,children)});
-  const branchFor=(slug)=>{
-    const root=cats.find((category)=>category.slug===slug);
-    const branch=new Set(root?[root.slug]:[slug]);
-    const visit=(parentId)=>(childrenByParent.get(parentId)||[]).forEach((child)=>{branch.add(child.slug);visit(child.id)});
-    if(root) visit(root.id);
-    return branch;
-  };
-  let menuRows=[];
-  let menuCounts=null;
-  if(isProductPage){
-    const countsResult=await supabase.rpc('storefront_category_product_counts');
-    if(!countsResult.error&&Array.isArray(countsResult.data)){
-      menuCounts=new Map(countsResult.data.map((row)=>[row.category,Number(row.product_count)||0]));
-    }else{
-      // Без SQL-функції отримуємо тільки лічильники, а не всі записи каталогу.
-      const countRows=await Promise.all(cats.map(async(category)=>{
-        const result=await supabase.from('products').select('id',{count:'exact',head:true})
-          .eq('is_active',true).is('parent_product_id',null).eq('category',category.slug);
-        return result.error?null:[category.slug,Number(result.count)||0];
-      }));
-      if(countRows.every(Boolean)) menuCounts=new Map(countRows);
-    }
-  }
-  const menuProducts=isProductPage
-    ? menuRows.map((product)=>({type:product.category,parentProductId:product.parent_product_id}))
-    : products;
-  const productCount=(slug)=>{if(!isProductPage&&productsHydrating)return null;const branch=branchFor(slug);return menuCounts?[...branch].reduce((total,category)=>total+(menuCounts.get(category)||0),0):menuProducts.filter((product)=>!product.parentProductId&&branch.has(product.type)).length};
   const compactMenu=()=>window.matchMedia('(max-width:700px)').matches;
   const renderRoots=()=>{
     rootsEl.hidden=false;
@@ -696,7 +690,7 @@ async function mountMegaCatalog() {
     rootsEl.querySelectorAll('button').forEach(b=>b.classList.toggle('active',b.dataset.slug===root.slug));
     const kids=cats.filter(c=>c.parent_id===root.id);
     const back=compactMenu()?'<button type="button" class="mega-back" data-mega-back>← Усі категорії</button>':'';
-    childrenEl.innerHTML=`${back}<div class="mega-title"><h2>${root.name}</h2><a href="catalog.html?category=${encodeURIComponent(root.slug)}">Усі товари →</a></div><div class="mega-grid">${kids.map(c=>{const count=productCount(c.slug);return `<a href="catalog.html?category=${encodeURIComponent(c.slug)}"><strong>${escapeHtml(c.name)}</strong><span>${count===null?'Завантаження…':count+' товарів'}</span></a>`}).join('')}</div>`;
+    childrenEl.innerHTML=`${back}<div class="mega-title"><h2>${escapeHtml(root.name)}</h2><a href="catalog.html?category=${encodeURIComponent(root.slug)}">Усі товари →</a></div><div class="mega-grid">${kids.map(c=>`<a href="catalog.html?category=${encodeURIComponent(c.slug)}"><strong>${escapeHtml(c.name)}</strong><span>Переглянути →</span></a>`).join('')}</div>`;
     if(compactMenu()){
       rootsEl.hidden=true;
       childrenEl.hidden=false;
@@ -710,21 +704,10 @@ async function mountMegaCatalog() {
   document.addEventListener('pointerdown',(event)=>{
     if(!mega.hidden&&!mega.contains(event.target)&&!toggle.contains(event.target)) mega.hidden=true;
   });
-  const search=document.getElementById('headerCatalogSearch'), go=document.getElementById('headerCatalogSearchGo');
-  const normalizeSearch=v=>String(v||'').toLowerCase().replace(/є/g,'е').replace(/['’\-_/.,()]+/g,' ').replace(/\s+/g,' ').trim();
-  const score=(p,q)=>{const words=normalizeSearch(q).split(' ').filter(Boolean),name=normalizeSearch(p.name),brand=normalizeSearch(p.brand),sku=normalizeSearch(p.sku),desc=normalizeSearch(p.description),hay=[name,brand,sku,desc].join(' ');if(!words.every(w=>hay.includes(w)))return-1;let n=0;words.forEach(w=>{if(name===w)n+=100;else if(name.startsWith(w))n+=60;else if(name.includes(w))n+=40;if(brand===w)n+=30;if(sku===w)n+=50});return n};
-  const run=()=>{const q=search?.value.trim();const url=new URL('catalog.html',location.href);if(q)url.searchParams.set('search',q);else url.searchParams.delete('search');location.href=url.href;};
-  if(search){
-    const wrap=search.closest('.header-search');
-    const results=document.createElement('div');
-    results.className='header-search-results'; results.hidden=true; results.setAttribute('role','status');
-    wrap?.append(results);
-    const showResults=()=>{const q=search.value.trim(),normalized=normalizeSearch(q);if(normalized.length<2){results.hidden=true;return}const matches=products.map(product=>({product,rank:score(product,normalized)})).filter(row=>row.rank>=0).sort((a,b)=>b.rank-a.rank).slice(0,6),categories=cats.filter(category=>normalizeSearch(category.name+' '+category.slug).includes(normalized)||normalized.split(' ').every(word=>normalizeSearch(category.name+' '+category.slug).includes(word))).slice(0,4),categoryMarkup=categories.length?'<div class="header-search-categories"><b>Категорії</b><div>'+categories.map(category=>'<a href="catalog.html?category='+encodeURIComponent(category.slug)+'">▦ '+escapeHtml(category.name)+'</a>').join('')+'</div></div>':'';results.innerHTML='<div class="header-search-results__head"><b>Знайдено: '+matches.length+(matches.length===6?'+':'')+'</b><span>за назвою, брендом або SKU</span></div>'+categoryMarkup+(matches.length?matches.map(({product})=>{const source=imageUrl(product),name=escapeHtml(product.name),brand=escapeHtml(product.brand||'TECHNOROOM');return '<a class="header-search-result" href="product.html?id='+product.id+'">'+(source?'<img src="'+escapeHtml(source)+'" alt="" draggable="false">':'<span class="header-search-result__placeholder">▣</span>')+'<span><b>'+name+'</b><small>'+brand+' · '+money(product.price)+'</small></span><em>'+availability(product).label+'</em></a>'}).join(''):'<p class="header-search-empty">Нічого не знайдено. Спробуйте назву, бренд або SKU.</p>')+'<button type="button" class="header-search-all">Переглянути всі результати для «'+escapeHtml(q)+'» →</button>';results.hidden=false;results.querySelector('.header-search-all')?.addEventListener('click',run)};
-    const q=new URLSearchParams(location.search).get('search');if(q)search.value=q;
-    search.addEventListener('input',showResults);search.addEventListener('focus',showResults);search.addEventListener('keydown',event=>{if(event.key==='Enter'){event.preventDefault();run()}if(event.key==='Escape')results.hidden=true});
-    document.addEventListener('pointerdown',event=>{if(!wrap?.contains(event.target))results.hidden=true});
-  }
-  if(go)go.onclick=run;
+  attachStoreSearch(document.getElementById('headerCatalogSearch'), document.getElementById('headerCatalogSearchGo'), {
+    products:()=>products, escape:escapeHtml, image:imageUrl, price:money, availability, text:readableText,
+    categories:()=>cats, lookup:lookupStoreSearch,
+  });
 }
 /* Статус «Під замовлення»: товар можна оформити без складського залишку. */
 function availability(product) {
@@ -856,10 +839,7 @@ const compactProductName = (value = '', sku = '', brand = '') => {
   const startsWithProductType = /^(?:про[єе]ктор|телевізор|монітор|екран|саундбар|акустичн|гарнітур|навушник|мікрофон|портативн|зарядн|джерел|ноутбук|планшет|смартфон|годинник|принтер|роутер|камера|клавіатур|миша|кабель|адаптер|блокs+живлення|павербанк|powers*bank)/iu;
   const technicalTail = /\b(?:usb|hdmi|wifi|wi-fi|bluetooth|bt\s*\d|led|oled|qled|mini\s*-?\s*led|fhd|uhd|4k|8k|ips|va|tn|rgb|hdr|гб|gb|тб|tb|гц|hz|вт|w|лм|lm|кг|kg|м|mm\b|чорн|білий|сірий|silver|black|white|gray|grey)\b/iu;
   if (startsWithProductType.test(name) && parts.length >= 2 && (parts.length >= 3 || technicalTail.test(parts.slice(1).join(' ')))) name = parts[0];
-  const normaliseToken = (text) => String(text || '').toLocaleLowerCase('uk-UA').replace(/[^\p{L}\p{N}]/gu, '');
-  const cleanSku = readableText(sku);
-  if (cleanSku && !/^(?:null|undefined|none|—|-)$/iu.test(cleanSku) && !normaliseToken(name).includes(normaliseToken(cleanSku))) name += ' (' + cleanSku + ')';
-  return name || readableText(value);
+  return productNameWithSku(name || readableText(value), readableText(sku));
 };
 const fillBrandSelect = (select, source) => {
   if(!select)return;
@@ -2045,15 +2025,15 @@ catalog = function () {
     const selectedBrand = brand.value;
     brand.innerHTML = '<option value="">Усі бренди</option>' + brands.map((value) => '<option value="' + escapeHtml(value) + '">' + escapeHtml(readableText(value)) + '</option>').join('');
     if (brands.includes(selectedBrand)) brand.value = selectedBrand;
-    const terms = readableText(search.value).toLocaleLowerCase('uk-UA').replace(/є/g, 'е').split(/\s+/).filter(Boolean);
+    const searchQuery = readableText(search.value);
     let shown = products.filter((product) => {
       const promotion = promotionFor(product) || promotionByProductLink(product);
-      const searchable = readableText([product.name, product.brand, product.sku, product.description].join(' ')).toLocaleLowerCase('uk-UA').replace(/є/g, 'е');
+      const searchRank = searchScore({...product, name:readableText(product.name), brand:readableText(product.brand), description:readableText(product.description)}, searchQuery);
       return !product.parentProductId
         && (category === 'all' || storefrontCategoryMatches(product, category))
         && (!saleOnly || Boolean(promotion))
         && (!promotionOnly || Number(promotion?.id) === promotionOnly)
-        && (!terms.length || terms.every((term) => searchable.includes(term)))
+        && searchRank >= 0
         && (!brand.value || cleanBrand(product.brand) === brand.value)
         && (!priceMin?.value || Number(product.price) >= Number(priceMin.value))
         && (!price.value || Number(product.price) <= Number(price.value))
@@ -2074,14 +2054,20 @@ catalog = function () {
       if (sort.value === 'price-asc') return left.price - right.price;
       if (sort.value === 'price-desc') return right.price - left.price;
       if (sort.value === 'name') return left.name.localeCompare(right.name, 'uk');
+      if (searchQuery) return searchScore(right, searchQuery) - searchScore(left, searchQuery);
       return 0;
     };
-    shown.sort((left, right) => availabilityRank(left) - availabilityRank(right) || secondarySort(left, right));
+    shown.sort((left, right) => (searchQuery && !['newest','price-asc','price-desc','name'].includes(sort.value)
+      ? searchScore(right, searchQuery) - searchScore(left, searchQuery) : 0)
+      || availabilityRank(left) - availabilityRank(right) || secondarySort(left, right));
     const size = Number(pageSize?.value || 12);
     const pages = Math.max(1, Math.ceil(shown.length / size));
     page = Math.min(page, pages);
     const visible = shown.slice((page - 1) * size, page * size);
-    root.innerHTML = visible.length ? visible.map(card).join('') : '<p class="empty-cart">За цими параметрами товарів не знайдено.</p>';
+    root.innerHTML = visible.length ? visible.map(card).join('') : '<div class="catalog-search-empty"><h3>'
+      + (searchQuery ? 'Не знайшли «' + escapeHtml(searchQuery) + '»' : 'За цими фільтрами товарів немає')
+      + '</h3><p>Спробуйте коротшу назву, модель або артикул. Також перевірте обрані фільтри — вони можуть обмежувати результати.</p><button type="button" data-reset-empty-search>Скинути пошук і фільтри</button></div>';
+    root.querySelector('[data-reset-empty-search]')?.addEventListener('click', () => document.getElementById('clearCatalogFilters').click());
     document.getElementById('resultCount').textContent = productsHydrating
       ? 'Завантажуємо решту каталогу…'
       : shown.length + ' товарів';

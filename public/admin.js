@@ -5,7 +5,8 @@ import {productNameWithSku, officeSupplyCategoryPlan, isSpecializedPrinterName} 
 import {resolveProjectorSpecifications, normalizeProjectorResolution, isProjectorProduct, normalizeProjectorLightSource} from './projector-specs.js?v=20261012-spec-format';
 import {resolveEditorBrand} from './brand-editor.js?v=20261012';
 import {normalizeSpecifications} from './specification-normalization.js?v=20261012-spec-format';
-import {canonicalBrandName, brandConsolidationPlan} from './brand-normalization.js?v=20261012-consumables-brands';
+import {canonicalBrandName, brandConsolidationPlan} from './brand-normalization.js?v=20261012-brand-cleanup';
+import {removeUnusedBrandDuplicate} from './brand-cleanup.js?v=20261012-brand-cleanup';
 import {createQualityAudit, mountQualityPanel} from './catalog-quality.js?v=20261012-consumables-brands';
 import {createImportAudit, auditEligible, auditMarkup, showImportReview} from './import-audit.js?v=20261012-consumables-brands';
 const supabase=createClient(window.TECHNOROOM_SUPABASE.url,window.TECHNOROOM_SUPABASE.publishableKey);
@@ -233,8 +234,8 @@ $('#normalizeBrands').onclick=async()=>{
  const groups=brandConsolidationPlan(state.products,state.brands);
  const affected=groups.reduce((total,group)=>total+group.products.length,0);
  if(!groups.length){notice('Назви брендів уже впорядковано.');return}
- if(!confirm('Об’єднати варіанти брендів:\n'+groups.map(group=>group.canonical+' ← '+[...new Set([...group.brands.map(brand=>brand.name),...group.products.map(product=>product.brand)].filter(name=>name&&name!==group.canonical))].join(', ')+' ('+group.products.length+' товарів)').join('\n')+'\nВсього '+affected+' товарів. Старі записи не видалятимуться — вони будуть приховані.'))return;
- let updated=0,hidden=0;
+ if(!confirm('Об’єднати варіанти брендів:\n'+groups.map(group=>group.canonical+' ← '+[...new Set([...group.brands.map(brand=>brand.name),...group.products.map(product=>product.brand)].filter(name=>name&&name!==group.canonical))].join(', ')+' ('+group.products.length+' товарів)').join('\n')+'\nВсього '+affected+' товарів. Після переприв’язки товарів порожні старі записи брендів будуть ВИДАЛЕНІ без кошика. Бренди з прив’язаними товарами залишаться.'))return;
+ let updated=0,removed=0,retained=0;
  for(const group of groups){
    let canonical=group.brands.find(brand=>brand.name===group.canonical);
    if(!canonical&&group.brands.length===1){const renamed=await supabase.from('brands').update({name:group.canonical,slug:slug(group.canonical),is_active:true,updated_at:new Date().toISOString()}).eq('id',group.brands[0].id).select('*').single();if(renamed.error){notice('Зупинено на бренді «'+group.canonical+'»: '+renamed.error.message,true);await loadData();return}canonical=renamed.data}
@@ -248,10 +249,12 @@ $('#normalizeBrands').onclick=async()=>{
    updated+=changed;
    const movedIds=new Set(group.products.map(product=>Number(product.id)));
    const duplicates=group.brands.filter(brand=>Number(brand.id)!==Number(canonical.id)&&!state.products.some(product=>Number(product.brand_id)===Number(brand.id)&&!movedIds.has(Number(product.id))));
-   if(duplicates.length){const deactivated=await supabase.from('brands').update({is_active:false,updated_at:new Date().toISOString()}).in('id',duplicates.map(brand=>brand.id));if(deactivated.error){notice('Товари для «'+group.canonical+'» уже оновлено, але старі записи не приховано: '+deactivated.error.message,true);await loadData();return}hidden+=duplicates.length}
+   for(const duplicate of duplicates){try{const result=await removeUnusedBrandDuplicate(supabase,duplicate,canonical);if(result.removed)removed++;else retained++;}catch(error){notice('Товари вже переприв’язано, але бренд «'+duplicate.name+'» не видалено: '+error.message,true);await loadData();return;}}
  }
- await loadData();notice('Готово: оновлено '+updated+' товарів, приховано дублікати брендів: '+hidden+'.')
+ await loadData();notice('Готово: оновлено '+updated+' товарів, видалено порожніх дублікатів брендів: '+removed+'.'+(retained?' Залишено '+retained+' брендів, які ще мають прив’язані товари.':''))
 };
+const runBrandConsolidation=$('#normalizeBrands').onclick;
+$('#normalizeBrands').onclick=async event=>{const button=$('#normalizeBrands');if(button.disabled)return;button.disabled=true;try{await runBrandConsolidation(event);}finally{button.disabled=false;}};
 supabase.auth.onAuthStateChange(ev=>{if(ev==='PASSWORD_RECOVERY')view('recovery')});
 supabase.auth.getSession().then(({data:{session}})=>session?dashboard():view('login'));
 

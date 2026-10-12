@@ -2,7 +2,7 @@ import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js
 import {createArticleEditor} from './article-editor.js?v=20261011-article-links';
 import {articleHasContent} from './article-format.js?v=20261011-article-links';
 import {productNameWithSku, officeSupplyCategoryPlan} from './product-identity.js?v=20261012';
-import {createImportAudit, auditEligible, auditMarkup} from './import-audit.js?v=20261012-guard-2';
+import {createImportAudit, auditEligible, auditMarkup, showImportReview} from './import-audit.js?v=20261012-guard-4';
 const supabase=createClient(window.TECHNOROOM_SUPABASE.url,window.TECHNOROOM_SUPABASE.publishableKey);
 const state={catalogReady:false,products:[],orders:[],categories:[],brands:[],promotions:[],banners:[],articles:[],page:1,brandPage:1,selectedProducts:new Set(),categoryTreeOpen:new Set()};
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
@@ -1332,15 +1332,19 @@ supabase.auth.getSession().then(({data:{session}})=>session?dashboard():view('lo
     const section = $('#supplierImport');
     document.addEventListener('technoroom:admin-catalog-loaded', () => {importer.meta.clear();renderImportPreview();});
     updateImportSelectionSummary();
-    section.addEventListener('click', event => {
+    section.addEventListener('click', async event => {
       const button=event.target.closest('[data-review-import]');
       if(!button) return;
       const row=importer.rows.find(item=>item.key===button.dataset.reviewImport);
       if(!row) return;
       const assessment=importAssessment(row);
       if(assessment.blocked) return;
-      const details=assessment.issues.map(issue=>'• '+issue.message).join('\n');
-      if(!confirm('Ручна перевірка: '+row.name+'\nSKU: '+row.sku+'\n\n'+details+'\n\nВи перевірили модель та погоджуєтеся з цією категорією?')) return;
+      if(!await showImportReview(row,assessment,esc)) return;
+      assessImport=createImportAudit(importer.rows,state.products);
+      if(importAssessment(row).fingerprint!==assessment.fingerprint) {
+        renderImportPreview();
+        return importerStatus('Дані позиції змінилися під час перевірки. Перегляньте їх повторно.',true);
+      }
       reviewedImports.add(assessment.fingerprint);
       renderImportPreview();
       importerStatus('Позицію позначено як перевірену. Тепер її можна вибрати для імпорту.');

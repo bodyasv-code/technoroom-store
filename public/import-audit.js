@@ -70,3 +70,22 @@ export function auditMarkup(assessment, escape) {
   return assessment.issues.length ? '<ul class="import-audit-issues">'+assessment.issues.map(issue=>
     '<li class="is-'+issue.level+'">'+escape(issue.message)+'</li>').join('')+'</ul>' : '<span class="import-audit-ok">✓ Перевірки пройдено</span>';
 }
+
+export function showImportReview(row, assessment, escape) {
+  return new Promise(resolve => {
+    const dialog=document.createElement('dialog');
+    dialog.className='import-review-dialog';
+    dialog.setAttribute('aria-labelledby','import-review-title');
+    dialog.innerHTML='<div class="import-review-header"><h2 id="import-review-title">Ручна перевірка позиції</h2>'
+      +'<button type="button" data-review-cancel aria-label="Закрити">×</button></div>'
+      +'<div class="import-review-body"><b>'+escape(row.name)+'</b><p>SKU: '+escape(row.sku)+'</p>'
+      +auditMarkup(assessment,escape)+'<p>Перевірте модель, характеристики та запропоновану категорію. Підтвердження лише дозволить вибрати позицію — імпорт ще не запускається.</p></div>'
+      +'<div class="import-review-footer"><button type="button" data-review-cancel>Скасувати</button><button type="button" data-review-approve>Перевірено, дозволити вибір</button></div>';
+    let approved=false;
+    dialog.querySelectorAll('[data-review-cancel]').forEach(button=>button.onclick=()=>dialog.close());
+    dialog.querySelector('[data-review-approve]').onclick=()=>{approved=true;dialog.close();};
+    dialog.addEventListener('close',()=>{dialog.remove();resolve(approved);},{once:true});
+    document.body.append(dialog);
+    dialog.showModal();
+  });
+}

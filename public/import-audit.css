@@ -6,3 +6,9 @@
 .import-audit-review{display:block;margin-top:10px;border:1px solid #b4d0f0;border-radius:7px;padding:8px 12px;background:#f1f7ff;color:#1467b4;cursor:pointer;font:700 12px Manrope,Arial,sans-serif}
 .import-audit-reviewed{display:block;margin-top:8px;color:#258242;font-size:12px}
 #supplierImportRows tr:has(.is-block){background:#fffafa}
+.import-review-dialog{width:min(680px,calc(100% - 32px));max-height:85vh;padding:0;border:1px solid #dbe5f0;border-radius:16px;background:white;color:#193654;font:14px Manrope,Arial,sans-serif;overflow:auto;box-shadow:0 24px 80px #081b3830}
+.import-review-dialog::backdrop{background:#081b3870}
+.import-review-header{display:flex;justify-content:space-between;align-items:center;gap:16px;padding:22px 24px;border-bottom:1px solid #edf1f5}.import-review-header h2{margin:0;font-size:23px}.import-review-header button{border:0;background:transparent;color:#708198;font-size:28px;cursor:pointer}
+.import-review-body{padding:24px;line-height:1.6;overflow-wrap:anywhere}.import-review-body>p{color:#708198}.import-review-body .import-audit-issues{max-width:none}
+.import-review-footer{display:flex;justify-content:flex-end;gap:12px;padding:18px 24px;background:#f5f8fc}.import-review-footer button{padding:12px 16px;border:1px solid #ccdced;border-radius:8px;background:white;color:#193654;font:700 13px Manrope,Arial,sans-serif;cursor:pointer}.import-review-footer [data-review-approve]{background:#0875e9;border-color:#0875e9;color:white}
+@media(max-width:560px){.import-review-footer{flex-direction:column}.import-review-header,.import-review-body{padding:18px}}

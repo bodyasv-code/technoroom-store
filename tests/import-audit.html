@@ -1,5 +1,5 @@
 <!doctype html><html lang="uk"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Перевірка захисту імпорту</title><link rel="stylesheet" href="../public/import-audit.css"><style>body{font:14px Arial,sans-serif;color:#193654;background:#f5f8fc;margin:24px}main{max-width:1000px;margin:auto}table{width:100%;border-collapse:collapse;background:white}th,td{text-align:left;vertical-align:top;padding:16px;border-bottom:1px solid #dae4ef}button{padding:10px;margin:12px 0}h1{font-size:28px}</style></head><body><main><h1>Перевірка захисту імпорту</h1><p>Тестові дані — жодних звернень до бази даних.</p><button id="bulk">Вибрати готові позиції</button><span id="count" role="status"></span><table><thead><tr><th>Вибір</th><th>Товар</th><th>Перевірки</th></tr></thead><tbody id="rows"></tbody></table></main><script type="module">
-import {createImportAudit,auditMarkup,auditEligible} from '../public/import-audit.js';
+import {createImportAudit,auditMarkup,auditEligible,showImportReview} from '../public/import-audit.js';
 const rows=[
 {key:'a',sku:'DUP',name:'Картридж — дублікат 1',price:500,hasPrice:true,category:'office-consumables-cartridges'},
 {key:'b',sku:'dup',name:'Картридж — дублікат 2',price:500,hasPrice:true,category:'office-consumables-cartridges'},
@@ -11,6 +11,6 @@ const assess=createImportAudit(rows,[]),reviewed=new Set();
 const escape=value=>String(value).replace(/[&<>"']/g,char=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
 function render(){document.querySelector('#rows').innerHTML=rows.map(row=>{const result=assess(row,{mapped:true,category:row.category});return '<tr><td><input type="checkbox" data-key="'+row.key+'" '+(!auditEligible(result,reviewed)?'disabled':'')+'></td><td>'+escape(row.name)+'<br><small>SKU: '+escape(row.sku)+'</small></td><td>'+auditMarkup(result,escape)+(result.needsReview&&!result.blocked?'<button data-review="'+row.key+'">Перевірити позицію</button>':'')+'</td></tr>';}).join('');}
 document.querySelector('#bulk').onclick=()=>{document.querySelectorAll('[data-key]:not(:disabled)').forEach(input=>input.checked=true);document.querySelector('#count').textContent='Вибрано: '+document.querySelectorAll('[data-key]:checked').length;};
-document.querySelector('#rows').onclick=event=>{const button=event.target.closest('[data-review]');if(!button)return;const row=rows.find(row=>row.key===button.dataset.review);reviewed.add(assess(row,{mapped:true,category:row.category}).fingerprint);render();};
+document.querySelector('#rows').onclick=async event=>{const button=event.target.closest('[data-review]');if(!button)return;const row=rows.find(row=>row.key===button.dataset.review),result=assess(row,{mapped:true,category:row.category});if(!await showImportReview(row,result,escape))return;reviewed.add(result.fingerprint);render();};
 render();
 </script></body></html>

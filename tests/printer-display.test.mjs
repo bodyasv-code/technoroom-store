@@ -1,0 +1,16 @@
+import assert from 'node:assert/strict';
+import {printerDisplayEntries,isPrinterDevice} from '../public/printer-display.js';
+const source = [['дозвіл','1200х2400 т/д'],['Windows','11/10/8.1 Mac: macOS 13 Chrome OS'],['max кількість копій','99 ) Сканер (швидкість: кольорове: 3,5 мс/лінію (300 точок на дюйм)'],['Документ','Планшет: A4/Letter (216 x 297 мм), АПД: A4/Letter/Legal (216 x 356 мм) Дуплекс: так, звичайний папір']];
+const before = JSON.stringify(source);
+const result = printerDisplayEntries(source);
+assert.equal(result[0][0],'Роздільна здатність');
+assert.ok(result.some(([k,v])=>k==='Швидкість сканування'&&v==='кольорове: 3,5 мс/лінію (300 точок на дюйм)'));
+assert.ok(result.some(([k,v])=>k==='Дуплекс'&&v==='Так, звичайний папір'));
+assert.ok(result.some(([k,v])=>k==='Формат сканування (планшет)'&&v==='A4/Letter (216 x 297 мм)'));
+assert.ok(result.some(([k,v])=>k==='Операційні системи'&&v==='Windows, macOS, Chrome OS'));
+assert.equal(JSON.stringify(source),before);
+assert.ok(!printerDisplayEntries([['Опис','Дуплекс: опціональний']]).some(([k])=>k==='Дуплекс'));
+assert.equal(isPrinterDevice({name:'Картридж до HP MFP',category:'office-mfp'}),false);
+assert.equal(isPrinterDevice({name:'БФП Canon'}),true);
+assert.deepEqual(printerDisplayEntries(result),result);
+console.log('Printer presentation safeguards: OK');

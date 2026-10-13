@@ -518,6 +518,7 @@ body{overflow-x:hidden}.store-shared-header{position:sticky!important;top:0!impo
 
 /* One lightweight icon family for category tiles and both catalog menus. */
 .category-icon{display:block;width:24px;height:24px;flex:0 0 24px;color:#0875e9}
+.product-content-grid:not(:has(.product-description-card)){grid-template-columns:minmax(0,1fr)}
 .home-cat-visual .category-icon{width:48px;height:48px}
 .home-cat-visual img{display:block;max-width:100%;max-height:72px;object-fit:contain}
 .mega-roots button{align-items:center;gap:12px}

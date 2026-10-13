@@ -2,7 +2,8 @@ import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js
 import {sizeBannerSlides} from './banner-layout.js?v=20261011-uniform';
 import {categoryIcon} from './category-icons.js?v=20261013-icons';
 import {projectorDisplayEntries} from './projector-display.js?v=20261013-light-details';
-import {orderSpecificationEntries} from './specification-order.js?v=20261013-spec-order';
+import {orderSpecificationEntries} from './specification-order.js?v=20261013-printer-details';
+import {isPrinterDevice, printerDisplayEntries} from './printer-display.js?v=20261013-printer-details';
 import {attachStoreSearch, searchScore, normalizeSearch} from './store-search.js?v=20261012-search';
 import {productNameWithSku} from './product-identity.js?v=20261012-consumables-brands';
 import {resolveProjectorSpecifications, isProjectorProduct, normalizeProjectorLightSource, projectorResolutionLabel, projectorResolutionFilterValue, compareProjectorResolutions} from './projector-specs.js?v=20261013-spec-colons';
@@ -946,7 +947,7 @@ const displaySpecificationEntries = (product) => {
     .map(([key, value]) => [readableText(key), isProjectorProduct(product)&&key==='Роздільна здатність'?projectorResolutionLabel(specificationDisplayText(value)):specificationDisplayText(value)])
     .filter(([key, value]) => key && value);
   const projector = isProjectorProduct(product);
-  const entries = stored.length ? (projector ? projectorDisplayEntries(stored, product.description) : stored) : Object.entries(inferredScreenSpecifications(product));
+  const entries = stored.length ? (projector ? projectorDisplayEntries(stored, product.description) : isPrinterDevice(product) ? printerDisplayEntries(stored) : stored) : Object.entries(inferredScreenSpecifications(product));
   return orderSpecificationEntries(entries, {projector});
 };
 
@@ -1221,7 +1222,7 @@ product = function () {
       + '<strong class="detail-price">' + money(item.price) + '</strong><p class="product-price-note">Ціна вказана за 1 одиницю товару</p>'
       + '<div class="detail-actions">' + (state.inquiry ? '<button class="button product-buy" data-inquiry="' + item.id + '">Уточнити наявність</button>' : '<button class="button product-buy" data-add="' + item.id + '" ' + (state.orderable ? '' : 'disabled') + '>' + (state.orderable ? 'Додати в кошик' : 'Немає в наявності') + '</button>') + '<a class="button product-back" href="' + catalogCardEscape(catalogReturnUrl) + '">До каталогу</a></div>'
       + '<div class="product-service-grid"><div><b>Доставка</b><span>Підберемо зручний спосіб</span></div><div><b>Гарантія</b><span>Офіційна техніка</span></div><div><b>Консультація</b><span>Допоможемо з вибором</span></div></div></div></div></section>'
-      + '<section class="product-content-grid"><article class="product-description-card"><p class="section-kicker">Про товар</p><h2>Опис</h2><p>' + safe(item.description || 'Деталі та комплектацію уточнюйте у менеджера.') + '</p></article><article class="product-specs-card"><div class="product-section-heading"><div><p class="section-kicker">Технічні дані</p><h2>Характеристики</h2></div><span>' + (specEntries.length ? specEntries.length + ' параметрів' : '') + '</span></div><dl class="specs"><div><dt>Виробник</dt><dd>' + safeBrand + '</dd></div>' + specs + '</dl></article></section>'
+      + '<section class="product-content-grid">' + (specificationDisplayText(item.description).trim() ? '<article class="product-description-card"><p class="section-kicker">Про товар</p><h2>Опис</h2><p>' + safe(item.description) + '</p></article>' : '') + '<article class="product-specs-card"><div class="product-section-heading"><div><p class="section-kicker">Технічні дані</p><h2>Характеристики</h2></div><span>' + (specEntries.length ? specEntries.length + ' параметрів' : '') + '</span></div><dl class="specs"><div><dt>Виробник</dt><dd>' + safeBrand + '</dd></div>' + specs + '</dl></article></section>'
       + (related.length ? '<section class="related-products"><div class="related-heading"><div><p class="section-kicker">Добірка</p><h2>Схожі товари</h2></div><a href="catalog.html?category=' + encodeURIComponent(item.type || '') + '">Переглянути всі →</a></div><div class="product-grid">' + related.map(card).join('') + '</div></section>' : '');
     bind(root);
     root.querySelectorAll('[data-gallery-path]').forEach((button) => button.addEventListener('click', () => renderProductGallery(decodeURIComponent(button.dataset.galleryPath))));

@@ -1,0 +1,48 @@
+import assert from 'node:assert/strict';
+import {matchingPromotion,discountedPrice} from '../public/store-pricing.js';
+import {normalizeOrder} from '../api/order-input.js';
+import {readFileSync} from 'node:fs';
+import vm from 'node:vm';
+const product={id:170,price:227505,type:'projectors',brand_id:3};
+const promo={id:2,is_active:true,target_type:'products',discount_type:'percent',discount_value:5};
+const links=new Map([[2,new Set([170])]]);
+assert.equal(discountedPrice(product.price,matchingPromotion(product,[promo],links)),216129.75);
+assert.equal(discountedPrice(100,{discount_type:'fixed',discount_value:12.34}),87.66);
+assert.equal(discountedPrice(10,{discount_type:'fixed',discount_value:50}),0);
+assert.equal(discountedPrice(19.99,{discount_type:'percent',discount_value:5}),18.99);
+assert.equal(matchingPromotion(product,[{...promo,ends_at:'2020-01-01'}],links),null);
+assert.equal(matchingPromotion(product,[{...promo,is_active:false}],links),null);
+assert.equal(matchingPromotion(product,[{...promo,starts_at:'2099-01-01'}],links),null);
+assert.equal(matchingPromotion({...product,id:171,parentProductId:170},[promo],links).id,2);
+assert.equal(matchingPromotion(product,[promo,{...promo,id:1,target_type:'all'}],links).id,1);
+const body={customer:{name:' Тест ',lastName:' Покупець ',phone:'+380 (50) 000-00-00',email:'test@example.com'},
+ delivery:{method:'nova_poshta',city:' Київ ',address:'1',comment:'Коментар'},payment:{method:'invoice'},
+ company:{name:'Компанія',code:'12345678',contact:'Контакт',invoiceEmail:'test@example.com'},consent:true,
+ items:[{productId:170,quantity:2,expectedUnitPrice:216129.75}]};
+const normalized=normalizeOrder(body);
+assert.equal(normalized.customer.lastName,'Покупець');
+assert.equal(normalized.customer.phone,'+380500000000');
+assert.equal(normalized.payment.method,'invoice');
+assert.equal(normalized.delivery.method,'nova_poshta');
+assert.equal(normalized.company.code,'12345678');
+assert.match(normalized.delivery.comment,/Оплата: За рахунком/);
+assert.equal(normalized.items[0].expectedUnitPrice,216129.75);
+assert.throws(()=>normalizeOrder({...body,customer:{...body.customer,phone:'+380'}}));
+assert.throws(()=>normalizeOrder({...body,consent:false}));
+assert.throws(()=>normalizeOrder({...body,items:[{productId:170,quantity:1.5,expectedUnitPrice:10}]}));
+assert.throws(()=>normalizeOrder({...body,items:[{productId:170,quantity:1}]}));
+assert.equal(normalizeOrder({...body,items:[...body.items,{...body.items[0],quantity:1}]}).items[0].quantity,3);
+// Execute actual handler with mocked RPC: never creates a real order.
+let rpcCall;
+const handlerSource=readFileSync(new URL('../api/orders.js',import.meta.url),'utf8');
+const handler=handlerSource.slice(handlerSource.indexOf('export default async function handler')).replace('export default ','');
+const context={normalizeOrder,supabase:{async rpc(name,args){rpcCall={name,args};return {data:123,error:null};}}};
+vm.createContext(context);vm.runInContext(handler,context);
+const response={statusCode:0,body:null,setHeader(){},status(code){this.statusCode=code;return this},json(value){this.body=value;return this}};
+await context.handler({method:'POST',body},response);
+assert.equal(response.statusCode,201);assert.equal(rpcCall.name,'create_store_order_v2');
+assert.equal(rpcCall.args.p_payload.company.code,'12345678');
+context.supabase.rpc=async()=>({error:{message:'Price changed for product 170'}});
+await context.handler({method:'POST',body},response);assert.equal(response.statusCode,409);
+await context.handler({method:'POST',body:{...body,consent:false}},response);assert.equal(response.statusCode,400);
+console.log('Checkout pricing, fields and server price-change safeguards: OK');

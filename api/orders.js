@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
+import {normalizeOrder} from './order-input.js';
 
 const supabase = createClient(
   process.env.SUPABASE_URL,
@@ -12,25 +13,14 @@ export default async function handler(request, response) {
     return response.status(405).json({ error: 'Method not allowed' });
   }
 
-  const { customer, delivery, items } = request.body ?? {};
-  if (!customer?.name || !customer?.phone || !Array.isArray(items) || !items.length) {
+  let payload;
+  try { payload=normalizeOrder(request.body ?? {}); } catch {
     return response.status(400).json({ error: 'Invalid order data' });
   }
-
-  const normalizedItems = items.map((item) => ({ productId: Number(item.productId), quantity: Math.max(1, Number(item.quantity) || 1) }));
-  if (normalizedItems.some((item) => !Number.isInteger(item.productId))) return response.status(400).json({ error: 'Invalid product' });
-
-  const { data: orderId, error } = await supabase.rpc('create_store_order', {
-    p_customer_name: customer.name.trim(),
-    p_customer_phone: customer.phone.trim(),
-    p_customer_email: customer.email || '',
-    p_city: delivery?.city || '',
-    p_address: delivery?.address || '',
-    p_comment: delivery?.comment || '',
-    p_items: normalizedItems,
-  });
+  const { data: orderId, error } = await supabase.rpc('create_store_order_v2', {p_payload:payload});
 
   if (error) {
+    if (/Price changed/i.test(error.message||'')) return response.status(409).json({error:'Ціна товару змінилася. Оновіть сторінку й перевірте суму.'});
     const unavailable = /unavailable/i.test(error.message || '');
     return response.status(unavailable ? 409 : 500).json({ error: unavailable ? 'One or more items are unavailable' : 'Unable to create order' });
   }

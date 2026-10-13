@@ -6,6 +6,7 @@ import {orderSpecificationEntries} from './specification-order.js?v=20261013-pri
 import {isPrinterDevice, printerDisplayEntries} from './printer-display.js?v=20261013-printer-rules';
 import {catalogResultState} from './catalog-loading-state.js?v=20261013-catalog-loading';
 import {catalogRequestScope, catalogCacheKey, mergeCatalogRows, applyCatalogScope, cartProductIds} from './catalog-scope.js?v=20261013-cart-ids';
+import {matchingPromotion, discountedPrice} from './store-pricing.js?v=20261013-checkout-pricing';
 import {attachStoreSearch, searchScore, normalizeSearch} from './store-search.js?v=20261012-search';
 import {productNameWithSku} from './product-identity.js?v=20261012-consumables-brands';
 import {resolveProjectorSpecifications, isProjectorProduct, normalizeProjectorLightSource, projectorResolutionLabel, projectorResolutionFilterValue, compareProjectorResolutions} from './projector-specs.js?v=20261013-spec-colons';
@@ -104,19 +105,12 @@ document.addEventListener('keydown', (event) => { if (event.key === 'Escape') cl
 document.addEventListener('contextmenu', (event) => { if (event.target.closest('.product-image,.image-lightbox,.product-detail-copy,.catalog-grid .product')) event.preventDefault(); });
 
 function add(id) { const product = get(id); if (!product?.stock) return; cart.push(Number(id)); save(); renderCart(); }
-function renderCart() { const count = document.getElementById('cartCount'); if (count) count.textContent = cart.length; const root = document.getElementById('cartItems'), total = document.getElementById('cartTotal'), checkoutButton = document.getElementById('checkoutButton'); if (!root) return; const items = cart.map((id, index) => ({ product: get(id), index })).filter((item) => item.product); root.innerHTML = items.length ? items.map(({ product, index }) => `<div class="cart-item"><b>${product.name}</b><strong>${money(product.price)}</strong><span>${product.stock ? 'В наявності' : 'Немає в наявності'}</span><button class="remove" data-remove="${index}">Прибрати</button></div>`).join('') : '<p class="empty-cart">Кошик поки порожній.</p>'; if (total) total.textContent = money(items.reduce((sum, item) => sum + item.product.price, 0)); if (checkoutButton) checkoutButton.disabled = !items.length; root.querySelectorAll('[data-remove]').forEach((button) => button.onclick = () => { cart.splice(Number(button.dataset.remove), 1); save(); renderCart(); }); }
+function renderCart() { const count = document.getElementById('cartCount'); if (count) count.textContent = cart.length; const root = document.getElementById('cartItems'), total = document.getElementById('cartTotal'), checkoutButton = document.getElementById('checkoutButton'); if (!root) return; const items = cart.map((id, index) => ({ product: get(id), index })).filter((item) => item.product); root.innerHTML = items.length ? items.map(({ product, index }) => `<div class="cart-item"><b>${product.name}</b><strong>${money(salePrice(product))}</strong><span>${product.stock ? 'В наявності' : 'Немає в наявності'}</span><button class="remove" data-remove="${index}">Прибрати</button></div>`).join('') : '<p class="empty-cart">Кошик поки порожній.</p>'; if (total) total.textContent = money(items.reduce((sum, item) => sum + item.product.price, 0)); if (checkoutButton) checkoutButton.disabled = !items.length; root.querySelectorAll('[data-remove]').forEach((button) => button.onclick = () => { cart.splice(Number(button.dataset.remove), 1); save(); renderCart(); }); }
 function promotionFor(product){
-  return activePromotions.find(p=>{
-    const type=p.target_type||'all';
-    if(type==='all') return true;
-    if(type==='category') return String(p.target_value||'')===String(product.type||'');
-    if(type==='brand') return Number(p.target_value)===Number(product.brand_id);
-    if(type==='products') return promotionProductIds.get(Number(p.id))?.has(Number(product.id));
-    return false;
-  });
+  return matchingPromotion(product,activePromotions,promotionProductIds);
 }
 function promotionByProductLink(product){for(const p of activePromotions){if(promotionProductIds.get(Number(p.id))?.has(Number(product.id)))return p}return null}
-function salePrice(product){const p=promotionFor(product);if(!p)return Number(product.price);return Math.max(0,p.discount_type==='percent'?Number(product.price)*(1-Number(p.discount_value)/100):Number(product.price)-Number(p.discount_value))}
+function salePrice(product){return discountedPrice(product.price,promotionFor(product));}
 function card(product) { const promo=promotionFor(product)||promotionByProductLink(product),price=promo?Math.max(0,promo.discount_type==='percent'?Number(product.price)*(1-Number(promo.discount_value)/100):Number(product.price)-Number(promo.discount_value)):Number(product.price),badge=promo?'<span class="sale-badge">'+(promo.discount_type==='percent'?'-'+Number(promo.discount_value)+'%':'АКЦІЯ')+'</span>':'',promoName=promo?'<div class="promotion-name">🏷 Акція: <b>'+escapeHtml(promo.name||'Спеціальна пропозиція')+'</b></div>':''; return `<article class="product">${badge}<div class="product-image ${product.type}">${image(product)}</div>${promoName}<h3><a href="product.html?id=${product.id}">${product.name}</a></h3><p class="availability">${product.stock ? 'В наявності' : 'Немає в наявності'}</p><p>${product.description || ''}</p><div class="product-footer"><div>${promo?'<del class="old-price">'+money(product.price)+'</del>':''}<strong class="price">${money(price)}</strong></div><button class="add-button" data-add="${product.id}" ${product.stock ? '' : 'disabled'}>${product.stock ? 'У кошик' : 'Немає'}</button></div></article>`; }
 function bind(root = document) { root.querySelectorAll('[data-add]').forEach((button) => button.onclick = () => add(button.dataset.add)); root.querySelectorAll('[data-inquiry]').forEach((button) => button.onclick = () => openInquiry(button.dataset.inquiry)); root.querySelectorAll('.product-image img').forEach((image) => image.onclick = () => openLightbox(image.currentSrc || image.src, image.alt)); }
 async function loadHomeSaleProducts(initialProducts) {
@@ -446,8 +440,8 @@ schema.textContent = JSON.stringify({
   }
 });
 
-document.head.appendChild(schema); const specs = item.specifications ? Object.entries(item.specifications).map(([key, value]) => `<div><dt>${key}</dt><dd>${value}</dd></div>`).join('') : `<div><dt>Характеристики</dt><dd>${item.details || 'Уточнюйте у менеджера'}</dd></div>`; root.innerHTML = `<div class="product-detail-visual ${item.type}"><div class="product-image ${item.type}">${image(item)}</div></div><div class="product-detail-copy"><p class="eyebrow">${item.brand || ''}</p><h1>${item.name}</h1><p class="product-description">${item.description || ''}</p><p class="availability">${item.stock ? 'В наявності' : 'Немає в наявності'}</p><strong class="detail-price">${money(item.price)}</strong><div class="detail-actions"><button class="button primary" data-add="${item.id}" ${item.stock ? '' : 'disabled'}>${item.stock ? 'Додати в кошик' : 'Немає в наявності'}</button><a class="button outline" href="catalog.html">До каталогу</a></div><dl class="specs"><div><dt>Виробник</dt><dd>${item.brand || '—'}</dd></div>${specs}</dl></div>`; bind(root); }
-function checkout() { const form = document.getElementById('checkoutForm'); if (!form) return; const items = cart.map(get).filter(Boolean), total = items.reduce((sum, item) => sum + item.price, 0), root = document.getElementById('checkoutSummary'); root.innerHTML = items.length ? items.map((item) => `<div><span>${item.name}</span><strong>${money(item.price)}</strong></div>`).join('') + `<div class="checkout-total"><span>Разом</span><strong>${money(total)}</strong></div>` : '<p>Ваш кошик порожній. <a href="catalog.html">Перейти до каталогу</a></p>'; form.onsubmit = async (event) => { event.preventDefault(); if (items.some((item) => !item.stock)) return alert('У кошику є недоступний товар.'); const data = Object.fromEntries(new FormData(form)), button = form.querySelector('button'); button.disabled = true; try { const response = await fetch('/api/orders', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ customer: { name: data.name, phone: data.phone, email: data.email }, delivery: { city: data.city, address: data.address, comment: data.comment }, items: cart.map((productId) => ({ productId, quantity: 1 })) }) }); if (!response.ok) throw new Error(); localStorage.removeItem('technoroom-cart'); cart.length = 0; renderCart(); document.getElementById('checkoutNotice').hidden = false; button.textContent = 'Замовлення прийнято'; } catch { button.disabled = false; alert('Не вдалося створити замовлення. Спробуйте ще раз.'); } }; }
+document.head.appendChild(schema); const specs = item.specifications ? Object.entries(item.specifications).map(([key, value]) => `<div><dt>${key}</dt><dd>${value}</dd></div>`).join('') : `<div><dt>Характеристики</dt><dd>${item.details || 'Уточнюйте у менеджера'}</dd></div>`; root.innerHTML = `<div class="product-detail-visual ${item.type}"><div class="product-image ${item.type}">${image(item)}</div></div><div class="product-detail-copy"><p class="eyebrow">${item.brand || ''}</p><h1>${item.name}</h1><p class="product-description">${item.description || ''}</p><p class="availability">${item.stock ? 'В наявності' : 'Немає в наявності'}</p><strong class="detail-price">${money(salePrice(item))}</strong><div class="detail-actions"><button class="button primary" data-add="${item.id}" ${item.stock ? '' : 'disabled'}>${item.stock ? 'Додати в кошик' : 'Немає в наявності'}</button><a class="button outline" href="catalog.html">До каталогу</a></div><dl class="specs"><div><dt>Виробник</dt><dd>${item.brand || '—'}</dd></div>${specs}</dl></div>`; bind(root); }
+function checkout() { const form = document.getElementById('checkoutForm'); if (!form) return; const items = cart.map(get).filter(Boolean), total = items.reduce((sum, item) => sum + item.price, 0), root = document.getElementById('checkoutSummary'); root.innerHTML = items.length ? items.map((item) => `<div><span>${item.name}</span><strong>${money(salePrice(item))}</strong></div>`).join('') + `<div class="checkout-total"><span>Разом</span><strong>${money(total)}</strong></div>` : '<p>Ваш кошик порожній. <a href="catalog.html">Перейти до каталогу</a></p>'; form.onsubmit = async (event) => { event.preventDefault(); if (items.some((item) => !item.stock)) return alert('У кошику є недоступний товар.'); const data = Object.fromEntries(new FormData(form)), button = form.querySelector('button'); button.disabled = true; try { const response = await fetch('/api/orders', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ customer: { name: data.name, phone: data.phone, email: data.email }, delivery: { city: data.city, address: data.address, comment: data.comment }, items: cart.map((productId) => ({ productId, quantity: 1 })) }) }); if (!response.ok) throw new Error(); localStorage.removeItem('technoroom-cart'); cart.length = 0; renderCart(); document.getElementById('checkoutNotice').hidden = false; button.textContent = 'Замовлення прийнято'; } catch { button.disabled = false; alert('Не вдалося створити замовлення. Спробуйте ще раз.'); } }; }
 function mount() { renderCart(); home(); catalog(); product(); checkout(); restoreScrollPosition(); const drawer = document.getElementById('cartDrawer'), overlay = document.getElementById('overlay'), close = () => { drawer?.classList.remove('open'); if (overlay) overlay.hidden = true; }; document.getElementById('cartButton')?.addEventListener('click', () => { drawer?.classList.add('open'); if (overlay) overlay.hidden = false; }); document.getElementById('closeCart')?.addEventListener('click', close); overlay?.addEventListener('click', close); document.getElementById('checkoutButton')?.addEventListener('click', () => location.href = 'checkout.html'); }
 const storeProductFromRow = (item) => ({ id: item.id, sku: readableText(item.sku), name: compactProductName(item.name, item.sku, item.brand), description: readableText(item.description), price: Number(item.price), type: item.category, brand: readableText(item.brand), brand_id:item.brand_id, parentProductId:item.parent_product_id, variantLabel:readableText(item.variant_label), specifications: isProjectorProduct(item)?resolveProjectorSpecifications(item):normalizeSpecifications(item.specifications), availabilityStatus: item.availability_status, stockQuantity: Number(item.stock_quantity || 0), stock: item.in_stock && Number(item.stock_quantity || 0) > 0, image: item.image_path, imagePaths: item.image_paths, createdAt:item.created_at });
 
@@ -566,6 +560,7 @@ async function loadActivePromotions() {
 async function loadProducts() { let renderedFromCache = false, renderedFirstScreen = false; try {
   if (isProductPage) {
     await loadProductPageProducts();
+    await loadActivePromotions();
     return;
   }
   catalogProductScope=catalogRequestScope(location.search,Boolean(document.getElementById('catalogGrid')));
@@ -813,9 +808,9 @@ renderCart = () => {
     <div class="cart-item cart-item-rich">
       <a class="cart-thumb" href="product.html?id=${product.id}">${src?`<img src="${src}" alt="${catalogCardEscape(product.name)}">`:'<span>Фото</span>'}</a>
       <div class="cart-item-main"><a href="product.html?id=${product.id}" class="cart-item-name">${catalogCardEscape(product.name)}</a><span class="cart-item-stock">${state.label}</span><div class="cart-qty"><button type="button" data-cart-minus="${index}" aria-label="Зменшити">−</button><input type="number" min="1" max="99" value="${quantity}" data-cart-qty="${index}"><button type="button" data-cart-plus="${index}" aria-label="Збільшити">+</button></div></div>
-      <div class="cart-item-side"><strong>${money(product.price*quantity)}</strong><small>${money(product.price)} / шт.</small><button type="button" class="cart-remove" data-cart-remove="${index}">Видалити</button></div>
+      <div class="cart-item-side"><strong>${money(salePrice(product)*quantity)}</strong><small>${money(salePrice(product))} / шт.</small><button type="button" class="cart-remove" data-cart-remove="${index}">Видалити</button></div>
     </div>`}).join(''):'<div class="cart-empty-state"><b>Кошик порожній</b><span>Додайте товари з каталогу</span><a href="catalog.html">Перейти до каталогу →</a></div>';
-  const sum=items.reduce((acc,x)=>acc+x.product.price*x.quantity,0); if(total)total.textContent=money(sum); if(checkoutButton)checkoutButton.disabled=!items.length;
+  const sum=items.reduce((acc,x)=>acc+salePrice(x.product)*x.quantity,0); if(total)total.textContent=money(sum); if(checkoutButton)checkoutButton.disabled=!items.length;
   const updateQty=(i,q)=>{if(!cart[i])return;cart[i].quantity=Math.max(1,Math.min(99,Number(q)||1));save();renderCart()};
   root.querySelectorAll('[data-cart-minus]').forEach(b=>b.onclick=()=>updateQty(Number(b.dataset.cartMinus),Number(cart[Number(b.dataset.cartMinus)]?.quantity||1)-1));
   root.querySelectorAll('[data-cart-plus]').forEach(b=>b.onclick=()=>updateQty(Number(b.dataset.cartPlus),Number(cart[Number(b.dataset.cartPlus)]?.quantity||1)+1));
@@ -904,7 +899,7 @@ card = (product) => {
   const variants = productVariantsFor(product);
   const displayProduct = variants.length ? preferredVariantFor(product) : product;
   const state = availability(displayProduct);
-  const promotion = promotionFor(displayProduct) || promotionByProductLink(displayProduct) || promotionFor(product) || promotionByProductLink(product);
+  const promotion = promotionFor(displayProduct);
   const name = catalogCardEscape(compactProductName(product.name, product.sku, product.brand));
   const brand = catalogCardEscape(product.brand || 'TECHNOROOM');
   const source = imageUrl(product) || imageUrl(displayProduct);
@@ -988,7 +983,7 @@ product = () => {
         <h1>${safeName}</h1>
         <p class="product-description">${catalogCardEscape(item.description||'')}</p>
         <div class="product-status ${state.orderable?'ok':'no'}"><i></i>${state.label}</div>
-        <strong class="detail-price">${money(item.price)}</strong>
+        <strong class="detail-price">${money(salePrice(item))}</strong>
         <div class="detail-actions"><button class="button product-buy" data-add="${item.id}" ${state.orderable?'':'disabled'}>🛒 ${state.orderable?(item.availabilityStatus==='under_order'?'Замовити':'У кошик'):'Немає в наявності'}</button><a class="button product-back" href="catalog.html">← До каталогу</a></div>
         <div class="product-benefits"><div><b>✓ Швидка доставка</b><span>По всій Україні</span></div><div><b>◇ Гарантія</b><span>Офіційна техніка</span></div><div><b>↺ Підтримка</b><span>Допоможемо з вибором</span></div></div>
       </div>
@@ -1007,11 +1002,11 @@ checkout = () => {
   const root=document.getElementById('checkoutSummary');
   const renderSummary=()=>{
     const items=cart.map((entry,index)=>({product:get(Number(entry.productId)),quantity:Number(entry.quantity||1),index})).filter(x=>x.product);
-    const total=items.reduce((sum,x)=>sum+x.product.price*x.quantity,0);
+    const total=items.reduce((sum,x)=>sum+salePrice(x.product)*x.quantity,0);
     root.innerHTML=items.length?items.map(({product,quantity,index})=>{const src=imageUrl(product);return `<div class="checkout-item checkout-item-editable">
       <a class="checkout-item-thumb" href="product.html?id=${product.id}">${src?`<img src="${src}" alt="${catalogCardEscape(product.name)}">`:'<span>Фото</span>'}</a>
-      <div class="checkout-item-info"><a href="product.html?id=${product.id}">${catalogCardEscape(product.name)}</a><small>${money(product.price)} / шт.</small><div class="checkout-mini-qty"><button type="button" data-checkout-minus="${index}">−</button><b>${quantity}</b><button type="button" data-checkout-plus="${index}">+</button></div></div>
-      <div class="checkout-item-price"><strong>${money(product.price*quantity)}</strong><button type="button" data-checkout-remove="${index}" aria-label="Видалити">✕</button></div>
+      <div class="checkout-item-info"><a href="product.html?id=${product.id}">${catalogCardEscape(product.name)}</a><small>${money(salePrice(product))} / шт.</small><div class="checkout-mini-qty"><button type="button" data-checkout-minus="${index}">−</button><b>${quantity}</b><button type="button" data-checkout-plus="${index}">+</button></div></div>
+      <div class="checkout-item-price"><strong>${money(salePrice(product)*quantity)}</strong><button type="button" data-checkout-remove="${index}" aria-label="Видалити">✕</button></div>
     </div>`}).join('')+`<div class="checkout-summary-count"><span>Товари (${items.reduce((n,x)=>n+x.quantity,0)})</span><b>${money(total)}</b></div><div class="checkout-total"><span>До сплати</span><strong>${money(total)}</strong></div>`:'<div class="checkout-empty"><b>Кошик порожній</b><a href="catalog.html">Перейти до каталогу →</a></div>';
     const setQty=(i,q)=>{if(!cart[i])return;cart[i].quantity=Math.max(1,Math.min(99,q));save();renderCart();renderSummary()};
     root.querySelectorAll('[data-checkout-minus]').forEach(b=>b.onclick=()=>setQty(+b.dataset.checkoutMinus,Number(cart[+b.dataset.checkoutMinus].quantity||1)-1));
@@ -1078,19 +1073,23 @@ checkout = () => {
               comment: data.comment
             },
             payment: { method: data.paymentMethod },
+            consent: Boolean(data.consent),
             company: data.companyOrder ? { name: data.companyName, code: data.companyCode, contact: data.companyContact, invoiceEmail: data.invoiceEmail } : null,
 
             items: cart.map(item => ({
               productId: item.productId,
-              quantity: item.quantity
+              quantity: item.quantity,
+              expectedUnitPrice: salePrice(get(Number(item.productId)))
             }))
 
           })
 
         });
 
-      if (!response.ok)
-        throw new Error();
+      if (!response.ok) {
+        const result=await response.json().catch(()=>({}));
+        throw new Error(result.error||'Не вдалося створити замовлення. Спробуйте ще раз.');
+      }
 
       localStorage.removeItem(
         'technoroom-cart'
@@ -1110,13 +1109,11 @@ checkout = () => {
       document.getElementById('checkoutNotice').hidden=false;
       document.getElementById('checkoutNotice').scrollIntoView({behavior:'smooth',block:'center'});
 
-    } catch {
+    } catch (error) {
 
       button.disabled = false;
 
-      alert(
-        'Не вдалося створити замовлення. Спробуйте ще раз.'
-      );
+      alert(error.message || 'Не вдалося створити замовлення. Спробуйте ще раз.');
 
     }
 
@@ -1165,7 +1162,7 @@ product = function () {
     const thumbs = paths.length > 1
       ? '<div class="product-gallery-thumbs" aria-label="Інші фото товару">' + paths.map((path, index) =>           '<button class="product-gallery-thumb ' + (path === activePath ? 'is-active' : '') + '" type="button" data-gallery-path="' + encodeURIComponent(path) + '" aria-label="Фото ' + (index + 1) + '">' +             '<img src="' + galleryImageUrl(item, path) + '" alt="' + item.name + ' — фото ' + (index + 1) + '" draggable="false">' +           '</button>').join('') + '</div>'
       : '';
-    root.innerHTML =       '<div class="product-detail-visual ' + item.type + '"><div class="product-image ' + item.type + '">' + (source ? '<img src="' + source + '" alt="' + item.name + '" draggable="false">' : '') + '</div>' + thumbs + '</div>' +       '<div class="product-detail-copy"><p class="eyebrow">' + item.brand + '</p><h1>' + item.name + '</h1><p class="product-detail-description">' + item.description + '</p><p class="stock ' + (item.inStock ? '' : 'out') + '">' + (item.inStock ? 'В наявності' : 'Під замовлення') + '</p><p class="product-price">' + money(item.price) + '</p><div class="product-actions"><button class="btn btn-primary" data-add="' + item.id + '">Додати в кошик</button><a class="btn btn-outline" href="catalog.html">До каталогу</a></div><dl class="specs">' + Object.entries(item.specs || {}).map(([key, value]) => '<div><dt>' + key + '</dt><dd>' + value + '</dd></div>').join('') + '</dl></div>';
+    root.innerHTML =       '<div class="product-detail-visual ' + item.type + '"><div class="product-image ' + item.type + '">' + (source ? '<img src="' + source + '" alt="' + item.name + '" draggable="false">' : '') + '</div>' + thumbs + '</div>' +       '<div class="product-detail-copy"><p class="eyebrow">' + item.brand + '</p><h1>' + item.name + '</h1><p class="product-detail-description">' + item.description + '</p><p class="stock ' + (item.inStock ? '' : 'out') + '">' + (item.inStock ? 'В наявності' : 'Під замовлення') + '</p><p class="product-price">' + money(salePrice(item)) + '</p><div class="product-actions"><button class="btn btn-primary" data-add="' + item.id + '">Додати в кошик</button><a class="btn btn-outline" href="catalog.html">До каталогу</a></div><dl class="specs">' + Object.entries(item.specs || {}).map(([key, value]) => '<div><dt>' + key + '</dt><dd>' + value + '</dd></div>').join('') + '</dl></div>';
     bind(root);
     root.querySelectorAll('[data-gallery-path]').forEach((button) => {
       button.addEventListener('click', () => renderProductGallery(decodeURIComponent(button.dataset.galleryPath)));
@@ -1237,7 +1234,7 @@ product = function () {
       + '<div class="product-overview"><div class="product-topline"><span class="product-category-path"><a href="catalog.html?category=' + encodeURIComponent(item.type || '') + '" class="product-category-link">Каталог</a></span><span class="product-code">SKU: ' + safe(item.sku || '—') + ' · Код: ' + item.id + '</span></div>'
       + '<p class="product-brand">' + safeBrand + '</p><h1>' + safeName + '</h1>' + variantMarkup
       + '<div class="product-buy-card"><div class="product-availability ' + (state.orderable || state.inquiry ? 'is-available' : 'is-unavailable') + '"><i></i><span>' + state.label + '</span></div>'
-      + '<strong class="detail-price">' + money(item.price) + '</strong><p class="product-price-note">Ціна вказана за 1 одиницю товару</p>'
+      + '<strong class="detail-price">' + money(salePrice(item)) + '</strong><p class="product-price-note">Ціна вказана за 1 одиницю товару</p>'
       + '<div class="detail-actions">' + (state.inquiry ? '<button class="button product-buy" data-inquiry="' + item.id + '">Уточнити наявність</button>' : '<button class="button product-buy" data-add="' + item.id + '" ' + (state.orderable ? '' : 'disabled') + '>' + (state.orderable ? 'Додати в кошик' : 'Немає в наявності') + '</button>') + '<a class="button product-back" href="' + catalogCardEscape(catalogReturnUrl) + '">До каталогу</a></div>'
       + '<div class="product-service-grid"><div><b>Доставка</b><span>Підберемо зручний спосіб</span></div><div><b>Гарантія</b><span>Офіційна техніка</span></div><div><b>Консультація</b><span>Допоможемо з вибором</span></div></div></div></div></section>'
       + '<section class="product-content-grid">' + (specificationDisplayText(item.description).trim() ? '<article class="product-description-card"><p class="section-kicker">Про товар</p><h2>Опис</h2><p>' + safe(item.description) + '</p></article>' : '') + '<article class="product-specs-card"><div class="product-section-heading"><div><p class="section-kicker">Технічні дані</p><h2>Характеристики</h2></div><span>' + (specEntries.length ? specEntries.length + ' параметрів' : '') + '</span></div><dl class="specs"><div><dt>Виробник</dt><dd>' + safeBrand + '</dd></div>' + specs + '</dl></article></section>'
@@ -1353,7 +1350,7 @@ const recommendationCard = product => {
     + '<div class="storefront-recommendation-content">'
     + '<p class="storefront-recommendation-brand">' + brand + '</p>'
     + '<a class="storefront-recommendation-name" href="product.html?id=' + id + '">' + name + '</a>'
-    + '<div class="storefront-recommendation-meta"><span class="storefront-recommendation-price">' + money(product.price) + '</span><span class="storefront-recommendation-stock">' + availability + '</span></div>'
+    + '<div class="storefront-recommendation-meta"><span class="storefront-recommendation-price">' + money(salePrice(product)) + '</span><span class="storefront-recommendation-stock">' + availability + '</span></div>'
     + '</div></article>';
 };
 const renderStorefrontRecommendations = () => {

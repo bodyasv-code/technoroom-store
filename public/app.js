@@ -4,6 +4,7 @@ import {categoryIcon} from './category-icons.js?v=20261013-icons';
 import {projectorDisplayEntries} from './projector-display.js?v=20261013-light-details';
 import {orderSpecificationEntries} from './specification-order.js?v=20261013-printer-rules';
 import {isPrinterDevice, printerDisplayEntries} from './printer-display.js?v=20261013-printer-rules';
+import {catalogResultState} from './catalog-loading-state.js?v=20261013-catalog-loading';
 import {attachStoreSearch, searchScore, normalizeSearch} from './store-search.js?v=20261012-search';
 import {productNameWithSku} from './product-identity.js?v=20261012-consumables-brands';
 import {resolveProjectorSpecifications, isProjectorProduct, normalizeProjectorLightSource, projectorResolutionLabel, projectorResolutionFilterValue, compareProjectorResolutions} from './projector-specs.js?v=20261013-spec-colons';
@@ -24,6 +25,7 @@ const fallbackProducts = [
 let products = fallbackProducts;
 let productsLoaded = false;
 let productsHydrating = false;
+let catalogLoadFailed = false;
 const isProductPage = Boolean(document.getElementById('productView'));
 let activePromotions=[]; let promotionProductIds=new Map();
 const scrollPositionKey = 'technoroom-scroll:' + location.pathname + location.search;
@@ -616,7 +618,14 @@ async function loadProducts() { let renderedFromCache = false, renderedFirstScre
   productsHydrating = false;
   document.getElementById('catalogGrid')?._catalogDraw?.();
   document.dispatchEvent(new Event('technoroom:catalog-ready'));
-} catch (error) { console.warn('Не вдалося завантажити каталог із Supabase', error); } finally { if (!renderedFromCache && !renderedFirstScreen) { productsLoaded = true; productsHydrating = false; mount(); await mountMegaCatalog(); } } }
+} catch (error) {
+  console.warn('Не вдалося завантажити каталог із Supabase', error);
+  if(!isProductPage){
+    catalogLoadFailed=true;productsHydrating=false;
+    if(!renderedFromCache&&!renderedFirstScreen)products=[];
+    if(renderedFirstScreen)document.getElementById('catalogGrid')?._catalogDraw?.();
+  }
+} finally { if (!renderedFromCache && !renderedFirstScreen) { productsLoaded = true; productsHydrating = false; mount(); await mountMegaCatalog(); } } }
 if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', loadProducts, { once: true });
 else loadProducts();
 
@@ -2053,16 +2062,23 @@ catalog = function () {
     const pages = Math.max(1, Math.ceil(shown.length / size));
     page = Math.min(page, pages);
     const visible = shown.slice((page - 1) * size, page * size);
-    root.innerHTML = visible.length ? visible.map(card).join('') : '<div class="catalog-search-empty"><h3>'
+    const resultState=catalogResultState({count:shown.length,loading:productsHydrating,error:catalogLoadFailed});
+    root.setAttribute('aria-busy',String(productsHydrating));
+    root.innerHTML = visible.length ? visible.map(card).join('') : resultState==='loading'
+      ? '<div class="catalog-search-empty catalog-loading" role="status"><h3>Завантажуємо товари категорії…</h3><p>Зачекайте, будь ласка. Перевіряємо товари за обраними фільтрами.</p></div>'
+      : resultState==='error'
+      ? '<div class="catalog-search-empty" role="alert"><h3>Не вдалося завантажити товари</h3><p>Це помилка завантаження, а не порожня категорія. Спробуйте ще раз.</p><button type="button" data-retry-catalog>Повторити завантаження</button></div>'
+      : '<div class="catalog-search-empty"><h3>'
       + (searchQuery ? 'Не знайшли «' + escapeHtml(searchQuery) + '»' : 'За цими фільтрами товарів немає')
       + '</h3><p>Спробуйте коротшу назву, модель або артикул. Також перевірте обрані фільтри — вони можуть обмежувати результати.</p><button type="button" data-reset-empty-search>Скинути пошук і фільтри</button></div>';
     root.querySelector('[data-reset-empty-search]')?.addEventListener('click', () => document.getElementById('clearCatalogFilters').click());
+    root.querySelector('[data-retry-catalog]')?.addEventListener('click',()=>location.reload());
     document.getElementById('resultCount').textContent = productsHydrating
       ? 'Завантажуємо решту каталогу…'
-      : shown.length + ' товарів';
+      : catalogLoadFailed ? 'Каталог завантажено не повністю. Оновіть сторінку для повторної спроби.' : shown.length + ' товарів';
     if (pagination) {
-      pagination.hidden = productsHydrating || pages <= 1;
-      pagination.innerHTML = !productsHydrating && pages > 1 ? '<button type="button" data-catalog-page="prev" '+(page === 1 ? 'disabled' : '')+'>← Попередні</button><span>Сторінка '+page+' з '+pages+'</span><button type="button" data-catalog-page="next" '+(page === pages ? 'disabled' : '')+'>Наступні →</button>' : '';
+      pagination.hidden = productsHydrating || catalogLoadFailed || pages <= 1;
+      pagination.innerHTML = !productsHydrating && !catalogLoadFailed && pages > 1 ? '<button type="button" data-catalog-page="prev" '+(page === 1 ? 'disabled' : '')+'>← Попередні</button><span>Сторінка '+page+' з '+pages+'</span><button type="button" data-catalog-page="next" '+(page === pages ? 'disabled' : '')+'>Наступні →</button>' : '';
     }
     bind(root);
   };

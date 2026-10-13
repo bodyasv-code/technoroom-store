@@ -23,3 +23,18 @@ export async function applyVerifiedDuplexRepair(client, plan) {
   if(result.data?.length!==1)throw new Error('Товар '+plan.id+' змінився або SKU не збігається. Оновіть каталог і перевірте вручну.');
   return plan.id;
 }
+
+export function confirmVerifiedDuplexRepair(plans) {
+  return new Promise(resolve=>{
+    const dialog=document.createElement('dialog');dialog.className='inquiry-dialog';
+    const content=document.createElement('div');content.className='inquiry-form';
+    const heading=document.createElement('h2');heading.textContent='Перевірений дуплекс';
+    const detail=document.createElement('p');detail.textContent='Зміняться лише характеристики дуплексу в '+plans.length+' товарах. Автоматичного дуплексу немає; підтверджений ручний режим збережеться. Інші поля не змінюються.';
+    const list=document.createElement('ul');for(const plan of plans){const item=document.createElement('li');item.textContent='ID '+plan.id+' · '+plan.sku;list.append(item);}
+    const approve=document.createElement('button');approve.type='button';approve.className='button';approve.textContent='Підтвердити '+plans.length+' виправлень';
+    const cancel=document.createElement('button');cancel.type='button';cancel.className='button outline';cancel.textContent='Скасувати';
+    const finish=approved=>{dialog.close();dialog.remove();resolve(approved)};
+    approve.onclick=()=>finish(true);cancel.onclick=()=>finish(false);dialog.addEventListener('cancel',event=>{event.preventDefault();finish(false)});
+    content.append(heading,detail,list,approve,cancel);dialog.append(content);document.body.append(dialog);dialog.showModal();
+  });
+}

@@ -2,7 +2,7 @@ import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js
 import {sizeBannerSlides} from './banner-layout.js?v=20261011-uniform';
 import {attachStoreSearch, searchScore, normalizeSearch} from './store-search.js?v=20261012-search';
 import {productNameWithSku} from './product-identity.js?v=20261012-consumables-brands';
-import {resolveProjectorSpecifications, isProjectorProduct, normalizeProjectorLightSource} from './projector-specs.js?v=20261012-spec-format';
+import {resolveProjectorSpecifications, isProjectorProduct, normalizeProjectorLightSource, projectorResolutionLabel} from './projector-specs.js?v=20261013-resolution-labels';
 import {normalizeSpecificationEntries, normalizeSpecifications} from './specification-normalization.js?v=20261012-spec-format';
 
 const supabase = createClient(window.TECHNOROOM_SUPABASE.url, window.TECHNOROOM_SUPABASE.publishableKey);
@@ -895,7 +895,7 @@ card = (product) => {
   const variantsCount = variants.length;
   const variantsNote = variantsCount ? '<span class="product-variants-note">Варіантів: ' + variantsCount + '</span>' : '';
   const previewSpecs = Object.entries(displayProduct.specifications || {})
-    .map(([key, value]) => [readableText(key), specificationDisplayText(value)])
+    .map(([key, value]) => [readableText(key), isProjectorProduct(product)&&key==='Роздільна здатність'?projectorResolutionLabel(specificationDisplayText(value)):specificationDisplayText(value)])
     .filter(([key, value]) => key && value)
     .slice(0, 4)
     .map(([key, value]) => '<li><span>' + catalogCardEscape(key) + '</span><b>' + catalogCardEscape(value) + '</b></li>')
@@ -942,7 +942,7 @@ const inferredScreenSpecifications = (product) => {
 const isPhoneProduct = (product) => /(?:iphone|смартфон|smartphone|мобільн\w*\s+телефон)/iu.test(readableText([product.name, product.type, product.description].join(' ')));
 const displaySpecificationEntries = (product) => {
   const stored = normalizeSpecificationEntries(product.specifications, {projector:isProjectorProduct(product)})
-    .map(([key, value]) => [readableText(key), specificationDisplayText(value)])
+    .map(([key, value]) => [readableText(key), isProjectorProduct(product)&&key==='Роздільна здатність'?projectorResolutionLabel(specificationDisplayText(value)):specificationDisplayText(value)])
     .filter(([key, value]) => key && value);
   if (!stored.length) return Object.entries(inferredScreenSpecifications(product));
   return stored;
@@ -1936,7 +1936,7 @@ catalog = function () {
     screenSpecificationFilters.innerHTML = fluxMarkup + groups.map((group) => {
       const selected = selectedScreenSpecifications.get(group.id) || new Set();
       return '<fieldset class="screen-specification-filter"><legend>' + escapeHtml(group.label) + '</legend><div class="screen-specification-filter__options">'
-        + group.options.map((value) => '<label><input type="checkbox" data-screen-specification="' + escapeHtml(group.id) + '" value="' + escapeHtml(value) + '"' + (selected.has(value) ? ' checked' : '') + '> <span>' + escapeHtml(value) + '</span></label>').join('')
+        + group.options.map((value) => '<label><input type="checkbox" data-screen-specification="' + escapeHtml(group.id) + '" value="' + escapeHtml(value) + '"' + (selected.has(value) ? ' checked' : '') + '> <span>' + escapeHtml(group.id==='projector-resolution'?projectorResolutionLabel(value):value) + '</span></label>').join('')
         + '</div></fieldset>';
     }).join('');
   };
@@ -1979,7 +1979,8 @@ catalog = function () {
     activeCatalogFilters.hidden = !chips.length;
     activeCatalogFilters.innerHTML = chips.length
       ? '<span class="active-catalog-filters__title">Вибрано:</span>' + chips.map((chip) => {
-        const [displayValue] = chip.kind === 'spec' ? chip.value.split('::') : [chip.value];
+        let [displayValue] = chip.kind === 'spec' ? chip.value.split('::') : [chip.value];
+        if(chip.kind==='spec'&&chip.value.endsWith('::projector-resolution'))displayValue=projectorResolutionLabel(displayValue);
         const dataValue = encodeURIComponent(chip.value);
         return '<button type="button" class="active-catalog-filter" data-clear-catalog-filter="' + chip.kind + '" data-filter-value="' + dataValue + '"><span>' + escapeHtml(chip.label) + ': <b>' + escapeHtml(displayValue) + '</b></span><i aria-hidden="true">×</i></button>';
       }).join('') + '<button type="button" class="active-catalog-filters__clear" data-clear-catalog-filter="all">Скинути все</button>'

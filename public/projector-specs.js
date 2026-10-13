@@ -20,6 +20,12 @@ export function normalizeProjectorResolution(raw='') {
   const standards={'fhd':'Full HD','full hd':'Full HD','1080p':'Full HD','hd':'HD','720p':'HD','4k':'4K UHD','4k uhd':'4K UHD','uhd':'4K UHD','8k':'8K UHD','8k uhd':'8K UHD',svga:'SVGA',xga:'XGA',wxga:'WXGA',wuxga:'WUXGA',wqxga:'WQXGA',wvga:'WVGA'};
   return standards[source.toLowerCase().replace(/\s+/g,' ')]||'';
 }
+export function projectorResolutionLabel(raw='') {
+  const resolution=normalizeProjectorResolution(raw);
+  if(['Full HD','1920 × 1080'].includes(resolution))return 'FULL HD (1920 × 1080)';
+  if(['WUXGA','1920 × 1200'].includes(resolution))return 'WUXGA (1920 × 1200)';
+  return value(raw);
+}
 export function isProjectorProduct(product={}) {
   return /^(?:про[єе]ктор|projector)(?=\s|$)/iu.test(value(product.name).trim()) || ['projector','projectors','laser-projectors','home-projectors','short-throw-projectors','installation-projectors','universal-projectors','erc-display-03','erc-display-11','erc-display-12','erc-display-13'].includes(product.category||product.type);
 }

@@ -7,6 +7,7 @@ import {isPrinterDevice, printerDisplayEntries} from './printer-display.js?v=202
 import {catalogResultState} from './catalog-loading-state.js?v=20261013-catalog-loading';
 import {catalogRequestScope, catalogCacheKey, mergeCatalogRows, applyCatalogScope, cartProductIds} from './catalog-scope.js?v=20261013-cart-ids';
 import {matchingPromotion, discountedPrice} from './store-pricing.js?v=20261013-checkout-pricing';
+import {formatCheckoutPhone, validCheckoutPhone} from './checkout-phone.js?v=20261013-checkout-usability';
 import {attachStoreSearch, searchScore, normalizeSearch} from './store-search.js?v=20261012-search';
 import {productNameWithSku} from './product-identity.js?v=20261012-consumables-brands';
 import {resolveProjectorSpecifications, isProjectorProduct, normalizeProjectorLightSource, projectorResolutionLabel, projectorResolutionFilterValue, compareProjectorResolutions} from './projector-specs.js?v=20261013-spec-colons';
@@ -1018,7 +1019,11 @@ checkout = () => {
   const deliveryRadios=form.querySelectorAll('[name="deliveryMethod"]'), addressLabel=document.getElementById('deliveryAddressLabel'), companyToggle=document.getElementById('companyOrder'), companyFields=document.getElementById('companyFields');
 
   const phone=form.querySelector('[name="phone"]'), deliveryHelp=document.getElementById('deliveryHelp');
-  if(phone) phone.addEventListener('input',()=>{let d=phone.value.replace(/\D/g,'');if(d.startsWith('380'))d=d.slice(3);else if(d.startsWith('0'))d=d.slice(1);d=d.slice(0,9);const p=['+380'];if(d.length)p.push(' ('+d.slice(0,2)+(d.length>=2?') ':''));if(d.length>2)p.push(d.slice(2,5));if(d.length>5)p.push('-'+d.slice(5,7));if(d.length>7)p.push('-'+d.slice(7,9));phone.value=p.join('')});
+  if(phone) {
+    const validatePhone=()=>phone.setCustomValidity(validCheckoutPhone(phone.value)?'':'Вкажіть повний номер телефону: +380 та 9 цифр.');
+    phone.addEventListener('input',()=>{phone.value=formatCheckoutPhone(phone.value);validatePhone();});
+    validatePhone();
+  }
   const updateDelivery=()=>{const method=form.querySelector('[name="deliveryMethod"]:checked')?.value; const input=addressLabel?.querySelector('input'); if(!addressLabel||!input)return; if(method==='nova_poshta'){addressLabel.firstChild.textContent='Відділення / поштомат *';input.placeholder='№ відділення або поштомату';input.required=true;if(deliveryHelp)deliveryHelp.textContent='Вкажіть номер відділення або поштомату Нової пошти.'}else if(method==='courier'){addressLabel.firstChild.textContent='Адреса доставки *';input.placeholder='Вулиця, будинок, квартира';input.required=true;if(deliveryHelp)deliveryHelp.textContent='Вкажіть повну адресу для кур’єрської доставки.'}else{addressLabel.firstChild.textContent='Деталі самовивозу';input.placeholder='Необов’язково';input.required=false;if(deliveryHelp)deliveryHelp.textContent='Менеджер погодить місце та час самовивозу після замовлення.'}};
   deliveryRadios.forEach(r=>r.onchange=updateDelivery); updateDelivery();
   if(companyToggle)companyToggle.onchange=()=>{companyFields.hidden=!companyToggle.checked;companyFields.querySelectorAll('input').forEach(i=>i.required=companyToggle.checked)};

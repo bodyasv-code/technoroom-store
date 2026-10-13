@@ -526,3 +526,19 @@ body{overflow-x:hidden}.store-shared-header{position:sticky!important;top:0!impo
 .home-category-cards>a{transition:border-color .15s,box-shadow .15s}
 .home-category-cards>a:hover,.home-category-cards>a:focus-visible{border-color:#0875e9;box-shadow:0 4px 14px rgba(8,117,233,.1)}
 @media(prefers-reduced-motion:reduce){.home-category-cards>a{transition:none}}
+
+/* Quick preview must not intercept the card's purchase button. */
+.catalog-grid .product-card:hover .product-card-hover-preview,
+.catalog-grid .product-card:focus-within .product-card-hover-preview{display:none}
+@media(hover:hover){
+  .catalog-grid .product-card:has(>.product-image:hover) .product-card-hover-preview,
+  .catalog-grid .product-card:has(>.product-image:focus-visible) .product-card-hover-preview,
+  .catalog-grid .product-card .product-card-hover-preview:hover,
+  .catalog-grid .product-card .product-card-hover-preview:focus-within{display:flex;flex-direction:column}
+}
+/* Keep invisible choice inputs within their labels, not beyond the viewport. */
+.checkout-choice{position:relative;min-width:0}
+.checkout-page #checkoutForm .checkout-choice>input{width:1px!important;height:1px;padding:0;margin:0;left:0;top:0;clip-path:inset(50%)}
+.checkout-layout>*{min-width:0}
+.checkout-page #checkoutForm label{min-width:0}
+.checkout-page #checkoutForm input,.checkout-page #checkoutForm textarea{box-sizing:border-box;min-width:0;max-width:100%}

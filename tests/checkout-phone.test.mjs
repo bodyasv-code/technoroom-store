@@ -1,0 +1,11 @@
+import assert from 'node:assert/strict';
+import {formatCheckoutPhone,validCheckoutPhone} from '../public/checkout-phone.js';
+assert.equal(formatCheckoutPhone('0501234567'),'+380 (50) 123-45-67');
+assert.equal(formatCheckoutPhone('+380501234567'),'+380 (50) 123-45-67');
+assert.equal(formatCheckoutPhone('+380'),'+380');
+assert.equal(validCheckoutPhone('+380'),false);
+assert.equal(validCheckoutPhone('+380 (50) 123-45-6'),false);
+assert.equal(validCheckoutPhone('+380 (50) 123-45-67'),true);
+assert.equal(validCheckoutPhone('+380 (50) 123-45-678'),false);
+assert.equal(formatCheckoutPhone('+380501234567').length,19);
+console.log('Checkout phone formatting and full-number validation: OK');

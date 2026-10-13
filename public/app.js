@@ -2,8 +2,8 @@ import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js
 import {sizeBannerSlides} from './banner-layout.js?v=20261011-uniform';
 import {categoryIcon} from './category-icons.js?v=20261013-icons';
 import {projectorDisplayEntries} from './projector-display.js?v=20261013-light-details';
-import {orderSpecificationEntries} from './specification-order.js?v=20261013-printer-details';
-import {isPrinterDevice, printerDisplayEntries} from './printer-display.js?v=20261013-printer-details-2';
+import {orderSpecificationEntries} from './specification-order.js?v=20261013-printer-rules';
+import {isPrinterDevice, printerDisplayEntries} from './printer-display.js?v=20261013-printer-rules';
 import {attachStoreSearch, searchScore, normalizeSearch} from './store-search.js?v=20261012-search';
 import {productNameWithSku} from './product-identity.js?v=20261012-consumables-brands';
 import {resolveProjectorSpecifications, isProjectorProduct, normalizeProjectorLightSource, projectorResolutionLabel, projectorResolutionFilterValue, compareProjectorResolutions} from './projector-specs.js?v=20261013-spec-colons';
@@ -947,7 +947,7 @@ const displaySpecificationEntries = (product) => {
     .map(([key, value]) => [readableText(key), isProjectorProduct(product)&&key==='Роздільна здатність'?projectorResolutionLabel(specificationDisplayText(value)):specificationDisplayText(value)])
     .filter(([key, value]) => key && value);
   const projector = isProjectorProduct(product);
-  const entries = stored.length ? (projector ? projectorDisplayEntries(stored, product.description) : isPrinterDevice(product) ? printerDisplayEntries(stored) : stored) : Object.entries(inferredScreenSpecifications(product));
+  const entries = stored.length ? (projector ? projectorDisplayEntries(stored, product.description) : isPrinterDevice(product) ? printerDisplayEntries(stored, product.description) : stored) : Object.entries(inferredScreenSpecifications(product));
   return orderSpecificationEntries(entries, {projector});
 };
 

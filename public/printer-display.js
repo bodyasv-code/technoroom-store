@@ -6,16 +6,31 @@ export function isPrinterDevice(product = {}) {
     || /^office-(?:printers|mfp)(?:-|$)|^office-wide-format$/iu.test(String(product.category || product.type || ''));
 }
 
-export function printerDisplayEntries(entries) {
+export function printerDisplayEntries(entries, description = '') {
   const labels = {'дозвіл':'Роздільна здатність', 'windows':'Сумісність з ОС (деталі)'};
   const result = entries.map(([key, value]) => {
     let label = labels[String(key).toLowerCase()] || key;
     if (/^wi[‑-]?fi$/iu.test(key) && String(value).length > 60) label = 'Мережеві функції (деталі)';
+    const speedKey=/^Принтер\s*\(швидкість друку\s*(.*)$/iu.exec(key);
+    if (speedKey && /стор\s*\/\s*хв|ppm/iu.test(String(value)+' '+speedKey[1])) {
+      label='Швидкість друку';
+      value=(speedKey[1].trim() ? speedKey[1].trim()+': ' : '')+value;
+    } else if (/^Друк$/iu.test(key) && /^швидкість\s/iu.test(String(value)) && /стор\s*\/\s*хв|ppm/iu.test(String(value))) {
+      label='Швидкість друку';value=String(value).replace(/^швидкість\s*/iu,'');
+    }
     return [label, value];
   });
   const add = (key, value) => {
     if (value && !result.some(([k]) => String(k).toLowerCase() === key.toLowerCase())) result.push([key, value.trim()]);
   };
+  // Only explicit print-format labels or the opening device classification;
+  // do not use scanner format, tray media, or an arbitrary A4 mention.
+  if (!result.some(([key])=>/^(?:формат|формат друку)$/iu.test(key))) {
+    const explicit=entries.find(([key,value])=>/^(?:принтер.*|бфп.*)\.\s*формат$/iu.test(key)&&/^[AА][3-6]\+?$/iu.test(String(value).trim()));
+    const opening=/^(?:(?:лазерний|кольоровий|монохромний|струменевий)\s+)*(?:БФП|принтер|багатофункціональний пристрій)\s+[AА]([3-6])(\+)?(?=\s|[,(]|$)/iu.exec(String(description).trim());
+    if(explicit)add('Формат',String(explicit[1]).replace(/^[Аа]/u,'A').toUpperCase());
+    else if(opening)add('Формат','A'+opening[1]+(opening[2]||''));
+  }
   for (const [originalKey, raw] of entries) {
     const text = String(raw);
     const duplex = /(?:^|[\s;)])Дуплекс\s*:\s*(так|ні)(?:\s*,\s*(звичайний папір))?(?=\s|$|[.;)])/iu.exec(text);

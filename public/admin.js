@@ -4,10 +4,11 @@ import {articleHasContent} from './article-format.js?v=20261011-article-links';
 import {productNameWithSku, officeSupplyCategoryPlan, isSpecializedPrinterName} from './product-identity.js?v=20261012-consumables-brands';
 import {resolveProjectorSpecifications, normalizeProjectorResolution, isProjectorProduct, normalizeProjectorLightSource, projectorResolutionLabel, projectorResolutionFilterValue, projectorResolutionStandards} from './projector-specs.js?v=20261013-spec-colons';
 import {resolveEditorBrand} from './brand-editor.js?v=20261012';
+import {printerDuplexState} from './printer-duplex.js?v=20261013-printer-rules';
 import {normalizeSpecifications} from './specification-normalization.js?v=20261013-spec-colons';
 import {canonicalBrandName, brandConsolidationPlan} from './brand-normalization.js?v=20261012-brand-cleanup';
 import {removeUnusedBrandDuplicate} from './brand-cleanup.js?v=20261012-brand-cleanup';
-import {createQualityAudit, mountQualityPanel} from './catalog-quality.js?v=20261013-spec-colons';
+import {createQualityAudit, mountQualityPanel} from './catalog-quality.js?v=20261013-printer-rules';
 import {createImportAudit, auditEligible, auditMarkup, showImportReview} from './import-audit.js?v=20261012-consumables-brands';
 const supabase=createClient(window.TECHNOROOM_SUPABASE.url,window.TECHNOROOM_SUPABASE.publishableKey);
 const state={catalogReady:false,products:[],orders:[],categories:[],brands:[],promotions:[],banners:[],articles:[],page:1,brandPage:1,selectedProducts:new Set(),categoryTreeOpen:new Set()};
@@ -158,14 +159,21 @@ const mountOfficePrinterEditorFields=(form,product)=>{
   // Дані одного пристрою можуть бути розкладені на кілька полів. Об’єднуємо
   // всі інтерфейси та формат із характеристик і назви товару.
   const printerDetails=[product?.name||form.elements.name?.value||'',...Object.entries(specifications).filter(([key])=>/(?:інтерфейс|interface|мережев|network|ethernet|\blan\b|\busb\b|wi[ -]?fi|wireless|wlan|bluetooth|формат|paper\s*size|розмір\s*паперу)/iu.test(String(key))).flatMap(([,value])=>Array.isArray(value)?value:[value])].map(String).join(' ');
-  const formatMatch=printerDetails.match(/(?:^|[^\p{L}\p{N}])[AА]([34])(?=$|[^\p{L}\p{N}])/u);
-  panel.querySelector('[name="office_print_format"]').value=formatMatch?'A'+formatMatch[1]:String(specifications['Формат']||'').match(/\bA[34]\b/iu)?.[0]?.toUpperCase()||'';
+  const formatMatch=String(specifications['Формат']||'').match(/^[AА]([34])(\+)?$/iu)||printerDetails.match(/(?:^|[^\p{L}\p{N}])[AА]([34])(\+)?(?=$|[^\p{L}\p{N}])/u);
+  const formatValue=formatMatch?'A'+formatMatch[1]+(formatMatch[2]||''):'';
+  const formatSelect=panel.querySelector('[name="office_print_format"]');
+  if(formatValue&&![...formatSelect.options].some(option=>option.value===formatValue))formatSelect.add(new Option(formatValue,formatValue));
+  formatSelect.value=formatValue;
   const interfaces=printerDetails + (/\blaserjet\b/iu.test(productTitle)&&/\bdn\b/iu.test(productTitle.replace(/(\d)(dn)\b/iu,'$1 $2'))?' Ethernet':'');
   const optionalWifi=/(?:wi[ -]?fi|wireless|wlan).{0,80}(?:опц|optional|не\s*(?:вход|входить)|докуп|add[ -]?on|модул)|(?:опц|optional|не\s*(?:вход|входить)|докуп|add[ -]?on|модул).{0,80}(?:wi[ -]?fi|wireless|wlan)/iu.test(interfaces);
   panel.querySelectorAll('[name="office_print_interface"]').forEach(input=>{const pattern=input.value==='Wi‑Fi'?/(?:wi[ -]?fi|wireless|wlan)/iu:input.value==='Ethernet'?/ethernet|\blan\b|rj[ -]?45/iu:input.value==='USB'?/\busb(?:\s|$|[0-9])?/iu:/bluetooth/iu;input.checked=pattern.test(interfaces)&&!(input.value==='Wi‑Fi'&&optionalWifi)});
-  const duplex=String(specifications['Дуплексний друк']||specifications['Дуплекс']||'');
-  const optionalDuplex=/(?:дуплекс|двосторон|duplex).{0,80}(?:опц|optional|не\s*(?:вход|входить)|докуп|add[ -]?on|модул)|(?:опц|optional|не\s*(?:вход|входить)|докуп|add[ -]?on|модул).{0,80}(?:дуплекс|двосторон|duplex)/iu.test(duplex);
-  panel.querySelector('[name="office_print_duplex"]').checked=/(?:є|так|yes|true|дуплекс|двосторон|duplex)/iu.test(duplex)&&!optionalDuplex;
+  const duplexState=printerDuplexState(Object.entries(specifications));
+  const duplexCheckbox=panel.querySelector('[name="office_print_duplex"]');
+  duplexCheckbox.checked=duplexState==='yes';
+  duplexCheckbox.disabled=duplexState==='conflict';
+  let duplexNote=panel.querySelector('[data-duplex-warning]');
+  if(!duplexNote){duplexNote=document.createElement('p');duplexNote.dataset.duplexWarning='';duplexNote.setAttribute('role','status');panel.append(duplexNote)}
+  duplexNote.textContent=duplexState==='conflict'?'Суперечливий дуплекс: виправте значення у полі «Характеристики». Початкові записи збережуться без автоматичної заміни.':'';
 };
 const productDialogElement=$('#productDialog');
 new MutationObserver(()=>{if(productDialogElement.open){const form=$('#productForm'),id=form.elements.id?.value;const product=state.products.find(item=>Number(item.id)===Number(id))||null;mountProjectorEditorFields(form,product);mountOfficePrinterEditorFields(form,product);const sync=()=>{form.querySelector('#projectorEditorFields').hidden=!projectorCategorySlugs.has(form.elements.category.value);form.querySelector('#officePrinterEditorFields').hidden=!!officeSupplyCategoryPlan(form.elements.name.value)||!officePrintCategorySlugs.has(form.elements.category.value)};form.elements.category.onchange=sync;sync()}}).observe(productDialogElement,{attributes:true,attributeFilter:['open']});
@@ -196,13 +204,15 @@ async function saveProductWithProjectorFields(event){
   const officePanel=form.querySelector('#officePrinterEditorFields');
   if(officePanel&&!officePanel.hidden){
     const specifications=parseAdminSpecifications(form.elements.specifications_text.value);
-    delete specifications['Тип друку'];delete specifications['Кольоровість'];delete specifications['Технологія друку'];delete specifications['Технологія'];delete specifications['Формат'];delete specifications['Інтерфейси'];delete specifications['Дуплексний друк'];delete specifications['Дуплекс'];
+    const duplexControl=officePanel.querySelector('[name="office_print_duplex"]');
+    const preserveDuplex=duplexControl.disabled||(!duplexControl.checked&&printerDuplexState(Object.entries(specifications))!=='yes');
+    delete specifications['Тип друку'];delete specifications['Кольоровість'];delete specifications['Технологія друку'];delete specifications['Технологія'];delete specifications['Формат'];delete specifications['Інтерфейси'];if(!preserveDuplex){delete specifications['Дуплексний друк'];delete specifications['Дуплекс'];}
     const color=officePanel.querySelector('[name="office_print_color"]').value,technology=officePanel.querySelector('[name="office_print_technology"]').value,format=officePanel.querySelector('[name="office_print_format"]').value,interfaces=[...officePanel.querySelectorAll('[name="office_print_interface"]:checked')].map(input=>input.value);
     if(color)specifications['Тип друку']=color;
     if(technology)specifications['Технологія друку']=technology;
     if(format)specifications['Формат']=format;
     if(interfaces.length)specifications['Інтерфейси']=interfaces.join(', ');
-    if(officePanel.querySelector('[name="office_print_duplex"]').checked)specifications['Дуплексний друк']='Є';
+    if(!preserveDuplex&&officePanel.querySelector('[name="office_print_duplex"]').checked)specifications['Дуплексний друк']='Є';
     writeAdminSpecifications(form,specifications);
   }
   return originalSaveProduct(event);
@@ -411,10 +421,10 @@ supabase.auth.getSession().then(({data:{session}})=>session?dashboard():view('lo
       if (/\blaserjet\b/iu.test(text) && /\d(?:dn)\b/iu.test(text)) interfaces.push('Ethernet');
       if (/\busb(?:\s|$|[0-9])?/iu.test(text)) interfaces.push('USB');
       if (/bluetooth/iu.test(text)) interfaces.push('Bluetooth');
-      const formatMatch=text.match(/(?:^|[^\p{L}\p{N}])[AА]([3-6])(?=$|[^\p{L}\p{N}])/iu);
+      const formatMatch=text.match(/(?:^|[^\p{L}\p{N}])[AА]([3-6])(\+)?(?=$|[^\p{L}\p{N}])/iu);
       const mono=/(?:mono|monochrome|монохром|чорно[ -]?білий)/iu.test(text);
       const color=/(?:color|colour|кольоров)/iu.test(text);
-      add('Тип пристрою', officeType); add('Формат', formatMatch?'A'+formatMatch[1]:''); add('Тип друку', mono ? 'Монохромний' : color ? 'Кольоровий' : ''); add('Технологія друку', /(?:струмен|струйн|\bink\b|inkjet)/iu.test(text) ? 'Струменевий' : /(?:лазер|laser)/iu.test(text) ? 'Лазерний' : ''); add('Інтерфейси', [...new Set(interfaces)].join(', ')); add('Дуплексний друк', /(?:дуплекс|двосторон|duplex|two[ -]?sided)/iu.test(text)&&!optionalDuplex?'Є':'');
+      add('Тип пристрою', officeType); add('Формат', formatMatch?'A'+formatMatch[1]+(formatMatch[2]||''):''); add('Тип друку', mono ? 'Монохромний' : color ? 'Кольоровий' : ''); add('Технологія друку', /(?:струмен|струйн|\bink\b|inkjet)/iu.test(text) ? 'Струменевий' : /(?:лазер|laser)/iu.test(text) ? 'Лазерний' : ''); add('Інтерфейси', [...new Set(interfaces)].join(', ')); add('Дуплексний друк', printerDuplexState(Object.entries(specifications),text)==='yes'&&!optionalDuplex?'Є':'');
     }
     return specifications;
   };

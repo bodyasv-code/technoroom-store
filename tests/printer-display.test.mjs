@@ -18,3 +18,10 @@ const connections = printerDisplayEntries([['Інтерфейси','Wi‑Fi'],['
 assert.deepEqual(connections[0],['Інтерфейси','Wi-Fi, Ethernet, USB']);
 assert.deepEqual(printerDisplayEntries(connections),connections);
 assert.equal(printerDisplayEntries([['Інтерфейси','Wi-Fi'],['Мережа','optional Ethernet: 10/100']])[0][1],'Wi-Fi');
+assert.deepEqual(printerDisplayEntries([['Друк','швидкість ч/б-38 стор/хв, цв-24 стор/хв']])[0],['Швидкість друку','ч/б-38 стор/хв, цв-24 стор/хв']);
+assert.deepEqual(printerDisplayEntries([['Принтер (швидкість друку','колір: 33 стор/хв, ч/б: 33 стор/хв']])[0],['Швидкість друку','колір: 33 стор/хв, ч/б: 33 стор/хв']);
+assert.ok(printerDisplayEntries([['Принтер (швидкість друку ч/б 18стор/хв, кол.','4 стор/хв']])[0][1].includes('18стор/хв, кол.: 4 стор/хв'));
+assert.ok(printerDisplayEntries([['Тип пристрою','БФП']], 'Кольоровий лазерний БФП А4 (принтер, копір)').some(([k,v])=>k==='Формат'&&v==='A4'));
+assert.ok(printerDisplayEntries([['Принтер, сканер, копіювання, факс. Формат','А3+']]).some(([k,v])=>k==='Формат'&&v==='A3+'));
+assert.ok(!printerDisplayEntries([['Сканування','Формат A4']], 'Сканування: A4').some(([k])=>k==='Формат'));
+assert.ok(printerDisplayEntries([['Формат','A3']], 'БФП A3+').some(([k,v])=>k==='Формат'&&v==='A3'));

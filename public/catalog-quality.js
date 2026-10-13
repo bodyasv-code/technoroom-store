@@ -3,6 +3,7 @@ import {normalizeSpecificationEntries} from './specification-normalization.js?v=
 import {isProjectorProduct, resolveProjectorSpecifications, normalizeProjectorResolution} from './projector-specs.js?v=20261013-spec-colons';
 import {equivalentSpecification} from './specification-comparison.js?v=20261012-focus';
 import {isSpecializedPrinterName,officeSupplyCategoryPlan} from './product-identity.js?v=20261012-consumables-brands';
+import {printerDuplexState} from './printer-duplex.js?v=20261013-printer-rules';
 
 export const qualityLabels = {duplicate_sku:'Повтор SKU', conflict:'Суперечливі характеристики', no_brand:'Без бренду', no_image:'Без фото', no_price:'Без ціни', category:'Перевірити категорію', filters:'Неповні фільтри'};
 const text = value => String(value ?? '').trim();
@@ -25,6 +26,11 @@ export function createQualityAudit(products, categories=[], brands=[], expectedC
     for(const [key,value] of entries){const folded=normalized(key).replace(/\s*\(інше значення \d+\)$/u,'');if(!grouped.has(folded))grouped.set(folded,[]);grouped.get(folded).push({key,value});}
     const conflicts=[...grouped.values()].filter(group=>group.some((item,index)=>group.slice(index+1).some(other=>!equivalentSpecification(group[0].key.replace(/\s*\(інше значення \d+\)$/u,''),item.value,other.value,{projector}))));
     if(conflicts.length)add('conflict',conflicts.map(group=>group[0].key+': '+group.map(item=>Array.isArray(item.value)?item.value.join(', '):text(item.value)).join(' / ')).join('; '));
+    if(!supply&&printerDuplexState(entries)==='conflict')add('conflict','Дуплекс: одночасно вказано наявність автоматичного друку та його відсутність або ручний режим. Потрібна ручна перевірка.');
+    if(!supply){
+      const formats=entries.filter(([key,value])=>/^(?:формат|формат друку|(?:принтер|бфп).*\.\s*формат)$/iu.test(key)&&/^[AА][3-6]\+?$/iu.test(text(value))).map(([,value])=>text(value).toUpperCase().replace(/^А/u,'A'));
+      if(new Set(formats).size>1)add('conflict','Формат друку: різні записи '+[...new Set(formats)].join(' / ')+'. A3 та A3+ не об’єднуються автоматично. Потрібна ручна перевірка.');
+    }
     if(projector){
       const spec=resolveProjectorSpecifications(product), missing=[];
       if(!/^(?:3LCD|DLP|LCD|LCoS)$/iu.test(text(spec['Технологія проекції'])))missing.push('технологія проєкції');

@@ -5,6 +5,7 @@ import {productNameWithSku, officeSupplyCategoryPlan, isSpecializedPrinterName} 
 import {resolveProjectorSpecifications, normalizeProjectorResolution, isProjectorProduct, normalizeProjectorLightSource, projectorResolutionLabel, projectorResolutionFilterValue, projectorResolutionStandards} from './projector-specs.js?v=20261013-spec-colons';
 import {resolveEditorBrand} from './brand-editor.js?v=20261012';
 import {printerDuplexState} from './printer-duplex.js?v=20261013-printer-rules';
+import {verifiedDuplexRepair, applyVerifiedDuplexRepair} from './verified-duplex-repair.js?v=20261013-verified-duplex';
 import {normalizeSpecifications} from './specification-normalization.js?v=20261013-spec-colons';
 import {canonicalBrandName, brandConsolidationPlan} from './brand-normalization.js?v=20261012-brand-cleanup';
 import {removeUnusedBrandDuplicate} from './brand-cleanup.js?v=20261012-brand-cleanup';
@@ -1574,6 +1575,23 @@ const renderQualityAudit=()=>{
   if(!updateQualityPanel)updateQualityPanel=mountQualityPanel(host,id=>{const product=state.products.find(p=>Number(p.id)===id);if(product)productDialog(product);});
   const audit=createQualityAudit(state.products,state.categories,state.brands,expectedCategoryFromName);
   updateQualityPanel(audit);
+  let repairButton=host.querySelector('[data-verified-duplex-repair]');
+  if(!repairButton){
+    repairButton=document.createElement('button');repairButton.type='button';repairButton.dataset.verifiedDuplexRepair='';repairButton.className='button outline';host.prepend(repairButton);
+    repairButton.onclick=async()=>{
+      if(repairButton.disabled)return;
+      const plans=state.products.map(verifiedDuplexRepair).filter(Boolean);
+      if(!plans.length)return;
+      if(!confirm('Виправити лише дуплекс у '+plans.length+' перевірених товарах?\n'+plans.map(plan=>'ID '+plan.id+' · '+plan.sku).join('\n')+'\nАвтоматичного дуплексу немає. Підтверджений ручний режим збережеться. Інші поля не змінюються.'))return;
+      repairButton.disabled=true;let repaired=0;
+      try{for(const plan of plans){await applyVerifiedDuplexRepair(supabase,plan);repaired++;}await loadData();notice('Виправлено дуплекс у '+repaired+' перевірених товарах.');}
+      catch(error){notice('Виправлено '+repaired+'. '+error.message,true);await loadData();}
+      finally{repairButton.disabled=false;renderQualityAudit();}
+    };
+  }
+  const verifiedPlans=state.products.map(verifiedDuplexRepair).filter(Boolean);
+  repairButton.textContent=verifiedPlans.length?'Виправити перевірений дуплекс ('+verifiedPlans.length+')':'Перевірений дуплекс: виправлено';
+  repairButton.hidden=!verifiedPlans.length;
   $('#qualityNavCount').textContent=audit.filter(row=>row.product.is_active&&row.issues.length).length;
 };
 renderAll = () => { renderAllWithCatalogAudit(); renderCatalogAudit(); renderCategoryIntegrityAudit(); renderQualityAudit(); };

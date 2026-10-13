@@ -1,6 +1,6 @@
 import {auditSku} from './import-audit.js?v=20261012-consumables-brands';
-import {normalizeSpecificationEntries} from './specification-normalization.js?v=20261012-spec-format';
-import {isProjectorProduct, resolveProjectorSpecifications, normalizeProjectorResolution} from './projector-specs.js?v=20261012-spec-format';
+import {normalizeSpecificationEntries} from './specification-normalization.js?v=20261013-spec-colons';
+import {isProjectorProduct, resolveProjectorSpecifications, normalizeProjectorResolution} from './projector-specs.js?v=20261013-spec-colons';
 import {equivalentSpecification} from './specification-comparison.js?v=20261012-focus';
 import {isSpecializedPrinterName,officeSupplyCategoryPlan} from './product-identity.js?v=20261012-consumables-brands';
 

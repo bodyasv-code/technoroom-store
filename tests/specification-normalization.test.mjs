@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import {normalizeSpecificationEntries, normalizeSpecifications} from '../public/specification-normalization.js';
+import {normalizeSpecificationEntries, normalizeSpecifications, cleanSpecificationValue} from '../public/specification-normalization.js';
 const source = {'Вхід:':'HDMI x2','Вхід':'HDMI x2','Маса (кг):':'2.4','Маса (кг)':'2.4','Технологія:':'3LCD','Технологія':'3LCD','Технологія проекції':'3LCD','Роздільна здатність:':'1024 x 768','Роздільна здатність':'1024 × 768','Світловий потік (лм):':'3600','Яскравість':'3600 лм','Джерело світла (тип, термін роботи):':'UHP 210W, 6000/12000','Джерело світла':'UHP 210W, 6000/12000'};
 const before = JSON.stringify(source);
 const result = normalizeSpecifications(source, {projector:true});
@@ -17,3 +17,18 @@ assert.equal(normalizeSpecificationEntries({'Динамік (Вт):':2,'Дина
 assert.equal(normalizeSpecificationEntries({'':'none','Вхід:':''}).length,0);
 console.log('Specification deduplication: checks passed');
 assert.equal(normalizeSpecifications({'Технологія':'3LCD','Технологія проекції':'DLP'},{projector:true})['Технологія проекції'],'DLP');
+const separators = {'Маса (кг)':':2.4','Контраст':' : 350:1','Вхід':': HDMI, USB Type A (5V 2A)','Шум (дБ)':'： 38/29','Ресурс':': : 6000/12000','Інтерфейси':[': HDMI','： USB'], 'Кількість':2};
+const separatorsBefore = JSON.stringify(separators);
+const cleaned = normalizeSpecifications(separators);
+assert.equal(cleaned['Маса (кг)'],'2.4');
+assert.equal(cleaned['Контраст'],'350:1');
+assert.equal(cleaned['Вхід'],'HDMI, USB Type A (5V 2A)');
+assert.equal(cleaned['Шум (дБ)'],'38/29');
+assert.equal(cleaned['Ресурс'],'6000/12000');
+assert.deepEqual(cleaned['Інтерфейси'],['HDMI','USB']);
+assert.equal(cleaned['Кількість'],2);
+assert.equal(JSON.stringify(separators),separatorsBefore);
+assert.deepEqual(normalizeSpecifications(cleaned),cleaned);
+assert.equal(cleanSpecificationValue('https://example.com/a:b'),'https://example.com/a:b');
+assert.equal(cleanSpecificationValue('12:30'),'12:30');
+assert.equal(normalizeSpecificationEntries({'Контраст':': 350:1','Контраст:':'350:1'}).length,1);

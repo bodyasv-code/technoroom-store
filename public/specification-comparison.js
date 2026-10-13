@@ -1,4 +1,4 @@
-import {normalizeProjectorResolution, normalizeProjectorLightSource} from './projector-specs.js?v=20261012-spec-format';
+import {normalizeProjectorResolution, normalizeProjectorLightSource} from './projector-specs.js?v=20261013-spec-colons';
 import {comparableSpecificationValue} from './specification-values.js?v=20261012-spec-format';
 const text = value => String(Array.isArray(value) ? value.join(' · ') : value ?? '').normalize('NFKC').trim().toLocaleLowerCase('uk-UA').replace(/\s+/g,' ');
 const resolutionDimensions={'svga':'800 × 600','xga':'1024 × 768','wxga':'1280 × 800','hd':'1280 × 720','full hd':'1920 × 1080','wuxga':'1920 × 1200','wqxga':'2560 × 1600','4k uhd':'3840 × 2160','8k uhd':'7680 × 4320','wvga':'854 × 480'};

@@ -2,12 +2,12 @@ import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js
 import {createArticleEditor} from './article-editor.js?v=20261011-article-links';
 import {articleHasContent} from './article-format.js?v=20261011-article-links';
 import {productNameWithSku, officeSupplyCategoryPlan, isSpecializedPrinterName} from './product-identity.js?v=20261012-consumables-brands';
-import {resolveProjectorSpecifications, normalizeProjectorResolution, isProjectorProduct, normalizeProjectorLightSource, projectorResolutionLabel, projectorResolutionFilterValue, projectorResolutionStandards} from './projector-specs.js?v=20261013-resolution-filters';
+import {resolveProjectorSpecifications, normalizeProjectorResolution, isProjectorProduct, normalizeProjectorLightSource, projectorResolutionLabel, projectorResolutionFilterValue, projectorResolutionStandards} from './projector-specs.js?v=20261013-spec-colons';
 import {resolveEditorBrand} from './brand-editor.js?v=20261012';
-import {normalizeSpecifications} from './specification-normalization.js?v=20261012-spec-format';
+import {normalizeSpecifications} from './specification-normalization.js?v=20261013-spec-colons';
 import {canonicalBrandName, brandConsolidationPlan} from './brand-normalization.js?v=20261012-brand-cleanup';
 import {removeUnusedBrandDuplicate} from './brand-cleanup.js?v=20261012-brand-cleanup';
-import {createQualityAudit, mountQualityPanel} from './catalog-quality.js?v=20261012-focus';
+import {createQualityAudit, mountQualityPanel} from './catalog-quality.js?v=20261013-spec-colons';
 import {createImportAudit, auditEligible, auditMarkup, showImportReview} from './import-audit.js?v=20261012-consumables-brands';
 const supabase=createClient(window.TECHNOROOM_SUPABASE.url,window.TECHNOROOM_SUPABASE.publishableKey);
 const state={catalogReady:false,products:[],orders:[],categories:[],brands:[],promotions:[],banners:[],articles:[],page:1,brandPage:1,selectedProducts:new Set(),categoryTreeOpen:new Set()};

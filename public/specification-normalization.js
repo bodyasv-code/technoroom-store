@@ -1,6 +1,13 @@
 import {comparableSpecificationValue} from './specification-values.js?v=20261012-spec-format';
 const cleanLabel = raw => String(raw ?? '').normalize('NFKC').trim().replace(/\s+/g, ' ').replace(/\s*[:：]+\s*$/u, '');
 const folded = raw => cleanLabel(raw).toLocaleLowerCase('uk-UA');
+// Supplier separators are not part of the value. Preserve interior colons
+// (contrast 350:1, URLs, times) and retain numeric/boolean value types.
+export function cleanSpecificationValue(value) {
+  if (Array.isArray(value)) return value.map(cleanSpecificationValue);
+  if (typeof value !== 'string') return value;
+  return value.trim().replace(/^(?:[:：]\s*)+/u, '');
+}
 const projectorAliases = new Map([
   ['Технологія проекції', ['Технологія', 'Технологія проєкції', 'Projection technology', 'Projection system']],
   ['Роздільна здатність', ['Resolution', 'Native resolution', 'Власна роздільна здатність']],
@@ -19,13 +26,14 @@ export function normalizeSpecificationEntries(specifications = {}, {projector = 
   for (const [rawKey, rawValue] of source) {
     const label = cleanLabel(rawKey);
     const key = projector ? projectorAliases.get(folded(label)) || label : label;
-    const comparison = comparableSpecificationValue(key,rawValue);
+    const value = cleanSpecificationValue(rawValue);
+    const comparison = comparableSpecificationValue(key,value);
     if (!key || !comparison) continue;
     const identity = folded(key) + '\u0000' + comparison;
     if (seen.has(identity)) continue;
     seen.add(identity);
     // Different values are deliberately retained, even when their labels are aliases.
-    entries.push([key, Array.isArray(rawValue) ? [...rawValue] : rawValue]);
+    entries.push([key, value]);
   }
   return entries;
 }

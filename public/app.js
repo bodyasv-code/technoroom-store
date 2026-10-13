@@ -3,8 +3,8 @@ import {sizeBannerSlides} from './banner-layout.js?v=20261011-uniform';
 import {categoryIcon} from './category-icons.js?v=20261013-icons';
 import {attachStoreSearch, searchScore, normalizeSearch} from './store-search.js?v=20261012-search';
 import {productNameWithSku} from './product-identity.js?v=20261012-consumables-brands';
-import {resolveProjectorSpecifications, isProjectorProduct, normalizeProjectorLightSource, projectorResolutionLabel, projectorResolutionFilterValue, compareProjectorResolutions} from './projector-specs.js?v=20261013-resolution-filters';
-import {normalizeSpecificationEntries, normalizeSpecifications} from './specification-normalization.js?v=20261012-spec-format';
+import {resolveProjectorSpecifications, isProjectorProduct, normalizeProjectorLightSource, projectorResolutionLabel, projectorResolutionFilterValue, compareProjectorResolutions} from './projector-specs.js?v=20261013-spec-colons';
+import {normalizeSpecificationEntries, normalizeSpecifications} from './specification-normalization.js?v=20261013-spec-colons';
 
 const supabase = createClient(window.TECHNOROOM_SUPABASE.url, window.TECHNOROOM_SUPABASE.publishableKey);
 const catalogImageStyles = document.createElement('style');

@@ -2,7 +2,7 @@ import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js
 import {sizeBannerSlides} from './banner-layout.js?v=20261011-uniform';
 import {attachStoreSearch, searchScore, normalizeSearch} from './store-search.js?v=20261012-search';
 import {productNameWithSku} from './product-identity.js?v=20261012-consumables-brands';
-import {resolveProjectorSpecifications, isProjectorProduct, normalizeProjectorLightSource, projectorResolutionLabel} from './projector-specs.js?v=20261013-resolution-labels';
+import {resolveProjectorSpecifications, isProjectorProduct, normalizeProjectorLightSource, projectorResolutionLabel, projectorResolutionFilterValue, compareProjectorResolutions} from './projector-specs.js?v=20261013-resolution-filters';
 import {normalizeSpecificationEntries, normalizeSpecifications} from './specification-normalization.js?v=20261012-spec-format';
 
 const supabase = createClient(window.TECHNOROOM_SUPABASE.url, window.TECHNOROOM_SUPABASE.publishableKey);
@@ -1608,20 +1608,7 @@ catalog = function () {
     ];
   };
   const projectorResolutionValues = (product) => {
-    const source = specificationValues(product, ['роздільна здатність', 'resolution']).join(' ');
-    // До поля іноді потрапляє повний опис об’єктива. Для фільтра допускаємо
-    // лише відомий стандарт роздільності, а не довільний текст.
-    const normalized = source.toUpperCase();
-    if (/3840\s*[×XХx]\s*2160|\b4K\b|\bUHD\b/.test(normalized)) return ['4K UHD'];
-    if (/2560\s*[×XХx]\s*1600|\bWQXGA\b/.test(normalized)) return ['WQXGA'];
-    if (/1920\s*[×XХx]\s*1200|\bWUXGA\b/.test(normalized)) return ['WUXGA'];
-    if (/1920\s*[×XХx]\s*1080|FULL\s*HD|\bFHD\b/.test(normalized)) return ['Full HD'];
-    if (/1280\s*[×XХx]\s*800|\bWXGA\b/.test(normalized)) return ['WXGA'];
-    if (/1280\s*[×XХx]\s*720|\bHD\b/.test(normalized)) return ['HD'];
-    if (/1024\s*[×XХx]\s*768|\bXGA\b/.test(normalized)) return ['XGA'];
-    if (/800\s*[×XХx]\s*600|\bSVGA\b/.test(normalized)) return ['SVGA'];
-    if (/854\s*[×XХx]\s*480|\bWVGA\b/.test(normalized)) return ['WVGA'];
-    return [];
+    return [...new Set(specificationValues(product, ['роздільна здатність', 'resolution','native resolution']).map(projectorResolutionFilterValue).filter(Boolean))];
   };
   const projectorThrowRatioValues = (product) => {
     const stored = specificationValues(product, ['проекційне співвідношення', 'проекційне відношення', 'projection ratio', 'throw ratio']).join(' ');
@@ -1635,13 +1622,13 @@ catalog = function () {
     const definitions = [
       { id: 'projector-classification', label: 'Тип і призначення', values: projectorClassificationValues, normaliseValue: normaliseSpecificationValue },
       { id: 'projector-technology', label: 'Технологія', values: projectorTechnologyValues, normaliseValue: normaliseSpecificationValue },
-      { id: 'projector-resolution', label: 'Роздільна здатність', values: projectorResolutionValues, normaliseValue: normaliseSpecificationValue },
+      { id: 'projector-resolution', label: 'Роздільна здатність', values: projectorResolutionValues, normaliseValue: projectorResolutionFilterValue },
       { id: 'projector-light-source', label: 'Джерело світла', keys: ['джерело світла', 'тип джерела'], values: (product) => specificationValues(product, ['джерело світла', 'тип джерела']).map(normaliseLightSource), normaliseValue: normaliseLightSource }
     ];
     return definitions.map((definition) => {
       const values = new Set();
       categoryProducts.forEach((product) => valuesForScreenFilter(product, definition).filter(Boolean).forEach((value) => values.add((definition.normaliseValue || normaliseSpecificationValue)(value))));
-      const options = [...values].filter(Boolean).sort((left, right) => left.localeCompare(right, 'uk'));
+      const options = [...values].filter(Boolean).sort(definition.id==='projector-resolution'?compareProjectorResolutions:(left, right) => left.localeCompare(right, 'uk'));
       return options.length >= 2 ? { ...definition, options } : null;
     }).filter(Boolean);
   };

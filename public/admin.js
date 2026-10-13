@@ -2,7 +2,7 @@ import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js
 import {createArticleEditor} from './article-editor.js?v=20261011-article-links';
 import {articleHasContent} from './article-format.js?v=20261011-article-links';
 import {productNameWithSku, officeSupplyCategoryPlan, isSpecializedPrinterName} from './product-identity.js?v=20261012-consumables-brands';
-import {resolveProjectorSpecifications, normalizeProjectorResolution, isProjectorProduct, normalizeProjectorLightSource, projectorResolutionLabel} from './projector-specs.js?v=20261013-resolution-labels';
+import {resolveProjectorSpecifications, normalizeProjectorResolution, isProjectorProduct, normalizeProjectorLightSource, projectorResolutionLabel, projectorResolutionFilterValue, projectorResolutionStandards} from './projector-specs.js?v=20261013-resolution-filters';
 import {resolveEditorBrand} from './brand-editor.js?v=20261012';
 import {normalizeSpecifications} from './specification-normalization.js?v=20261012-spec-format';
 import {canonicalBrandName, brandConsolidationPlan} from './brand-normalization.js?v=20261012-brand-cleanup';
@@ -110,7 +110,7 @@ document.addEventListener('click',event=>{const card=event.target.closest('[data
 // одразу працюють і в каталозі, і в наступних імпортах.
 const projectorCategorySlugs=new Set(['projectors','projector','laser-proj','erc-display-03','erc-display-11','erc-display-12','erc-display-13','home-projectors','short-throw-projectors','installation-projectors','universal-projectors']);
 const projectorPurposeOptions=['Лазерний','Домашній','Короткофокусний','Ультракороткофокусний','Інсталяційний','Універсальний'];
-const projectorResolutionOptions=['SVGA','XGA','WXGA','HD','Full HD','WUXGA','WQXGA','4K UHD','8K UHD','1920 × 1080','3840 × 2160'];
+const projectorResolutionOptions=projectorResolutionStandards;
 const officePrintCategorySlugs=new Set(['office-printers','office-printers-color','office-printers-mono','office-mfp','office-mfp-color','office-mfp-mono','office-wide-format']);
 const officeInterfaceOptions=['Wi‑Fi','Ethernet','USB','Bluetooth'];
 const parseAdminSpecifications=value=>Object.fromEntries(String(value||'').split('\n').map(line=>{const [key,...parts]=line.split(':');return[key?.trim(),parts.join(':').trim()]}).filter(([key,value])=>key&&value));
@@ -127,7 +127,7 @@ const mountProjectorEditorFields=(form,product)=>{
   panel.querySelectorAll('[name="projector_purpose"]').forEach(input=>input.checked=purposeText.includes(input.value));
   const source=String(specifications['Джерело світла']||specifications['Тип джерела']||'');
   panel.querySelector('[name="projector_light_source"]').value=normalizeProjectorLightSource(source);
-  const resolution=String(specifications['Роздільна здатність']||specifications['Resolution']||'');
+  const resolution=projectorResolutionFilterValue(specifications['Роздільна здатність']||specifications['Resolution']||'');
   const resolutionSelect=panel.querySelector('[name="projector_resolution_select"]'),resolutionCustom=panel.querySelector('[name="projector_resolution_custom"]'),resolutionCustomLabel=panel.querySelector('[data-projector-resolution-custom]');
   resolutionSelect.value=projectorResolutionOptions.includes(resolution)?resolution:(resolution?'__custom':'');resolutionCustom.value=projectorResolutionOptions.includes(resolution)?'':resolution;
   const toggleResolutionCustom=()=>{resolutionCustomLabel.hidden=resolutionSelect.value!=='__custom'};resolutionSelect.onchange=toggleResolutionCustom;toggleResolutionCustom();

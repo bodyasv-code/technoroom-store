@@ -20,11 +20,20 @@ export function normalizeProjectorResolution(raw='') {
   const standards={'fhd':'Full HD','full hd':'Full HD','1080p':'Full HD','hd':'HD','720p':'HD','4k':'4K UHD','4k uhd':'4K UHD','uhd':'4K UHD','8k':'8K UHD','8k uhd':'8K UHD',svga:'SVGA',xga:'XGA',wxga:'WXGA',wuxga:'WUXGA',wqxga:'WQXGA',wvga:'WVGA'};
   return standards[source.toLowerCase().replace(/\s+/g,' ')]||'';
 }
-export function projectorResolutionLabel(raw='') {
+const resolutionPixels={SVGA:'800 × 600',WVGA:'854 × 480',XGA:'1024 × 768',HD:'1280 × 720',WXGA:'1280 × 800','Full HD':'1920 × 1080',WUXGA:'1920 × 1200',WQXGA:'2560 × 1600','4K UHD':'3840 × 2160','8K UHD':'7680 × 4320'};
+export const projectorResolutionStandards=Object.keys(resolutionPixels);
+export function projectorResolutionFilterValue(raw='') {
   const resolution=normalizeProjectorResolution(raw);
-  if(['Full HD','1920 × 1080'].includes(resolution))return 'FULL HD (1920 × 1080)';
-  if(['WUXGA','1920 × 1200'].includes(resolution))return 'WUXGA (1920 × 1200)';
-  return value(raw);
+  return Object.keys(resolutionPixels).find(standard=>resolutionPixels[standard]===resolution)||resolution;
+}
+export function projectorResolutionLabel(raw='') {
+  const resolution=projectorResolutionFilterValue(raw),pixels=resolutionPixels[resolution];
+  return pixels?(resolution==='Full HD'?'FULL HD':resolution)+' ('+pixels+')':value(raw);
+}
+export function compareProjectorResolutions(left,right) {
+  const pixels=raw=>resolutionPixels[projectorResolutionFilterValue(raw)]||normalizeProjectorResolution(raw);
+  const area=raw=>{const match=/^(\d+) × (\d+)$/.exec(pixels(raw));return match?Number(match[1])*Number(match[2]):Infinity;};
+  return area(left)-area(right)||value(left).localeCompare(value(right));
 }
 export function isProjectorProduct(product={}) {
   return /^(?:про[єе]ктор|projector)(?=\s|$)/iu.test(value(product.name).trim()) || ['projector','projectors','laser-projectors','home-projectors','short-throw-projectors','installation-projectors','universal-projectors','erc-display-03','erc-display-11','erc-display-12','erc-display-13'].includes(product.category||product.type);

@@ -1,6 +1,7 @@
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
 import {sizeBannerSlides} from './banner-layout.js?v=20261011-uniform';
 import {categoryIcon} from './category-icons.js?v=20261013-icons';
+import {projectorDisplayEntries} from './projector-display.js?v=20261013-light-details';
 import {attachStoreSearch, searchScore, normalizeSearch} from './store-search.js?v=20261012-search';
 import {productNameWithSku} from './product-identity.js?v=20261012-consumables-brands';
 import {resolveProjectorSpecifications, isProjectorProduct, normalizeProjectorLightSource, projectorResolutionLabel, projectorResolutionFilterValue, compareProjectorResolutions} from './projector-specs.js?v=20261013-spec-colons';
@@ -946,7 +947,7 @@ const displaySpecificationEntries = (product) => {
     .map(([key, value]) => [readableText(key), isProjectorProduct(product)&&key==='Роздільна здатність'?projectorResolutionLabel(specificationDisplayText(value)):specificationDisplayText(value)])
     .filter(([key, value]) => key && value);
   if (!stored.length) return Object.entries(inferredScreenSpecifications(product));
-  return stored;
+  return isProjectorProduct(product) ? projectorDisplayEntries(stored, product.description) : stored;
 };
 
 product = () => {

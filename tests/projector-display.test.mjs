@@ -1,0 +1,16 @@
+import assert from 'node:assert/strict';
+import {projectorDisplayEntries} from '../public/projector-display.js';
+const source = [['Джерело світла','Лампа'],['Джерело світла (інше значення 2)','UHP 188W, 6000/12000'],['Яскравість','3000 лм'],['Яскравість (інше значення 2)','3000/2000']];
+const before = JSON.stringify(source);
+const result = projectorDisplayEntries(source);
+assert.deepEqual(result, [['Джерело світла','Лампа'],['Тип лампи','UHP 188W'],['Ресурс джерела світла','6000 / 12000 год (режими не уточнено)'],['Яскравість','3000 лм'],['Яскравість за різних режимів','3000 / 2000 лм (режими не уточнено)']]);
+assert.equal(JSON.stringify(source),before);
+assert.deepEqual(projectorDisplayEntries(result),result);
+const conflict = [['Джерело світла','LED'],['Джерело світла (інше значення 2)','RGB Laser, 20000/30000']];
+assert.deepEqual(projectorDisplayEntries(conflict),conflict);
+assert.deepEqual(projectorDisplayEntries([['Джерело світла','unknown, 20000/30000']]),[['Джерело світла','unknown, 20000/30000']]);
+assert.deepEqual(projectorDisplayEntries([['Контраст','350:1'],['Шум','38/29']]),[['Контраст','350:1'],['Шум','38/29']]);
+assert.ok(projectorDisplayEntries([['Джерело світла','LED+LASER, 20000/30000']]).some(([k,v])=>k==='Технологія джерела світла'&&v==='LED+LASER'));
+console.log('Projector display details: OK');
+assert.ok(projectorDisplayEntries([['Яскравість','3000 лм']], 'Світловий потік (лм): 3000/2000 Контраст: 350:1').some(([k,v])=>k==='Яскравість за різних режимів'&&v.startsWith('3000 / 2000')));
+assert.deepEqual(projectorDisplayEntries([['Яскравість','3000 лм']], 'Шум (дБ): 38/29'),[['Яскравість','3000 лм']]);

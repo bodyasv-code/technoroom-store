@@ -1,0 +1,11 @@
+import assert from 'node:assert/strict';
+import {orderSpecificationEntries} from '../public/specification-order.js';
+const entries = [['Wi-Fi','long text'],['Windows','long text'],['дозвіл','1200x2400'],['Тип друку','Кольоровий'],['Інтерфейси','Wi-Fi'],['Тип пристрою','БФП'],['Технологія друку','Струменевий'],['Лотки','250']];
+const before = JSON.stringify(entries);
+assert.deepEqual(orderSpecificationEntries(entries).map(([k])=>k),['Тип пристрою','Технологія друку','Тип друку','дозвіл','Інтерфейси','Wi-Fi','Windows','Лотки']);
+assert.equal(JSON.stringify(entries),before);
+const projected = orderSpecificationEntries([['Шум','38'],['Джерело світла','Лампа'],['Яскравість','3000'],['Технологія проекції','3LCD'],['Роздільна здатність','WXGA']],{projector:true});
+assert.deepEqual(projected.map(([k])=>k),['Технологія проекції','Роздільна здатність','Яскравість','Джерело світла','Шум']);
+assert.deepEqual(orderSpecificationEntries(projected,{projector:true}),projected);
+assert.deepEqual(orderSpecificationEntries([]),[]);
+console.log('Specification presentation order: OK');

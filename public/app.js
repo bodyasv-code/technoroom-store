@@ -2,6 +2,7 @@ import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js
 import {sizeBannerSlides} from './banner-layout.js?v=20261011-uniform';
 import {categoryIcon} from './category-icons.js?v=20261013-icons';
 import {projectorDisplayEntries} from './projector-display.js?v=20261013-light-details';
+import {orderSpecificationEntries} from './specification-order.js?v=20261013-spec-order';
 import {attachStoreSearch, searchScore, normalizeSearch} from './store-search.js?v=20261012-search';
 import {productNameWithSku} from './product-identity.js?v=20261012-consumables-brands';
 import {resolveProjectorSpecifications, isProjectorProduct, normalizeProjectorLightSource, projectorResolutionLabel, projectorResolutionFilterValue, compareProjectorResolutions} from './projector-specs.js?v=20261013-spec-colons';
@@ -896,9 +897,7 @@ card = (product) => {
   const promotionBadge = promotion ? '<span class="sale-badge">' + (promotion.discount_type === 'percent' ? '-' + Number(promotion.discount_value) + '%' : 'АКЦІЯ') + '</span>' : '';
   const variantsCount = variants.length;
   const variantsNote = variantsCount ? '<span class="product-variants-note">Варіантів: ' + variantsCount + '</span>' : '';
-  const previewSpecs = Object.entries(displayProduct.specifications || {})
-    .map(([key, value]) => [readableText(key), isProjectorProduct(product)&&key==='Роздільна здатність'?projectorResolutionLabel(specificationDisplayText(value)):specificationDisplayText(value)])
-    .filter(([key, value]) => key && value)
+  const previewSpecs = displaySpecificationEntries(displayProduct)
     .slice(0, 4)
     .map(([key, value]) => '<li><span>' + catalogCardEscape(key) + '</span><b>' + catalogCardEscape(value) + '</b></li>')
     .join('');
@@ -946,8 +945,9 @@ const displaySpecificationEntries = (product) => {
   const stored = normalizeSpecificationEntries(product.specifications, {projector:isProjectorProduct(product)})
     .map(([key, value]) => [readableText(key), isProjectorProduct(product)&&key==='Роздільна здатність'?projectorResolutionLabel(specificationDisplayText(value)):specificationDisplayText(value)])
     .filter(([key, value]) => key && value);
-  if (!stored.length) return Object.entries(inferredScreenSpecifications(product));
-  return isProjectorProduct(product) ? projectorDisplayEntries(stored, product.description) : stored;
+  const projector = isProjectorProduct(product);
+  const entries = stored.length ? (projector ? projectorDisplayEntries(stored, product.description) : stored) : Object.entries(inferredScreenSpecifications(product));
+  return orderSpecificationEntries(entries, {projector});
 };
 
 product = () => {

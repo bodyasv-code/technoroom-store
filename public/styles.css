@@ -515,3 +515,13 @@ body{overflow-x:hidden}.store-shared-header{position:sticky!important;top:0!impo
 .store-home .home-hero[aria-busy="true"]{min-height:320px;background:linear-gradient(110deg,#e7eff8,#f5f8fc,#e7eff8)}
 .store-home .home-hero[aria-busy="true"]>*{visibility:hidden}
 .store-home .home-hero[hidden]{display:none!important}
+
+/* One lightweight icon family for category tiles and both catalog menus. */
+.category-icon{display:block;width:24px;height:24px;flex:0 0 24px;color:#0875e9}
+.home-cat-visual .category-icon{width:48px;height:48px}
+.home-cat-visual img{display:block;max-width:100%;max-height:72px;object-fit:contain}
+.mega-roots button{align-items:center;gap:12px}
+.mega-roots button>span{flex:1;min-width:0}
+.home-category-cards>a{transition:border-color .15s,box-shadow .15s}
+.home-category-cards>a:hover,.home-category-cards>a:focus-visible{border-color:#0875e9;box-shadow:0 4px 14px rgba(8,117,233,.1)}
+@media(prefers-reduced-motion:reduce){.home-category-cards>a{transition:none}}

@@ -1,5 +1,6 @@
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
 import {sizeBannerSlides} from './banner-layout.js?v=20261011-uniform';
+import {categoryIcon} from './category-icons.js?v=20261013-icons';
 import {attachStoreSearch, searchScore, normalizeSearch} from './store-search.js?v=20261012-search';
 import {productNameWithSku} from './product-identity.js?v=20261012-consumables-brands';
 import {resolveProjectorSpecifications, isProjectorProduct, normalizeProjectorLightSource, projectorResolutionLabel, projectorResolutionFilterValue, compareProjectorResolutions} from './projector-specs.js?v=20261013-resolution-filters';
@@ -148,14 +149,14 @@ async function home() {
     cats=await loadStorefrontCategories();
     if(cats.length){
       const ids=new Set(cats.map(c=>c.id)), roots=cats.filter(c=>!c.parent_id||!ids.has(c.parent_id));
-      if(cards) cards.innerHTML=roots.slice(0,8).map(c=>{const source=c.image_path?(String(c.image_path).startsWith('http')?c.image_path:supabase.storage.from('product-images').getPublicUrl(c.image_path).data.publicUrl):'';return `<a href="catalog.html?category=${encodeURIComponent(c.slug)}"><div class="home-cat-visual">${source?'<img src="'+escapeHtml(source)+'" alt="" loading="lazy">':'▣'}</div><b>${escapeHtml(c.name)}</b><span>Переглянути →</span></a>`}).join('');
+      if(cards) cards.innerHTML=roots.slice(0,8).map(c=>{const source=c.image_path?(String(c.image_path).startsWith('http')?c.image_path:supabase.storage.from('product-images').getPublicUrl(c.image_path).data.publicUrl):'';return `<a href="catalog.html?category=${encodeURIComponent(c.slug)}"><div class="home-cat-visual">${source?'<img src="'+escapeHtml(source)+'" alt="" loading="lazy">':categoryIcon(c)}</div><b>${escapeHtml(c.name)}</b><span>Переглянути →</span></a>`}).join('');
       const mega=document.getElementById('homeCatalogMega'), rootsEl=document.getElementById('homeMegaRoots'), childrenEl=document.getElementById('homeMegaChildren'), toggle=document.getElementById('homeCatalogToggle');
       if(mega&&rootsEl&&childrenEl&&toggle){
         const compactMenu=()=>window.matchMedia('(max-width:700px)').matches;
         const renderRoots=()=>{
           rootsEl.hidden=false;
           childrenEl.hidden=true;
-          rootsEl.innerHTML=roots.map(r=>`<button type="button" data-slug="${r.slug}"><span>${escapeHtml(r.name)}</span><b>›</b></button>`).join('');
+          rootsEl.innerHTML=roots.map(r=>`<button type="button" data-slug="${escapeHtml(r.slug)}">${categoryIcon(r)}<span>${escapeHtml(r.name)}</span><b>›</b></button>`).join('');
           rootsEl.querySelectorAll('button').forEach(button=>{
             const root=roots.find(item=>item.slug===button.dataset.slug);
             button.onmouseenter=()=>{if(!compactMenu()) show(root)};
@@ -681,7 +682,7 @@ async function mountMegaCatalog() {
   const renderRoots=()=>{
     rootsEl.hidden=false;
     childrenEl.hidden=true;
-    rootsEl.innerHTML=roots.map(r=>`<button type="button" data-slug="${r.slug}"><span>${r.name}</span><b>›</b></button>`).join('');
+    rootsEl.innerHTML=roots.map(r=>`<button type="button" data-slug="${escapeHtml(r.slug)}">${categoryIcon(r)}<span>${escapeHtml(r.name)}</span><b>›</b></button>`).join('');
     rootsEl.querySelectorAll('button').forEach(button=>{
       const root=roots.find(item=>item.slug===button.dataset.slug);
       button.onmouseenter=()=>{if(!compactMenu()) show(root)};

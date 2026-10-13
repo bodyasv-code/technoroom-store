@@ -5,6 +5,7 @@ import {projectorDisplayEntries} from './projector-display.js?v=20261013-light-d
 import {orderSpecificationEntries} from './specification-order.js?v=20261013-printer-rules';
 import {isPrinterDevice, printerDisplayEntries} from './printer-display.js?v=20261013-printer-rules';
 import {catalogResultState} from './catalog-loading-state.js?v=20261013-catalog-loading';
+import {catalogRequestScope, catalogCacheKey, mergeCatalogRows, applyCatalogScope} from './catalog-scope.js?v=20261013-category-first';
 import {attachStoreSearch, searchScore, normalizeSearch} from './store-search.js?v=20261012-search';
 import {productNameWithSku} from './product-identity.js?v=20261012-consumables-brands';
 import {resolveProjectorSpecifications, isProjectorProduct, normalizeProjectorLightSource, projectorResolutionLabel, projectorResolutionFilterValue, compareProjectorResolutions} from './projector-specs.js?v=20261013-spec-colons';
@@ -26,6 +27,7 @@ let products = fallbackProducts;
 let productsLoaded = false;
 let productsHydrating = false;
 let catalogLoadFailed = false;
+let catalogProductScope = 'all';
 const isProductPage = Boolean(document.getElementById('productView'));
 let activePromotions=[]; let promotionProductIds=new Map();
 const scrollPositionKey = 'technoroom-scroll:' + location.pathname + location.search;
@@ -449,9 +451,8 @@ function checkout() { const form = document.getElementById('checkoutForm'); if (
 function mount() { renderCart(); home(); catalog(); product(); checkout(); restoreScrollPosition(); const drawer = document.getElementById('cartDrawer'), overlay = document.getElementById('overlay'), close = () => { drawer?.classList.remove('open'); if (overlay) overlay.hidden = true; }; document.getElementById('cartButton')?.addEventListener('click', () => { drawer?.classList.add('open'); if (overlay) overlay.hidden = false; }); document.getElementById('closeCart')?.addEventListener('click', close); overlay?.addEventListener('click', close); document.getElementById('checkoutButton')?.addEventListener('click', () => location.href = 'checkout.html'); }
 const storeProductFromRow = (item) => ({ id: item.id, sku: readableText(item.sku), name: compactProductName(item.name, item.sku, item.brand), description: readableText(item.description), price: Number(item.price), type: item.category, brand: readableText(item.brand), brand_id:item.brand_id, parentProductId:item.parent_product_id, variantLabel:readableText(item.variant_label), specifications: isProjectorProduct(item)?resolveProjectorSpecifications(item):normalizeSpecifications(item.specifications), availabilityStatus: item.availability_status, stockQuantity: Number(item.stock_quantity || 0), stock: item.in_stock && Number(item.stock_quantity || 0) > 0, image: item.image_path, imagePaths: item.image_paths, createdAt:item.created_at });
 
-const storefrontProductCacheKey = 'technoroom-storefront-products-v2';
 async function lookupStoreSearch(query) {
-  if (!isProductPage && !productsHydrating) return null;
+  if (!isProductPage && !productsHydrating && catalogProductScope==='all') return null;
   let request = supabase.from('products')
     .select('id,sku,name,brand,price,description,category,image_path,in_stock,stock_quantity,availability_status')
     .eq('is_active', true).is('parent_product_id', null);
@@ -465,7 +466,7 @@ async function lookupStoreSearch(query) {
   return (data || []).map(storeProductFromRow);
 }
 const storefrontProductCacheTtl = 60 * 1000;
-const readStorefrontProductCache = () => new Promise((resolve) => {
+const readStorefrontProductCache = (scope='all') => new Promise((resolve) => {
   if (!('indexedDB' in window)) return resolve(null);
   let databaseRequest;
   try { databaseRequest = window.indexedDB.open('technoroom-storefront-cache', 1); } catch { return resolve(null); }
@@ -476,7 +477,7 @@ const readStorefrontProductCache = () => new Promise((resolve) => {
   databaseRequest.onerror = () => resolve(null);
   databaseRequest.onsuccess = () => {
     const database = databaseRequest.result;
-    const request = database.transaction('entries', 'readonly').objectStore('entries').get(storefrontProductCacheKey);
+    const request = database.transaction('entries', 'readonly').objectStore('entries').get(catalogCacheKey(scope));
     request.onerror = () => { database.close(); resolve(null); };
     request.onsuccess = () => {
       const cached = request.result;
@@ -485,8 +486,8 @@ const readStorefrontProductCache = () => new Promise((resolve) => {
     };
   };
 });
-const saveStorefrontProductCache = (rows) => {
-  if (!Array.isArray(rows) || !rows.length || !('indexedDB' in window)) return;
+const saveStorefrontProductCache = (rows, scope='all') => {
+  if (!Array.isArray(rows) || !('indexedDB' in window)) return;
   try {
     const databaseRequest = window.indexedDB.open('technoroom-storefront-cache', 1);
     databaseRequest.onupgradeneeded = () => {
@@ -495,7 +496,7 @@ const saveStorefrontProductCache = (rows) => {
     };
     databaseRequest.onsuccess = () => {
       const database = databaseRequest.result;
-      database.transaction('entries', 'readwrite').objectStore('entries').put({ savedAt: Date.now(), rows }, storefrontProductCacheKey);
+      database.transaction('entries', 'readwrite').objectStore('entries').put({ savedAt: Date.now(), rows }, catalogCacheKey(scope));
       database.close();
     };
   } catch {}
@@ -567,9 +568,13 @@ async function loadProducts() { let renderedFromCache = false, renderedFirstScre
     await loadProductPageProducts();
     return;
   }
-  const cachedRows = await readStorefrontProductCache();
+  catalogProductScope=catalogRequestScope(location.search,Boolean(document.getElementById('catalogGrid')));
+  const catalogColumns = 'id,sku,name,description,price,category,brand,brand_id,parent_product_id,variant_label,specifications,availability_status,stock_quantity,in_stock,image_path,created_at';
+  const cartRowsPromise=cart.length ? supabase.from('products').select(catalogColumns).in('id',[...new Set(cart)]).eq('is_active',true) : Promise.resolve({data:[],error:null});
+  const cachedRows = await readStorefrontProductCache(catalogProductScope);
   if (cachedRows) {
-    products = cachedRows.map(storeProductFromRow);
+    const cartResult=await cartRowsPromise;if(cartResult.error)throw cartResult.error;
+    products = mergeCatalogRows(cachedRows,cartResult.data||[]).map(storeProductFromRow);
     await loadActivePromotions();
     productsLoaded = true;
     renderedFromCache = true;
@@ -585,19 +590,24 @@ async function loadProducts() { let renderedFromCache = false, renderedFirstScre
   const firstScreenSize = 60;
   // Для карток, пошуку та фільтрів не потрібні додаткові фото й службові поля.
   // Повний запис, включно з галереєю, завантажується окремо лише на сторінці товару.
-  const catalogColumns = 'id,sku,name,description,price,category,brand,brand_id,parent_product_id,variant_label,specifications,availability_status,stock_quantity,in_stock,image_path';
-  const request = (from, withCount = false, size = pageSize) => supabase.from('products')
+  const categoriesPromise = loadStorefrontCategories();
+  if(catalogProductScope!=='all')await categoriesPromise;
+  const branch=catalogProductScope==='all'?null:storefrontCategoryBranch(catalogProductScope);
+  const request = (from, withCount = false, size = pageSize) => applyCatalogScope(supabase.from('products')
     .select(catalogColumns, withCount ? { count: 'exact' } : {})
-    .eq('is_active', true)
+    .eq('is_active', true),catalogProductScope,branch)
+    .order('in_stock', { ascending: false })
     .order('created_at', { ascending: false })
+    .order('id', { ascending: false })
     .range(from, from + size - 1);
   const first = await request(0, true, firstScreenSize);
   if (first.error) throw first.error;
   // Після першого асинхронного запиту модуль категорій уже ініціалізовано.
-  const categoriesPromise = loadStorefrontCategories();
   const total = Number(first.count || first.data?.length || 0);
   const initialRows = first.data || [];
-  products = initialRows.map(storeProductFromRow);
+  const cartResult=await cartRowsPromise;if(cartResult.error)throw cartResult.error;
+  const cartRows=cartResult.data||[];
+  products = mergeCatalogRows(initialRows,cartRows).map(storeProductFromRow);
   productsHydrating = total > initialRows.length;
   await Promise.all([categoriesPromise, promotionsPromise]);
   productsLoaded = true;
@@ -610,11 +620,9 @@ async function loadProducts() { let renderedFromCache = false, renderedFirstScre
     if (result.error) throw result.error;
     return result.data || [];
   }));
-  const all = [...initialRows, ...following.flat()];
-  if (all.length) {
-    products = all.map(storeProductFromRow);
-    saveStorefrontProductCache(all);
-  }
+  const all = mergeCatalogRows(initialRows,following.flat());
+  products = mergeCatalogRows(all,cartRows).map(storeProductFromRow);
+  saveStorefrontProductCache(all,catalogProductScope);
   productsHydrating = false;
   document.getElementById('catalogGrid')?._catalogDraw?.();
   document.dispatchEvent(new Event('technoroom:catalog-ready'));
@@ -2074,7 +2082,7 @@ catalog = function () {
     root.querySelector('[data-reset-empty-search]')?.addEventListener('click', () => document.getElementById('clearCatalogFilters').click());
     root.querySelector('[data-retry-catalog]')?.addEventListener('click',()=>location.reload());
     document.getElementById('resultCount').textContent = productsHydrating
-      ? 'Завантажуємо решту каталогу…'
+      ? (catalogProductScope==='all'?'Завантажуємо решту каталогу…':'Завантажуємо решту товарів категорії…')
       : catalogLoadFailed ? 'Каталог завантажено не повністю. Оновіть сторінку для повторної спроби.' : shown.length + ' товарів';
     if (pagination) {
       pagination.hidden = productsHydrating || catalogLoadFailed || pages <= 1;
@@ -2148,6 +2156,7 @@ catalog = function () {
     const url = new URL(location.href);
     url.searchParams.delete('projector');
     if (category === 'all') url.searchParams.delete('category'); else url.searchParams.set('category', category);
+    if(catalogProductScope!=='all'&&category!==catalogProductScope){location.href=url.href;return;}
     history.replaceState({}, '', url);
     draw();
   });

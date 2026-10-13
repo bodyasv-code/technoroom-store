@@ -10,3 +10,7 @@ export function mergeCatalogRows(categoryRows, supplementalRows=[]) {
 export function applyCatalogScope(request, scope, branch) {
   return scope === 'all' ? request : request.in('category',[...branch]);
 }
+export function cartProductIds(cart) {
+  return [...new Set(cart.map(entry => Number(entry?.productId ?? entry))
+    .filter(id => Number.isSafeInteger(id) && id > 0))];
+}

@@ -5,7 +5,7 @@ import {projectorDisplayEntries} from './projector-display.js?v=20261013-light-d
 import {orderSpecificationEntries} from './specification-order.js?v=20261013-printer-rules';
 import {isPrinterDevice, printerDisplayEntries} from './printer-display.js?v=20261013-printer-rules';
 import {catalogResultState} from './catalog-loading-state.js?v=20261013-catalog-loading';
-import {catalogRequestScope, catalogCacheKey, mergeCatalogRows, applyCatalogScope} from './catalog-scope.js?v=20261013-category-first';
+import {catalogRequestScope, catalogCacheKey, mergeCatalogRows, applyCatalogScope, cartProductIds} from './catalog-scope.js?v=20261013-cart-ids';
 import {attachStoreSearch, searchScore, normalizeSearch} from './store-search.js?v=20261012-search';
 import {productNameWithSku} from './product-identity.js?v=20261012-consumables-brands';
 import {resolveProjectorSpecifications, isProjectorProduct, normalizeProjectorLightSource, projectorResolutionLabel, projectorResolutionFilterValue, compareProjectorResolutions} from './projector-specs.js?v=20261013-spec-colons';
@@ -570,7 +570,8 @@ async function loadProducts() { let renderedFromCache = false, renderedFirstScre
   }
   catalogProductScope=catalogRequestScope(location.search,Boolean(document.getElementById('catalogGrid')));
   const catalogColumns = 'id,sku,name,description,price,category,brand,brand_id,parent_product_id,variant_label,specifications,availability_status,stock_quantity,in_stock,image_path,created_at';
-  const cartRowsPromise=cart.length ? supabase.from('products').select(catalogColumns).in('id',[...new Set(cart)]).eq('is_active',true) : Promise.resolve({data:[],error:null});
+  const cartIds=cartProductIds(cart);
+  const cartRowsPromise=cartIds.length ? supabase.from('products').select(catalogColumns).in('id',cartIds).eq('is_active',true) : Promise.resolve({data:[],error:null});
   const cachedRows = await readStorefrontProductCache(catalogProductScope);
   if (cachedRows) {
     const cartResult=await cartRowsPromise;if(cartResult.error)throw cartResult.error;

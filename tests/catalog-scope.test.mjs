@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import {catalogRequestScope,catalogCacheKey,mergeCatalogRows,applyCatalogScope} from '../public/catalog-scope.js';
+import {catalogRequestScope,catalogCacheKey,mergeCatalogRows,applyCatalogScope,cartProductIds} from '../public/catalog-scope.js';
 import {readFileSync} from 'node:fs';
 import vm from 'node:vm';
 assert.equal(catalogRequestScope('?category=projectors',true),'projectors');
@@ -15,12 +15,14 @@ applyCatalogScope(query,'projectors',new Set(['projectors','home-projectors']));
 assert.deepEqual(calls,[{key:'category',values:['projectors','home-projectors']}]);
 calls.length=0;applyCatalogScope(query,'all',null);assert.equal(calls.length,0);
 console.log('Category request/cache/cart scoping: OK');
+assert.deepEqual(cartProductIds([{productId:9000,quantity:2},{productId:'9000',quantity:1},42]),[9000,42]);
+assert.deepEqual(cartProductIds([null,{},0,-1,'bad',{productId:1.5}]),[]);
 const source=readFileSync(new URL('../public/app.js',import.meta.url),'utf8');
 const loader=source.slice(source.indexOf('async function loadProducts()'),source.indexOf("if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', loadProducts"));
 const ranges=[];let saved,firstPaint;
 const categoryRows=Array.from({length:267},(_,id)=>({id:id+1,category:id%2?'projectors':'home-projectors'}));
-const client={from(){return {scope:null,cartIds:null,select(){return this},eq(){return this},order(){return this},in(key,values){if(key==='category')this.scope=values;else this.cartIds=values;return this;},then(resolve){return Promise.resolve({data:[{id:9000,category:'audio'}]}).then(resolve)},async range(from,to){ranges.push({from,to,scope:this.scope});return {data:categoryRows.slice(from,to+1),count:categoryRows.length}}};}};
-const context={isProductPage:false,cart:[9000],location:{search:'?category=projectors'},catalogProductScope:'all',catalogLoadFailed:false,productsHydrating:false,productsLoaded:false,products:[],catalogRequestScope,mergeCatalogRows,applyCatalogScope,supabase:client,readStorefrontProductCache:async scope=>{assert.equal(scope,'projectors');return null;},saveStorefrontProductCache:(rows,scope)=>{saved={rows,scope};},loadActivePromotions:async()=>{},loadStorefrontCategories:async()=>[],storefrontCategoryBranch:()=>new Set(['projectors','home-projectors']),storeProductFromRow:row=>row,mount(){firstPaint=context.products.length;},mountMegaCatalog:async()=>{},console:{warn(error){throw error;}},Event:class{},document:{getElementById:()=>({_catalogDraw(){}}),dispatchEvent(){}}};
+const client={from(){return {scope:null,cartIds:null,select(){return this},eq(){return this},order(){return this},in(key,values){if(key==='category')this.scope=values;else {assert.deepEqual(values,[9000]);this.cartIds=values;}return this;},then(resolve){return Promise.resolve({data:[{id:9000,category:'audio'}]}).then(resolve)},async range(from,to){ranges.push({from,to,scope:this.scope});return {data:categoryRows.slice(from,to+1),count:categoryRows.length}}};}};
+const context={isProductPage:false,cart:[{productId:9000,quantity:2}],location:{search:'?category=projectors'},catalogProductScope:'all',catalogLoadFailed:false,productsHydrating:false,productsLoaded:false,products:[],catalogRequestScope,mergeCatalogRows,applyCatalogScope,cartProductIds,supabase:client,readStorefrontProductCache:async scope=>{assert.equal(scope,'projectors');return null;},saveStorefrontProductCache:(rows,scope)=>{saved={rows,scope};},loadActivePromotions:async()=>{},loadStorefrontCategories:async()=>[],storefrontCategoryBranch:()=>new Set(['projectors','home-projectors']),storeProductFromRow:row=>row,mount(){firstPaint=context.products.length;},mountMegaCatalog:async()=>{},console:{warn(error){throw error;}},Event:class{},document:{getElementById:()=>({_catalogDraw(){}}),dispatchEvent(){}}};
 vm.createContext(context);await vm.runInContext(loader+';loadProducts();',context);
 assert.equal(firstPaint,61); // 60 category products plus one cart item.
 assert.equal(context.products.length,268);
@@ -29,3 +31,9 @@ assert.deepEqual(ranges.map(r=>r.from),[0,60]);
 assert.ok(ranges.every(r=>r.scope.join(',')==='projectors,home-projectors'));
 assert.equal(saved.scope,'projectors');assert.equal(saved.rows.length,267);
 assert.ok(!saved.rows.some(row=>row.category==='audio'));
+assert.deepEqual(context.cart,[{productId:9000,quantity:2}]);
+// A warm cache must still request and retain the saved cart product.
+context.readStorefrontProductCache=async()=>categoryRows;
+await vm.runInContext('loadProducts();',context);
+assert.ok(context.products.some(row=>row.id===9000));
+assert.deepEqual(context.cart,[{productId:9000,quantity:2}]);

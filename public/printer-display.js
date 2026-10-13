@@ -29,5 +29,18 @@ export function printerDisplayEntries(entries) {
       if (systems.length) add('Операційні системи', systems.join(', '));
     }
   }
+  const interfaces = result.find(([key]) => key === 'Інтерфейси');
+  // Extend only a simple Wi-Fi summary with explicitly described wired ports.
+  // Do not rewrite manual/custom interface text or infer optional connections.
+  if (interfaces && /^Wi[‑-]?Fi$/iu.test(String(interfaces[1]))) {
+    const wired = new Set();
+    for (const [, raw] of entries) {
+      const text = String(raw);
+      if (/опці|optional|не підтрим|відсутн/iu.test(text)) continue;
+      if (/\bEthernet\s*:\s*\d+\s*\/\s*\d+/iu.test(text)) wired.add('Ethernet');
+      if (/Інтерфейс\s*:\s*(?:Hi-Speed\s*)?USB\s*\(порт\s*[ABАВ]\)/iu.test(text)) wired.add('USB');
+    }
+    if (wired.size) interfaces[1] = ['Wi-Fi', ...wired].join(', ');
+  }
   return result;
 }

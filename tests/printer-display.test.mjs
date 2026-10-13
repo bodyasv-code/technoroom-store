@@ -14,3 +14,7 @@ assert.equal(isPrinterDevice({name:'Картридж до HP MFP',category:'offi
 assert.equal(isPrinterDevice({name:'БФП Canon'}),true);
 assert.deepEqual(printerDisplayEntries(result),result);
 console.log('Printer presentation safeguards: OK');
+const connections = printerDisplayEntries([['Інтерфейси','Wi‑Fi'],['Мережа','Ethernet: 10/100 Мбіт/с'],['Мобільні системи','iOS Інтерфейс: Hi-Speed USB (порт B)']]);
+assert.deepEqual(connections[0],['Інтерфейси','Wi-Fi, Ethernet, USB']);
+assert.deepEqual(printerDisplayEntries(connections),connections);
+assert.equal(printerDisplayEntries([['Інтерфейси','Wi-Fi'],['Мережа','optional Ethernet: 10/100']])[0][1],'Wi-Fi');

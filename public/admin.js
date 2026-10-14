@@ -39,6 +39,33 @@ const txt=(v='')=>String(v??'').toLocaleLowerCase('uk-UA').replace(/[ʼ'’`]/g,
 const money=v=>new Intl.NumberFormat('uk-UA',{maximumFractionDigits:2}).format(Number(v||0))+' ₴';
 const date=v=>new Intl.DateTimeFormat('uk-UA',{dateStyle:'medium',timeStyle:'short'}).format(new Date(v));
 const notice=(m,e=false)=>{const n=$('#notice');if(!n)return;n.textContent=m;n.hidden=false;n.classList.toggle('error',e)};
+const mailTestButton=document.createElement('button');
+mailTestButton.type='button';mailTestButton.id='testOrderEmail';mailTestButton.textContent='Перевірити email-сповіщення';
+$('#orders .brand-summary')?.append(mailTestButton);
+mailTestButton.onclick=async()=>{
+  mailTestButton.disabled=true;
+  try {
+    const {data:{session}}=await supabase.auth.getSession();
+    if(!session)throw new Error('Увійдіть в адмінку для тесту пошти.');
+    const response=await fetch('/api/test-order-mail',{method:'POST',headers:{Authorization:'Bearer '+session.access_token}});
+    const result=await response.json();
+    if(!response.ok)throw new Error(result.error+(result.code?' ('+result.code+')':''));
+    notice(result.message);
+  }catch(error){notice(error.message||'Не вдалося перевірити пошту.',true);}
+  finally{mailTestButton.disabled=false;}
+};
+document.addEventListener('click',event=>{
+  const button=event.target.closest('[data-view-order]');if(!button)return;
+  const order=state.orders.find(item=>Number(item.id)===Number(button.dataset.viewOrder));
+  const status=order?.checkout_details?.notification?.status;if(!status)return;
+  queueMicrotask(()=>{
+    const root=$('#orderDetails');if(!root)return;
+    const row=document.createElement('p');
+    const labels={accepted:'Email: Microsoft прийняв сповіщення.',failed:'Email: сповіщення не надіслано. Перевірте налаштування пошти.',not_configured:'Email: секрет надсилання не налаштований.'};
+    row.textContent=labels[status]||'Email: статус невідомий.';
+    root.append(row);
+  });
+});
 const view=n=>$$('[data-view]').forEach(x=>x.hidden=x.dataset.view!==n);
 const slug=v=>String(v||'').toLocaleLowerCase('uk-UA').normalize('NFKD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9а-яіїєґ]+/gi,'-').replace(/^-|-$/g,'');
 const inventory=p=>p.availability_status||((p.in_stock&&Number(p.stock_quantity||0)>0)?'in_stock':'out_of_stock');

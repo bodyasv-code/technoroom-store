@@ -36,12 +36,14 @@ assert.equal(normalizeOrder({...body,items:[...body.items,{...body.items[0],quan
 let rpcCall;
 const handlerSource=readFileSync(new URL('../api/orders.js',import.meta.url),'utf8');
 const handler=handlerSource.slice(handlerSource.indexOf('export default async function handler')).replace('export default ','');
-const context={normalizeOrder,supabase:{async rpc(name,args){rpcCall={name,args};return {data:123,error:null};}}};
+const context={normalizeOrder,notifyNewOrder:async()=>({status:'accepted'}),console,supabase:{async rpc(name,args){rpcCall={name,args};return {data:123,error:null};}}};
 vm.createContext(context);vm.runInContext(handler,context);
 const response={statusCode:0,body:null,setHeader(){},status(code){this.statusCode=code;return this},json(value){this.body=value;return this}};
 await context.handler({method:'POST',body},response);
 assert.equal(response.statusCode,201);assert.equal(rpcCall.name,'create_store_order_v2');
 assert.equal(rpcCall.args.p_payload.company.code,'12345678');
+context.notifyNewOrder=async()=>{throw new Error('Mail outage');};
+await context.handler({method:'POST',body},response);assert.equal(response.statusCode,201);assert.equal(response.body.notification,'failed');
 context.supabase.rpc=async()=>({error:{message:'Price changed for product 170'}});
 await context.handler({method:'POST',body},response);assert.equal(response.statusCode,409);
 await context.handler({method:'POST',body:{...body,consent:false}},response);assert.equal(response.statusCode,400);

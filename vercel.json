@@ -2,7 +2,8 @@
   "cleanUrls": true,
   "functions": {
     "api/orders.js": {"maxDuration": 60},
-    "api/test-order-mail.js": {"maxDuration": 60}
+    "api/test-order-mail.js": {"maxDuration": 60},
+    "api/retry-order-mail.js": {"maxDuration": 60}
   }
 }
 

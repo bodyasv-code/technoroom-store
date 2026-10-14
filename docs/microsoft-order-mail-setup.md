@@ -48,6 +48,16 @@ profile; sender/recipient/content are fixed, not supplied by the request. It cre
 order and changes no stock. Use «Перевірити email-сповіщення» in Admin → Orders.
 An in-memory one-minute test throttle is a per-instance safeguard, not a global rate limit.
 
+On 2026-10-14 the user confirmed receipt of the test email in office@tehnoroom.com.ua.
+Admin order details now show separate delivery, payment and company blocks. Legacy
+orders without structured metadata show unknown methods/status rather than guessed data.
+Manual retry POST /api/retry-order-mail requires an authenticated admin profile and
+explicit acknowledgement of a possible duplicate. Accepted or unknown notifications
+cannot be retried. An atomic metadata lease prevents concurrent retries; an interrupted
+lease expires after five minutes. Recipients remain fixed server-side. Changing an order
+status updates only status/manager_note, with an original-status concurrency guard;
+it does not send email or alter order items, totals or stock.
+
 References:
 - https://learn.microsoft.com/en-us/graph/api/user-sendmail?view=graph-rest-1.0
 - https://learn.microsoft.com/en-us/entra/identity-platform/v2-oauth2-client-creds-grant-flow

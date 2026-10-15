@@ -1,6 +1,7 @@
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
 import {orderDetailsMarkup,saveOrderChanges,matchesOrderSearch,hasFailedOrderEmail} from './order-admin.js?v=20261015-order-search';
-import {orderHistoryMarkup,readOrderHistory} from './order-history.js?v=20261015-order-history';
+import {orderHistoryMarkup,readOrderHistory} from './order-history.js?v=20261015-shipping';
+import {shippingCarriers,shippingTrackingUrl,saveOrderShipping} from './order-shipping.js?v=20261015-shipping';
 import {createArticleEditor} from './article-editor.js?v=20261011-article-links';
 import {articleHasContent} from './article-format.js?v=20261011-article-links';
 import {productNameWithSku, officeSupplyCategoryPlan, isSpecializedPrinterName} from './product-identity.js?v=20261012-consumables-brands';
@@ -270,6 +271,27 @@ function renderOrderDetails(order){
   const phone=contactPhone(order.customer_phone);
   $('#orderDetails').innerHTML=orderDetailsMarkup(order)+(phone?'<span class="order-contact-actions"><a href="tel:+'+phone+'">Подзвонити</a><a href="https://wa.me/'+phone+'" target="_blank" rel="noopener">WhatsApp</a></span>':'')+(isSupplierInquiry(order)?'<p><span class="order-kind">Запит під замовлення</span></p>':'')+orderItemsMarkup(order);
   const history=document.createElement('section');history.className='order-history';history.innerHTML='<h3>Історія замовлення</h3><div role="status">Завантаження журналу…</div>';$('#orderDetails').append(history);
+  const shipment=document.createElement('section');shipment.className='order-shipping';
+  const shippingReady=typeof order.shipping_carrier==='string'&&typeof order.tracking_number==='string';
+  shipment.innerHTML='<h3>Відправлення</h3>'+(shippingReady?'<label>Перевізник<select id="orderShippingCarrier">'+Object.entries(shippingCarriers).map(([value,label])=>'<option value="'+value+'"'+(order.shipping_carrier===value?' selected':'')+'>'+label+'</option>').join('')+'</select></label><label>ТТН / номер відправлення<input id="orderTrackingNumber" maxlength="40" autocomplete="off" value="'+esc(order.tracking_number)+'"></label><p id="orderTrackingLink"></p><button type="button" id="saveOrderShipping">Зберегти перевізника й ТТН</button><p class="order-shipping-hint">Це не створює накладну, не змінює статус замовлення і не надсилає листа покупцю.</p>':'<p>Для збереження перевізника й ТТН виконайте order-shipping-upgrade.sql у Supabase.</p>');
+  history.before(shipment);
+  if(shippingReady){
+    const carrier=shipment.querySelector('select'),number=shipment.querySelector('input'),button=shipment.querySelector('button'),link=shipment.querySelector('#orderTrackingLink');
+    const updateLink=()=>{const url=shippingTrackingUrl(carrier.value,number.value.replace(/\s+/g,'').toUpperCase());link.innerHTML=url?'<a target="_blank" rel="noopener noreferrer" href="'+esc(url)+'">Відкрити трекінг перевізника ↗</a>'+(carrier.value==='nova_poshta'?'<small>На сторінці Нової пошти введіть ТТН, зазначену вище.</small>':''):''};
+    carrier.onchange=updateLink;number.oninput=updateLink;updateLink();
+    button.onclick=async()=>{
+      if(button.disabled)return;button.disabled=true;orderMessage('Зберігаємо доставку…');
+      try{
+        const changed=await saveOrderShipping(supabase,order,carrier.value,number.value);
+        if(!changed){orderMessage('Перевізник і ТТН не змінені.');return}
+        const loaded=await supabase.from('orders').select('*').eq('id',order.id).single();
+        if(loaded.error||!loaded.data)throw new Error('Доставку збережено, але не вдалося оновити дані. Відкрийте замовлення знову.');
+        const index=state.orders.findIndex(item=>Number(item.id)===Number(order.id));if(index>=0)state.orders[index]={...state.orders[index],shipping_carrier:loaded.data.shipping_carrier,tracking_number:loaded.data.tracking_number};
+        if(shipment.isConnected){orderMessage('Перевізника й ТТН збережено.');renderOrderDetails({...order,...loaded.data})}
+      }catch(error){if(shipment.isConnected)orderMessage(error.message||'Не вдалося зберегти доставку.',true)}
+      finally{button.disabled=false}
+    };
+  }
   readOrderHistory(supabase,order.id).then(result=>{
     if(!history.isConnected)return;
     history.querySelector('div').innerHTML=result.setupRequired?'<p>Журнал ще не підключений. Потрібно виконати order-history-upgrade.sql у Supabase. До підключення зміни не записуються.</p>':orderHistoryMarkup(result.events)+'<small>Останні 100 подій. Час — Київ.</small>';

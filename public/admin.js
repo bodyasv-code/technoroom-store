@@ -1,6 +1,7 @@
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
 import {orderDetailsMarkup,saveOrderChanges,matchesOrderSearch,hasFailedOrderEmail} from './order-admin.js?v=20261015-order-search';
-import {orderHistoryMarkup,readOrderHistory} from './order-history.js?v=20261015-shipping-null';
+import {orderHistoryMarkup,readOrderHistory} from './order-history.js?v=20261015-payment';
+import {mountOrderPayment} from './order-payment.js?v=20261015-payment';
 import {shippingCarriers,shippingTrackingUrl,saveOrderShipping,shippingFieldsReady} from './order-shipping.js?v=20261015-shipping-null';
 import {createArticleEditor} from './article-editor.js?v=20261011-article-links';
 import {articleHasContent} from './article-format.js?v=20261011-article-links';
@@ -292,10 +293,18 @@ function renderOrderDetails(order){
       finally{button.disabled=false}
     };
   }
-  readOrderHistory(supabase,order.id).then(result=>{
+  const refreshOrderHistory=()=>readOrderHistory(supabase,order.id).then(result=>{
     if(!history.isConnected)return;
     history.querySelector('div').innerHTML=result.setupRequired?'<p>Журнал ще не підключений. Потрібно виконати order-history-upgrade.sql у Supabase. До підключення зміни не записуються.</p>':orderHistoryMarkup(result.events)+'<small>Останні 100 подій. Час — Київ.</small>';
   }).catch(error=>{if(history.isConnected)history.querySelector('div').textContent=error.message});
+  refreshOrderHistory();
+  mountOrderPayment({db:supabase,order,before:history,onSaved:saved=>{
+    const index=state.orders.findIndex(item=>Number(item.id)===Number(order.id));
+    if(index>=0)state.orders[index]={...state.orders[index],payment_status:saved.payment_status,amount_paid:saved.amount_paid};
+    // Preserve the payment baseline if another panel is subsequently re-rendered.
+    order.payment_status=saved.payment_status;order.amount_paid=saved.amount_paid;
+    refreshOrderHistory();
+  }});
   const retry=$('#retryOrderEmail'),confirm=$('#confirmOrderEmailRetry');if(!retry)return;
   confirm.onchange=()=>{retry.disabled=!confirm.checked};
   retry.onclick=async()=>{

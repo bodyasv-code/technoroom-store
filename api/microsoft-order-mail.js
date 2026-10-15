@@ -48,7 +48,9 @@ export async function notifyNewOrder(db,id,{sender=sendMicrosoftMail}={}) {
   if(order) {
     try {
       const saved=await db.from('orders').update({checkout_details:{...order.checkout_details,
-        notification:{...result,at:new Date().toISOString()}}}).eq('id',id);
+        notification:{...result,at:new Date().toISOString(),
+          ...(order.checkout_details?.notification?.status==='retrying'?{
+            attempt:order.checkout_details.notification.attempt,requested_by:order.checkout_details.notification.requested_by}: {})}}}).eq('id',id);
       if(saved.error) console.warn('Order mail status could not be saved',{orderId:id});
     } catch {console.warn('Order mail status could not be saved',{orderId:id});}
   }

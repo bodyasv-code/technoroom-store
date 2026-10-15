@@ -1,0 +1,11 @@
+import assert from 'node:assert/strict';
+import {orderHistoryMarkup,readOrderHistory} from '../public/order-history.js';
+assert.match(orderHistoryMarkup([]),/лише після/);
+const markup=orderHistoryMarkup([{kind:'status',previous_value:'new',next_value:'paid',actor_name:'<script>',created_at:'2026-10-15T09:00:00Z'},{kind:'email',next_value:'accepted',created_at:'invalid'},{kind:'email',next_value:'failed',error_code:'mail_send_403',created_at:'2026-10-15T09:00:01Z'}]);
+assert.match(markup,/Нове → Оплачене/);assert.ok(markup.includes('&lt;script&gt;'));assert.ok(!markup.includes('<script>'));assert.match(markup,/не підтвердження доставки/);assert.match(markup,/Час невідомий/);assert.match(markup,/mail_send_403/);
+let filtered,limited;
+const db=(result)=>({from(table){assert.equal(table,'order_events');return{select(){return this},eq(key,id){filtered=[key,id];return this},order(key,options){assert.equal(key,'id');assert.equal(options.ascending,false);return this},limit(value){limited=value;return Promise.resolve(result)}}}});
+assert.deepEqual(await readOrderHistory(db({data:[]}),7),{events:[]});assert.deepEqual(filtered,['order_id',7]);assert.equal(limited,100);
+assert.deepEqual(await readOrderHistory(db({error:{code:'PGRST205'}}),7),{setupRequired:true});
+await assert.rejects(()=>readOrderHistory(db({error:{code:'42501'}}),7),/Не вдалося/);
+console.log('History rendering, escaping, scoped reads and missing migration: OK');

@@ -1,5 +1,6 @@
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
 import {orderDetailsMarkup,saveOrderChanges,matchesOrderSearch,hasFailedOrderEmail} from './order-admin.js?v=20261015-order-search';
+import {orderHistoryMarkup,readOrderHistory} from './order-history.js?v=20261015-order-history';
 import {createArticleEditor} from './article-editor.js?v=20261011-article-links';
 import {articleHasContent} from './article-format.js?v=20261011-article-links';
 import {productNameWithSku, officeSupplyCategoryPlan, isSpecializedPrinterName} from './product-identity.js?v=20261012-consumables-brands';
@@ -268,6 +269,11 @@ $('#selectAllProducts').addEventListener('change',e=>{$$('#adminProducts [data-s
 function renderOrderDetails(order){
   const phone=contactPhone(order.customer_phone);
   $('#orderDetails').innerHTML=orderDetailsMarkup(order)+(phone?'<span class="order-contact-actions"><a href="tel:+'+phone+'">Подзвонити</a><a href="https://wa.me/'+phone+'" target="_blank" rel="noopener">WhatsApp</a></span>':'')+(isSupplierInquiry(order)?'<p><span class="order-kind">Запит під замовлення</span></p>':'')+orderItemsMarkup(order);
+  const history=document.createElement('section');history.className='order-history';history.innerHTML='<h3>Історія замовлення</h3><div role="status">Завантаження журналу…</div>';$('#orderDetails').append(history);
+  readOrderHistory(supabase,order.id).then(result=>{
+    if(!history.isConnected)return;
+    history.querySelector('div').innerHTML=result.setupRequired?'<p>Журнал ще не підключений. Потрібно виконати order-history-upgrade.sql у Supabase. До підключення зміни не записуються.</p>':orderHistoryMarkup(result.events)+'<small>Останні 100 подій. Час — Київ.</small>';
+  }).catch(error=>{if(history.isConnected)history.querySelector('div').textContent=error.message});
   const retry=$('#retryOrderEmail'),confirm=$('#confirmOrderEmailRetry');if(!retry)return;
   confirm.onchange=()=>{retry.disabled=!confirm.checked};
   retry.onclick=async()=>{

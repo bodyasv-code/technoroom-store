@@ -18,7 +18,7 @@ export default async function handler(request,response) {
   if(loaded.error||!loaded.data)return response.status(404).json({error:'Замовлення не знайдено.'});
   const previous=loaded.data.checkout_details;
   if(!canRetryNotification(previous?.notification))return response.status(409).json({error:'Повторне надсилання зараз недоступне.'});
-  const details={...previous,notification:{status:'retrying',at:new Date().toISOString(),attempt:randomUUID()}};
+  const details={...previous,notification:{status:'retrying',at:new Date().toISOString(),attempt:randomUUID(),requested_by:auth.data.user.id}};
   // Atomic compare-and-swap: only one admin request can claim the same failure.
   const claimed=await supabase.from('orders').update({checkout_details:details}).eq('id',id)
     .eq('checkout_details',JSON.stringify(previous)).select('id');

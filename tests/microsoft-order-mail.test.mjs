@@ -32,6 +32,10 @@ try {const result=await notifyNewOrder(db,99,{sender:async()=>{throw new Error('
   assert.equal(result.status,'failed');assert.equal(result.code,'mail_internal_error');
   assert.ok(!JSON.stringify(stored).includes('SECRET CONTENT'));
 }finally{console.warn=priorWarn;}
+order.checkout_details.notification={status:'retrying',attempt:'TEST_ATTEMPT',requested_by:'TEST_ADMIN'};
+await notifyNewOrder(db,99,{sender:async()=>({status:'accepted'})});
+assert.equal(stored.checkout_details.notification.attempt,'TEST_ATTEMPT');
+assert.equal(stored.checkout_details.notification.requested_by,'TEST_ADMIN');
 console.log('Microsoft mail fixed recipient, privacy, failures and saved status: OK');
 const endpoint=readFileSync(new URL('../api/test-order-mail.js',import.meta.url),'utf8');
 const handler=endpoint.slice(endpoint.indexOf('export default async function handler')).replace('export default ','');

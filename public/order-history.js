@@ -1,5 +1,5 @@
 import {shippingHistoryValue} from './order-shipping.js?v=20261015-shipping-null';
-import {paymentHistoryValue} from './order-payment.js?v=20261015-payment';
+import {paymentHistoryValue} from './order-payment.js?v=20261015-payment-v2';
 const escape=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const statuses={new:'Нове',processing:'В обробці',supplier_check:'Очікуємо постачальника',confirmed:'Підтверджене',paid:'Оплачене',shipped:'Відправлене',completed:'Виконане',cancelled:'Скасоване'};
 const emails={retrying:'Почато повторне надсилання',accepted:'Microsoft прийняв лист (не підтвердження доставки)',failed:'Надсилання не вдалося',not_configured:'Пошта не налаштована'};

@@ -1,7 +1,7 @@
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
 import {orderDetailsMarkup,saveOrderChanges,matchesOrderSearch,hasFailedOrderEmail} from './order-admin.js?v=20261015-order-search';
-import {orderHistoryMarkup,readOrderHistory} from './order-history.js?v=20261015-payment';
-import {mountOrderPayment} from './order-payment.js?v=20261015-payment';
+import {orderHistoryMarkup,readOrderHistory} from './order-history.js?v=20261015-payment-v2';
+import {mountOrderPayment} from './order-payment.js?v=20261015-payment-v2';
 import {shippingCarriers,shippingTrackingUrl,saveOrderShipping,shippingFieldsReady} from './order-shipping.js?v=20261015-shipping-null';
 import {createArticleEditor} from './article-editor.js?v=20261011-article-links';
 import {articleHasContent} from './article-format.js?v=20261011-article-links';
@@ -300,9 +300,9 @@ function renderOrderDetails(order){
   refreshOrderHistory();
   mountOrderPayment({db:supabase,order,before:history,onSaved:saved=>{
     const index=state.orders.findIndex(item=>Number(item.id)===Number(order.id));
-    if(index>=0)state.orders[index]={...state.orders[index],payment_status:saved.payment_status,amount_paid:saved.amount_paid};
+    if(index>=0)state.orders[index]={...state.orders[index],manual_payment_status:saved.manual_payment_status,manual_amount_paid:saved.manual_amount_paid};
     // Preserve the payment baseline if another panel is subsequently re-rendered.
-    order.payment_status=saved.payment_status;order.amount_paid=saved.amount_paid;
+    order.manual_payment_status=saved.manual_payment_status;order.manual_amount_paid=saved.manual_amount_paid;
     refreshOrderHistory();
   }});
   const retry=$('#retryOrderEmail'),confirm=$('#confirmOrderEmailRetry');if(!retry)return;

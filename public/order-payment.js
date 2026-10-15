@@ -7,33 +7,33 @@ export function paymentCents(value){
   return cents;
 }
 const amountText=cents=>(cents/100).toFixed(2);
-export function paymentFieldsReady(order){return ['payment_status','amount_paid'].every(key=>Object.hasOwn(order,key)&&order[key]!==undefined)}
+export function paymentFieldsReady(order){return ['manual_payment_status','manual_amount_paid'].every(key=>Object.hasOwn(order,key)&&order[key]!==undefined)}
 export function normalizePayment(status,amount,total){
   if(!Object.hasOwn(paymentStatuses,status))throw new Error('Оберіть статус оплати зі списку.');
   if(status===''){
     if(String(amount??'').trim()!=='')throw new Error('Для невідомого статусу залиште суму порожньою.');
-    return {payment_status:null,amount_paid:null};
+    return {manual_payment_status:null,manual_amount_paid:null};
   }
   const cents=paymentCents(amount),totalCents=paymentCents(total);
   if(cents>totalCents)throw new Error('Отримана сума не може перевищувати суму замовлення.');
   if((status==='unpaid'&&cents!==0)||(status==='partial'&&(cents<=0||cents>=totalCents))||(status==='paid'&&cents!==totalCents))throw new Error('Статус оплати не відповідає сумі отриманих коштів.');
-  return {payment_status:status,amount_paid:amountText(cents)};
+  return {manual_payment_status:status,manual_amount_paid:amountText(cents)};
 }
 export async function saveOrderPayment(db,order,status,amount){
   if(!Number.isSafeInteger(Number(order?.id))||Number(order.id)<1)throw new Error('Некоректне замовлення.');
   if(!paymentFieldsReady(order))throw new Error('Спочатку підключіть order-payment-upgrade.sql у Supabase.');
   const changes=normalizePayment(status,amount,order.total);
-  const originalAmount=order.amount_paid===null?null:amountText(paymentCents(order.amount_paid));
-  if(changes.payment_status===order.payment_status&&changes.amount_paid===originalAmount)return false;
+  const originalAmount=order.manual_amount_paid===null?null:amountText(paymentCents(order.manual_amount_paid));
+  if(changes.manual_payment_status===order.manual_payment_status&&changes.manual_amount_paid===originalAmount)return false;
   let query=db.from('orders').update(changes).eq('id',Number(order.id)).eq('total',order.total);
-  for(const key of ['payment_status','amount_paid'])query=order[key]===null?query.is(key,null):query.eq(key,order[key]);
-  const result=await query.select('id,payment_status,amount_paid,total');
+  for(const key of ['manual_payment_status','manual_amount_paid'])query=order[key]===null?query.is(key,null):query.eq(key,order[key]);
+  const result=await query.select('id,manual_payment_status,manual_amount_paid,total');
   if(result.error)throw new Error('Не вдалося зберегти оплату: '+result.error.message);
   if(result.data?.length!==1)throw new Error('Оплату або суму замовлення вже змінено чи немає доступу. Відкрийте замовлення знову.');
   return result.data[0];
 }
 export function paymentHistoryValue(value){
-  try{const fields=JSON.parse(value);return(paymentStatuses[fields.payment_status??'']||'Невідомий статус')+' · отримано: '+(fields.amount_paid===null?'не вказано':amountText(paymentCents(fields.amount_paid))+' ₴')}catch{return 'Дані невідомі'}
+  try{const fields=JSON.parse(value),status=Object.hasOwn(fields,'manual_payment_status')?fields.manual_payment_status:fields.payment_status,amount=Object.hasOwn(fields,'manual_amount_paid')?fields.manual_amount_paid:fields.amount_paid;return(paymentStatuses[status??'']||'Невідомий статус')+' · отримано: '+(amount==null?'не вказано':amountText(paymentCents(amount))+' ₴')}catch{return 'Дані невідомі'}
 }
 export function mountOrderPayment({db,order,before,onSaved}){
   const section=document.createElement('section');section.className='order-payment';before.before(section);
@@ -44,10 +44,10 @@ export function mountOrderPayment({db,order,before,onSaved}){
   const status=section.querySelector('select'),amount=section.querySelector('input'),button=section.querySelector('button'),message=section.querySelector('#orderPaymentMessage'),balance=section.querySelector('#orderPaymentBalance');
   const show=(text,error=false)=>{message.textContent=text;message.hidden=!text;message.classList.toggle('error',error)};
   const updateBalance=()=>{
-    try{const normalized=normalizePayment(status.value,amount.value,current.total);balance.textContent=normalized.amount_paid===null?'Залишок не визначений — оплату ще не перевірено.':'Залишилось отримати: '+amountText(paymentCents(current.total)-paymentCents(normalized.amount_paid))+' ₴';}
+    try{const normalized=normalizePayment(status.value,amount.value,current.total);balance.textContent=normalized.manual_amount_paid===null?'Залишок не визначений — оплату ще не перевірено.':'Залишилось отримати: '+amountText(paymentCents(current.total)-paymentCents(normalized.manual_amount_paid))+' ₴';}
     catch{balance.textContent='Перевірте відповідність статусу та суми.'}
   };
-  status.value=current.payment_status??'';amount.value=current.amount_paid??'';updateBalance();
+  status.value=current.manual_payment_status??'';amount.value=current.manual_amount_paid??'';updateBalance();
   status.onchange=()=>{if(status.value==='unpaid')amount.value='0.00';if(status.value==='paid')amount.value=amountText(paymentCents(current.total));if(status.value==='')amount.value='';updateBalance()};
   amount.oninput=updateBalance;
   button.onclick=async()=>{
@@ -56,7 +56,7 @@ export function mountOrderPayment({db,order,before,onSaved}){
       const saved=await saveOrderPayment(db,current,status.value,amount.value);
       if(!section.isConnected)return;
       if(!saved){show('Дані оплати не змінені.');return}
-      current={...current,...saved};status.value=current.payment_status??'';amount.value=current.amount_paid??'';updateBalance();show('Облік оплати збережено.');onSaved(saved);
+      current={...current,...saved};status.value=current.manual_payment_status??'';amount.value=current.manual_amount_paid??'';updateBalance();show('Облік оплати збережено.');onSaved(saved);
     }catch(error){if(section.isConnected)show(error.message||'Не вдалося зберегти оплату.',true)}
     finally{button.disabled=false}
   };

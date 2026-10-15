@@ -91,7 +91,8 @@
       </section>
       <section class="admin-section" id="orders">
         <div class="admin-title"><div><h2>Замовлення</h2><span>Усі заявки з сайту</span></div></div><div class="brand-summary"><b id="ordersCountMetric">0 замовлень</b><span id="ordersTotalMetric">0 ₴</span></div>
-        <div class="admin-controls"><input id="orderSearch" type="search" placeholder="Номер, ім’я, телефон або email"><select id="orderFilter"><option value="all">Усі статуси</option><option value="inquiry">Запити під замовлення</option><option value="new">Нові</option><option value="processing">В обробці</option><option value="supplier_check">Очікуємо постачальника</option><option value="confirmed">Підтверджені</option><option value="paid">Оплачені</option><option value="shipped">Відправлені</option><option value="completed">Виконані</option><option value="cancelled">Скасовані</option></select></div>
+        <div class="admin-controls"><input id="orderSearch" type="search" aria-label="Пошук замовлень" placeholder="Номер, покупець, назва товару або SKU"><select id="orderFilter" aria-label="Статус замовлення"><option value="all">Усі статуси</option><option value="inquiry">Запити під замовлення</option><option value="new">Нові</option><option value="processing">В обробці</option><option value="supplier_check">Очікуємо постачальника</option><option value="confirmed">Підтверджені</option><option value="paid">Оплачені</option><option value="shipped">Відправлені</option><option value="completed">Виконані</option><option value="cancelled">Скасовані</option></select><select id="orderEmailFilter" aria-label="Статус email-сповіщення"><option value="all">Усі email-сповіщення</option><option value="failed">Невдалі email-сповіщення</option></select></div>
+        <p class="order-filter-help">Пошук також за телефоном та email. SKU — з поточної картки товару; якщо товар видалено, пошук за збереженою назвою. Невідомий статус листа не вважається помилкою.</p>
         <div class="admin-table-wrap"><table><thead><tr><th>№ / дата</th><th>Покупець</th><th>Товарів</th><th>Сума</th><th>Статус</th><th></th></tr></thead><tbody id="adminOrders"></tbody></table></div>
       </section>
       <section class="admin-section" id="customers">
@@ -129,6 +130,7 @@
   <style>
     .order-detail-blocks{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.order-detail-blocks section{padding:14px;border:1px solid #dce7f3;border-radius:10px;background:#f8fbff;min-width:0}.order-detail-blocks h3{margin:0 0 8px;font-size:14px;color:#10243e}.order-detail-blocks p{margin:4px 0;font-size:13px;color:#40546f;white-space:pre-line;overflow-wrap:anywhere}.order-email-retry{padding:14px;margin:12px 0;border:1px solid #f2d2a0;border-radius:10px;background:#fffaf1;font-size:13px}.order-email-retry label{display:flex;align-items:center;gap:8px}.order-email-retry input{width:auto;flex:none}.order-email-retry button{margin-top:10px}#orderActionMessage{white-space:pre-line}#adminAppNotice{padding:12px;border-radius:8px;background:#eef8ee}#adminAppNotice.error{background:#fff0ee;color:#a94036}@media(max-width:680px){.order-detail-blocks{grid-template-columns:1fr}}
   </style>
-  <script src="supabase-config.js"></script><script type="module" src="admin.js?v=20261014-order-processing"></script>
+  <style>.order-email-warning{display:block;margin-top:6px;color:#a94036;font-size:12px}.order-filter-help{color:#60718a;font-size:12px}#orders .admin-controls{flex-wrap:wrap;gap:10px}#orderSearch{min-width:220px;flex:1}@media(max-width:680px){#orders .admin-controls>*{width:100%;box-sizing:border-box}}</style>
+  <script src="supabase-config.js"></script><script type="module" src="admin.js?v=20261015-order-search"></script>
 </body>
 </html>

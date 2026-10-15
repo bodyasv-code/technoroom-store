@@ -1,5 +1,19 @@
 const escape=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 export const orderStatuses=['new','processing','supplier_check','confirmed','paid','shipped','completed','cancelled'];
+const searchText=value=>String(value??'').toLocaleLowerCase('uk-UA').replace(/[ʼ'’`]/g,'').replace(/[\s_\-–—/.,]+/g,'');
+export function matchesOrderSearch(order,query,productsById=new Map()) {
+  const q=searchText(query);if(!q)return true;
+  const fields=[order.id,order.customer_name,order.customer_phone,order.customer_email,order.comment];
+  for(const item of order.order_items||[]){
+    fields.push(item.product_name,item.sku);
+    const product=productsById.get(Number(item.product_id));
+    if(product)fields.push(product.sku,product.name);
+  }
+  return fields.some(value=>searchText(value).includes(q));
+}
+export function hasFailedOrderEmail(order) {
+  return ['failed','not_configured'].includes(order.checkout_details?.notification?.status);
+}
 export function notificationLabel(status) {
   return {accepted:'Microsoft прийняв лист (доставка окремо не підтверджена)',failed:'Надсилання не вдалося',
     not_configured:'Пошта не налаштована',retrying:'Повторне надсилання виконується'}[status]||'Статус надсилання невідомий';

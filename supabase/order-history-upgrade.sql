@@ -13,11 +13,20 @@ create table if not exists public.order_events (
   error_code text,
   attempt_id text
 );
+-- Upgrade the earlier status/operations journal without dropping its records.
+alter table public.order_events
+  add column if not exists kind text,
+  add column if not exists actor_name text,
+  add column if not exists error_code text,
+  add column if not exists attempt_id text,
+  add column if not exists event_type text,
+  add column if not exists summary text;
 create index if not exists order_events_order_idx on public.order_events(order_id,id desc);
 alter table public.order_events enable row level security;
 revoke all on public.order_events from anon,authenticated,service_role;
 grant select on public.order_events to authenticated,service_role;
 drop policy if exists "admins read order events" on public.order_events;
+drop policy if exists "admins add order events" on public.order_events;
 create policy "admins read order events" on public.order_events for select to authenticated using (public.is_admin());
 
 create or replace function public.record_order_event()
@@ -33,8 +42,8 @@ begin
     actor_label:=coalesce(actor_label,'Адміністратор');
   end if;
   if new.status is distinct from old.status then
-    insert into public.order_events(order_id,kind,actor_id,actor_name,previous_value,next_value)
-    values(new.id,'status',actor,coalesce(actor_label,'Система / SQL'),old.status::text,new.status::text);
+    insert into public.order_events(order_id,kind,event_type,summary,actor_id,actor_name,previous_value,next_value)
+    values(new.id,'status','status','Зміна статусу',actor,coalesce(actor_label,'Система / SQL'),old.status::text,new.status::text);
   end if;
   if notification is distinct from previous_notification
     and notification->>'status' in ('retrying','accepted','failed','not_configured') then
@@ -43,8 +52,8 @@ begin
       select id,coalesce(nullif(full_name,''),'Адміністратор') into actor,actor_label
       from public.profiles where id::text=notification->>'requested_by';
     end if;
-    insert into public.order_events(order_id,kind,actor_id,actor_name,previous_value,next_value,error_code,attempt_id)
-    values(new.id,'email',actor,coalesce(actor_label,'Система / SQL'),previous_notification->>'status',notification->>'status',
+    insert into public.order_events(order_id,kind,event_type,summary,actor_id,actor_name,previous_value,next_value,error_code,attempt_id)
+    values(new.id,'email','operations','Email-сповіщення',actor,coalesce(actor_label,'Система / SQL'),previous_notification->>'status',notification->>'status',
       case when notification->>'code' ~ '^mail_[a-z0-9_]+$' then left(notification->>'code',100) end,
       left(notification->>'attempt',100));
   end if;

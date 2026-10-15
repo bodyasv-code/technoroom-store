@@ -23,7 +23,7 @@ try{
   const before=(await db.query('select status,total,checkout_details from orders where id=1')).rows[0];
   assert.equal((await db.query('select count(*)::int as n from order_events')).rows[0].n,0,'migration invents no events');
   await db.exec("set test.actor='11111111-1111-1111-1111-111111111111';set test.role='authenticated';set role authenticated");
-  const adapter={from(){return{update(value){this.value=value;this.filters={};return this},eq(key,value){this.filters[key]=value;return this},async select(){return{data:(await db.query('update orders set shipping_carrier=$1,tracking_number=$2 where id=$3 and shipping_carrier=$4 and tracking_number=$5 returning id',[this.value.shipping_carrier,this.value.tracking_number,this.filters.id,this.filters.shipping_carrier,this.filters.tracking_number])).rows}}}}};
+  const adapter={from(){return{update(value){this.value=value;this.filters={};return this},eq(key,value){this.filters[key]=value;return this},is(key,value){this.filters[key]=value;return this},async select(){return{data:(await db.query('update orders set shipping_carrier=$1,tracking_number=$2 where id=$3 and shipping_carrier is not distinct from $4 and tracking_number is not distinct from $5 returning id',[this.value.shipping_carrier,this.value.tracking_number,this.filters.id,this.filters.shipping_carrier,this.filters.tracking_number])).rows}}}}};
   await saveOrderShipping(adapter,{id:1,shipping_carrier:'',tracking_number:''},'nova_poshta','20450000000000');
   let events=(await db.query('select * from order_events order by id')).rows;
   assert.equal(events.length,1);assert.equal(events[0].kind,'shipping');assert.equal(events[0].actor_name,'TEST MANAGER');
@@ -40,5 +40,7 @@ try{
   events=(await db.query('select * from order_events order by id')).rows;
   assert.deepEqual(events.map(e=>e.kind),['shipping','status','email'],'existing journal still records status and mail');
   await db.exec('reset role;set role anon');await assert.rejects(()=>db.query('select * from order_events'),/permission denied/);
+  await db.exec('reset role;alter table orders alter column shipping_carrier drop not null,alter column tracking_number drop not null;update orders set shipping_carrier=null,tracking_number=null where id=1;set role authenticated');
+  assert.equal(await saveOrderShipping(adapter,{id:1,shipping_carrier:null,tracking_number:null},'other','TEST-NULL'),true);
   console.log('PASS: real shipping SQL, repeatability, format constraints, CAS, actor history, rollback, legacy triggers and no public history access. No production access or mail.');
 }finally{await db.close()}

@@ -1,7 +1,7 @@
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
 import {orderDetailsMarkup,saveOrderChanges,matchesOrderSearch,hasFailedOrderEmail} from './order-admin.js?v=20261015-order-search';
-import {orderHistoryMarkup,readOrderHistory} from './order-history.js?v=20261015-shipping';
-import {shippingCarriers,shippingTrackingUrl,saveOrderShipping} from './order-shipping.js?v=20261015-shipping';
+import {orderHistoryMarkup,readOrderHistory} from './order-history.js?v=20261015-shipping-null';
+import {shippingCarriers,shippingTrackingUrl,saveOrderShipping,shippingFieldsReady} from './order-shipping.js?v=20261015-shipping-null';
 import {createArticleEditor} from './article-editor.js?v=20261011-article-links';
 import {articleHasContent} from './article-format.js?v=20261011-article-links';
 import {productNameWithSku, officeSupplyCategoryPlan, isSpecializedPrinterName} from './product-identity.js?v=20261012-consumables-brands';
@@ -272,7 +272,7 @@ function renderOrderDetails(order){
   $('#orderDetails').innerHTML=orderDetailsMarkup(order)+(phone?'<span class="order-contact-actions"><a href="tel:+'+phone+'">Подзвонити</a><a href="https://wa.me/'+phone+'" target="_blank" rel="noopener">WhatsApp</a></span>':'')+(isSupplierInquiry(order)?'<p><span class="order-kind">Запит під замовлення</span></p>':'')+orderItemsMarkup(order);
   const history=document.createElement('section');history.className='order-history';history.innerHTML='<h3>Історія замовлення</h3><div role="status">Завантаження журналу…</div>';$('#orderDetails').append(history);
   const shipment=document.createElement('section');shipment.className='order-shipping';
-  const shippingReady=typeof order.shipping_carrier==='string'&&typeof order.tracking_number==='string';
+  const shippingReady=shippingFieldsReady(order);
   shipment.innerHTML='<h3>Відправлення</h3>'+(shippingReady?'<label>Перевізник<select id="orderShippingCarrier">'+Object.entries(shippingCarriers).map(([value,label])=>'<option value="'+value+'"'+(order.shipping_carrier===value?' selected':'')+'>'+label+'</option>').join('')+'</select></label><label>ТТН / номер відправлення<input id="orderTrackingNumber" maxlength="40" autocomplete="off" value="'+esc(order.tracking_number)+'"></label><p id="orderTrackingLink"></p><button type="button" id="saveOrderShipping">Зберегти перевізника й ТТН</button><p class="order-shipping-hint">Це не створює накладну, не змінює статус замовлення і не надсилає листа покупцю.</p>':'<p>Для збереження перевізника й ТТН виконайте order-shipping-upgrade.sql у Supabase.</p>');
   history.before(shipment);
   if(shippingReady){

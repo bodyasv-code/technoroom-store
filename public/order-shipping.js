@@ -1,4 +1,7 @@
 export const shippingCarriers={'':'Не вказано',nova_poshta:'Нова пошта',ukrposhta:'Укрпошта',other:'Інший перевізник'};
+export function shippingFieldsReady(order){
+  return ['shipping_carrier','tracking_number'].every(key=>Object.hasOwn(order,key)&&(order[key]===null||typeof order[key]==='string'));
+}
 export function normalizeShipping(carrier,number){
   const shipping_carrier=String(carrier??''),tracking_number=String(number??'').replace(/\s+/g,'').toUpperCase();
   if(!Object.hasOwn(shippingCarriers,shipping_carrier))throw new Error('Оберіть перевізника зі списку.');
@@ -14,11 +17,12 @@ export function shippingTrackingUrl(carrier,number){
 }
 export async function saveOrderShipping(db,order,carrier,number){
   if(!Number.isSafeInteger(Number(order?.id))||Number(order.id)<1)throw new Error('Некоректне замовлення.');
-  if(typeof order.shipping_carrier!=='string'||typeof order.tracking_number!=='string')throw new Error('Спочатку підключіть order-shipping-upgrade.sql у Supabase.');
+  if(!shippingFieldsReady(order))throw new Error('Спочатку підключіть order-shipping-upgrade.sql у Supabase.');
   const changes=normalizeShipping(carrier,number);
-  if(changes.shipping_carrier===order.shipping_carrier&&changes.tracking_number===order.tracking_number)return false;
-  const result=await db.from('orders').update(changes).eq('id',Number(order.id))
-    .eq('shipping_carrier',order.shipping_carrier).eq('tracking_number',order.tracking_number).select('id');
+  if(changes.shipping_carrier===(order.shipping_carrier??'')&&changes.tracking_number===(order.tracking_number??''))return false;
+  let query=db.from('orders').update(changes).eq('id',Number(order.id));
+  for(const key of ['shipping_carrier','tracking_number'])query=order[key]===null?query.is(key,null):query.eq(key,order[key]);
+  const result=await query.select('id');
   if(result.error)throw new Error('Не вдалося зберегти доставку: '+result.error.message);
   if(result.data?.length!==1)throw new Error('Доставку вже змінено або немає доступу. Відкрийте замовлення знову.');
   return true;

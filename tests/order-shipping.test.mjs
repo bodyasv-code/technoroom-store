@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import {normalizeShipping,shippingTrackingUrl,saveOrderShipping,shippingHistoryValue} from '../public/order-shipping.js';
+import {normalizeShipping,shippingTrackingUrl,saveOrderShipping,shippingHistoryValue,shippingFieldsReady} from '../public/order-shipping.js';
 import {orderHistoryMarkup} from '../public/order-history.js';
 assert.deepEqual(normalizeShipping('nova_poshta','2045 0000 0000 00'),{shipping_carrier:'nova_poshta',tracking_number:'20450000000000'});
 assert.equal(normalizeShipping('ukrposhta','rr123456789ua').tracking_number,'RR123456789UA');
@@ -15,6 +15,14 @@ assert.equal(await saveOrderShipping(db,order,'nova_poshta','20450000000000'),tr
 assert.deepEqual(changes,{shipping_carrier:'nova_poshta',tracking_number:'20450000000000'});
 assert.deepEqual(filters,[['id',5],['shipping_carrier',''],['tracking_number','']]);
 assert.equal(await saveOrderShipping(db,order,'',''),false);
+assert.equal(shippingFieldsReady({shipping_carrier:null,tracking_number:null}),true);
+assert.equal(shippingFieldsReady({}),false);
+assert.equal(shippingFieldsReady({shipping_carrier:undefined,tracking_number:null}),false);
+let nullGuards=[];
+const nullable={from(){return{update(){return this},eq(...args){nullGuards.push(['eq',...args]);return this},is(...args){nullGuards.push(['is',...args]);return this},select:async()=>({data:[{id:5}]})}}};
+assert.equal(await saveOrderShipping(nullable,{id:5,shipping_carrier:null,tracking_number:null},'other','TEST-777'),true);
+assert.deepEqual(nullGuards,[['eq','id',5],['is','shipping_carrier',null],['is','tracking_number',null]]);
+assert.equal(await saveOrderShipping(nullable,{id:5,shipping_carrier:null,tracking_number:null},'',''),false);
 await assert.rejects(()=>saveOrderShipping(db,{id:5},'',''),/підключіть/);
 const conflict={from(){return{update(){return this},eq(){return this},select:async()=>({data:[]})}}};
 await assert.rejects(()=>saveOrderShipping(conflict,order,'other','TEST-777'),/вже змінено/);

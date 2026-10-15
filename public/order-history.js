@@ -1,5 +1,6 @@
 import {shippingHistoryValue} from './order-shipping.js?v=20261015-shipping-null';
 import {paymentHistoryValue} from './order-payment.js?v=20261015-payment-v2';
+import {supplyHistoryValue} from './order-supply.js?v=20261015-supply';
 const escape=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const statuses={new:'Нове',processing:'В обробці',supplier_check:'Очікуємо постачальника',confirmed:'Підтверджене',paid:'Оплачене',shipped:'Відправлене',completed:'Виконане',cancelled:'Скасоване'};
 const emails={retrying:'Почато повторне надсилання',accepted:'Microsoft прийняв лист (не підтвердження доставки)',failed:'Надсилання не вдалося',not_configured:'Пошта не налаштована'};
@@ -8,7 +9,7 @@ export function orderHistoryMarkup(events) {
   return '<ol>'+events.map(event=>{
     const time=new Date(event.created_at),at=Number.isFinite(time.getTime())?time.toLocaleString('uk-UA',{timeZone:'Europe/Kyiv'}):'Час невідомий';
     const kind=event.kind||event.event_type;
-    const label=kind==='status'?'Статус: '+(statuses[event.previous_value]||event.previous_value||'—')+' → '+(statuses[event.next_value]||event.next_value):kind==='email'?'Email: '+(emails[event.next_value]||event.next_value):kind==='shipping'?'Доставка: '+shippingHistoryValue(event.previous_value)+' → '+shippingHistoryValue(event.next_value):kind==='payment'?'Облік оплати: '+paymentHistoryValue(event.previous_value)+' → '+paymentHistoryValue(event.next_value):'Операції: '+event.next_value;
+    const label=kind==='status'?'Статус: '+(statuses[event.previous_value]||event.previous_value||'—')+' → '+(statuses[event.next_value]||event.next_value):kind==='email'?'Email: '+(emails[event.next_value]||event.next_value):kind==='shipping'?'Доставка: '+shippingHistoryValue(event.previous_value)+' → '+shippingHistoryValue(event.next_value):kind==='payment'?'Облік оплати: '+paymentHistoryValue(event.previous_value)+' → '+paymentHistoryValue(event.next_value):kind==='supply'?'Постачання: '+supplyHistoryValue(event.previous_value)+' → '+supplyHistoryValue(event.next_value):'Операції: '+event.next_value;
     return '<li><b>'+escape(label)+'</b><small>'+escape(at)+' · '+escape(event.actor_name||(event.actor_id?'Адміністратор (старий запис)':'Система / SQL'))+'</small>'+(event.error_code?'<small>Код: '+escape(event.error_code)+'</small>':'')+'</li>';
   }).join('')+'</ol>';
 }

@@ -1,3 +1,5 @@
+import {readPrinterMediaWidth,mediaWidthKey,mediaWidthLabels} from './printer-media-width.js?v=20261016-connectivity';
+export {mediaWidthKey,mediaWidthLabels};
 // Exact-model evidence: docs/wide-format-verification-2026-10-16.md.
 const rows=[
   [4375,'6856C006','PRO-1100','A2',0],
@@ -21,8 +23,6 @@ const rows=[
   [4623,'2Y9H1A','T950','A0',36]
 ];
 export const wideFormatRules=rows.map(([id,sku,model,format,width])=>({id,sku,model,format,width}));
-export const mediaWidthKey='Максимальна ширина носія';
-export const mediaWidthLabels={24:'24″ (610 мм)',36:'36″ (914 мм)',44:'44″ (1118 мм)'};
 export function wideFormatRule(product={}) {
   const name=String(product.name||'').trim();
   if(!/^(?:принтер|printer|бфп|мфу|mfp|багатофункціональний пристрій)\s/iu.test(name))return null;
@@ -31,6 +31,8 @@ export function wideFormatRule(product={}) {
 }
 export function applyWideFormatRule(specifications={},product={}) {
   const rule=wideFormatRule(product), result={...specifications};
+  const inferredWidth=readPrinterMediaWidth({...product,specifications});
+  if(inferredWidth&&!String(result[mediaWidthKey]||'').trim())result[mediaWidthKey]=inferredWidth;
   if(!rule)return result;
   // Fill gaps, and correct only the two reviewed legacy A4 summaries.
   if(!String(result['Формат']||'').trim()||([4610,4611].includes(rule.id)&&/^[AА]4$/iu.test(String(result['Формат']).trim())))result['Формат']=rule.format;

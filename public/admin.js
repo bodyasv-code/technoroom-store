@@ -13,14 +13,16 @@ import {resolveProjectorSpecifications, normalizeProjectorResolution, isProjecto
 import {resolveEditorBrand} from './brand-editor.js?v=20261012';
 import {printerDuplexMode, duplexLabels, writePrinterDuplex} from './printer-duplex.js?v=20261016-import-guards-2';
 import {applyVerifiedDuplexRepair, confirmVerifiedDuplexRepair} from './verified-duplex-repair.js?v=20261016-import-guards-2';
-import {verifiedCatalogRepair as verifiedDuplexRepair} from './verified-catalog-repair.js?v=20261016-wide-format';
-import {normalizeImportedProductSpecifications,mergeImportedSpecifications} from './import-specification-rules.js?v=20261016-wide-format';
-import {readPrinterEditorFormat,writePrinterEditorFormat,hasPrinterFormat} from './printer-format-editor.js?v=20261016-wide-format';
-import {mediaWidthKey,mediaWidthLabels} from './wide-format-printers.js?v=20261016-wide-format';
+import {verifiedCatalogRepair as verifiedDuplexRepair} from './verified-catalog-repair.js?v=20261016-connectivity';
+import {normalizeImportedProductSpecifications,mergeImportedSpecifications} from './import-specification-rules.js?v=20261016-connectivity';
+import {readPrinterEditorFormat,writePrinterEditorFormat,hasPrinterFormat} from './printer-format-editor.js?v=20261016-connectivity';
+import {mediaWidthKey,mediaWidthLabels} from './wide-format-printers.js?v=20261016-connectivity';
+import {readPrinterMediaWidth} from './printer-media-width.js?v=20261016-connectivity';
+import {productWifiState,wifiTextState} from './product-connectivity.js?v=20261016-connectivity';
 import {normalizeSpecifications} from './specification-normalization.js?v=20261013-spec-colons';
 import {canonicalBrandName, brandConsolidationPlan} from './brand-normalization.js?v=20261012-brand-cleanup';
 import {removeUnusedBrandDuplicate} from './brand-cleanup.js?v=20261012-brand-cleanup';
-import {createQualityAudit, mountQualityPanel} from './catalog-quality.js?v=20261016-wide-format';
+import {createQualityAudit, mountQualityPanel} from './catalog-quality.js?v=20261016-connectivity';
 import {createImportAudit, auditEligible, auditMarkup, showImportReview} from './import-audit.js?v=20261016-import-guards-2';
 const supabase=createClient(window.TECHNOROOM_SUPABASE.url,window.TECHNOROOM_SUPABASE.publishableKey);
 const state={catalogReady:false,products:[],orders:[],categories:[],brands:[],promotions:[],banners:[],articles:[],page:1,brandPage:1,selectedProducts:new Set(),categoryTreeOpen:new Set()};
@@ -215,13 +217,13 @@ const mountOfficePrinterEditorFields=(form,product)=>{
     widthLabel.append(select);panel.querySelector('.projector-editor-fields__grid').append(widthLabel);
   }
   widthLabel.hidden=String(product?.category||form.elements.category?.value||'')!=='office-wide-format';
-  const widthSelect=widthLabel.querySelector('select'),savedWidth=String(specifications[mediaWidthKey]||'').trim();
+  const widthSelect=widthLabel.querySelector('select'),savedWidth=readPrinterMediaWidth({...product,name:productTitle,category:form.elements.category.value,specifications});
   if(savedWidth&&![...widthSelect.options].some(option=>option.value===savedWidth))widthSelect.add(new Option(savedWidth,savedWidth));
   widthSelect.value=savedWidth;widthSelect.dataset.changed='';
   widthSelect.onchange=()=>{widthSelect.dataset.changed='true'};
   const interfaces=printerDetails + (/\blaserjet\b/iu.test(productTitle)&&/\bdn\b/iu.test(productTitle.replace(/(\d)(dn)\b/iu,'$1 $2'))?' Ethernet':'');
-  const optionalWifi=/(?:wi[ -]?fi|wireless|wlan).{0,80}(?:опц|optional|не\s*(?:вход|входить)|докуп|add[ -]?on|модул)|(?:опц|optional|не\s*(?:вход|входить)|докуп|add[ -]?on|модул).{0,80}(?:wi[ -]?fi|wireless|wlan)/iu.test(interfaces);
-  panel.querySelectorAll('[name="office_print_interface"]').forEach(input=>{const pattern=input.value==='Wi‑Fi'?/(?:wi[ -]?fi|wireless|wlan)/iu:input.value==='Ethernet'?/ethernet|\blan\b|rj[ -]?45/iu:input.value==='USB'?/\busb(?:\s|$|[0-9])?/iu:/bluetooth/iu;input.checked=pattern.test(interfaces)&&!(input.value==='Wi‑Fi'&&optionalWifi)});
+  const wifiState=productWifiState({...product,name:productTitle,specifications});
+  panel.querySelectorAll('[name="office_print_interface"]').forEach(input=>{const pattern=input.value==='Ethernet'?/ethernet|\blan\b|rj[ -]?45/iu:input.value==='USB'?/\busb(?:\s|$|[0-9])?/iu:/bluetooth/iu;input.checked=input.value==='Wi‑Fi'?wifiState==='present':pattern.test(interfaces)});
   const duplexState=printerDuplexMode(Object.entries(specifications));
   const duplexControl=panel.querySelector('[name="office_print_duplex"]');
   duplexControl.value=duplexLabels[duplexState]?duplexState:'';
@@ -268,7 +270,7 @@ async function saveProductWithProjectorFields(event){
     const formatControl=officePanel.querySelector('[name="office_print_format"]');
     if(formatControl.dataset.changed==='true'||!hasPrinterFormat(specifications))specifications=writePrinterEditorFormat(specifications,formatControl.dataset.changed==='true'?format:formatControl.dataset.original||format);
     const widthControl=officePanel.querySelector('[name="office_media_width"]');
-    if(widthControl?.dataset.changed==='true'&&!widthControl.closest('label').hidden){
+    if(widthControl&&!widthControl.closest('label').hidden&&(widthControl.dataset.changed==='true'||!String(specifications[mediaWidthKey]||'').trim())){
       delete specifications[mediaWidthKey];
       if(widthControl.value)specifications[mediaWidthKey]=widthControl.value;
     }
@@ -545,9 +547,8 @@ supabase.auth.getSession().then(({data:{session}})=>session?dashboard():view('lo
     const officeType = officeSupplyCategoryPlan(text) ? '' : /(?:бфп|мфу|mfp|multifunction|багатофункціональн\w*\s+(?:пристрій|апарат))/iu.test(text) ? 'БФП' : /(?:принтер|printer)/iu.test(text) ? 'Принтер' : /(?:сканер|scanner)/iu.test(text) ? 'Сканер' : /(?:копір|копир|copier)/iu.test(text) ? 'Копір' : /(?:ламінатор|ламинатор|laminator)/iu.test(text) ? 'Ламінатор' : /(?:знищувач|шредер|shredder)/iu.test(text) ? 'Знищувач документів' : '';
     if (officeType) {
       const interfaces=[];
-      const optionalWifi=/(?:wi[ -]?fi|wireless|wlan).{0,80}(?:опц|optional|не\s*(?:вход|входить)|докуп|add[ -]?on|модул)|(?:опц|optional|не\s*(?:вход|входить)|докуп|add[ -]?on|модул).{0,80}(?:wi[ -]?fi|wireless|wlan)/iu.test(text);
       const optionalDuplex=/(?:дуплекс|двосторон|duplex).{0,80}(?:опц|optional|не\s*(?:вход|входить)|докуп|add[ -]?on|модул)|(?:опц|optional|не\s*(?:вход|входить)|докуп|add[ -]?on|модул).{0,80}(?:дуплекс|двосторон|duplex)/iu.test(text);
-      if (/(?:wi[ -]?fi|wireless|wlan)/iu.test(text)&&!optionalWifi) interfaces.push('Wi‑Fi');
+      if (wifiTextState(text)==='present') interfaces.push('Wi‑Fi');
       if (/(?:ethernet|\blan\b|rj[ -]?45)/iu.test(text)) interfaces.push('Ethernet');
       if (/\blaserjet\b/iu.test(text) && /\d(?:dn)\b/iu.test(text)) interfaces.push('Ethernet');
       if (/\busb(?:\s|$|[0-9])?/iu.test(text)) interfaces.push('USB');

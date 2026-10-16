@@ -1,6 +1,6 @@
 import {verifiedDuplexRepair} from './verified-duplex-repair.js?v=20261016-import-guards-2';
 import {verifiedPrinterRule,applyVerifiedPrinterRule,printFormatKey} from './verified-printer-rules.js?v=20261016-import-guards-2';
-import {wideFormatRepair} from './wide-format-printers.js?v=20261016-wide-format';
+import {wideFormatRepair} from './wide-format-printers.js?v=20261016-connectivity';
 
 export function verifiedCatalogRepair(product) {
   const wideRepair=wideFormatRepair(product);

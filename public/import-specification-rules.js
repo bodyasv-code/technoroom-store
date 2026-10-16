@@ -3,11 +3,16 @@ import {isProjectorProduct,resolveProjectorSpecifications} from './projector-spe
 import {isPrinterDevice} from './printer-display.js?v=20261016-import-guards-2';
 import {duplexKey,duplexLabels,printerDuplexMode,writePrinterDuplex} from './printer-duplex.js?v=20261016-import-guards-2';
 import {verifiedPrinterRule,applyVerifiedPrinterRule,printFormatKey,scannerOnly} from './verified-printer-rules.js?v=20261016-import-guards-2';
-import {applyWideFormatRule} from './wide-format-printers.js?v=20261016-wide-format';
+import {applyWideFormatRule} from './wide-format-printers.js?v=20261016-connectivity';
+import {productInterfaceValues} from './product-connectivity.js?v=20261016-connectivity';
 
 export function normalizeImportedProductSpecifications(product) {
   const projector=isProjectorProduct(product);
   let specs=normalizeSpecifications(product.specifications||{},{projector});
+  if(isPrinterDevice(product)||scannerOnly(product)){
+    const interfaces=productInterfaceValues({...product,specifications:specs});
+    if(interfaces.includes('Wi‑Fi')&&!String(specs['Інтерфейси']||'').trim())specs['Інтерфейси']=interfaces.join(', ');
+  }
   if(projector)return resolveProjectorSpecifications({...product,specifications:specs});
   const rule=verifiedPrinterRule(product);
   if(rule)return applyVerifiedPrinterRule(specs,rule);

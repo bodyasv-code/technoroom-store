@@ -1,5 +1,6 @@
-import {readPrinterEditorFormat} from './printer-format-editor.js?v=20261016-wide-format';
-import {wideFormatRule,mediaWidthKey,mediaWidthLabels} from './wide-format-printers.js?v=20261016-wide-format';
+import {readPrinterEditorFormat} from './printer-format-editor.js?v=20261016-connectivity';
+import {wideFormatRule,mediaWidthKey,mediaWidthLabels} from './wide-format-printers.js?v=20261016-connectivity';
+import {readPrinterMediaWidth} from './printer-media-width.js?v=20261016-connectivity';
 // Group only in the catalog filter; retain precise product specifications.
 export function printerFormatFilterValues(source) {
   const values=[];
@@ -15,7 +16,7 @@ export function printerProductFormatValues(product={}) {
 }
 export function printerMediaWidthValues(product={}) {
   if(!/^office-wide-format$/u.test(String(product.category||product.type||'')))return [];
-  const saved=String(product.specifications?.[mediaWidthKey]||'').trim();
+  const saved=readPrinterMediaWidth(product);
   if(saved)return [saved];
   const rule=wideFormatRule(product);
   if(rule?.width)return [mediaWidthLabels[rule.width]];

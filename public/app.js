@@ -1,12 +1,13 @@
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
-import {catalogPriceBounds,catalogPriceRangeMax,readCatalogFilterState,catalogFilterUrl,safeCatalogReturnUrl} from './catalog-filter-state.js?v=20261016-wide-format';
-import {printerDuplexFilterValues} from './printer-duplex.js?v=20261016-wide-format';
-import {printerProductFormatValues,printerMediaWidthValues} from './printer-format-filter.js?v=20261016-wide-format';
+import {catalogPriceBounds,catalogPriceRangeMax,readCatalogFilterState,catalogFilterUrl,safeCatalogReturnUrl} from './catalog-filter-state.js?v=20261016-connectivity';
+import {printerDuplexFilterValues} from './printer-duplex.js?v=20261016-connectivity';
+import {printerProductFormatValues,printerMediaWidthValues} from './printer-format-filter.js?v=20261016-connectivity';
+import {productWifiState} from './product-connectivity.js?v=20261016-connectivity';
 import {sizeBannerSlides} from './banner-layout.js?v=20261011-uniform';
 import {categoryIcon} from './category-icons.js?v=20261013-icons';
 import {projectorDisplayEntries} from './projector-display.js?v=20261013-light-details';
 import {orderSpecificationEntries} from './specification-order.js?v=20261013-printer-rules';
-import {isPrinterDevice, printerDisplayEntries} from './printer-display.js?v=20261016-wide-format';
+import {isPrinterDevice, printerDisplayEntries} from './printer-display.js?v=20261016-connectivity';
 import {catalogResultState} from './catalog-loading-state.js?v=20261013-catalog-loading';
 import {catalogRequestScope, catalogCacheKey, mergeCatalogRows, applyCatalogScope, cartProductIds} from './catalog-scope.js?v=20261013-cart-ids';
 import {matchingPromotion, discountedPrice} from './store-pricing.js?v=20261013-checkout-pricing';
@@ -1870,9 +1871,8 @@ catalog = function () {
   const printerFormatValues = printerProductFormatValues;
   const printerInterfaceValues = (product) => {
     const source = printerSource(product, /(?:інтерфейс|interface|підключ|connection|мереж|network|ethernet|\blan\b|\busb\b|wi[ -]?fi|wireless|wlan|bluetooth)/iu);
-    const optionalWifi=/(?:wi[ -]?fi|wireless|wlan).{0,80}(?:опц|optional|не\s*(?:вход|входить)|докуп|add[ -]?on|модул)|(?:опц|optional|не\s*(?:вход|входить)|докуп|add[ -]?on|модул).{0,80}(?:wi[ -]?fi|wireless|wlan)/iu.test(source);
     return [
-      ...( /(?:wi[ -]?fi|wireless|wlan)/iu.test(source) && !optionalWifi ? ['Wi‑Fi'] : []),
+      ...( productWifiState(product)==='present' ? ['Wi‑Fi'] : []),
       ...( /(?:ethernet|\blan\b|rj[ -]?45)/iu.test(source) ? ['Ethernet'] : []),
       ...( /\busb(?:\s|$|[0-9])?/iu.test(source) ? ['USB'] : []),
       ...( /bluetooth/iu.test(source) ? ['Bluetooth'] : [])

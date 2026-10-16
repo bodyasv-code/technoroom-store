@@ -1,4 +1,5 @@
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
+import {mountAdminNavigation} from './admin-navigation.js?v=20261016-navigation';
 import {orderDetailsMarkup,saveOrderChanges,matchesOrderSearch,hasFailedOrderEmail} from './order-admin.js?v=20261015-order-search';
 import {orderHistoryMarkup,readOrderHistory} from './order-history.js?v=20261015-supply';
 import {mountOrderSupply,supplyState,supplyDateLabel,kyivToday} from './order-supply.js?v=20261015-supply';
@@ -1606,7 +1607,7 @@ supabase.auth.getSession().then(({data:{session}})=>session?dashboard():view('lo
         importer.selected.clear(); importer.meta.clear(); importer.report = null; importer.page = 1;
         renderImportPreview();
         importerStatus('ERC: отримано ' + importer.rows.length + ' товарів. Перевірте їх у попередньому перегляді нижче перед імпортом.');
-        $('#supplierImport')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        location.hash='supplierImport';
         setErcMessage('Готово: ' + importer.rows.length + ' товарів передано у попередній перегляд.');
       } catch (error) { setErcMessage(error.message || 'Не вдалося завантажити дані ERC.', true); }
       finally { button.disabled = false; }
@@ -1694,3 +1695,7 @@ const renderQualityAudit=()=>{
 };
 renderAll = () => { renderAllWithCatalogAudit(); renderCatalogAudit(); renderCategoryIntegrityAudit(); renderQualityAudit(); };
 })();
+
+// Import panels are inserted above. Mount routing after every section exists.
+document.querySelector('.admin-main').prepend(appNotice);
+mountAdminNavigation();

@@ -37,4 +37,6 @@ assert.deepEqual(readCatalogFilterState(params).specs,[['printer-format',['A3']]
 const admin=readFileSync(new URL('../public/admin.js',import.meta.url),'utf8');
 assert.match(admin,/if\(duplexControl.dataset.changed==='true'\)specifications=writePrinterDuplex/);
 assert.match(admin,/<option value="">— Не вказано —<\/option><option value="automatic">Автоматичний/);
+const app=readFileSync(new URL('../public/app.js',import.meta.url),'utf8');
+assert.ok(app.includes(".filter(definition => category !== 'office-wide-format' || definition.id !== 'printer-duplex')"));
 console.log('Duplex modes, conservative legacy support, format grouping: OK');

@@ -1886,7 +1886,7 @@ catalog = function () {
     { id: 'printer-media-width', label: 'Максимальна ширина носія', values: printerMediaWidthValues, minOptions: 1 },
     { id: 'printer-interface', label: 'Інтерфейси', values: printerInterfaceValues },
     { id: 'printer-duplex', label: 'Двосторонній друк', values: printerDuplexValues, minOptions: 1 }
-  ]);
+  ].filter(definition => category !== 'office-wide-format' || definition.id !== 'printer-duplex'));
   const printConsumableTechnologyValues = (product) => {
     const category = readableText(product.type);
     // Для спеціалізованих підкатегорій не покладаємось на слова в сумісних

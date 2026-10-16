@@ -29,11 +29,11 @@ assert.deepEqual(writePrinterDuplex(original,''),{'Інтерфейси':['USB']
 assert.equal(original['Дуплекс:'],'Є');
 assert.deepEqual(printerDisplayEntries([['Дуплексний друк','Немає'],['Дуплекс','Ручний (через драйвер)']]),[['Двосторонній друк','Ручний']]);
 assert.deepEqual(printerDisplayEntries([['Двосторонній друк','Ручний'],['Деталі','Дуплекс: так']]),[['Деталі','Дуплекс: так'],['Двосторонній друк','Ручний']]);
-for(const value of ['A3','А3+','A3/A3+','БФП A3+']) assert.deepEqual(formats(value),['A3/A3+']);
-assert.deepEqual(formats('A3+ A4'),['A3/A3+','A4']);
+for(const value of ['A3','А3+','A3/A3+','БФП A3+']) assert.deepEqual(formats(value),['A3']);
+assert.deepEqual(formats('A3+ A4'),['A3','A4']);
 assert.deepEqual(formats('A30 A43'),[]);
-const params=new URLSearchParams({specs:JSON.stringify([['printer-format',['A3','A3+']],['printer-duplex',['Є']]])});
-assert.deepEqual(readCatalogFilterState(params).specs,[['printer-format',['A3/A3+']],['printer-duplex',['Автоматичний']]]);
+const params=new URLSearchParams({specs:JSON.stringify([['printer-format',['A3','A3+','A3/A3+']],['printer-duplex',['Є']]])});
+assert.deepEqual(readCatalogFilterState(params).specs,[['printer-format',['A3']],['printer-duplex',['Автоматичний']]]);
 const admin=readFileSync(new URL('../public/admin.js',import.meta.url),'utf8');
 assert.match(admin,/if\(duplexControl.dataset.changed==='true'\)specifications=writePrinterDuplex/);
 assert.match(admin,/<option value="">— Не вказано —<\/option><option value="automatic">Автоматичний/);

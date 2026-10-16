@@ -1,12 +1,12 @@
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
-import {catalogPriceBounds,catalogPriceRangeMax,readCatalogFilterState,catalogFilterUrl,safeCatalogReturnUrl} from './catalog-filter-state.js?v=20261016-duplex';
-import {printerDuplexFilterValues} from './printer-duplex.js?v=20261016-duplex';
-import {printerFormatFilterValues} from './printer-format-filter.js?v=20261016-duplex';
+import {catalogPriceBounds,catalogPriceRangeMax,readCatalogFilterState,catalogFilterUrl,safeCatalogReturnUrl} from './catalog-filter-state.js?v=20261016-format-a3';
+import {printerDuplexFilterValues} from './printer-duplex.js?v=20261016-format-a3';
+import {printerFormatFilterValues} from './printer-format-filter.js?v=20261016-format-a3';
 import {sizeBannerSlides} from './banner-layout.js?v=20261011-uniform';
 import {categoryIcon} from './category-icons.js?v=20261013-icons';
 import {projectorDisplayEntries} from './projector-display.js?v=20261013-light-details';
 import {orderSpecificationEntries} from './specification-order.js?v=20261013-printer-rules';
-import {isPrinterDevice, printerDisplayEntries} from './printer-display.js?v=20261016-duplex';
+import {isPrinterDevice, printerDisplayEntries} from './printer-display.js?v=20261016-format-a3';
 import {catalogResultState} from './catalog-loading-state.js?v=20261013-catalog-loading';
 import {catalogRequestScope, catalogCacheKey, mergeCatalogRows, applyCatalogScope, cartProductIds} from './catalog-scope.js?v=20261013-cart-ids';
 import {matchingPromotion, discountedPrice} from './store-pricing.js?v=20261013-checkout-pricing';

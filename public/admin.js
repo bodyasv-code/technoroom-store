@@ -13,13 +13,13 @@ import {resolveProjectorSpecifications, normalizeProjectorResolution, isProjecto
 import {resolveEditorBrand} from './brand-editor.js?v=20261012';
 import {printerDuplexMode, duplexLabels, writePrinterDuplex} from './printer-duplex.js?v=20261016-import-guards-2';
 import {applyVerifiedDuplexRepair, confirmVerifiedDuplexRepair} from './verified-duplex-repair.js?v=20261016-import-guards-2';
-import {verifiedCatalogRepair as verifiedDuplexRepair} from './verified-catalog-repair.js?v=20261016-format-editor';
+import {verifiedCatalogRepair as verifiedDuplexRepair} from './verified-catalog-repair.js?v=20261016-format-a3';
 import {normalizeImportedProductSpecifications,mergeImportedSpecifications} from './import-specification-rules.js?v=20261016-import-guards-2';
-import {readPrinterEditorFormat,writePrinterEditorFormat,hasPrinterFormat} from './printer-format-editor.js?v=20261016-format-editor';
+import {readPrinterEditorFormat,writePrinterEditorFormat,hasPrinterFormat} from './printer-format-editor.js?v=20261016-format-a3';
 import {normalizeSpecifications} from './specification-normalization.js?v=20261013-spec-colons';
 import {canonicalBrandName, brandConsolidationPlan} from './brand-normalization.js?v=20261012-brand-cleanup';
 import {removeUnusedBrandDuplicate} from './brand-cleanup.js?v=20261012-brand-cleanup';
-import {createQualityAudit, mountQualityPanel} from './catalog-quality.js?v=20261016-duplex';
+import {createQualityAudit, mountQualityPanel} from './catalog-quality.js?v=20261016-format-a3';
 import {createImportAudit, auditEligible, auditMarkup, showImportReview} from './import-audit.js?v=20261016-import-guards-2';
 const supabase=createClient(window.TECHNOROOM_SUPABASE.url,window.TECHNOROOM_SUPABASE.publishableKey);
 const state={catalogReady:false,products:[],orders:[],categories:[],brands:[],promotions:[],banners:[],articles:[],page:1,brandPage:1,selectedProducts:new Set(),categoryTreeOpen:new Set()};
@@ -182,7 +182,7 @@ const mountOfficePrinterEditorFields=(form,product)=>{
   let panel=form.querySelector('#officePrinterEditorFields');
   if(!panel){
     panel=document.createElement('fieldset');panel.id='officePrinterEditorFields';panel.className='projector-editor-fields';
-    panel.innerHTML='<legend>Фільтри принтера / БФП</legend><div class="projector-editor-fields__grid"><label>Кольоровість<select name="office_print_color"><option value="">— Не вказано —</option><option value="Монохромний">Монохромний</option><option value="Кольоровий">Кольоровий</option></select></label><label>Технологія друку<select name="office_print_technology"><option value="">— Не вказано —</option><option value="Лазерний">Лазерний</option><option value="Струменевий">Струменевий</option></select></label><label>Формат<select name="office_print_format"><option value="">— Не вказано —</option><option value="A4">A4</option><option value="A3/A3+">A3/A3+</option><option value="A3">A3</option><option value="A3+">A3+</option></select></label><div><b>Інтерфейси</b><div class="projector-editor-fields__options">'+officeInterfaceOptions.map(value=>'<label><input type="checkbox" name="office_print_interface" value="'+value+'"> '+value+'</label>').join('')+'</div></div><label>Двосторонній друк<select name="office_print_duplex"><option value="">— Не вказано —</option><option value="automatic">Автоматичний</option><option value="manual">Ручний</option><option value="unsupported">Не підтримується</option></select></label></div><small>Значення зберігаються у характеристиках товару та мають пріоритет над даними XML.</small>';
+    panel.innerHTML='<legend>Фільтри принтера / БФП</legend><div class="projector-editor-fields__grid"><label>Кольоровість<select name="office_print_color"><option value="">— Не вказано —</option><option value="Монохромний">Монохромний</option><option value="Кольоровий">Кольоровий</option></select></label><label>Технологія друку<select name="office_print_technology"><option value="">— Не вказано —</option><option value="Лазерний">Лазерний</option><option value="Струменевий">Струменевий</option></select></label><label>Формат<select name="office_print_format"><option value="">— Не вказано —</option><option value="A4">A4</option><option value="A3">A3</option></select></label><div><b>Інтерфейси</b><div class="projector-editor-fields__options">'+officeInterfaceOptions.map(value=>'<label><input type="checkbox" name="office_print_interface" value="'+value+'"> '+value+'</label>').join('')+'</div></div><label>Двосторонній друк<select name="office_print_duplex"><option value="">— Не вказано —</option><option value="automatic">Автоматичний</option><option value="manual">Ручний</option><option value="unsupported">Не підтримується</option></select></label></div><small>Значення зберігаються у характеристиках товару та мають пріоритет над даними XML.</small>';
     const description=form.elements.description?.closest('label');if(description)description.before(panel);else form.append(panel);
   }
   const specifications=product?.specifications||parseAdminSpecifications(form.elements.specifications_text?.value);
@@ -200,8 +200,8 @@ const mountOfficePrinterEditorFields=(form,product)=>{
   const printerDetails=[product?.name||form.elements.name?.value||'',...Object.entries(specifications).filter(([key])=>/(?:інтерфейс|interface|мережев|network|ethernet|\blan\b|\busb\b|wi[ -]?fi|wireless|wlan|bluetooth|формат|paper\s*size|розмір\s*паперу)/iu.test(String(key))).flatMap(([,value])=>Array.isArray(value)?value:[value])].map(String).join(' ');
   const formatValue=readPrinterEditorFormat(specifications,productTitle);
   const formatSelect=panel.querySelector('[name="office_print_format"]');
-  if(formatValue&&![...formatSelect.options].some(option=>option.value===formatValue))formatSelect.add(new Option(formatValue,formatValue));
-  formatSelect.value=formatValue;
+  formatSelect.value=['A3+','A3/A3+'].includes(formatValue)?'A3':formatValue;
+  formatSelect.dataset.original=formatValue;
   formatSelect.dataset.changed='';
   formatSelect.onchange=()=>{formatSelect.dataset.changed='true'};
   const interfaces=printerDetails + (/\blaserjet\b/iu.test(productTitle)&&/\bdn\b/iu.test(productTitle.replace(/(\d)(dn)\b/iu,'$1 $2'))?' Ethernet':'');
@@ -251,7 +251,7 @@ async function saveProductWithProjectorFields(event){
     if(color)specifications['Тип друку']=color;
     if(technology)specifications['Технологія друку']=technology;
     const formatControl=officePanel.querySelector('[name="office_print_format"]');
-    if(formatControl.dataset.changed==='true'||!hasPrinterFormat(specifications))specifications=writePrinterEditorFormat(specifications,format);
+    if(formatControl.dataset.changed==='true'||!hasPrinterFormat(specifications))specifications=writePrinterEditorFormat(specifications,formatControl.dataset.changed==='true'?format:formatControl.dataset.original||format);
     if(interfaces.length)specifications['Інтерфейси']=interfaces.join(', ');
     if(duplexControl.dataset.changed==='true')specifications=writePrinterDuplex(specifications,duplexControl.value);
     writeAdminSpecifications(form,specifications);

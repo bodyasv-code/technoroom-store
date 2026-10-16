@@ -1,9 +1,9 @@
 import {printFormatKey} from './verified-printer-rules.js?v=20261016-import-guards-2';
 
-export const printerEditorFormats=['A4','A3/A3+','A3','A3+'];
+export const printerEditorFormats=['A4','A3'];
 export function normalizePrinterEditorFormat(raw) {
   const value=String(raw||'').trim().toUpperCase().replace(/А/gu,'A').replace(/\s+/gu,'');
-  return printerEditorFormats.includes(value)?value:'';
+  return [...printerEditorFormats,'A3+','A3/A3+'].includes(value)?value:'';
 }
 export const hasPrinterFormat = specifications => Object.keys(specifications).some(key=>printFormatKey.test(key.trim()));
 export function readPrinterEditorFormat(specifications={},title='') {

@@ -1,5 +1,5 @@
-import {verifiedDuplexRepair} from './verified-duplex-repair.js?v=20261016-canon-duplex';
-import {verifiedPrinterRule,applyVerifiedPrinterRule} from './verified-printer-rules.js?v=20261016-import-guards';
+import {verifiedDuplexRepair} from './verified-duplex-repair.js?v=20261016-import-guards-2';
+import {verifiedPrinterRule,applyVerifiedPrinterRule} from './verified-printer-rules.js?v=20261016-import-guards-2';
 
 export function verifiedCatalogRepair(product) {
   const rule=verifiedPrinterRule(product);

@@ -1,4 +1,4 @@
-import {duplexKey,writePrinterDuplex} from './printer-duplex.js?v=20261016-duplex';
+import {duplexKey,writePrinterDuplex} from './printer-duplex.js?v=20261016-import-guards-2';
 
 // Manufacturer-verified exact SKU + model rules, not brand/series guesses.
 // Evidence: docs/printer-import-verification-2026-10-16.md and earlier duplex reports.

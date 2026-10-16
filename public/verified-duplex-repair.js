@@ -1,4 +1,4 @@
-import {writePrinterDuplex} from './printer-duplex.js?v=20261016-duplex';
+import {writePrinterDuplex} from './printer-duplex.js?v=20261016-import-guards-2';
 // Owner-approved list, verified against Epson/HP documentation on 2026-10-13.
 // No model-name guessing, imports, or unrelated product field updates.
 export const verifiedDuplexProducts = [

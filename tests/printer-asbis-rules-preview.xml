@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Synthetic ASBIS preview only. Never apply/import these test rows. -->
+<ProductCatalog>
+  <Product><ProductCode>6670C007</ProductCode><ProductDescription>БФП Canon PIXMA TS3640</ProductDescription><Vendor>CANON peripherals</Vendor><ProductCategory>Оргтехніка</ProductCategory><ProductType>Кольорові БФП</ProductType><attribute name="Дуплекс">Вручну</attribute><attribute name="Дуплексний друк">Є</attribute><attribute name="Тип друку">Кольоровий</attribute></Product>
+  <Product><ProductCode>TEST-ASBIS-AMBIGUOUS</ProductCode><ProductDescription>Принтер моно тестовий невідомий</ProductDescription><Vendor>HP</Vendor><ProductCategory>Оргтехніка</ProductCategory><ProductType>Монохромні принтери</ProductType><attribute name="Дуплекс">вручну (автоматичний)</attribute></Product>
+</ProductCatalog>

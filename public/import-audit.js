@@ -1,5 +1,5 @@
 import {officeSupplyCategoryPlan} from './product-identity.js?v=20261012-consumables-brands';
-import {printerDuplexMode} from './printer-duplex.js?v=20261016-duplex';
+import {printerDuplexMode} from './printer-duplex.js?v=20261016-import-guards-2';
 export const auditSku = value => {
   const sku=String(value ?? '').trim().replace(/^\*+|\*+$/g,'').toUpperCase();
   return /^(?:NULL|UNDEFINED|NONE|—|-)$/.test(sku) ? '' : sku;

@@ -41,6 +41,8 @@ assert.ok(!Object.keys(preserved).some(k=>/інше значення/u.test(k)))
 const unknown={name:'Принтер інший',sku:'UNKNOWN',specifications:{'Дуплекс':'Ручний','Дуплексний друк':'Є'},hasPrice:true,price:1};
 const audit=createImportAudit([unknown],[])(unknown,{mapped:true,category:'office-printers'});
 assert.ok(audit.issues.some(i=>i.code==='duplex-conflict'&&i.level==='block'));
+const ambiguous={...unknown,specifications:{'Дуплекс':'вручну (автоматичний)'}};
+assert.ok(createImportAudit([ambiguous],[])(ambiguous,{mapped:true,category:'office-printers'}).issues.some(i=>i.code==='duplex-conflict'));
 assert.equal(normalize({name:'Принтер інший Duplex',specifications:{}})['Двосторонній друк'],undefined);
 const admin=readFileSync(new URL('../public/admin.js',import.meta.url),'utf8');
 assert.equal((admin.match(/normalizeImportedProjector\(name, vendor,/g)||[]).length,3);

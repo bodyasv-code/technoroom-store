@@ -1,8 +1,8 @@
 import {normalizeSpecifications} from './specification-normalization.js?v=20261013-spec-colons';
 import {isProjectorProduct,resolveProjectorSpecifications} from './projector-specs.js?v=20261013-spec-colons';
-import {isPrinterDevice} from './printer-display.js?v=20261016-import-guards';
-import {duplexKey,duplexLabels,printerDuplexMode,writePrinterDuplex} from './printer-duplex.js?v=20261016-duplex';
-import {verifiedPrinterRule,applyVerifiedPrinterRule,printFormatKey,scannerOnly} from './verified-printer-rules.js?v=20261016-import-guards';
+import {isPrinterDevice} from './printer-display.js?v=20261016-import-guards-2';
+import {duplexKey,duplexLabels,printerDuplexMode,writePrinterDuplex} from './printer-duplex.js?v=20261016-import-guards-2';
+import {verifiedPrinterRule,applyVerifiedPrinterRule,printFormatKey,scannerOnly} from './verified-printer-rules.js?v=20261016-import-guards-2';
 
 export function normalizeImportedProductSpecifications(product) {
   const projector=isProjectorProduct(product);

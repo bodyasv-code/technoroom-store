@@ -40,7 +40,10 @@ export function printerDuplexMode(entries = [], text = '') {
       if (/автомат|automatic/iu.test(key+' '+value)) no = true;
       else modes.add('unsupported');
     }
-    else if (/^(?:ручн[\p{L}]*|вручну|manual)(?=\s|$|[,(.])/iu.test(value)) modes.add('manual');
+    else if (/^(?:ручн[\p{L}]*|вручну|manual)(?=\s|$|[,(.])/iu.test(value)) {
+      modes.add('manual');
+      if (/^(?:ручн[\p{L}]*|вручну|manual)\s*\(\s*(?:автоматичн[\p{L}]*|automatic)\s*\)$/iu.test(value)) modes.add('automatic');
+    }
     else if (negative.test(value)) no = true;
     else if (optional.test(value)) option = true;
     else if (positive.test(value)) modes.add('automatic');

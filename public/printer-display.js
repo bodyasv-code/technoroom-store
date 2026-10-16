@@ -1,4 +1,4 @@
-import {duplexKey, duplexLabels, printerDuplexMode} from './printer-duplex.js?v=20261016-duplex';
+import {duplexKey, duplexLabels, printerDuplexMode} from './printer-duplex.js?v=20261016-import-guards-2';
 // Conservative presentation repair; original supplier detail strings remain.
 export function isPrinterDevice(product = {}) {
   const name = String(product.name || '').trim();

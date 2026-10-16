@@ -27,4 +27,7 @@ cleanup();assert.equal(viewListeners.hashchange,undefined);
 const source=readFileSync(new URL('../public/admin.js',import.meta.url),'utf8');
 assert.ok(source.lastIndexOf('mountAdminNavigation();')>source.indexOf('id="ercCatalogApi"'));
 assert.ok(source.includes("location.hash='supplierImport'"));
+const html=readFileSync(new URL('../public/admin.html',import.meta.url),'utf8');
+assert.match(html,/\.admin-shell\{display:grid;grid-template-columns:230px minmax\(0,1fr\)\}/);
+assert.match(html,/@media\(max-width:900px\)\{\.admin-shell\{grid-template-columns:minmax\(0,1fr\)\}/);
 console.log('Single-section routing, all routes, history, dynamic imports, draft preservation, mobile picker and recovery fragments: OK');

@@ -1,4 +1,5 @@
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
+import {catalogPriceBounds,catalogPriceRangeMax,readCatalogFilterState,catalogFilterUrl,safeCatalogReturnUrl} from './catalog-filter-state.js?v=20261016-filters';
 import {sizeBannerSlides} from './banner-layout.js?v=20261011-uniform';
 import {categoryIcon} from './category-icons.js?v=20261013-icons';
 import {projectorDisplayEntries} from './projector-display.js?v=20261013-light-details';
@@ -1205,7 +1206,7 @@ product = function () {
   let catalogReturnUrl = 'catalog.html';
   try {
     const savedCatalog = sessionStorage.getItem('technoroom-last-catalog-url');
-    if (savedCatalog && /^\/?catalog\.html(?:\?|$)/u.test(savedCatalog)) catalogReturnUrl = savedCatalog;
+    catalogReturnUrl = safeCatalogReturnUrl(savedCatalog);
   } catch {}
   const state = availability(item);
   const paths = galleryEntriesFor(item);
@@ -1522,6 +1523,24 @@ catalog = function () {
   const screenCategory = 'erc-display-06';
   const selectedScreenSpecifications = new Map();
   const selectedLuminousFlux = { min: '', max: '' };
+  const priceRangeControl=document.getElementById('priceRange'),priceMinRangeControl=document.getElementById('priceMinRange'),priceCaptionControl=document.getElementById('priceRangeCaption');
+  const savedFilters=readCatalogFilterState(params);
+  let restoredBrand=savedFilters.brand;
+  const restoreFilters=saved=>{
+    restoredBrand=saved.brand;search.value=saved.search;stock.checked=saved.stock;sort.value=saved.sort;if(pageSize)pageSize.value=String(saved.size);
+    if(priceMin)priceMin.value=saved.min;price.value=saved.max;
+    selectedScreenSpecifications.clear();for(const [id,values] of saved.specs)selectedScreenSpecifications.set(id,new Set(values));
+    selectedLuminousFlux.min=saved.fluxMin;selectedLuminousFlux.max=saved.fluxMax;
+  };
+  restoreFilters(savedFilters);
+  [price,priceMin,priceRangeControl,priceMinRangeControl].filter(Boolean).forEach(control=>control.step='0.01');
+  priceRangeControl?.setAttribute('aria-label','Максимальна ціна');priceMinRangeControl?.setAttribute('aria-label','Мінімальна ціна');
+  const syncPriceControls=categoryProducts=>{
+    const max=catalogPriceRangeMax(categoryProducts,priceMin?.value,price.value);
+    if(priceRangeControl){priceRangeControl.max=String(max);priceRangeControl.value=price.value===''?String(max):price.value}
+    if(priceMinRangeControl){priceMinRangeControl.max=String(max);priceMinRangeControl.value=priceMin?.value||'0'}
+    if(priceCaptionControl)priceCaptionControl.textContent='Від '+Number(priceMin?.value||0).toLocaleString('uk-UA')+' ₴'+(price.value!==''?' до '+Number(price.value).toLocaleString('uk-UA')+' ₴':' · верхню межу не задано');
+  };
   const normaliseSpecificationKey = (value) => readableText(value)
     .toLocaleLowerCase('uk-UA')
     .replace(/[\s:]+$/g, '')
@@ -1927,14 +1946,13 @@ catalog = function () {
     const groups = screenFilterOptions();
     activeSpecificationDefinitions = groups;
     if (!groups.length && !fluxRange) {
-      selectedScreenSpecifications.clear();
-      selectedLuminousFlux.min = ''; selectedLuminousFlux.max = '';
+      if(!productsHydrating){selectedScreenSpecifications.clear();selectedLuminousFlux.min = ''; selectedLuminousFlux.max = '';}
       screenSpecificationFilters.hidden = true;
       screenSpecificationFilters.replaceChildren();
       return;
     }
     const available = new Map(groups.map((group) => [group.id, new Set(group.options)]));
-    selectedScreenSpecifications.forEach((values, id) => {
+    if(!productsHydrating)selectedScreenSpecifications.forEach((values, id) => {
       const valid = new Set([...values].filter((value) => available.get(id)?.has(value)));
       if (valid.size) selectedScreenSpecifications.set(id, valid); else selectedScreenSpecifications.delete(id);
     });
@@ -1959,7 +1977,7 @@ catalog = function () {
     const value = luminousFluxFor(product);
     return Number.isFinite(value) && (!selectedLuminousFlux.min || value >= Number(selectedLuminousFlux.min)) && (!selectedLuminousFlux.max || value <= Number(selectedLuminousFlux.max));
   };
-  let page = 1;
+  let page = savedFilters.page;
   let category = legacyCategoryAliases[params.get('category')] || params.get('category') || 'all';
   if (params.get('search')) search.value = params.get('search');
   const projectorCollection = params.get('projector');
@@ -1967,7 +1985,8 @@ catalog = function () {
   let projectorCollectionPending = Boolean(projectorCollectionLabels[projectorCollection]);
   const applyProjectorCollection = () => {
     const label = projectorCollectionLabels[projectorCollection];
-    if (!projectorCollectionPending || !label || !products.some((product) => projectorClassificationValues(product).includes(label))) return;
+    if (!projectorCollectionPending || !label) return;
+    if(!products.some((product) => projectorClassificationValues(product).includes(label))){if(!productsHydrating)projectorCollectionPending=false;return;}
     selectedScreenSpecifications.set('projector-classification', new Set([label]));
     projectorCollectionPending = false;
   };
@@ -1980,7 +1999,7 @@ catalog = function () {
     if (brand.value) add('brand', 'Бренд', brand.value);
     if (stock.checked) add('stock', 'Наявність', 'В наявності');
     const minimum = Number(priceMin?.value || 0), maximum = Number(price?.value || 0);
-    if (minimum > 0 || maximum > 0) add('price', 'Ціна', (minimum > 0 ? 'від ' + minimum.toLocaleString('uk-UA') + ' ₴' : '') + (minimum > 0 && maximum > 0 ? ' · ' : '') + (maximum > 0 ? 'до ' + maximum.toLocaleString('uk-UA') + ' ₴' : ''));
+    if (minimum > 0 || price.value!=='') add('price', 'Ціна', (minimum > 0 ? 'від ' + minimum.toLocaleString('uk-UA') + ' ₴' : '') + (minimum > 0 && price.value!=='' ? ' · ' : '') + (price.value!=='' ? 'до ' + maximum.toLocaleString('uk-UA') + ' ₴' : ''));
     if (selectedLuminousFlux.min || selectedLuminousFlux.max) add('luminous', 'Яскравість', (selectedLuminousFlux.min ? 'від ' + selectedLuminousFlux.min : '') + (selectedLuminousFlux.min && selectedLuminousFlux.max ? ' · ' : '') + (selectedLuminousFlux.max ? 'до ' + selectedLuminousFlux.max : '') + ' лм');
     selectedScreenSpecifications.forEach((values, id) => {
       const label = activeSpecificationDefinitions.find((definition) => definition.id === id)?.label || 'Параметр';
@@ -2027,13 +2046,14 @@ catalog = function () {
   const draw = () => {
     applyProjectorCollection();
     renderScreenSpecificationFilters();
-    renderActiveCatalogFilters();
     renderCatalogHeading();
     const categoryProducts = products.filter((product) => !product.parentProductId && (category === 'all' || storefrontCategoryMatches(product, category)));
     const brands = [...new Map(categoryProducts.map((product) => cleanBrand(product.brand)).filter(Boolean).map((value) => [value.toLocaleLowerCase('uk-UA'), value])).values()].sort((left, right) => left.localeCompare(right, 'uk'));
-    const selectedBrand = brand.value;
+    syncPriceControls(categoryProducts);
+    const selectedBrand = restoredBrand ?? brand.value;
     brand.innerHTML = '<option value="">Усі бренди</option>' + brands.map((value) => '<option value="' + escapeHtml(value) + '">' + escapeHtml(readableText(value)) + '</option>').join('');
-    if (brands.includes(selectedBrand)) brand.value = selectedBrand;
+    if (brands.includes(selectedBrand)){brand.value = selectedBrand;restoredBrand=null;}else if(!productsHydrating)restoredBrand=null;
+    renderActiveCatalogFilters();
     const searchQuery = readableText(search.value);
     let shown = products.filter((product) => {
       const promotion = promotionFor(product) || promotionByProductLink(product);
@@ -2043,7 +2063,7 @@ catalog = function () {
         && (!saleOnly || Boolean(promotion))
         && (!promotionOnly || Number(promotion?.id) === promotionOnly)
         && searchRank >= 0
-        && (!brand.value || cleanBrand(product.brand) === brand.value)
+        && (!(restoredBrand||brand.value) || cleanBrand(product.brand) === (restoredBrand||brand.value))
         && (!priceMin?.value || Number(product.price) >= Number(priceMin.value))
         && (!price.value || Number(product.price) <= Number(price.value))
         && (!stock.checked || product.stock)
@@ -2071,7 +2091,7 @@ catalog = function () {
       || availabilityRank(left) - availabilityRank(right) || secondarySort(left, right));
     const size = Number(pageSize?.value || 12);
     const pages = Math.max(1, Math.ceil(shown.length / size));
-    page = Math.min(page, pages);
+    if(!productsHydrating)page = Math.min(page, pages);
     const visible = shown.slice((page - 1) * size, page * size);
     const resultState=catalogResultState({count:shown.length,loading:productsHydrating,error:catalogLoadFailed});
     root.setAttribute('aria-busy',String(productsHydrating));
@@ -2092,6 +2112,11 @@ catalog = function () {
       pagination.innerHTML = !productsHydrating && !catalogLoadFailed && pages > 1 ? '<button type="button" data-catalog-page="prev" '+(page === 1 ? 'disabled' : '')+'>← Попередні</button><span>Сторінка '+page+' з '+pages+'</span><button type="button" data-catalog-page="next" '+(page === pages ? 'disabled' : '')+'>Наступні →</button>' : '';
     }
     bind(root);
+    if(!projectorCollectionPending){
+      const url=catalogFilterUrl(location.href,{min:priceMin?.value||'0',max:price.value,brand:restoredBrand??brand.value,search:search.value,stock:stock.checked,sort:sort.value,size,page,specs:[...selectedScreenSpecifications].map(([id,values])=>[id,[...values]]),fluxMin:selectedLuminousFlux.min,fluxMax:selectedLuminousFlux.max});
+      if(url.href!==location.href)history.replaceState(history.state,'',url);
+      try{sessionStorage.setItem('technoroom-last-catalog-url',url.pathname+url.search)}catch{}
+    }
   };
 
   root._catalogDraw = draw;
@@ -2101,7 +2126,7 @@ catalog = function () {
     const kind = button.dataset.clearCatalogFilter;
     const value = decodeURIComponent(button.dataset.filterValue || '');
     if (kind === 'search') search.value = '';
-    if (kind === 'brand') brand.value = '';
+    if (kind === 'brand') {brand.value = '';restoredBrand=null;}
     if (kind === 'stock') stock.checked = false;
     if (kind === 'price') { price.value = ''; if (priceMin) priceMin.value = '0'; }
     if (kind === 'luminous') { selectedLuminousFlux.min = ''; selectedLuminousFlux.max = ''; }
@@ -2111,6 +2136,7 @@ catalog = function () {
       if (selected) { selected.delete(selectedValue); if (!selected.size) selectedScreenSpecifications.delete(id); }
     }
     if (kind === 'all') {
+      restoredBrand=null;projectorCollectionPending=false;
       search.value = ''; brand.value = ''; price.value = ''; if (priceMin) priceMin.value = '0'; stock.checked = false;
       selectedScreenSpecifications.clear(); selectedLuminousFlux.min = ''; selectedLuminousFlux.max = '';
     }
@@ -2153,17 +2179,30 @@ catalog = function () {
     const button = event.target.closest('[data-catalog-taxonomy]');
     if (!button) return;
     category = button.dataset.catalogTaxonomy;
+    restoredBrand=null;brand.value='';projectorCollectionPending=false;
     selectedScreenSpecifications.clear();
     selectedLuminousFlux.min = ''; selectedLuminousFlux.max = '';
     page = 1;
     const url = new URL(location.href);
     url.searchParams.delete('projector');
+    for(const key of ['brand','specs','fluxMin','fluxMax','page'])url.searchParams.delete(key);
     if (category === 'all') url.searchParams.delete('category'); else url.searchParams.set('category', category);
     if(catalogProductScope!=='all'&&category!==catalogProductScope){location.href=url.href;return;}
-    history.replaceState({}, '', url);
+    history.replaceState(history.state, '', url);
     draw();
   });
-  [search, brand, price, priceMin, stock, sort, pageSize].filter(Boolean).forEach((field) => field.addEventListener(field === stock || field === brand || field === sort || field === pageSize ? 'change' : 'input', () => { page = 1; draw(); }));
+  const changePrice=changed=>{
+    const bounds=catalogPriceBounds(priceMin?.value,price.value,changed);if(priceMin)priceMin.value=bounds.min;price.value=bounds.max;page=1;draw();
+  };
+  // Do not move the opposite bound while someone is still typing a multi-digit price.
+  priceMin?.addEventListener('input',()=>{page=1;draw()});price.addEventListener('input',()=>{page=1;draw()});
+  priceMin?.addEventListener('change',()=>changePrice('min'));price.addEventListener('change',()=>changePrice('max'));
+  priceMinRangeControl?.addEventListener('input',()=>{if(priceMin)priceMin.value=priceMinRangeControl.value;changePrice('min')});
+  priceRangeControl?.addEventListener('input',()=>{price.value=Number(priceRangeControl.value)===Number(priceRangeControl.max)?'':priceRangeControl.value;changePrice('max')});
+  filters.querySelectorAll('[data-price-min],[data-price-max]').forEach(button=>button.addEventListener('click',()=>{
+    if(priceMin)priceMin.value=button.dataset.priceMin||'0';price.value=button.dataset.priceMax??'';changePrice('max');
+  }));
+  [search, brand, stock, sort, pageSize].filter(Boolean).forEach((field) => field.addEventListener(field === stock || field === brand || field === sort || field === pageSize ? 'change' : 'input', () => { if(field===brand)restoredBrand=null;page = 1; draw(); }));
   pagination?.addEventListener('click', (event) => {
     const control = event.target.closest('[data-catalog-page]');
     if (!control) return;
@@ -2172,8 +2211,10 @@ catalog = function () {
     root.scrollIntoView({ behavior: 'smooth', block: 'start' });
   });
   document.getElementById('clearCatalogFilters').addEventListener('click', () => {
+    restoredBrand=null;projectorCollectionPending=false;
     search.value = ''; brand.value = ''; price.value = ''; if(priceMin) priceMin.value = '0'; stock.checked = false; sort.value = 'popular'; selectedScreenSpecifications.clear(); selectedLuminousFlux.min = ''; selectedLuminousFlux.max = ''; page = 1; draw();
   });
+  window.addEventListener('pageshow',event=>{if(event.persisted){const saved=readCatalogFilterState(new URL(location.href).searchParams);restoreFilters(saved);page=saved.page;draw();}});
   draw();
   loadStorefrontCategories().then(() => draw());
 };

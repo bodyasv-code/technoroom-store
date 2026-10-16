@@ -49,3 +49,16 @@ export function customerProductRepair(product={}) {
   if(!Object.keys(patch).length)return null;
   return {id:product.id,sku:product.sku,before:product,patch,confidential:hasDealerContent(product.description)||hasDealerContent(JSON.stringify(product.specifications))};
 }
+export function confirmCustomerProductRepair(plans) {
+  return new Promise(resolve=>{
+    const dialog=document.createElement('dialog');dialog.className='inquiry-dialog';
+    const content=document.createElement('div');content.className='inquiry-form';
+    const heading=document.createElement('h2');heading.textContent='Очищення інформації про товари';
+    const detail=document.createElement('p');detail.textContent='Дилерські повідомлення: '+plans.filter(plan=>plan.confidential).length+' товарів. Усього оновлень: '+plans.length+', включно з прихованими. Також заповнюється відсутня технологія друку Epson, крім матричних, термо- й лазерних моделей. Назви, ціни, категорії, фото й інші технічні характеристики не змінюються.';
+    const approve=document.createElement('button');approve.type='button';approve.className='button';approve.textContent='Застосувати '+plans.length+' оновлень';
+    const cancel=document.createElement('button');cancel.type='button';cancel.className='button outline';cancel.textContent='Скасувати';
+    const finish=approved=>{dialog.close();dialog.remove();resolve(approved)};
+    approve.onclick=()=>finish(true);cancel.onclick=()=>finish(false);dialog.addEventListener('cancel',event=>{event.preventDefault();finish(false)});
+    content.append(heading,detail,approve,cancel);dialog.append(content);document.body.append(dialog);dialog.showModal();
+  });
+}

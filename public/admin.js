@@ -19,7 +19,7 @@ import {readPrinterEditorFormat,writePrinterEditorFormat,hasPrinterFormat} from 
 import {mediaWidthKey,mediaWidthLabels} from './wide-format-printers.js?v=20261017-customer-content';
 import {readPrinterMediaWidth} from './printer-media-width.js?v=20261017-customer-content';
 import {productWifiState,wifiTextState} from './product-connectivity.js?v=20261017-customer-content';
-import {cleanCustomerText,applyCustomerProductPolicy,epsonPrintTechnology,customerProductRepair} from './product-content-policy.js?v=20261017-customer-content';
+import {cleanCustomerText,applyCustomerProductPolicy,epsonPrintTechnology,customerProductRepair,confirmCustomerProductRepair} from './product-content-policy.js?v=20261017-customer-content-2';
 import {normalizeSpecifications} from './specification-normalization.js?v=20261017-customer-content';
 import {canonicalBrandName, brandConsolidationPlan} from './brand-normalization.js?v=20261012-brand-cleanup';
 import {removeUnusedBrandDuplicate} from './brand-cleanup.js?v=20261012-brand-cleanup';
@@ -1731,8 +1731,7 @@ const renderQualityAudit=()=>{
     contentButton.onclick=async()=>{
       const plans=state.products.map(customerProductRepair).filter(Boolean);
       if(!plans.length||contentButton.disabled)return;
-      const confidential=plans.filter(plan=>plan.confidential).length;
-      if(!confirm('Очистити дилерську інформацію у '+confidential+' товарах та заповнити відсутню технологію друку Epson? Усього зміниться '+plans.length+' товарів, включно з прихованими. Назви, ціни, категорії, фото й технічні дані зберігаються. Матричні та термопринтери виключені.'))return;
+      if(!await confirmCustomerProductRepair(plans))return;
       contentButton.disabled=true;let changed=0;
       try{
         for(const plan of plans){

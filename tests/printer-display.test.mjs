@@ -5,7 +5,7 @@ const before = JSON.stringify(source);
 const result = printerDisplayEntries(source);
 assert.equal(result[0][0],'Роздільна здатність');
 assert.ok(result.some(([k,v])=>k==='Швидкість сканування'&&v==='кольорове: 3,5 мс/лінію (300 точок на дюйм)'));
-assert.ok(result.some(([k,v])=>k==='Дуплекс'&&v==='Так, звичайний папір'));
+assert.ok(result.some(([k,v])=>k==='Двосторонній друк'&&v==='Автоматичний'));
 assert.ok(result.some(([k,v])=>k==='Формат сканування (планшет)'&&v==='A4/Letter (216 x 297 мм)'));
 assert.ok(result.some(([k,v])=>k==='Операційні системи'&&v==='Windows, macOS, Chrome OS'));
 assert.equal(JSON.stringify(source),before);

@@ -1,10 +1,12 @@
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
-import {catalogPriceBounds,catalogPriceRangeMax,readCatalogFilterState,catalogFilterUrl,safeCatalogReturnUrl} from './catalog-filter-state.js?v=20261016-filters';
+import {catalogPriceBounds,catalogPriceRangeMax,readCatalogFilterState,catalogFilterUrl,safeCatalogReturnUrl} from './catalog-filter-state.js?v=20261016-duplex';
+import {printerDuplexFilterValues} from './printer-duplex.js?v=20261016-duplex';
+import {printerFormatFilterValues} from './printer-format-filter.js?v=20261016-duplex';
 import {sizeBannerSlides} from './banner-layout.js?v=20261011-uniform';
 import {categoryIcon} from './category-icons.js?v=20261013-icons';
 import {projectorDisplayEntries} from './projector-display.js?v=20261013-light-details';
 import {orderSpecificationEntries} from './specification-order.js?v=20261013-printer-rules';
-import {isPrinterDevice, printerDisplayEntries} from './printer-display.js?v=20261013-printer-rules';
+import {isPrinterDevice, printerDisplayEntries} from './printer-display.js?v=20261016-duplex';
 import {catalogResultState} from './catalog-loading-state.js?v=20261013-catalog-loading';
 import {catalogRequestScope, catalogCacheKey, mergeCatalogRows, applyCatalogScope, cartProductIds} from './catalog-scope.js?v=20261013-cart-ids';
 import {matchingPromotion, discountedPrice} from './store-pricing.js?v=20261013-checkout-pricing';
@@ -1867,10 +1869,7 @@ catalog = function () {
   };
   const printerFormatValues = (product) => {
     const source = printerSource(product, /(?:формат|paper\s*size|розмір\s*паперу|максимальн.*(?:формат|розмір)|[aа][34])/iu);
-    const values = [];
-    if (/(?:^|[^a-zа-яіїєґ0-9])[aа]3(?:$|[^a-zа-яіїєґ0-9])/iu.test(source)) values.push('A3');
-    if (/(?:^|[^a-zа-яіїєґ0-9])[aа]4(?:$|[^a-zа-яіїєґ0-9])/iu.test(source)) values.push('A4');
-    return values;
+    return printerFormatFilterValues(source);
   };
   const printerInterfaceValues = (product) => {
     const source = printerSource(product, /(?:інтерфейс|interface|підключ|connection|мереж|network|ethernet|\blan\b|\busb\b|wi[ -]?fi|wireless|wlan|bluetooth)/iu);
@@ -1882,17 +1881,13 @@ catalog = function () {
       ...( /bluetooth/iu.test(source) ? ['Bluetooth'] : [])
     ];
   };
-  const printerDuplexValues = (product) => {
-    const source=printerSource(product, /(?:дуплекс|двосторон|duplex|two[ -]?sided)/iu);
-    const optional=/(?:дуплекс|двосторон|duplex).{0,80}(?:опц|optional|не\s*(?:вход|входить)|докуп|add[ -]?on|модул)|(?:опц|optional|не\s*(?:вход|входить)|докуп|add[ -]?on|модул).{0,80}(?:дуплекс|двосторон|duplex)/iu.test(source);
-    return /(?:дуплекс|двосторон|duplex|two[ -]?sided)/iu.test(source)&&!optional?['Є']:[];
-  };
+  const printerDuplexValues = printerDuplexFilterValues;
   const printerFilterOptions = (categoryProducts) => compactFilterOptions(categoryProducts, [
     { id: 'printer-color', label: 'Кольоровість', values: printerColorValues },
     { id: 'printer-technology', label: 'Технологія друку', values: printerTechnologyValues },
     { id: 'printer-format', label: 'Формат', values: printerFormatValues },
     { id: 'printer-interface', label: 'Інтерфейси', values: printerInterfaceValues },
-    { id: 'printer-duplex', label: 'Дуплексний друк', values: printerDuplexValues, minOptions: 1 }
+    { id: 'printer-duplex', label: 'Двосторонній друк', values: printerDuplexValues, minOptions: 1 }
   ]);
   const printConsumableTechnologyValues = (product) => {
     const category = readableText(product.type);

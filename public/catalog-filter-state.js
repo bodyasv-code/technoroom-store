@@ -10,6 +10,7 @@ export function catalogPriceRangeMax(products,min='',max=''){
 export function readCatalogFilterState(params){
   let specs=[];
   try{const raw=params.get('specs')||'[]';if(raw.length<=16000){const parsed=JSON.parse(raw);if(Array.isArray(parsed))specs=parsed.filter(pair=>Array.isArray(pair)&&typeof pair[0]==='string'&&pair[0].length<=100&&Array.isArray(pair[1])).slice(0,25).map(([id,values])=>[id,values.filter(value=>typeof value==='string'&&value.length<=500).slice(0,50)])}}catch{}
+  specs=specs.map(([id,values])=>[id,[...new Set(values.map(value=>id==='printer-format'&&/^[AА]3\+?$/iu.test(value)?'A3/A3+':id==='printer-duplex'&&value==='Є'?'Автоматичний':value))]]);
   const sort=params.get('sort'),size=Number(params.get('size')),page=Number(params.get('page'));
   return {...catalogPriceBounds(params.get('min'),params.get('max')),brand:params.get('brand')||'',search:params.get('search')||'',stock:params.get('stock')==='1',
     sort:['popular','newest','price-asc','price-desc','name'].includes(sort)?sort:sort==='new'?'newest':'popular',

@@ -1,3 +1,4 @@
+import {duplexKey, duplexLabels, printerDuplexMode} from './printer-duplex.js?v=20261016-duplex';
 // Conservative presentation repair; original supplier detail strings remain.
 export function isPrinterDevice(product = {}) {
   const name = String(product.name || '').trim();
@@ -34,7 +35,7 @@ export function printerDisplayEntries(entries, description = '') {
   for (const [originalKey, raw] of entries) {
     const text = String(raw);
     const duplex = /(?:^|[\s;)])Дуплекс\s*:\s*(так|ні)(?:\s*,\s*(звичайний папір))?(?=\s|$|[.;)])/iu.exec(text);
-    if (duplex) add('Дуплекс', duplex[1].toLowerCase() === 'так' ? 'Так' + (duplex[2] ? ', ' + duplex[2] : '') : 'Ні');
+    if (duplex && !entries.some(([key])=>duplexKey.test(String(key).trim()))) add('Дуплекс', duplex[1].toLowerCase() === 'так' ? 'Так' + (duplex[2] ? ', ' + duplex[2] : '') : 'Ні');
     const scan = /Сканер\s*\(швидкість\s*:\s*(.{1,180}?\([^()]*\))(?=\s*(?:$|[.;]|[А-ЯІЇЄA-Z][\p{L} ]{2,}:))/u.exec(text);
     if (scan) add('Швидкість сканування', scan[1]);
     const flatbed = /Планшет\s*:\s*((?:A\d|Letter)(?:\s*\/\s*(?:A\d|Letter))*\s*\(\d+\s*[xх×]\s*\d+\s*мм\))/iu.exec(text);
@@ -56,6 +57,10 @@ export function printerDisplayEntries(entries, description = '') {
       if (/Інтерфейс\s*:\s*(?:Hi-Speed\s*)?USB\s*\(порт\s*[ABАВ]\)/iu.test(text)) wired.add('USB');
     }
     if (wired.size) interfaces[1] = ['Wi-Fi', ...wired].join(', ');
+  }
+  const mode = printerDuplexMode(result,description);
+  if (duplexLabels[mode]) {
+    return [...result.filter(([key]) => !duplexKey.test(String(key).trim())), ['Двосторонній друк', duplexLabels[mode]]];
   }
   return result;
 }

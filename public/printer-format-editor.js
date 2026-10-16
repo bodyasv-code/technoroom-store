@@ -1,9 +1,11 @@
 import {printFormatKey} from './verified-printer-rules.js?v=20261016-import-guards-2';
 
-export const printerEditorFormats=['A4','A3'];
+export const printerEditorFormats=['A4','A3','A2','A1','A0','B0'];
 export function normalizePrinterEditorFormat(raw) {
   const value=String(raw||'').trim().toUpperCase().replace(/А/gu,'A').replace(/\s+/gu,'');
-  return [...printerEditorFormats,'A3+','A3/A3+'].includes(value)?value:'';
+  if([...printerEditorFormats,'A3+','A3/A3+','A2+','A1+','A0+'].includes(value))return value;
+  const detailed=/^([AB][0-4]\+?)(?=[(;])/u.exec(value);
+  return detailed?detailed[1]:'';
 }
 export const hasPrinterFormat = specifications => Object.keys(specifications).some(key=>printFormatKey.test(key.trim()));
 export function readPrinterEditorFormat(specifications={},title='') {
@@ -12,7 +14,7 @@ export function readPrinterEditorFormat(specifications={},title='') {
   const canonical=explicit.find(([key])=>/^формат\s*[:：]?$/iu.test(key.trim()));
   if(canonical)return normalizePrinterEditorFormat(canonical[1]);
   for(const [,value] of explicit){const format=normalizePrinterEditorFormat(value);if(format)return format;}
-  const opening=/^(?:БФП|МФУ|MFP|принтер|printer|багатофункціональний пристрій)\s+(?:(?:ink|laser|color|colour|mono|кольоровий|монохромний|лазерний|струменевий)\s+)*([AА][34](?:\s*\/\s*[AА]3\s*\+|\+)?)(?=\s|$|[,(])/iu.exec(String(title).trim());
+  const opening=/^(?:БФП|МФУ|MFP|принтер|printer|багатофункціональний пристрій)\s+(?:(?:ink|laser|color|colour|mono|кольоровий|монохромний|лазерний|струменевий)\s+)*([AАB][0-4](?:\s*\/\s*[AА]3\s*\+|\+)?)(?=\s|$|[,(])/iu.exec(String(title).trim());
   return opening?normalizePrinterEditorFormat(opening[1]):'';
 }
 export function writePrinterEditorFormat(specifications,raw) {

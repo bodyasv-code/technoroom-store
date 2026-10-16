@@ -5,7 +5,7 @@ import {printerFormatFilterValues} from '../public/printer-format-filter.js';
 import {mergeImportedSpecifications} from '../public/import-specification-rules.js';
 import {createQualityAudit} from '../public/catalog-quality.js';
 import {verifiedCatalogRepair} from '../public/verified-catalog-repair.js';
-assert.deepEqual(printerEditorFormats,['A4','A3']);
+assert.deepEqual(printerEditorFormats,['A4','A3','A2','A1','A0','B0']);
 for(const format of printerEditorFormats){const saved=write({'Інтерфейси':['USB']},format);assert.equal(read(saved),format);assert.deepEqual(saved['Інтерфейси'],['USB']);assert.equal(read(mergeImportedSpecifications(saved,{'Формат друку':'A4'},{name:'БФП Інший'})),format);}
 assert.equal(read({'Формат':'А3+'},'БФП A3 Epson'),'A3+');
 assert.equal(read({'Формат':'A3/A3+'},'БФП A3 Epson'),'A3/A3+');
@@ -29,6 +29,6 @@ const admin=readFileSync(new URL('../public/admin.js',import.meta.url),'utf8');
 assert.match(admin,/<option value="A3">A3<\/option>/);
 assert.doesNotMatch(admin,/<option value="A3\/A3\+">/);
 assert.doesNotMatch(admin,/<option value="A3\+">A3\+<\/option>/);
-assert.ok(admin.includes("formatSelect.value=['A3+','A3/A3+'].includes(formatValue)?'A3':formatValue"));
+assert.ok(admin.includes("formatSelect.value=formatValue==='A3/A3+'?'A3':formatValue.replace"));
 assert.match(admin,/formatControl.dataset.changed==='true'\|\|!hasPrinterFormat\(specifications\)/);
 console.log('Editor formats, exact/grouped persistence, filter mapping, import preservation and quality check: OK');

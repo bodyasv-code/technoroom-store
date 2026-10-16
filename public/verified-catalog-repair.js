@@ -1,7 +1,10 @@
 import {verifiedDuplexRepair} from './verified-duplex-repair.js?v=20261016-import-guards-2';
 import {verifiedPrinterRule,applyVerifiedPrinterRule,printFormatKey} from './verified-printer-rules.js?v=20261016-import-guards-2';
+import {wideFormatRepair} from './wide-format-printers.js?v=20261016-wide-format';
 
 export function verifiedCatalogRepair(product) {
+  const wideRepair=wideFormatRepair(product);
+  if(wideRepair)return wideRepair;
   const rule=verifiedPrinterRule(product);
   if(!rule||Number(product.id)!==rule.id||!product.specifications||Array.isArray(product.specifications))return verifiedDuplexRepair(product);
   // Preserve later explicit editor choices; resolve only legacy representations.

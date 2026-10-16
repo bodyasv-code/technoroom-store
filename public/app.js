@@ -1,12 +1,12 @@
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
-import {catalogPriceBounds,catalogPriceRangeMax,readCatalogFilterState,catalogFilterUrl,safeCatalogReturnUrl} from './catalog-filter-state.js?v=20261016-format-a3';
-import {printerDuplexFilterValues} from './printer-duplex.js?v=20261016-format-a3';
-import {printerFormatFilterValues} from './printer-format-filter.js?v=20261016-format-a3';
+import {catalogPriceBounds,catalogPriceRangeMax,readCatalogFilterState,catalogFilterUrl,safeCatalogReturnUrl} from './catalog-filter-state.js?v=20261016-wide-format';
+import {printerDuplexFilterValues} from './printer-duplex.js?v=20261016-wide-format';
+import {printerProductFormatValues,printerMediaWidthValues} from './printer-format-filter.js?v=20261016-wide-format';
 import {sizeBannerSlides} from './banner-layout.js?v=20261011-uniform';
 import {categoryIcon} from './category-icons.js?v=20261013-icons';
 import {projectorDisplayEntries} from './projector-display.js?v=20261013-light-details';
 import {orderSpecificationEntries} from './specification-order.js?v=20261013-printer-rules';
-import {isPrinterDevice, printerDisplayEntries} from './printer-display.js?v=20261016-format-a3';
+import {isPrinterDevice, printerDisplayEntries} from './printer-display.js?v=20261016-wide-format';
 import {catalogResultState} from './catalog-loading-state.js?v=20261013-catalog-loading';
 import {catalogRequestScope, catalogCacheKey, mergeCatalogRows, applyCatalogScope, cartProductIds} from './catalog-scope.js?v=20261013-cart-ids';
 import {matchingPromotion, discountedPrice} from './store-pricing.js?v=20261013-checkout-pricing';
@@ -1867,10 +1867,7 @@ catalog = function () {
     if (/(?:лазер|laser)/iu.test(source)) return ['Лазерний'];
     return [];
   };
-  const printerFormatValues = (product) => {
-    const source = printerSource(product, /(?:формат|paper\s*size|розмір\s*паперу|максимальн.*(?:формат|розмір)|[aа][34])/iu);
-    return printerFormatFilterValues(source);
-  };
+  const printerFormatValues = printerProductFormatValues;
   const printerInterfaceValues = (product) => {
     const source = printerSource(product, /(?:інтерфейс|interface|підключ|connection|мереж|network|ethernet|\blan\b|\busb\b|wi[ -]?fi|wireless|wlan|bluetooth)/iu);
     const optionalWifi=/(?:wi[ -]?fi|wireless|wlan).{0,80}(?:опц|optional|не\s*(?:вход|входить)|докуп|add[ -]?on|модул)|(?:опц|optional|не\s*(?:вход|входить)|докуп|add[ -]?on|модул).{0,80}(?:wi[ -]?fi|wireless|wlan)/iu.test(source);
@@ -1886,6 +1883,7 @@ catalog = function () {
     { id: 'printer-color', label: 'Кольоровість', values: printerColorValues },
     { id: 'printer-technology', label: 'Технологія друку', values: printerTechnologyValues },
     { id: 'printer-format', label: 'Формат', values: printerFormatValues },
+    { id: 'printer-media-width', label: 'Максимальна ширина носія', values: printerMediaWidthValues, minOptions: 1 },
     { id: 'printer-interface', label: 'Інтерфейси', values: printerInterfaceValues },
     { id: 'printer-duplex', label: 'Двосторонній друк', values: printerDuplexValues, minOptions: 1 }
   ]);

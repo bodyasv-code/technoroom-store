@@ -3,6 +3,7 @@ import {isProjectorProduct,resolveProjectorSpecifications} from './projector-spe
 import {isPrinterDevice} from './printer-display.js?v=20261016-import-guards-2';
 import {duplexKey,duplexLabels,printerDuplexMode,writePrinterDuplex} from './printer-duplex.js?v=20261016-import-guards-2';
 import {verifiedPrinterRule,applyVerifiedPrinterRule,printFormatKey,scannerOnly} from './verified-printer-rules.js?v=20261016-import-guards-2';
+import {applyWideFormatRule} from './wide-format-printers.js?v=20261016-wide-format';
 
 export function normalizeImportedProductSpecifications(product) {
   const projector=isProjectorProduct(product);
@@ -15,6 +16,7 @@ export function normalizeImportedProductSpecifications(product) {
     return Object.fromEntries(Object.entries(specs).filter(([key])=>!duplexKey.test(key)||/^дуплекс\s*[:：]?$/iu.test(key)));
   }
   if(isPrinterDevice(product)){
+    specs=applyWideFormatRule(specs,product);
     const mode=printerDuplexMode(Object.entries(specs),[product.description,...Object.values(specs)].join(' '));
     if(duplexLabels[mode])specs=writePrinterDuplex(specs,mode);
   }

@@ -62,3 +62,15 @@ export function confirmCustomerProductRepair(plans) {
     content.append(heading,detail,approve,cancel);dialog.append(content);document.body.append(dialog);dialog.showModal();
   });
 }
+export async function applyCustomerProductRepair(client,plan) {
+  let request=client.from('products').update(plan.patch).eq('id',plan.id);
+  request=plan.sku==null?request.is('sku',null):request.eq('sku',plan.sku);
+  // Compare only fields being written. Unchanged descriptions/specifications
+  // must neither lengthen the URL nor block unrelated concurrent edits.
+  if(Object.hasOwn(plan.patch,'specifications'))request=plan.before.specifications==null?request.is('specifications',null):request.eq('specifications',JSON.stringify(plan.before.specifications));
+  if(Object.hasOwn(plan.patch,'description'))request=plan.before.description==null?request.is('description',null):request.eq('description',plan.before.description);
+  const result=await request.select('id');
+  if(result.error)throw result.error;
+  if(result.data?.length!==1)throw new Error('Товар '+plan.id+' змінився. Оновіть дані та повторіть перевірку.');
+  return plan.id;
+}

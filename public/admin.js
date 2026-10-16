@@ -19,7 +19,7 @@ import {readPrinterEditorFormat,writePrinterEditorFormat,hasPrinterFormat} from 
 import {mediaWidthKey,mediaWidthLabels} from './wide-format-printers.js?v=20261017-customer-content';
 import {readPrinterMediaWidth} from './printer-media-width.js?v=20261017-customer-content';
 import {productWifiState,wifiTextState} from './product-connectivity.js?v=20261017-customer-content';
-import {cleanCustomerText,applyCustomerProductPolicy,epsonPrintTechnology,customerProductRepair,confirmCustomerProductRepair} from './product-content-policy.js?v=20261017-customer-content-2';
+import {cleanCustomerText,applyCustomerProductPolicy,epsonPrintTechnology,customerProductRepair,confirmCustomerProductRepair,applyCustomerProductRepair} from './product-content-policy.js?v=20261017-customer-content-3';
 import {normalizeSpecifications} from './specification-normalization.js?v=20261017-customer-content';
 import {canonicalBrandName, brandConsolidationPlan} from './brand-normalization.js?v=20261012-brand-cleanup';
 import {removeUnusedBrandDuplicate} from './brand-cleanup.js?v=20261012-brand-cleanup';
@@ -1735,13 +1735,7 @@ const renderQualityAudit=()=>{
       contentButton.disabled=true;let changed=0;
       try{
         for(const plan of plans){
-          let request=supabase.from('products').update(plan.patch).eq('id',plan.id);
-          request=plan.sku==null?request.is('sku',null):request.eq('sku',plan.sku);
-          request=plan.before.specifications==null?request.is('specifications',null):request.eq('specifications',JSON.stringify(plan.before.specifications));
-          request=plan.before.description==null?request.is('description',null):request.eq('description',plan.before.description);
-          const result=await request.select('id');
-          if(result.error)throw result.error;
-          if(result.data?.length!==1)throw new Error('Товар '+plan.id+' змінився. Оновіть дані та повторіть перевірку.');
+          await applyCustomerProductRepair(supabase,plan);
           changed++;
         }
         await loadData();notice('Очищено дилерські повідомлення та застосовано правила Epson: '+changed+' товарів.');

@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import {hasDealerContent,cleanCustomerText as clean,cleanCustomerSpecifications as specs,applyCustomerProductPolicy as policy,epsonPrintTechnology as tech,customerProductRepair} from '../public/product-content-policy.js';
+import {hasDealerContent,cleanCustomerText as clean,cleanCustomerSpecifications as specs,applyCustomerProductPolicy as policy,epsonPrintTechnology as tech,customerProductRepair,applyCustomerProductRepair} from '../public/product-content-policy.js';
 import {normalizeSpecifications} from '../public/specification-normalization.js';
 import {normalizeImportedProductSpecifications as imported,mergeImportedSpecifications as merge} from '../public/import-specification-rules.js';
 const marker='Програма захисту рентабельності по бізнес продуктам Epson';
@@ -23,4 +23,11 @@ assert.equal(imported(product)['Технологія друку'],'Струме�
 assert.equal(merge(original,{},product)[marker],undefined);
 assert.deepEqual(customerProductRepair(product).patch.specifications,cleaned.specifications);
 assert.equal(customerProductRepair(cleaned),null);
+for(const patch of [{description:'clean'},{specifications:{safe:1}},{description:'clean',specifications:{safe:1}}]){
+  const calls=[];
+  const query={update(value){calls.push(['update',value]);return this},eq(key,value){calls.push(['eq',key,value]);return this},is(key,value){calls.push(['is',key,value]);return this},async select(){return {data:[{id:1}]}}};
+  await applyCustomerProductRepair({from(){return query}},{id:1,sku:'S',patch,before:{description:'old',specifications:{old:1}}});
+  assert.equal(calls.some(([method,key])=>method==='eq'&&key==='description'),Object.hasOwn(patch,'description'));
+  assert.equal(calls.some(([method,key])=>method==='eq'&&key==='specifications'),Object.hasOwn(patch,'specifications'));
+}
 console.log('Dealer-only content removal, customer promotions retained, Epson exceptions and import protections: OK');

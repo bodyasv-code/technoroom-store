@@ -1,12 +1,14 @@
-import {normalizeSpecifications} from './specification-normalization.js?v=20261013-spec-colons';
+import {normalizeSpecifications} from './specification-normalization.js?v=20261017-customer-content';
 import {isProjectorProduct,resolveProjectorSpecifications} from './projector-specs.js?v=20261013-spec-colons';
 import {isPrinterDevice} from './printer-display.js?v=20261016-import-guards-2';
 import {duplexKey,duplexLabels,printerDuplexMode,writePrinterDuplex} from './printer-duplex.js?v=20261016-import-guards-2';
 import {verifiedPrinterRule,applyVerifiedPrinterRule,printFormatKey,scannerOnly} from './verified-printer-rules.js?v=20261016-import-guards-2';
-import {applyWideFormatRule} from './wide-format-printers.js?v=20261016-connectivity';
-import {productInterfaceValues} from './product-connectivity.js?v=20261016-connectivity';
+import {applyWideFormatRule} from './wide-format-printers.js?v=20261017-customer-content';
+import {productInterfaceValues} from './product-connectivity.js?v=20261017-customer-content';
+import {applyCustomerProductPolicy} from './product-content-policy.js?v=20261017-customer-content';
 
 export function normalizeImportedProductSpecifications(product) {
+  product=applyCustomerProductPolicy(product);
   const projector=isProjectorProduct(product);
   let specs=normalizeSpecifications(product.specifications||{},{projector});
   if(isPrinterDevice(product)||scannerOnly(product)){

@@ -1,4 +1,5 @@
 import {comparableSpecificationValue} from './specification-values.js?v=20261012-spec-format';
+import {cleanCustomerSpecifications} from './product-content-policy.js?v=20261017-customer-content';
 const cleanLabel = raw => String(raw ?? '').normalize('NFKC').trim().replace(/\s+/g, ' ').replace(/\s*[:：]+\s*$/u, '');
 const folded = raw => cleanLabel(raw).toLocaleLowerCase('uk-UA');
 // Supplier separators are not part of the value. Preserve interior colons
@@ -18,7 +19,7 @@ const projectorAliases = new Map([
 
 export function normalizeSpecificationEntries(specifications = {}, {projector = false} = {}) {
   const entries = [], seen = new Set();
-  const source = Object.entries(specifications || {});
+  const source = Object.entries(cleanCustomerSpecifications(specifications));
   if (projector) source.sort(([left], [right]) => {
     const priority = key => projectorAliases.has(folded(key)) && folded(key) === folded(projectorAliases.get(folded(key))) ? 0 : 1;
     return priority(left) - priority(right);

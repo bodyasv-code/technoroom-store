@@ -15,7 +15,7 @@ assert.equal(verifiedPrinterRule({...hp,name:'Картридж для HP 3103fdn
 assert.equal(verifiedCatalogRepair({...hp,specifications:{'Двосторонній друк':'Ручний'}}),null);
 const epson={name:'БФП Epson L15150',sku:'C11CH72404',id:4418,category:'office-mfp-color',brand:'Epson',price:1,image_path:'x',specifications:{'Формат':'A3','Принтер, сканер, копіювання, факс. Формат':'А3+','Сканування':'Максимальний формат A3','Інтерфейси':['USB']}};
 const formatted=normalize(epson);
-assert.deepEqual(formatted,{'Формат':'A3+','Сканування':'Максимальний формат A3','Інтерфейси':['USB']});
+assert.deepEqual(formatted,{'Формат':'A3+','Сканування':'Максимальний формат A3','Інтерфейси':['USB'],'Технологія друку':'Струменевий'});
 assert.equal(createQualityAudit([{...epson,specifications:formatted}],[{slug:'office-mfp-color',name:'БФП'}])[0].issues.some(i=>i.code==='conflict'),false);
 const scanner={name:'Сканер A4 Epson WorkForce DS-70',sku:'B11B252402',id:4512,specifications:{'Дуплекс':'ні','Дуплексний друк':'Є','Інтерфейс':'USB'}};
 assert.deepEqual(normalize(scanner),{'Двостороннє сканування':'Ні','Інтерфейс':'USB'});

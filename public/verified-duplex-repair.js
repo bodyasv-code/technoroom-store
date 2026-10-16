@@ -1,3 +1,4 @@
+import {writePrinterDuplex} from './printer-duplex.js?v=20261016-duplex';
 // Owner-approved list, verified against Epson/HP documentation on 2026-10-13.
 // No model-name guessing, imports, or unrelated product field updates.
 export const verifiedDuplexProducts = [
@@ -5,13 +6,20 @@ export const verifiedDuplexProducts = [
   [4530,'4ZB96A','Ручний (через драйвер)'],[4531,'4ZB97A','Ручний (через драйвер)'],
   [4551,'7MD73A','Немає'],[4599,'7MD67A','Немає'],[4600,'7MD68A','Немає'],[4607,'2Z611A','Ручний'],
 ];
+// Exact Canon models verified against manufacturer specifications/manuals on 2026-10-16.
+export const verifiedCanonDuplexProducts = [
+  [4351,'6672C039','Ручний'],[4360,'1366C009','Ручний'],[4361,'0727C067','Ручний'],
+  [4362,'6670C007','Ручний'],[4376,'8747B007','Ручний'],
+];
 const duplexKey=/^(?:дуплекс(?:ний друк)?|автоматичний двосторонній друк|двосторонній друк|duplex(?: printing)?)(?:\s*\(інше значення \d+\))?\s*[:：]?$/iu;
 export function verifiedDuplexRepair(product) {
-  const verified=verifiedDuplexProducts.find(([id,sku])=>Number(product.id)===id&&product.sku===sku);
+  const canon=verifiedCanonDuplexProducts.find(([id,sku])=>Number(product.id)===id&&product.sku===sku);
+  const verified=canon||verifiedDuplexProducts.find(([id,sku])=>Number(product.id)===id&&product.sku===sku);
   if(!verified || !product.specifications || typeof product.specifications!=='object' || Array.isArray(product.specifications)) return null;
-  const specifications=Object.fromEntries(Object.entries(product.specifications).filter(([key])=>!duplexKey.test(key.trim())));
-  specifications['Дуплексний друк']='Немає';
-  specifications['Дуплекс']=verified[2];
+  // Never undo an explicit choice made in the new editor.
+  if(Object.hasOwn(product.specifications,'Двосторонній друк'))return null;
+  const specifications=canon?writePrinterDuplex(product.specifications,'manual'):Object.fromEntries(Object.entries(product.specifications).filter(([key])=>!duplexKey.test(key.trim())));
+  if(!canon){specifications['Дуплексний друк']='Немає';specifications['Дуплекс']=verified[2];}
   const unchanged=Object.keys(specifications).length===Object.keys(product.specifications).length&&Object.entries(specifications).every(([key,value])=>JSON.stringify(product.specifications[key])===JSON.stringify(value));
   return unchanged?null:{id:verified[0],sku:verified[1],before:product.specifications,specifications};
 }

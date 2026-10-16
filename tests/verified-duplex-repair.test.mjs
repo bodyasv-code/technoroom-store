@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import {verifiedDuplexRepair,applyVerifiedDuplexRepair,verifiedDuplexProducts} from '../public/verified-duplex-repair.js';
+import {verifiedDuplexRepair,applyVerifiedDuplexRepair,verifiedDuplexProducts,verifiedCanonDuplexProducts} from '../public/verified-duplex-repair.js';
 assert.equal(verifiedDuplexProducts.length,9);
 const product={id:4530,sku:'4ZB96A',price:123,brand:'HP',specifications:{'Дуплекс':'немає','Дуплексний друк':'Є','Вхід':['USB','Ethernet'],'Роздільна здатність':'600:600'}};
 const before=JSON.stringify(product);
@@ -18,3 +18,14 @@ assert.deepEqual(Object.keys(calls[0][1]),['specifications']);
 assert.deepEqual(calls.slice(1).map(call=>call[1]),['id','sku','specifications']);
 await assert.rejects(applyVerifiedDuplexRepair({from(){return {...chain,async select(){return {data:[]}}}}},plan));
 console.log('Verified nine-product repair scope: OK');
+assert.equal(verifiedCanonDuplexProducts.length,5);
+for(const [id,sku] of verifiedCanonDuplexProducts){
+  const input={id,sku,specifications:{'Дуплекс':'Вручну','Дуплексний друк':'Є','Формат':'A3+'}};
+  const fixed=verifiedDuplexRepair(input);
+  assert.deepEqual(fixed.specifications,{'Двосторонній друк':'Ручний','Формат':'A3+'});
+  assert.equal(verifiedDuplexRepair({...input,specifications:fixed.specifications}),null);
+  assert.equal(verifiedDuplexRepair({...input,sku:'other'}),null);
+  assert.equal(input.specifications['Дуплексний друк'],'Є');
+}
+assert.equal(verifiedDuplexRepair({...product,specifications:{'Двосторонній друк':'Автоматичний'}}),null);
+console.log('Exact five Canon models, canonical mode, preserved unrelated fields and explicit choices: OK');

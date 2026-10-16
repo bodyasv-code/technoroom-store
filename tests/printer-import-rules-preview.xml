@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Synthetic preview only: never click Apply/import these test rows. -->
+<catalog>
+  <goods><code>3G631A</code><gname>БФП HP LaserJet Pro 3103fdn</gname><vendor>HP peripherals</vendor><subcategory>Монохромні БФП</subcategory><price>20000</price><attribute name="Дуплекс">вручну (автоматичний)</attribute><attribute name="Дуплексний друк">Є</attribute><attribute name="Тип друку">Монохромний</attribute></goods>
+  <goods><code>P2500W</code><gname>Принтер моно Pantum P2500W</gname><vendor>Pantum</vendor><subcategory>Монохромні принтери</subcategory><price>5000</price><attribute name="Дуплекс">Ручний</attribute><attribute name="Дуплексний друк">Є</attribute></goods>
+  <goods><code>TEST-DUPLEX-UNVERIFIED</code><gname>Принтер моно тестовий невідомий</gname><vendor>HP</vendor><subcategory>Монохромні принтери</subcategory><price>6000</price><attribute name="Дуплекс">Ручний</attribute><attribute name="Дуплексний друк">Є</attribute></goods>
+</catalog>

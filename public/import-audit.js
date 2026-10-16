@@ -1,4 +1,5 @@
 import {officeSupplyCategoryPlan} from './product-identity.js?v=20261012-consumables-brands';
+import {printerDuplexMode} from './printer-duplex.js?v=20261016-duplex';
 export const auditSku = value => {
   const sku=String(value ?? '').trim().replace(/^\*+|\*+$/g,'').toUpperCase();
   return /^(?:NULL|UNDEFINED|NONE|—|-)$/.test(sku) ? '' : sku;
@@ -45,6 +46,7 @@ export function createImportAudit(rows, products) {
       || scanner && /^office-(?:printers|mfp)(?:-|$)/.test(category)
       || printer && /^office-(?:mfp|scanners)(?:-|$)/.test(category)) add('device-kind','block','Тип пристрою в назві не відповідає категорії.');
     if(mfp||printer) {
+      if(printerDuplexMode(Object.entries(row.specifications||{}))==='conflict')add('duplex-conflict','block','Суперечливий режим двостороннього друку. Звірте модель перед імпортом.');
       const signals=[mode(row.name),mode([row.subcategory,row.sourceCategory].join(' ')),...specificationModes(row.specifications),
         /-(mono|color)$/.exec(category)?.[1]||''].filter(Boolean);
       if(signals.includes('conflict') || signals.includes('mono') && signals.includes('color')) add('print-conflict','block','Суперечлива кольоровість: назва, група, характеристики або категорія вказують різні типи друку.');

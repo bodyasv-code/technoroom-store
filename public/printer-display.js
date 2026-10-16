@@ -3,7 +3,7 @@ import {duplexKey, duplexLabels, printerDuplexMode} from './printer-duplex.js?v=
 export function isPrinterDevice(product = {}) {
   const name = String(product.name || '').trim();
   if (/^(?:картридж|тонер|чорнил|фотобарабан|стрічка|комплект|папір|термоетикет)/iu.test(name)) return false;
-  return /^(?:принтер|бфп|багатофункціональн|printer|mfp)(?=\s|$)/iu.test(name)
+  return /^(?:принтер|бфп|багатофункціональн[\p{L}]*|printer|mfp)(?=\s|$)/iu.test(name)
     || /^office-(?:printers|mfp)(?:-|$)|^office-wide-format$/iu.test(String(product.category || product.type || ''));
 }
 

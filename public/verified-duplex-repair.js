@@ -36,9 +36,9 @@ export function confirmVerifiedDuplexRepair(plans) {
   return new Promise(resolve=>{
     const dialog=document.createElement('dialog');dialog.className='inquiry-dialog';
     const content=document.createElement('div');content.className='inquiry-form';
-    const heading=document.createElement('h2');heading.textContent='Перевірений дуплекс';
-    const detail=document.createElement('p');detail.textContent='Зміняться лише характеристики дуплексу в '+plans.length+' товарах. Автоматичного дуплексу немає; підтверджений ручний режим збережеться. Інші поля не змінюються.';
-    const list=document.createElement('ul');for(const plan of plans){const item=document.createElement('li');item.textContent='ID '+plan.id+' · '+plan.sku;list.append(item);}
+    const heading=document.createElement('h2');heading.textContent='Перевірені характеристики';
+    const detail=document.createElement('p');detail.textContent='Зміняться лише перевірені характеристики дуплексу, формату друку або сканування в '+plans.length+' товарах за окремими правилами для точних SKU. Ціни, назви, категорії, фото та інші характеристики не змінюються.';
+    const list=document.createElement('ul');for(const plan of plans){const item=document.createElement('li');const changes=Object.entries(plan.specifications).filter(([key,value])=>JSON.stringify(plan.before[key])!==JSON.stringify(value)).map(([key,value])=>key+': '+value);item.textContent='ID '+plan.id+' · '+plan.sku+' — '+changes.join('; ');list.append(item);}
     const approve=document.createElement('button');approve.type='button';approve.className='button';approve.textContent='Підтвердити '+plans.length+' виправлень';
     const cancel=document.createElement('button');cancel.type='button';cancel.className='button outline';cancel.textContent='Скасувати';
     const finish=approved=>{dialog.close();dialog.remove();resolve(approved)};

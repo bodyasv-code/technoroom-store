@@ -12,12 +12,14 @@ import {productNameWithSku, officeSupplyCategoryPlan, isSpecializedPrinterName} 
 import {resolveProjectorSpecifications, normalizeProjectorResolution, isProjectorProduct, normalizeProjectorLightSource, projectorResolutionLabel, projectorResolutionFilterValue, projectorResolutionStandards} from './projector-specs.js?v=20261013-spec-colons';
 import {resolveEditorBrand} from './brand-editor.js?v=20261012';
 import {printerDuplexMode, duplexLabels, writePrinterDuplex} from './printer-duplex.js?v=20261016-duplex';
-import {verifiedDuplexRepair, applyVerifiedDuplexRepair, confirmVerifiedDuplexRepair} from './verified-duplex-repair.js?v=20261016-canon-duplex';
+import {applyVerifiedDuplexRepair, confirmVerifiedDuplexRepair} from './verified-duplex-repair.js?v=20261016-import-guards';
+import {verifiedCatalogRepair as verifiedDuplexRepair} from './verified-catalog-repair.js?v=20261016-import-guards';
+import {normalizeImportedProductSpecifications,mergeImportedSpecifications} from './import-specification-rules.js?v=20261016-import-guards';
 import {normalizeSpecifications} from './specification-normalization.js?v=20261013-spec-colons';
 import {canonicalBrandName, brandConsolidationPlan} from './brand-normalization.js?v=20261012-brand-cleanup';
 import {removeUnusedBrandDuplicate} from './brand-cleanup.js?v=20261012-brand-cleanup';
 import {createQualityAudit, mountQualityPanel} from './catalog-quality.js?v=20261016-duplex';
-import {createImportAudit, auditEligible, auditMarkup, showImportReview} from './import-audit.js?v=20261012-consumables-brands';
+import {createImportAudit, auditEligible, auditMarkup, showImportReview} from './import-audit.js?v=20261016-import-guards';
 const supabase=createClient(window.TECHNOROOM_SUPABASE.url,window.TECHNOROOM_SUPABASE.publishableKey);
 const state={catalogReady:false,products:[],orders:[],categories:[],brands:[],promotions:[],banners:[],articles:[],page:1,brandPage:1,selectedProducts:new Set(),categoryTreeOpen:new Set()};
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
@@ -535,7 +537,7 @@ supabase.auth.getSession().then(({data:{session}})=>session?dashboard():view('lo
     return specifications;
   };
   const mergeMissingSpecifications = (specifications, inferred) => normalizeSpecifications({ ...inferred, ...specifications });
-  const normalizeImportedProjector = (name, brand, description, specifications) => isProjectorProduct({name}) ? resolveProjectorSpecifications({name,brand,description,specifications}) : specifications;
+  const normalizeImportedProjector = (name, brand, description, specifications, sku) => normalizeImportedProductSpecifications({name,brand,description,specifications,sku});
   // Повна назва з джерела зберігається в описі, а в заголовку лишається модель.
   const compactImportName = (value = '', sku = '', brand = '') => {
     let name = decodeEntities(cleanImportText(value))
@@ -1227,7 +1229,7 @@ supabase.auth.getSession().then(({data:{session}})=>session?dashboard():view('lo
       // ProductDescription. Обидва джерела доповнюють XML-атрибути, але не
       // перезаписують уже надану виробником характеристику.
       const importedSpecifications = { ...parseSpecifications(shortDescription), ...parseSpecifications(comment), ...attributeSpecifications(node), ...titleSpecifications(name) };
-      const specifications = normalizeImportedProjector(name, vendor, [shortDescription, comment].filter(Boolean).join(' '), mergeMissingSpecifications(importedSpecifications, templateSpecifications([sourceName, sourceCategory, subcategory, shortDescription, comment].filter(Boolean).join(' '))));
+      const specifications = normalizeImportedProjector(name, vendor, [shortDescription, comment].filter(Boolean).join(' '), mergeMissingSpecifications(importedSpecifications, templateSpecifications([sourceName, sourceCategory, subcategory, shortDescription, comment].filter(Boolean).join(' '))), sku);
       const parsedStock = importQuantity(stockValue);
       const stock = parsedStock || (/^(in_stock|limited_stock)$/i.test(availabilityStatus) ? 1 : 0);
       // ERC зберігає основне фото за передбачуваною адресою SKU.jpg. Навіть
@@ -1311,7 +1313,7 @@ supabase.auth.getSession().then(({data:{session}})=>session?dashboard():view('lo
         key: 'erc-xlsx-' + sku + '-' + index, vendor, name, sku,
         sourceCategory: value(categoryColumn), subcategory: value(subcategoryColumn),
         price: 0, hasPrice: false, stock: 0, hasStock: false, availabilityStatus: '',
-        description, specifications: normalizeImportedProjector(name, vendor, description, mergeMissingSpecifications(rawSpecifications, templateSpecifications([name, sourceName, description].join(' ')))),
+        description, specifications: normalizeImportedProjector(name, vendor, description, mergeMissingSpecifications(rawSpecifications, templateSpecifications([name, sourceName, description].join(' '))), sku),
         images: imageUrl ? [imageUrl] : [],
       });
     }
@@ -1331,7 +1333,7 @@ supabase.auth.getSession().then(({data:{session}})=>session?dashboard():view('lo
       current.vendor ||= content.vendor;
       current.sourceCategory ||= content.sourceCategory;
       current.subcategory ||= content.subcategory;
-      current.specifications = { ...content.specifications, ...(current.specifications || {}) };
+      current.specifications = normalizeImportedProductSpecifications({...current,specifications:{ ...content.specifications, ...(current.specifications || {}) }});
       current.images = [...new Set([...(current.images || []), ...(content.images || [])])];
       enriched += 1;
     });
@@ -1347,7 +1349,7 @@ supabase.auth.getSession().then(({data:{session}})=>session?dashboard():view('lo
     used.add(result);
     return result;
   };
-  const mergeSpecifications = (current, incoming) => ({ ...incoming, ...(current || {}) });
+  const mergeSpecifications = mergeImportedSpecifications;
   const importProductImages = async (productId, urls) => {
     if (!urls.length) return;
     const { data: { session } } = await supabase.auth.getSession();
@@ -1406,7 +1408,7 @@ supabase.auth.getSession().then(({data:{session}})=>session?dashboard():view('lo
         const hasTechnicalTail = /,\s*(?:\b(?:usb|hdmi|wifi|wi-fi|wireless|wlan|bluetooth|bt\s*\d|ethernet|lan|nfc|led|oled|qled|mini\s*-?\s*led|fhd|uhd|4k|8k|ips|va|tn|amoled|rgb|hdr|ram|ssd|hdd|tizen|webos|android|windows|macos|ios|color|colour|mono(?:chrome)?|laser|ink(?:jet)?|duplex|manual|motorized|electric|black|white|gray|grey|silver|чорн|білий|сірий|кольоров|монохром|лазер|струмен|дуплекс|ручн|моторизован)\b|\b(?:a[0-9]|\d{1,5}(?:[.,]\d+)?\s*(?:лм|lm|гб|gb|тб|tb|гц|hz|вт|w|кг|kg|мм|mm|dpi|ppm|mah|маг)|\d+\s*[xх×]\s*\d+|\d+\s*:\s*\d+)\b)/iu.test(currentProjectorName);
         const hasLegacySkuSuffix = row.sku && ['— ' + row.sku, '- ' + row.sku].some((suffix) => currentProjectorName.trim().toLocaleLowerCase('uk-UA').endsWith(suffix.toLocaleLowerCase('uk-UA')));
         if ((hasTechnicalTail || isTechnicalProjectorTail || isTechnicalProjectionTail || isTechnicalOfficeTail || hasLegacySkuSuffix) && row.name && row.name.length <= currentProjectorName.length) payload.name = row.name;
-        if (updateSpecifications && Object.keys(row.specifications).length) payload.specifications = mergeSpecifications(current.specifications, row.specifications);
+        if (updateSpecifications && Object.keys(row.specifications).length) payload.specifications = mergeSpecifications(current.specifications, row.specifications, current);
         if (row.description && (!current.description || isSupplierPromotionText(current.description))) payload.description = row.description;
         // Фото постачальника часто є зовнішнім URL із тимчасовими
         // перенаправленнями. Повторно завантажуємо його до нашого storage,
@@ -1577,7 +1579,7 @@ supabase.auth.getSession().then(({data:{session}})=>session?dashboard():view('lo
     return {
       key: 'erc-' + (sku || index), vendor, name, sku, sourceCategory: cleanImportText(source.category || source.Category || source.categoryName || ''), subcategory: cleanImportText(source.subcategory || source.Subcategory || ''),
       price, hasPrice: rawPrice != null && price > 0, stock: hasStock ? stock : 0, hasStock, availabilityStatus: hasStock ? (stock > 0 ? 'in_stock' : 'out_of_stock') : '',
-      description, specifications: normalizeImportedProjector(name, vendor, description, mergeMissingSpecifications(sourceSpecifications, templateSpecifications([name, sourceName, description].join(' ')))), images: [ercImage(source.pic || source.Pic || source.image || source.Image)].filter(Boolean),
+      description, specifications: normalizeImportedProjector(name, vendor, description, mergeMissingSpecifications(sourceSpecifications, templateSpecifications([name, sourceName, description].join(' '))), sku), images: [ercImage(source.pic || source.Pic || source.image || source.Image)].filter(Boolean),
     };
   };
   const setErcMessage = (message, error = false) => {
@@ -1689,13 +1691,13 @@ const renderQualityAudit=()=>{
       if(!plans.length)return;
       if(!await confirmVerifiedDuplexRepair(plans))return;
       repairButton.disabled=true;let repaired=0;
-      try{for(const plan of plans){await applyVerifiedDuplexRepair(supabase,plan);repaired++;}await loadData();notice('Виправлено дуплекс у '+repaired+' перевірених товарах.');}
+      try{for(const plan of plans){await applyVerifiedDuplexRepair(supabase,plan);repaired++;}await loadData();notice('Виправлено характеристики у '+repaired+' перевірених товарах.');}
       catch(error){notice('Виправлено '+repaired+'. '+error.message,true);await loadData();}
       finally{repairButton.disabled=false;renderQualityAudit();}
     };
   }
   const verifiedPlans=state.products.map(verifiedDuplexRepair).filter(Boolean);
-  repairButton.textContent=verifiedPlans.length?'Виправити перевірений дуплекс ('+verifiedPlans.length+')':'Перевірений дуплекс: виправлено';
+  repairButton.textContent=verifiedPlans.length?'Виправити перевірені характеристики ('+verifiedPlans.length+')':'Перевірені характеристики: виправлено';
   repairButton.hidden=!verifiedPlans.length;
   $('#qualityNavCount').textContent=audit.filter(row=>row.product.is_active&&row.issues.length).length;
 };

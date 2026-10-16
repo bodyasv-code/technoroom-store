@@ -1,5 +1,6 @@
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
 import {mountAdminNavigation} from './admin-navigation.js?v=20261016-navigation';
+import {mountOrderActions} from './order-actions.js?v=20261016-actions';
 import {orderDetailsMarkup,saveOrderChanges,matchesOrderSearch,hasFailedOrderEmail} from './order-admin.js?v=20261015-order-search';
 import {orderHistoryMarkup,readOrderHistory} from './order-history.js?v=20261015-supply';
 import {mountOrderSupply,supplyState,supplyDateLabel,kyivToday} from './order-supply.js?v=20261015-supply';
@@ -21,6 +22,10 @@ const supabase=createClient(window.TECHNOROOM_SUPABASE.url,window.TECHNOROOM_SUP
 const state={catalogReady:false,products:[],orders:[],categories:[],brands:[],promotions:[],banners:[],articles:[],page:1,brandPage:1,selectedProducts:new Set(),categoryTreeOpen:new Set()};
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 const orderSupplyFilter=document.createElement('select');orderSupplyFilter.id='orderSupplyFilter';orderSupplyFilter.setAttribute('aria-label','Строк постачання');orderSupplyFilter.innerHTML='<option value="all">Усі строки постачання</option><option value="overdue">Прострочене постачання</option>';$('#orderEmailFilter').after(orderSupplyFilter);
+const renderOrderActions=mountOrderActions({onSelect:filters=>{
+  $('#orderSearch').value=filters.search;$('#orderFilter').value=filters.status;$('#orderEmailFilter').value=filters.email;$('#orderSupplyFilter').value=filters.supply;
+  renderOrders();location.hash='orders';
+}});
 // Product data often contains long descriptions and many specifications. Keep the
 // editor wide enough to make those fields practical without affecting other dialogs.
 const productDialogStyle=document.createElement('style');
@@ -107,6 +112,7 @@ const isSupplierInquiry=(order)=>/запит на товар під замовл
 const contactPhone=(value)=>{let phone=String(value||'').replace(/\D/g,'');if(phone.startsWith('0'))phone='38'+phone;return phone};
 const orderItemsMarkup=(order)=>{const items=Array.isArray(order.order_items)?order.order_items:[];if(!items.length)return '<p class="order-items-empty">Склад замовлення не вказано.</p>';const lines=items.map(item=>{const quantity=Math.max(1,Number(item.quantity||1)),unitPrice=Number(item.unit_price||0),lineTotal=quantity*unitPrice;return '<li><span><b>'+esc(item.product_name||'Товар без назви')+'</b><small>'+quantity+' шт. × '+money(unitPrice)+'</small></span><strong>'+money(lineTotal)+'</strong></li>'}).join('');return '<section class="order-items"><h3>Товари у замовленні</h3><ul class="order-lines">'+lines+'</ul><div class="order-total"><span>Разом</span><b>'+money(order.total)+'</b></div></section>'};
 function renderOrders(){
+ renderOrderActions(state.orders,{ready:state.catalogReady});
  const q=$('#orderSearch').value,f=$('#orderFilter').value,email=$('#orderEmailFilter').value,supply=$('#orderSupplyFilter').value,today=kyivToday();
  const productsById=new Map(state.products.map(product=>[Number(product.id),product]));
  const a=state.orders.filter(o=>matchesOrderSearch(o,q,productsById)&&(f==='all'||(f==='inquiry'?isSupplierInquiry(o):o.status===f))&&(email==='all'||hasFailedOrderEmail(o))&&(supply==='all'||supplyState(o,today)==='overdue'));

@@ -1,6 +1,6 @@
 # Wide-format manufacturer verification — 2026-10-16
 
-Read-only investigation. No product records, import rules or public filters changed.
+Initial investigation was read-only. Implementation and live application are recorded below.
 
 The active catalog contains 30 products in `office-wide-format`. Seventeen lack a direct `Формат` key (some have detailed aliases). Two additional products have an incorrect A4 summary alongside larger printing-format evidence. The focused verification below covers these 19 records, not a manufacturer re-audit of every specification on all 30 products.
 
@@ -45,3 +45,24 @@ Listed A-series values below mean the largest A-series size explicitly listed in
 - Do not invent A0+ / A1+ solely from inch width. Preserve manufacturer wording and exact SKU scope.
 - The manufacturer's T7700DM regional summary mentions 36-inch features; the UK technical section distinguishes 44-inch roll handling from 36-inch scanning. Prefer field-specific technical data over marketing summaries.
 - The next change should extend editor/filter support beyond A3/A4 and then apply reviewed exact-model corrections. A blind mass update would lose information.
+
+## Implementation and live verification
+
+Published in commit `9ed3ef1` on 2026-10-16 after user approval:
+
+- Added A2, A1, A0, B0 to the editor and catalog format extraction; retained A3/A3+ grouping as A3.
+- Added a separate maximum-media-width filter (24, 36, 44 inches) and editor field for the wide-format category.
+- Printing format extraction no longer searches arbitrary descriptions, trays or scanning fields for A4/A3.
+- Added exact SKU + model rules for the 19 reviewed records. Filled missing canonical formats and media widths; corrected only the two reviewed A4 summaries. Existing rich supplier details were retained. B0 was added only for the two Epson models explicitly listing it.
+- Import normalization uses the same reviewed rules; existing saved canonical format and media width remain higher priority when merging imports.
+- All 36 test files passed, including exact identity, idempotence, import priority, array preservation, and printer/scanner separation checks.
+
+Applied the 19 reviewed repairs through the live admin confirmation dialog. The existing compare-and-swap writer checked product ID, SKU and original specifications before each update. The page reported: «Виправлено характеристики у 19 перевірених товарах.» No prices, names, categories or photos were changed.
+
+Live UI checks:
+
+- Wide-format category: 30 products, formats A0/A1/A2/B0, media widths 24/36/44 inches.
+- Selecting 44 inches returned 7 matching devices.
+- Reopened HP T830 (F9A28D): saved A1 and 24″ (610 mm), editor offers A4/A3/A2/A1/A0/B0. Closed without saving any extra changes.
+- Quality panel still reports zero conflicting characteristics. Other missing fields remain outside this repair's scope.
+- Screenshot: `C:/Users/Bohdan/Documents/ChatGPT/Сайт/wide-format-filters-2026-10-16.png`.

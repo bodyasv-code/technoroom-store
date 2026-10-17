@@ -55,6 +55,14 @@ export default async function handler(request, response) {
   if (authError || !auth.user) return response.status(401).json({ error: 'Потрібна авторизація.' });
   const { data: profile } = await supabase.from('profiles').select('role').eq('id', auth.user.id).maybeSingle();
   if (!profile) return response.status(403).json({ error: 'Доступ заборонено.' });
+  // Keep the user's JWT for the atomic product/history RPC, not the service role.
+  const userDb = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY, {
+    global: { headers: { Authorization: 'Bearer ' + token } }, auth: { persistSession: false },
+  });
+  const runId = request.body?.runId;
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(runId || ''))) return response.status(400).json({ error: 'Потрібен запуск журналу імпорту.' });
+  const { data: run, error: runError } = await userDb.from('import_runs').select('id').eq('id', runId).eq('actor_id', auth.user.id).eq('status', 'running').maybeSingle();
+  if (runError || !run) return response.status(409).json({ error: 'Журнал імпорту недоступний або запуск уже завершено.' });
 
   const productId = Number(request.body?.productId);
   const urls = [...new Set(Array.isArray(request.body?.urls) ? request.body.urls : [])]
@@ -65,10 +73,11 @@ export default async function handler(request, response) {
 
   const { data: product, error: productError } = await supabase
     .from('products')
-    .select('id,image_path,image_paths')
+    .select('id,sku,image_path,image_paths')
     .eq('id', productId)
     .maybeSingle();
   if (productError || !product) return response.status(404).json({ error: 'Товар не знайдено.' });
+  if (product.image_path || (product.image_paths || []).some(Boolean)) return response.status(409).json({ error: 'Наявні фото збережено. Оновіть попередній перегляд.' });
 
   const uploaded = [];
   const failures = [];
@@ -90,14 +99,11 @@ export default async function handler(request, response) {
   }
 
   if (!uploaded.length) return response.status(422).json({ error: 'Жодне зображення не вдалося завантажити: ' + [...new Set(failures)].join('; ') + '.' });
-  // Посилання постачальника може бути тимчасовим або вести через кілька
-  // редиректів. Після успішного завантаження у наше сховище саме локальна
-  // копія має стати головним фото, інакше вітрина продовжить показувати
-  // старе зовнішнє посилання замість щойно отриманого зображення.
-  const externalMainImage = /^https?:\/\//i.test(String(product.image_path || ''));
-  const mainImage = !product.image_path || externalMainImage ? uploaded[0] : product.image_path;
-  const imagePaths = [...new Set([mainImage, ...(Array.isArray(product.image_paths) ? product.image_paths : []), ...uploaded].filter(Boolean))];
-  const { error: updateError } = await supabase.from('products').update({ image_path: mainImage, image_paths: imagePaths }).eq('id', productId);
+  const { error: updateError } = await userDb.rpc('apply_product_import', {
+    p_run: runId, p_id: productId, p_images: true,
+    p_patch: { image_path: uploaded[0], image_paths: uploaded },
+    p_expected: { image_path: product.image_path ?? null, image_paths: product.image_paths ?? null, sku: product.sku ?? null },
+  });
   if (updateError) return response.status(500).json({ error: updateError.message });
   return response.status(200).json({ uploaded: uploaded.length });
 }

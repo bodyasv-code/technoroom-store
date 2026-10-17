@@ -20,7 +20,12 @@ assert.equal(inferredPrintColour('БФП Canon PIXMA GM4040 БФП струме�
 assert.equal(verifiedCanonPrintMode('Картридж для Canon GM4040'),'');
 assert.equal(verifiedCanonPrintMode('БФП Canon PIXMA GM4040X'),'');
 assert.equal(verifiedCanonPrintMode('БФП Canon PIXMA UNKNOWN'),'');
-assert.equal(printPaperPlan('Папір Canon ZINK 2x3').childSlug,'office-consumables-paper');
+assert.equal(printPaperPlan('Папір Canon ZINK 2x3').childSlug,'office-consumables-photo-paper');
+for(const name of ['Папір Canon ZINK™ 1.3 (4967C003)','Папір Canon ZINK 20 арк (3214C002)','Папір Canon ZINK 50 арк (3215C002)','Фотопапір Epson','Photo paper Canon']){
+  assert.equal(printPaperPlan(name).childSlug,'office-consumables-photo-paper');
+  assert.equal(printPaperPlan(name).childName,'Фотопапір');
+}
+assert.equal(printPaperPlan('Папір офісний A4').childSlug,'office-consumables-paper');
 assert.equal(printPaperPlan('Принтер для паперу'),null);
 
 // Exercise actual production category functions without DOM, network or writes.

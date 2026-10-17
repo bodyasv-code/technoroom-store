@@ -1,6 +1,6 @@
 import {officeSupplyCategoryPlan} from './product-identity.js?v=20261012-consumables-brands';
 import {printerDuplexMode} from './printer-duplex.js?v=20261016-import-guards-2';
-import {printerDeviceKind,verifiedCanonPrintMode,printPaperPlan} from './printer-import-context.js?v=20261017-context-2';
+import {printerDeviceKind,verifiedCanonPrintMode,printPaperPlan} from './printer-import-context.js?v=20261017-photo-paper';
 export const auditSku = value => {
   const sku=String(value ?? '').trim().replace(/^\*+|\*+$/g,'').toUpperCase();
   return /^(?:NULL|UNDEFINED|NONE|—|-)$/.test(sku) ? '' : sku;

@@ -26,5 +26,10 @@ export function inferredPrintColour(source='') {
   return has(colour)?'color':has(mono)?'mono':'';
 }
 export const installationAccessory=name=>/^(?:комплект|набір|installation|install)(?:\s+[\p{L}-]+){0,2}\s+(?:інсталяц|установ|installation|install)|^(?:installation|install)\s+kit/iu.test(String(name).trim());
-export const printPaperPlan=name=>/^(?:папір|фотопапір|paper|photo\s+paper)(?=$|[^\p{L}\p{N}])/iu.test(String(name).trim())
-  ?{rootSlug:'office-consumables',rootName:'Витратні матеріали для друку',childSlug:'office-consumables-paper',childName:'Папір для друку'}:null;
+export function printPaperPlan(name='') {
+  const title=String(name).trim();
+  if(!/^(?:папір|фотопапір|paper|photo\s+paper)(?=$|[^\p{L}\p{N}])/iu.test(title))return null;
+  const photo=/^(?:фотопапір|photo\s+paper)(?=$|[^\p{L}\p{N}])|\bzink\b|фотографічн[\p{L}]*\s+папір/iu.test(title);
+  return {rootSlug:'office-consumables',rootName:'Витратні матеріали для друку',
+    childSlug:photo?'office-consumables-photo-paper':'office-consumables-paper',childName:photo?'Фотопапір':'Папір для друку'};
+}

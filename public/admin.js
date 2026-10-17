@@ -24,10 +24,10 @@ import {normalizeSpecifications} from './specification-normalization.js?v=202610
 import {canonicalBrandName, brandConsolidationPlan} from './brand-normalization.js?v=20261012-brand-cleanup';
 import {removeUnusedBrandDuplicate} from './brand-cleanup.js?v=20261012-brand-cleanup';
 import {createQualityAudit, mountQualityPanel} from './catalog-quality.js?v=20261017-customer-content';
-import {createImportAudit, auditEligible, auditMarkup, showImportReview} from './import-audit.js?v=20261017-context-2';
+import {createImportAudit, auditEligible, auditMarkup, showImportReview} from './import-audit.js?v=20261017-photo-paper';
 import {buildImportChangePlan,showImportChangePlans,importSnapshot} from './import-change-plan.js?v=20261017-change-preview';
 import {startImportRun,writeImportProduct,finishImportRun,mountImportHistory} from './import-history.js?v=20261017-import-history';
-import {printerDeviceKind,verifiedCanonPrintMode,inferredPrintColour,installationAccessory,printPaperPlan} from './printer-import-context.js?v=20261017-context-2';
+import {printerDeviceKind,verifiedCanonPrintMode,inferredPrintColour,installationAccessory,printPaperPlan} from './printer-import-context.js?v=20261017-photo-paper';
 const supabase=createClient(window.TECHNOROOM_SUPABASE.url,window.TECHNOROOM_SUPABASE.publishableKey);
 const state={catalogReady:false,products:[],orders:[],categories:[],brands:[],promotions:[],banners:[],articles:[],page:1,brandPage:1,selectedProducts:new Set(),categoryTreeOpen:new Set()};
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];

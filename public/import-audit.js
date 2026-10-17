@@ -1,5 +1,6 @@
 import {officeSupplyCategoryPlan} from './product-identity.js?v=20261012-consumables-brands';
 import {printerDuplexMode} from './printer-duplex.js?v=20261016-import-guards-2';
+import {printerDeviceKind,verifiedCanonPrintMode,printPaperPlan} from './printer-import-context.js?v=20261017-context';
 export const auditSku = value => {
   const sku=String(value ?? '').trim().replace(/^\*+|\*+$/g,'').toUpperCase();
   return /^(?:NULL|UNDEFINED|NONE|—|-)$/.test(sku) ? '' : sku;
@@ -35,9 +36,13 @@ export function createImportAudit(rows, products) {
     if(!metadata.mapped) add('missing-category','block','Категорію не визначено. Перевірте групу у файлі.');
     const category=metadata.category||metadata.plan?.childSlug||metadata.plan?.rootSlug||'';
     const name=text(row.name), supply=officeSupplyCategoryPlan(row.name);
+    const paper=printPaperPlan(row.name);
+    if(paper&&current&&current.category!==paper.childSlug&&/^(?:office-equipment|office-(?:printers|mfp)(?:-(?:mono|color))?|office-consumables-(?:ink|cartridges|toner))$/.test(current.category))
+      add('saved-paper-category','review','Папір збережено не в категорії паперу. Потрібна перевірка; автоматично не переноситься.');
     if(supply && category!==supply.childSlug) add('supply-category','block','Витратний матеріал або аксесуар потрапляє до категорії пристроїв.');
-    const mfp=/^(?:бфп|мфу|mfp|multifunction|багатофункціональн)/iu.test(name);
-    const printer=/^(?:принтер|printer|термопринтер)/iu.test(name);
+    const deviceKind=printerDeviceKind(name);
+    const mfp=deviceKind==='mfp';
+    const printer=deviceKind==='printer';
     const scanner=/^(?:сканер|scanner)/iu.test(name);
     const consumable=/^(?:картридж|тонер|чорнил|контейнер[^ ]*\s+(?:з\s+)?чорнил|фотобарабан|стрічка|cartridge|toner|ink\b|drum\b|ribbon)/iu.test(name);
     if((mfp||printer||scanner) && /^office-consumables(?:-|$)/.test(category)) add('device-category','block','Основний пристрій визначено як витратний матеріал.');
@@ -47,7 +52,8 @@ export function createImportAudit(rows, products) {
       || printer && /^office-(?:mfp|scanners)(?:-|$)/.test(category)) add('device-kind','block','Тип пристрою в назві не відповідає категорії.');
     if(mfp||printer) {
       if(printerDuplexMode(Object.entries(row.specifications||{}))==='conflict')add('duplex-conflict','block','Суперечливий режим двостороннього друку. Звірте модель перед імпортом.');
-      const signals=[mode(row.name),mode([row.subcategory,row.sourceCategory].join(' ')),...specificationModes(row.specifications),
+      const verifiedMode=verifiedCanonPrintMode(row.name);
+      const signals=[verifiedMode||mode(row.name),verifiedMode?'':mode([row.subcategory,row.sourceCategory].join(' ')),...specificationModes(row.specifications),
         /-(mono|color)$/.exec(category)?.[1]||''].filter(Boolean);
       if(signals.includes('conflict') || signals.includes('mono') && signals.includes('color')) add('print-conflict','block','Суперечлива кольоровість: назва, група, характеристики або категорія вказують різні типи друку.');
       if(!signals.length) add('unknown-print','review','Кольоровість пристрою не визначена. Перевірте модель перед імпортом.');
@@ -57,7 +63,9 @@ export function createImportAudit(rows, products) {
       ? 'У джерелі немає додатної ціни. Наявну ціну буде збережено.'
       : 'Без додатної ціни: товар буде створено лише як приховану чернетку.');
     if(row.hasStock && (!Number.isFinite(Number(row.stock)) || Number(row.stock)<0 || /^\s*-\s*\d/.test(String(row.rawStock||'')))) add('invalid-stock','block','Некоректний залишок: має бути невід’ємне число.');
-    if(current?.category && category && category!==current.category) add('category-change','review','Зміниться категорія наявного товару: '+current.category+' → '+category+'. Потрібна ручна перевірка.');
+    if(current?.category && category && category!==current.category && metadata.updateCategory!==false) add('category-change','review','Зміниться категорія наявного товару: '+current.category+' → '+category+'. Потрібна ручна перевірка.');
+    if((mfp||printer)&&current?.category&&/^(?:office-accessories|office-consumables(?:-.+)?|.*планшет.*|tablets?)$/iu.test(current.category))
+      add('saved-device-category','review','Основний пристрій збережено в категорії аксесуарів, витратних матеріалів або планшетів. Потрібна перевірка; автоматично не переноситься.');
     const incomingModes=specificationModes(row.specifications), currentModes=specificationModes(current?.specifications);
     if((mfp||printer) && incomingModes.length && currentModes.length && incomingModes.some(value=>!currentModes.includes(value)))
       add('saved-print-conflict','block','Тип друку у файлі суперечить збереженим характеристикам. Ручні значення не перезаписуються — перевірте товар в адмінці.');

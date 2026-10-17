@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import {officeSupplyCategoryPlan} from '../public/product-identity.js';
+import {printerDeviceKind,installationAccessory,printPaperPlan} from '../public/printer-import-context.js';
 import {canonicalBrandName,brandConsolidationPlan} from '../public/brand-normalization.js';
 import {createQualityAudit} from '../public/catalog-quality.js';
 assert.equal(officeSupplyCategoryPlan('Картридж G&G до HP 147Y LJ MFP M611/M612').childSlug,'office-consumables-cartridges');
@@ -31,7 +32,10 @@ assert.equal(audit[0].issues.some(issue=>issue.code==='filters'),false);
 // Execute the actual inference block in isolation; no DOM, Supabase, or imports are run.
 const admin=fs.readFileSync(new URL('../public/admin.js',import.meta.url),'utf8');
 const start=admin.indexOf('    const officeType = '),end=admin.indexOf('    if (officeType)',start);
-const inference=new Function('text','officeSupplyCategoryPlan',admin.slice(start,end)+'return officeType;');
+const productionInference=new Function('text','officeSupplyCategoryPlan','printerDeviceKind','installationAccessory','printPaperPlan',admin.slice(start,end)+'return officeType;');
+const inference=(text,supply)=>productionInference(text,supply,printerDeviceKind,installationAccessory,printPaperPlan);
 assert.equal(inference(p.name,officeSupplyCategoryPlan),'');
 assert.equal(inference('БФП HP LaserJet',officeSupplyCategoryPlan),'БФП');
+assert.equal(inference('Комплект інсталяції Xerox БФП лазерні кольорові',officeSupplyCategoryPlan),'');
+assert.equal(inference('Папір Canon Картриджі для сублімаційних пристроїв',officeSupplyCategoryPlan),'');
 console.log('Consumables classification and brand consolidation safeguards: checks passed');

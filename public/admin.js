@@ -24,9 +24,10 @@ import {normalizeSpecifications} from './specification-normalization.js?v=202610
 import {canonicalBrandName, brandConsolidationPlan} from './brand-normalization.js?v=20261012-brand-cleanup';
 import {removeUnusedBrandDuplicate} from './brand-cleanup.js?v=20261012-brand-cleanup';
 import {createQualityAudit, mountQualityPanel} from './catalog-quality.js?v=20261017-customer-content';
-import {createImportAudit, auditEligible, auditMarkup, showImportReview} from './import-audit.js?v=20261016-import-guards-2';
+import {createImportAudit, auditEligible, auditMarkup, showImportReview} from './import-audit.js?v=20261017-context';
 import {buildImportChangePlan,showImportChangePlans,importSnapshot} from './import-change-plan.js?v=20261017-change-preview';
 import {startImportRun,writeImportProduct,finishImportRun,mountImportHistory} from './import-history.js?v=20261017-import-history';
+import {printerDeviceKind,verifiedCanonPrintMode,inferredPrintColour,installationAccessory,printPaperPlan} from './printer-import-context.js?v=20261017-context';
 const supabase=createClient(window.TECHNOROOM_SUPABASE.url,window.TECHNOROOM_SUPABASE.publishableKey);
 const state={catalogReady:false,products:[],orders:[],categories:[],brands:[],promotions:[],banners:[],articles:[],page:1,brandPage:1,selectedProducts:new Set(),categoryTreeOpen:new Set()};
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
@@ -412,7 +413,7 @@ supabase.auth.getSession().then(({data:{session}})=>session?dashboard():view('lo
   let importRunning = false;
   let importPreparing = false;
   let assessImport;
-  const importAssessment = row => (assessImport ||= createImportAudit(importer.rows,state.products))(row,importRowMeta(row));
+  const importAssessment = row => (assessImport ||= createImportAudit(importer.rows,state.products))(row,{...importRowMeta(row),updateCategory:$('#supplierImportCategory')?.checked===true});
   const canImportRow = row => auditEligible(importAssessment(row),reviewedImports);
   const supportedImageHosts = new Set(['www.tradeinn.com','www.audiotrends.com.au','static-ecapac.acer.com','media4home.com.pl','media.sonos.com','images.samsung.com','assets2.razerzone.com','d7qztf2ityad6.cloudfront.net','hp.widen.net','img06.en25.com','koss.com.ua','ssl-product-images.www8-hp.com','www.3ona51.com','www.hp.com','www.koss.com','yugcontract.ua','www.it4profit.com','content.it4profit.com','erc.ua','www.erc.ua']);
   const cleanImportText = (value = '') => String(value ?? '').replace(/\s+/g, ' ').trim();
@@ -549,7 +550,7 @@ supabase.auth.getSession().then(({data:{session}})=>session?dashboard():view('lo
       add('Роздільна здатність', resolution); add('Яскравість', brightness && brightness + ' лм'); add('Проекційне співвідношення', throwRatio); add('Технологія проекції', /\b3lcd\b/iu.test(text) ? '3LCD' : /\bdlp\b/iu.test(text) ? 'DLP' : /\blcos\b/iu.test(text) ? 'LCoS' : /\blcd\b/iu.test(text) ? 'LCD' : ''); add('Призначення', [...new Set(projectorPurposes)].join(' · ')); add('Джерело світла', /лазер|laser/iu.test(text) ? 'Лазер' : /світлодіод|\bled\b/iu.test(text) ? 'Світлодіод' : /ламп|lamp/iu.test(text) ? 'Лампа' : '');
     }
     if (/(?:телевізор|\btv\b)/iu.test(text)) { add('Діагональ', diagonal && diagonal.replace(',', '.') + '″'); add('Роздільна здатність', resolution); add('Тип матриці', /mini\s*-?\s*led/iu.test(text) ? 'miniLED' : /oled/iu.test(text) ? 'OLED' : /qled/iu.test(text) ? 'QLED' : /\bled\b/iu.test(text) ? 'LED' : ''); add('Smart TV', /(?:smart\s*tv|google\s*tv|android\s*tv|webos|tizen|vidaa)/iu.test(text) ? 'Є' : ''); }
-    const officeType = officeSupplyCategoryPlan(text) ? '' : /(?:бфп|мфу|mfp|multifunction|багатофункціональн\w*\s+(?:пристрій|апарат))/iu.test(text) ? 'БФП' : /(?:принтер|printer)/iu.test(text) ? 'Принтер' : /(?:сканер|scanner)/iu.test(text) ? 'Сканер' : /(?:копір|копир|copier)/iu.test(text) ? 'Копір' : /(?:ламінатор|ламинатор|laminator)/iu.test(text) ? 'Ламінатор' : /(?:знищувач|шредер|shredder)/iu.test(text) ? 'Знищувач документів' : '';
+    const officeType = officeSupplyCategoryPlan(text)||installationAccessory(text)||printPaperPlan(text) ? '' : printerDeviceKind(text)==='mfp' ? 'БФП' : printerDeviceKind(text)==='printer' ? 'Принтер' : /^(?:сканер|scanner)/iu.test(text) ? 'Сканер' : /^(?:копір|копир|copier)/iu.test(text) ? 'Копір' : /^(?:ламінатор|ламинатор|laminator)/iu.test(text) ? 'Ламінатор' : /^(?:знищувач|шредер|shredder)/iu.test(text) ? 'Знищувач документів' : '';
     if (officeType) {
       const interfaces=[];
       const optionalDuplex=/(?:дуплекс|двосторон|duplex).{0,80}(?:опц|optional|не\s*(?:вход|входить)|докуп|add[ -]?on|модул)|(?:опц|optional|не\s*(?:вход|входить)|докуп|add[ -]?on|модул).{0,80}(?:дуплекс|двосторон|duplex)/iu.test(text);
@@ -559,8 +560,9 @@ supabase.auth.getSession().then(({data:{session}})=>session?dashboard():view('lo
       if (/\busb(?:\s|$|[0-9])?/iu.test(text)) interfaces.push('USB');
       if (/bluetooth/iu.test(text)) interfaces.push('Bluetooth');
       const formatMatch=text.match(/(?:^|[^\p{L}\p{N}])[AА]([3-6])(\+)?(?=$|[^\p{L}\p{N}])/iu);
-      const mono=/(?:mono|monochrome|монохром|чорно[ -]?білий)/iu.test(text);
-      const color=/(?:color|colour|кольоров)/iu.test(text);
+      const inferredMode=inferredPrintColour(text);
+      const mono=inferredMode==='mono';
+      const color=inferredMode==='color';
       add('Тип пристрою', officeType); add('Формат', formatMatch?'A'+formatMatch[1]+(formatMatch[2]||''):''); add('Тип друку', mono ? 'Монохромний' : color ? 'Кольоровий' : ''); add('Технологія друку', /(?:струмен|струйн|\bink\b|inkjet)/iu.test(text) ? 'Струменевий' : /(?:лазер|laser)/iu.test(text) ? 'Лазерний' : ''); add('Інтерфейси', [...new Set(interfaces)].join(', ')); add('Двосторонній друк', !optionalDuplex?(duplexLabels[printerDuplexMode(Object.entries(specifications),text)]||''):'');
     }
     return specifications;
@@ -645,11 +647,10 @@ supabase.auth.getSession().then(({data:{session}})=>session?dashboard():view('lo
   // кольоровість визначаємо з назви або лише з профільного поля про друк.
   const printColourMode = (name = '', specifications = {}) => {
     const title = cleanImportText(name).toLocaleLowerCase('uk-UA');
+    const verified=verifiedCanonPrintMode(name);if(verified)return verified;
     if (/(?:\bcolor\b|\bcolour\b|кольоров)/iu.test(title)) return 'color';
     if (/(?:\bmono\b|monochrome|монохром|чорно[ -]?білий|\blaserjet\b)/iu.test(title)) return 'mono';
-    // PIXMA — кольорова струменева лінійка Canon. Це правило потрібне й
-    // для вже імпортованих моделей, у назві яких немає слова «Color».
-    if (/\bpixma\b/iu.test(title)) return 'color';
+    // A model family alone (including PIXMA) does not prove print colour.
     const printDetails = Object.entries(specifications || {})
       .filter(([key]) => /(?:тип\s+друку|технолог.*друку|print\s*(?:type|mode|technolog)|color\s*mode|кольоровість)/iu.test(cleanImportText(key)))
       .flatMap(([, value]) => Array.isArray(value) ? value : [value]).map(cleanImportText).join(' ').toLocaleLowerCase('uk-UA');
@@ -660,6 +661,7 @@ supabase.auth.getSession().then(({data:{session}})=>session?dashboard():view('lo
   // Витратні матеріали для друку не є «аксесуарами». Точна стала схема
   // не дає XML ERC створювати дублікати довгих назв постачальника.
   const officeConsumablesCategoryPlan = (row) => {
+    const paper=printPaperPlan(row.name);if(paper)return paper;
     const primary=officeSupplyCategoryPlan(row.name);
     if(primary)return primary;
     const name = cleanImportText(row.name).toLocaleLowerCase('uk-UA');
@@ -694,7 +696,7 @@ supabase.auth.getSession().then(({data:{session}})=>session?dashboard():view('lo
     if (/(?:аксесуар|accessor|опці)/iu.test(source) && /(?:сканер|scanner|пристро[їй]\s*друк|принтер|printer)/iu.test(source)) {
       return { rootSlug: 'cat-accessories', rootName: 'Кріплення та аксесуари', childSlug: 'office-accessories', childName: 'Аксесуари для оргтехніки' };
     }
-    const mainDevice = /(?:бфп|мфу|\bmfp\b|multifunction|багатофункціональн\w*\s+(?:пристрій|апарат)|принтер|\bprinter\b)/iu.test(name);
+    const mainDevice = /(?:бфп|мфу|\bmfp\b|multifunction|багатофункціональн[\p{L}]*\s+(?:пристрій|апарат)|принтер|\bprinter\b)/iu.test(name);
     const accessory = /(?:картридж|тонер|чорнил|cartridge|drum|фотобарабан|лоток|підставк|стенд|tray\b|stand\b|accessor|аксесуар)/iu.test(name);
     // «Базовий блок БФП, 1 лоток» — це пристрій, а не лоток як аксесуар.
     if (!source || (accessory && !mainDevice)) return null;
@@ -709,6 +711,7 @@ supabase.auth.getSession().then(({data:{session}})=>session?dashboard():view('lo
   // монохромні моделі не повинні спочатку потрапляти у стару змішану категорію ERC.
   const officeEquipmentCategoryPlan = (row) => {
     if(isSpecializedPrinterName(row.name))return null;
+    if(installationAccessory(row.name))return {rootSlug:'cat-accessories',rootName:'Кріплення та аксесуари',childSlug:'office-accessories',childName:'Аксесуари для оргтехніки'};
     // Тип пристрою визначаємо виключно за назвою. Слова на кшталт
     // «scanner» у характеристиках смартфона (наприклад LiDAR Scanner)
     // не повинні перетворювати його на сканер.
@@ -721,7 +724,7 @@ supabase.auth.getSession().then(({data:{session}})=>session?dashboard():view('lo
     if (/(?:^|[\s-])(?:про[єе]ктор(?:[а-яіїєґ]*)?|projectors?)/iu.test(nameSource)) return null;
     // Тип основного пристрою має пріоритет над словами «лоток», «стенд» тощо:
     // базовий блок БФП може містити лотки, але не є аксесуаром.
-    const isMfp = /(?:бфп|мфу|\bmfp\b|multifunction|багатофункціональн\w*\s+(?:пристрій|апарат))/iu.test(nameSource);
+    const isMfp = /(?:бфп|мфу|\bmfp\b|multifunction|багатофункціональн[\p{L}]*\s+(?:пристрій|апарат))/iu.test(nameSource);
     const isPrinter = /(?:принтер|\bprinter\b)/iu.test(nameSource);
     const isScanner = /(?:сканер|scanner)/iu.test(nameSource);
     const isCopier = /(?:копір|копир|copier)/iu.test(nameSource);
@@ -745,7 +748,7 @@ supabase.auth.getSession().then(({data:{session}})=>session?dashboard():view('lo
     const sourceGroup = [row.subcategory, row.sourceCategory].map(cleanImportText).join(' ').toLocaleLowerCase('uk-UA');
     const sourcePrintMode = /(?:color|colour|кольоров)/iu.test(sourceGroup) ? 'color'
       : /(?:mono|monochrome|монохром|чорно[ -]?білий)/iu.test(sourceGroup) ? 'mono' : '';
-    const printMode = sourcePrintMode || printColourMode(row.name, row.specifications);
+    const printMode = verifiedCanonPrintMode(row.name) || sourcePrintMode || printColourMode(row.name, row.specifications);
     if (isMfp || isPrinter) {
       const kind = isMfp ? 'mfp' : 'printers';
       if (isWideFormat(nameSource)) return { rootSlug: 'office-equipment', rootName: 'Оргтехніка', childSlug: 'office-wide-format', childName: 'Принтери та БФП широкоформатні' };
@@ -823,8 +826,8 @@ supabase.auth.getSession().then(({data:{session}})=>session?dashboard():view('lo
     }
     const rules = [
       [/(?:проекційн|projection).*(?:екран|screen)|(?:екран|screen).*(?:проекційн|projection)/iu, 'cat-projectors', 'Проєктори та екрани', 'erc-display-06', 'Проєкційні екрани'],
-      [/(?:^|\s)(?:монітор|monitor)\b/iu, 'cat-displays', 'Телевізори, монітори та дисплеї', 'erc-display-01', 'Монітори'],
-      [/(?:^|\s)(?:телевізор|television|tv)\b/iu, 'cat-displays', 'Телевізори, монітори та дисплеї', 'erc-display-07', 'Телевізори'],
+      [/(?:^|\s)(?:монітор|monitor)(?=$|[^\p{L}\p{N}])/iu, 'cat-displays', 'Телевізори, монітори та дисплеї', 'erc-display-01', 'Монітори'],
+      [/(?:^|\s)(?:телевізор|television|tv)(?=$|[^\p{L}\p{N}])/iu, 'cat-displays', 'Телевізори, монітори та дисплеї', 'erc-display-07', 'Телевізори'],
       [/(?:^|\s)(?:смартфон|smartphone|iphone|мобільн(?:ий|ого)? телефон)\b/iu, 'смартфони-телефони', 'Смартфони/Телефони', 'мобільнии-телефон', 'Мобільний телефон'],
       [/(?:^|\s)(?:планшет|tablet|ipad)\b/iu, 'планшети', 'Планшети', 'планшетнии-комп-ютер', "Планшетний комп'ютер"],
       [/(?:airpods)\b/iu, 'audio', 'Audio', 'airpods', 'AirPods'],
@@ -1681,7 +1684,7 @@ supabase.auth.getSession().then(({data:{session}})=>session?dashboard():view('lo
     const name = String(product?.name || '').trim().toLocaleLowerCase('uk-UA');
     const printMode = printColourMode(product?.name, product?.specifications);
     if (/^(смартфон|smartphone|iphone|мобільн(?:ий|ого)\s+телефон)/iu.test(name) && !/(чохол|case|cover|кабель|cable|зарядн|charger|адаптер|adapter|дисплей|екран|display|запчастин|repair)/iu.test(name)) return 'мобільнии-телефон';
-    if (/^(бфп|мфу|mfp|multifunction|багатофункціональн\w*\s+(?:пристрій|апарат))/iu.test(name)) {
+    if (/^(бфп|мфу|mfp|multifunction|багатофункціональн[\p{L}]*\s+(?:пристрій|апарат))/iu.test(name)) {
       if (isWideFormat(name)) return 'office-wide-format';
       if (printMode === 'color') return 'office-mfp-color';
       if (printMode === 'mono') return 'office-mfp-mono';

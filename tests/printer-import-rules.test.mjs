@@ -46,6 +46,8 @@ assert.ok(createImportAudit([ambiguous],[])(ambiguous,{mapped:true,category:'off
 assert.equal(normalize({name:'Принтер інший Duplex',specifications:{}})['Двосторонній друк'],undefined);
 const admin=readFileSync(new URL('../public/admin.js',import.meta.url),'utf8');
 assert.equal((admin.match(/normalizeImportedProjector\(name, vendor,/g)||[]).length,3);
-assert.match(admin,/mergeSpecifications\(current.specifications, row.specifications, current\)/);
+assert.match(admin,/buildImportChangePlan\(row,current,updateOptions,category\)/);
+const planner=readFileSync(new URL('../public/import-change-plan.js',import.meta.url),'utf8');
+assert.match(planner,/mergeImportedSpecifications\(current.specifications,row.specifications,current\)/);
 assert.match(admin,/current.specifications = normalizeImportedProductSpecifications/);
 console.log('Exact-model repair, scanner separation, import conflicts, idempotency and alias-safe preservation: OK');

@@ -7,6 +7,7 @@ import {applyCustomerProductPolicy} from './product-content-policy.js?v=20261017
 import {sizeBannerSlides} from './banner-layout.js?v=20261011-uniform';
 import {categoryIcon} from './category-icons.js?v=20261013-icons';
 import {createCategoryTree,visibleCategoryRows,categoryMenuMarkup} from './category-tree.js?v=20261019-nested';
+import {mountMobileCategoryMenu} from './mobile-category-menu.js?v=20261019-drilldown';
 import {projectorDisplayEntries} from './projector-display.js?v=20261013-light-details';
 import {orderSpecificationEntries} from './specification-order.js?v=20261013-printer-rules';
 import {isPrinterDevice, printerDisplayEntries} from './printer-display.js?v=20261017-customer-content';
@@ -195,6 +196,7 @@ async function home() {
           event.stopPropagation();
           setMenuOpen(mega.hidden);
         };
+        mountMobileCategoryMenu({menu:mega,toggle,categories:cats,escape:escapeHtml,icon:categoryIcon,restoreDesktop:()=>{renderRoots();if(roots[0]&&!compactMenu())show(roots[0]);}});
         document.addEventListener('pointerdown',(event)=>{
           if(!mega.hidden&&!mega.contains(event.target)&&!toggle.contains(event.target)) setMenuOpen(false);
         });
@@ -726,6 +728,7 @@ async function mountMegaCatalog() {
   if(roots[0]&&!compactMenu()) show(roots[0]);
   const toggle=document.getElementById('catalogMenuToggle');
   toggle.onclick=(event)=>{ event.preventDefault(); mega.hidden=!mega.hidden;if(!mega.hidden&&compactMenu())renderRoots();toggle.setAttribute('aria-expanded',String(!mega.hidden)); };
+  mountMobileCategoryMenu({menu:mega,toggle,categories:cats,escape:escapeHtml,icon:categoryIcon,restoreDesktop:()=>{renderRoots();if(roots[0]&&!compactMenu())show(roots[0]);}});
   document.addEventListener('pointerdown',(event)=>{
     if(!mega.hidden&&!mega.contains(event.target)&&!toggle.contains(event.target)) mega.hidden=true;
   });

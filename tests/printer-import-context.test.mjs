@@ -59,3 +59,15 @@ assert.ok(createImportAudit([realConflict],[saved])(realConflict,meta).blocked);
 const wide={...row,name:'Принтер HP DesignJet',specifications:{},subcategory:'Широкоформатні'};
 assert.ok(!createImportAudit([wide],[saved])(wide,{...meta,category:'office-wide-format'}).issues.some(i=>i.code==='unknown-print'));
 console.log('Unicode device/category matching, screen/scanner separation, exact Canon exceptions, real conflicts and preserved-category warnings: OK');
+
+for(const model of ['LW-400','LW-700']){
+  const label={sku:model,name:'Принтер для друку наклейок Epson LabelWorks '+model,hasPrice:true,price:1,specifications:{'Технологія друку':'Термотрансферна'}};
+  const labelMeta={mapped:true,category:'принтери-термотрансферні',updateCategory:false};
+  assert.equal(isSpecializedPrinterName(label.name),true);
+  assert.ok(!createImportAudit([label],[])(label,labelMeta).issues.some(i=>i.code==='unknown-print'));
+  const unverified={...label,specifications:{}};
+  assert.ok(createImportAudit([unverified],[])(unverified,labelMeta).issues.some(i=>i.code==='unknown-print'));
+  const conflict={...label,specifications:{...label.specifications,'Тип друку':'Монохромний, кольоровий'}};
+  assert.ok(createImportAudit([conflict],[])(conflict,labelMeta).blocked);
+}
+assert.equal(isSpecializedPrinterName('Картридж зі стрічкою Epson LabelWorks LW-400'),false);

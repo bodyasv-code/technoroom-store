@@ -1,4 +1,4 @@
-import {officeSupplyCategoryPlan} from './product-identity.js?v=20261012-consumables-brands';
+import {officeSupplyCategoryPlan,isSpecializedPrinterName} from './product-identity.js?v=20261019-labelworks';
 import {printerDuplexMode} from './printer-duplex.js?v=20261016-import-guards-2';
 import {printerDeviceKind,verifiedCanonPrintMode,printPaperPlan} from './printer-import-context.js?v=20261017-photo-paper';
 export const auditSku = value => {
@@ -57,7 +57,11 @@ export function createImportAudit(rows, products) {
         /-(mono|color)$/.exec(category)?.[1]||''].filter(Boolean);
       if(signals.includes('conflict') || signals.includes('mono') && signals.includes('color')) add('print-conflict','block','Суперечлива кольоровість: назва, група, характеристики або категорія вказують різні типи друку.');
       const savedModes=specificationModes(current?.specifications);
-      if(!signals.length && !(savedModes.length===1&&['mono','color'].includes(savedModes[0]))) add('unknown-print','review','Кольоровість пристрою не визначена. Перевірте модель перед імпортом.');
+      // Thermal label printers use tape/ribbon colours, not office mono/colour modes.
+      // Require an explicit technology field; never infer this from the Epson brand alone.
+      const thermalLabel=isSpecializedPrinterName(row.name)&&Object.entries({...current?.specifications,...row.specifications})
+        .some(([key,value])=>/^(?:технологія(?: друку)?|printing technology)$/iu.test(key.trim())&&/термотрансфер|thermal[ -]?transfer/iu.test(String(value)));
+      if(!signals.length && !thermalLabel && !(savedModes.length===1&&['mono','color'].includes(savedModes[0]))) add('unknown-print','review','Кольоровість пристрою не визначена. Перевірте модель перед імпортом.');
     }
     if(row.hasPrice && (!Number.isFinite(Number(row.price)) || Number(row.price)<0)) add('invalid-price','block','Некоректна ціна: має бути невід’ємне число.');
     else if(!row.hasPrice || Number(row.price)<=0) add('no-price','warning',current

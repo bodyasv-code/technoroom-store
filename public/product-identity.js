@@ -11,7 +11,7 @@ export function productNameWithSku(value = '', sku = '') {
 
 export function isSpecializedPrinterName(value = '') {
   const name=String(value??'').trim();
-  return /^(?:принтер|printer)(?=\s|$)/iu.test(name) && /етикет|\blabels?\b|термо|\bthermal\b|\bcolorworks\b/iu.test(name);
+  return /^(?:принтер|printer)(?=\s|$)/iu.test(name) && /етикет|наклей|\blabels?\b|\blabelworks\b|термо|\bthermal\b|\bcolorworks\b/iu.test(name);
 }
 
 export function officeSupplyCategoryPlan(value = '', currentCategory = '') {

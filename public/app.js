@@ -8,6 +8,7 @@ import {sizeBannerSlides} from './banner-layout.js?v=20261011-uniform';
 import {categoryIcon} from './category-icons.js?v=20261013-icons';
 import {createCategoryTree,visibleCategoryRows,categoryMenuMarkup} from './category-tree.js?v=20261019-nested';
 import {mountMobileCategoryMenu} from './mobile-category-menu.js?v=20261019-drilldown';
+import {recommendedProducts} from './store-recommendations.js?v=20261019-live';
 import {projectorDisplayEntries} from './projector-display.js?v=20261013-light-details';
 import {orderSpecificationEntries} from './specification-order.js?v=20261013-printer-rules';
 import {isPrinterDevice, printerDisplayEntries} from './printer-display.js?v=20261017-customer-content';
@@ -26,13 +27,8 @@ catalogImageStyles.textContent = '.product-image{overflow:hidden;cursor:zoom-in}
 document.head.append(catalogImageStyles);
 
 const saleStyle=document.createElement('style');saleStyle.textContent='.product{position:relative}.sale-badge{position:absolute;z-index:3;top:10px;left:10px;background:#e52629;color:#fff;border-radius:6px;padding:6px 9px;font-weight:800;font-size:12px}.old-price{display:block;color:#8996a8;font-size:12px;margin-bottom:2px}.product-footer .price{display:block;color:#e52629}';document.head.append(saleStyle);
-const fallbackProducts = [
-  { id: 1, name: 'Acer H6830BD', description: '4K UHD проєктор для домашнього кінотеатру', price: 40449, type: 'projector', brand: 'Acer', details: '4000 лм · 3840 × 2160', stock: true },
-  { id: 2, name: 'Epson EH-TW9400', description: 'Кінотеатральний Full HD проєктор', price: 150505, type: 'projector', brand: 'Epson', details: '2600 лм · 1920 × 1080', stock: true },
-  { id: 3, name: 'KEF Q750', description: 'Підлогова акустична система', price: 47999, type: 'audio', brand: 'KEF', details: '150 Вт · чорний', stock: true },
-  { id: 4, name: 'Samsung The Frame 65', description: 'QLED телевізор, 65 дюймів', price: 52999, type: 'tv', brand: 'Samsung', details: '65 дюймів · 4K UHD', stock: true },
-];
-let products = fallbackProducts;
+// Never present demo IDs, prices or stock while the real catalog is loading.
+let products = [];
 let productsLoaded = false;
 let productsHydrating = false;
 let catalogLoadFailed = false;
@@ -451,7 +447,7 @@ schema.textContent = JSON.stringify({
 
 document.head.appendChild(schema); const specs = item.specifications ? Object.entries(item.specifications).map(([key, value]) => `<div><dt>${key}</dt><dd>${value}</dd></div>`).join('') : `<div><dt>Характеристики</dt><dd>${item.details || 'Уточнюйте у менеджера'}</dd></div>`; root.innerHTML = `<div class="product-detail-visual ${item.type}"><div class="product-image ${item.type}">${image(item)}</div></div><div class="product-detail-copy"><p class="eyebrow">${item.brand || ''}</p><h1>${item.name}</h1><p class="product-description">${item.description || ''}</p><p class="availability">${item.stock ? 'В наявності' : 'Немає в наявності'}</p><strong class="detail-price">${money(salePrice(item))}</strong><div class="detail-actions"><button class="button primary" data-add="${item.id}" ${item.stock ? '' : 'disabled'}>${item.stock ? 'Додати в кошик' : 'Немає в наявності'}</button><a class="button outline" href="catalog.html">До каталогу</a></div><dl class="specs"><div><dt>Виробник</dt><dd>${item.brand || '—'}</dd></div>${specs}</dl></div>`; bind(root); }
 function checkout() { const form = document.getElementById('checkoutForm'); if (!form) return; const items = cart.map(get).filter(Boolean), total = items.reduce((sum, item) => sum + item.price, 0), root = document.getElementById('checkoutSummary'); root.innerHTML = items.length ? items.map((item) => `<div><span>${item.name}</span><strong>${money(salePrice(item))}</strong></div>`).join('') + `<div class="checkout-total"><span>Разом</span><strong>${money(total)}</strong></div>` : '<p>Ваш кошик порожній. <a href="catalog.html">Перейти до каталогу</a></p>'; form.onsubmit = async (event) => { event.preventDefault(); if (items.some((item) => !item.stock)) return alert('У кошику є недоступний товар.'); const data = Object.fromEntries(new FormData(form)), button = form.querySelector('button'); button.disabled = true; try { const response = await fetch('/api/orders', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ customer: { name: data.name, phone: data.phone, email: data.email }, delivery: { city: data.city, address: data.address, comment: data.comment }, items: cart.map((productId) => ({ productId, quantity: 1 })) }) }); if (!response.ok) throw new Error(); localStorage.removeItem('technoroom-cart'); cart.length = 0; renderCart(); document.getElementById('checkoutNotice').hidden = false; button.textContent = 'Замовлення прийнято'; } catch { button.disabled = false; alert('Не вдалося створити замовлення. Спробуйте ще раз.'); } }; }
-function mount() { renderCart(); home(); catalog(); product(); checkout(); restoreScrollPosition(); const drawer = document.getElementById('cartDrawer'), overlay = document.getElementById('overlay'), close = () => { drawer?.classList.remove('open'); if (overlay) overlay.hidden = true; }; document.getElementById('cartButton')?.addEventListener('click', () => { drawer?.classList.add('open'); if (overlay) overlay.hidden = false; }); document.getElementById('closeCart')?.addEventListener('click', close); overlay?.addEventListener('click', close); document.getElementById('checkoutButton')?.addEventListener('click', () => location.href = 'checkout.html'); }
+function mount() { renderCart(); home(); catalog(); product(); checkout(); refreshStorefrontRecommendations(); restoreScrollPosition(); const drawer = document.getElementById('cartDrawer'), overlay = document.getElementById('overlay'), close = () => { drawer?.classList.remove('open'); if (overlay) overlay.hidden = true; }; document.getElementById('cartButton')?.addEventListener('click', () => { drawer?.classList.add('open'); if (overlay) overlay.hidden = false; }); document.getElementById('closeCart')?.addEventListener('click', close); overlay?.addEventListener('click', close); document.getElementById('checkoutButton')?.addEventListener('click', () => location.href = 'checkout.html'); }
 const storeProductFromRow = (rawItem) => { const item=applyCustomerProductPolicy(rawItem); return ({ id: item.id, sku: readableText(item.sku), name: compactProductName(item.name, item.sku, item.brand), description: readableText(item.description), price: Number(item.price), type: item.category, brand: readableText(item.brand), brand_id:item.brand_id, parentProductId:item.parent_product_id, variantLabel:readableText(item.variant_label), specifications: isProjectorProduct(item)?resolveProjectorSpecifications(item):normalizeSpecifications(item.specifications), availabilityStatus: item.availability_status, stockQuantity: Number(item.stock_quantity || 0), stock: item.in_stock && Number(item.stock_quantity || 0) > 0, image: item.image_path, imagePaths: item.image_paths, createdAt:item.created_at }); };
 
 async function lookupStoreSearch(query) {
@@ -1343,7 +1339,7 @@ const saveRecentlyViewed = ids => {
 const currentStoreProductId = () => Number(new URLSearchParams(location.search).get('id')) || null;
 const rememberCurrentProduct = () => {
   const id = currentStoreProductId();
-  if (!id || !get(id)) return false;
+  if (!productsLoaded || !id || !get(id)) return false;
   saveRecentlyViewed([id, ...readRecentlyViewed().filter(savedId => savedId !== id)]);
   return true;
 };
@@ -1368,8 +1364,9 @@ const recommendationCard = product => {
 };
 const renderStorefrontRecommendations = () => {
   const main = document.querySelector('main');
-  if (!main || !products.length) return;
+  if (!main) return;
   let root = document.querySelector('#storefront-recommendations');
+  if(!productsLoaded||!products.length){root?.remove();return;}
   if (!root) {
     root = document.createElement('section');
     root.id = 'storefront-recommendations';
@@ -1377,24 +1374,26 @@ const renderStorefrontRecommendations = () => {
     main.append(root);
   }
   const currentId = currentStoreProductId();
-  const available = products.filter(product => product.stock !== false);
-  const popular = available.filter(product => Number(product.id) !== currentId).slice(0, 4);
+  const allowedCategories=!isProductPage&&catalogProductScope!=='all'?storefrontCategoryBranch(catalogProductScope):null;
+  const recommended = recommendedProducts(products,{currentId,allowedCategories});
   // Поточний товар теж показуємо: він щойно переглянутий і це дає
   // зрозумілий результат вже під час першого відкриття картки.
   const recent = readRecentlyViewed().map(id => get(id)).filter(Boolean).slice(0, 4);
-  root.innerHTML = '<section class="storefront-recommendation-section">'
-    + '<div class="storefront-recommendation-heading"><h2>Популярні товари</h2><p>Добірка техніки, яку найчастіше обирають для сучасного дому та бізнесу.</p></div>'
-    + '<div class="storefront-recommendation-grid">' + (popular.length ? popular.map(recommendationCard).join('') : '<p class="storefront-recommendation-empty">Товари з’являться після оновлення каталогу.</p>') + '</div></section>'
+  root.innerHTML = (recommended.length?'<section class="storefront-recommendation-section">'
+    + '<div class="storefront-recommendation-heading"><h2>Рекомендуємо</h2><p>Доступні товари з каталогу, які можуть вас зацікавити.</p></div>'
+    + '<div class="storefront-recommendation-grid">' + recommended.map(recommendationCard).join('') + '</div></section>':'')
     + '<section class="storefront-recommendation-section">'
     + '<div class="storefront-recommendation-heading"><h2>Нещодавно переглянуті</h2><p>Зберігаємо цю добірку лише у вашому браузері — щоб швидко повернутися до товарів.</p></div>'
     + (recent.length ? '<div class="storefront-recommendation-grid">' + recent.map(recommendationCard).join('') + '</div>' : '<p class="storefront-recommendation-empty">Перегляньте будь-який товар — він одразу з’явиться у цій добірці.</p>')
     + '</section>';
 };
 
-[0, 700, 1800].forEach(delay => setTimeout(() => {
+function refreshStorefrontRecommendations(){
+  if(!productsLoaded)return;
   rememberCurrentProduct();
   renderStorefrontRecommendations();
-}, delay));
+}
+document.addEventListener('technoroom:catalog-ready',refreshStorefrontRecommendations);
 
 
 /* Каталог будується за реальним деревом категорій, а не за статичним списком у розмітці. */

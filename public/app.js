@@ -185,6 +185,7 @@ async function home() {
         if(roots[0]&&!compactMenu()) show(roots[0]);
         const setMenuOpen=(isOpen)=>{
           mega.hidden=!isOpen;
+          if(isOpen&&compactMenu())renderRoots();
           toggle.setAttribute('aria-expanded', String(isOpen));
         };
         // Меню відкривається тільки явним натисканням: на сенсорних екранах і мишкою
@@ -724,7 +725,7 @@ async function mountMegaCatalog() {
   renderRoots();
   if(roots[0]&&!compactMenu()) show(roots[0]);
   const toggle=document.getElementById('catalogMenuToggle');
-  toggle.onclick=(event)=>{ event.preventDefault(); mega.hidden=!mega.hidden; };
+  toggle.onclick=(event)=>{ event.preventDefault(); mega.hidden=!mega.hidden;if(!mega.hidden&&compactMenu())renderRoots();toggle.setAttribute('aria-expanded',String(!mega.hidden)); };
   document.addEventListener('pointerdown',(event)=>{
     if(!mega.hidden&&!mega.contains(event.target)&&!toggle.contains(event.target)) mega.hidden=true;
   });

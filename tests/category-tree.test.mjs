@@ -32,6 +32,8 @@ assert.equal(createCategoryTree(cyclic).flattened.length,2);assert.equal(createC
 assert.deepEqual(visibleCategoryRows(cyclic),[]);assert.equal(createCategoryTree(cyclic).branch('a').size,2);
 const app=readFileSync(new URL('../public/app.js',import.meta.url),'utf8');
 assert.equal((app.match(/categoryMenuMarkup\(cats,/g)||[]).length,2);
+assert.ok(app.includes('if(isOpen&&compactMenu())renderRoots()'));
+assert.ok(app.includes('if(!mega.hidden&&compactMenu())renderRoots()'));
 assert.ok(app.includes('storefrontTree.path(leaf.slug)'));
 assert.ok(app.includes('storefrontTree.children(current.id)'));
 assert.ok(app.includes('...storefrontTree.branch(resolved)'));

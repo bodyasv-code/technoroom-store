@@ -6,6 +6,7 @@ import {productWifiState} from './product-connectivity.js?v=20261017-customer-co
 import {applyCustomerProductPolicy} from './product-content-policy.js?v=20261017-customer-content';
 import {sizeBannerSlides} from './banner-layout.js?v=20261011-uniform';
 import {categoryIcon} from './category-icons.js?v=20261013-icons';
+import {createCategoryTree,visibleCategoryRows,categoryMenuMarkup} from './category-tree.js?v=20261019-nested';
 import {projectorDisplayEntries} from './projector-display.js?v=20261013-light-details';
 import {orderSpecificationEntries} from './specification-order.js?v=20261013-printer-rules';
 import {isPrinterDevice, printerDisplayEntries} from './printer-display.js?v=20261017-customer-content';
@@ -155,7 +156,7 @@ async function home() {
   try {
     cats=await loadStorefrontCategories();
     if(cats.length){
-      const ids=new Set(cats.map(c=>c.id)), roots=cats.filter(c=>!c.parent_id||!ids.has(c.parent_id));
+      const roots=createCategoryTree(cats).roots;
       if(cards) cards.innerHTML=roots.slice(0,8).map(c=>{const source=c.image_path?(String(c.image_path).startsWith('http')?c.image_path:supabase.storage.from('product-images').getPublicUrl(c.image_path).data.publicUrl):'';return `<a href="catalog.html?category=${encodeURIComponent(c.slug)}"><div class="home-cat-visual">${source?'<img src="'+escapeHtml(source)+'" alt="" loading="lazy">':categoryIcon(c)}</div><b>${escapeHtml(c.name)}</b><span>Переглянути →</span></a>`}).join('');
       const mega=document.getElementById('homeCatalogMega'), rootsEl=document.getElementById('homeMegaRoots'), childrenEl=document.getElementById('homeMegaChildren'), toggle=document.getElementById('homeCatalogToggle');
       if(mega&&rootsEl&&childrenEl&&toggle){
@@ -172,9 +173,8 @@ async function home() {
         };
         const show=r=>{
           rootsEl.querySelectorAll('button').forEach(b=>b.classList.toggle('active',b.dataset.slug===r.slug));
-          const kids=cats.filter(c=>c.parent_id===r.id);
           const back=compactMenu()?'<button type="button" class="mega-back" data-mega-back>← Усі категорії</button>':'';
-          childrenEl.innerHTML=`${back}<div class="mega-title"><h2>${escapeHtml(r.name)}</h2><a href="catalog.html?category=${encodeURIComponent(r.slug)}">Усі товари →</a></div><div class="mega-grid">${kids.map(c=>`<a href="catalog.html?category=${encodeURIComponent(c.slug)}"><strong>${escapeHtml(c.name)}</strong><span>Переглянути →</span></a>`).join('')}</div>`;
+          childrenEl.innerHTML=`${back}<div class="mega-title"><h2>${escapeHtml(r.name)}</h2><a href="catalog.html?category=${encodeURIComponent(r.slug)}">Усі товари →</a></div><div class="mega-grid">${categoryMenuMarkup(cats,r,escapeHtml)}</div>`;
           if(compactMenu()){
             rootsEl.hidden=true;
             childrenEl.hidden=false;
@@ -699,7 +699,7 @@ async function mountMegaCatalog() {
   if(!mega||!rootsEl||!childrenEl) return;
   const cats=await loadStorefrontCategories();
   if(!cats?.length) return;
-  const ids=new Set(cats.map(c=>c.id)), roots=cats.filter(c=>!c.parent_id||!ids.has(c.parent_id));
+  const roots=createCategoryTree(cats).roots;
   const compactMenu=()=>window.matchMedia('(max-width:700px)').matches;
   const renderRoots=()=>{
     rootsEl.hidden=false;
@@ -713,9 +713,8 @@ async function mountMegaCatalog() {
   };
   const show=(root)=>{
     rootsEl.querySelectorAll('button').forEach(b=>b.classList.toggle('active',b.dataset.slug===root.slug));
-    const kids=cats.filter(c=>c.parent_id===root.id);
     const back=compactMenu()?'<button type="button" class="mega-back" data-mega-back>← Усі категорії</button>':'';
-    childrenEl.innerHTML=`${back}<div class="mega-title"><h2>${escapeHtml(root.name)}</h2><a href="catalog.html?category=${encodeURIComponent(root.slug)}">Усі товари →</a></div><div class="mega-grid">${kids.map(c=>`<a href="catalog.html?category=${encodeURIComponent(c.slug)}"><strong>${escapeHtml(c.name)}</strong><span>Переглянути →</span></a>`).join('')}</div>`;
+    childrenEl.innerHTML=`${back}<div class="mega-title"><h2>${escapeHtml(root.name)}</h2><a href="catalog.html?category=${encodeURIComponent(root.slug)}">Усі товари →</a></div><div class="mega-grid">${categoryMenuMarkup(cats,root,escapeHtml)}</div>`;
     if(compactMenu()){
       rootsEl.hidden=true;
       childrenEl.hidden=false;
@@ -1396,6 +1395,7 @@ const renderStorefrontRecommendations = () => {
 
 /* Каталог будується за реальним деревом категорій, а не за статичним списком у розмітці. */
 let storefrontCategories = [];
+let storefrontTree = createCategoryTree();
 let storefrontCategoriesRequest = null;
 const legacyCategoryAliases = {
   projector: 'cat-projectors', audio: 'cat-audio', tv: 'cat-displays',
@@ -1414,12 +1414,12 @@ const loadStorefrontCategories = async () => {
   if (storefrontCategoriesRequest) return storefrontCategoriesRequest;
   storefrontCategoriesRequest = supabase
     .from('categories')
-    .select('id,name,slug,parent_id,sort_order,image_path')
-    .eq('is_active', true)
+    .select('id,name,slug,parent_id,sort_order,image_path,is_active')
     .order('sort_order')
     .order('name')
     .then(({ data, error }) => {
-      storefrontCategories = error ? [] : (data || []).map((category) => ({ ...category, name: readableText(category.name) }));
+      storefrontCategories = error ? [] : visibleCategoryRows(data || []).map((category) => ({ ...category, name: readableText(category.name) }));
+      storefrontTree = createCategoryTree(storefrontCategories);
       return storefrontCategories;
     })
     .catch(() => []);
@@ -1428,21 +1428,7 @@ const loadStorefrontCategories = async () => {
 
 const storefrontCategoryBranch = (slug) => {
   const resolved = legacyCategoryAliases[slug] || slug;
-  const byParent = new Map();
-  storefrontCategories.forEach((category) => {
-    const children = byParent.get(category.parent_id) || [];
-    children.push(category);
-    byParent.set(category.parent_id, children);
-  });
-  const root = storefrontCategories.find((category) => category.slug === resolved);
-  if (!root) return new Set([slug, resolved, ...(legacyCategoryChildren[resolved] || [])]);
-  const branch = new Set([root.slug, ...(legacyCategoryChildren[root.slug] || [])]);
-  const visit = (parentId) => (byParent.get(parentId) || []).forEach((child) => {
-    branch.add(child.slug);
-    visit(child.id);
-  });
-  visit(root.id);
-  return branch;
+  return new Set([slug,...storefrontTree.branch(resolved),...(legacyCategoryChildren[resolved] || [])]);
 };
 
 const storefrontCategoryMatches = (product, slug) => storefrontCategoryBranch(slug).has(product.type);
@@ -1454,8 +1440,7 @@ const updateProductCategoryPath = async (product) => {
   const categories = await loadStorefrontCategories();
   const leaf = categories.find((category) => category.slug === product?.type);
   if (!leaf) return;
-  const root = leaf.parent_id ? categories.find((category) => Number(category.id) === Number(leaf.parent_id)) : null;
-  const path = [root, leaf].filter(Boolean);
+  const path = storefrontTree.path(leaf.slug);
   const links = path.map((category) => '<a href="catalog.html?category=' + encodeURIComponent(category.slug) + '">' + escapeHtml(category.name) + '</a>');
   const pathMarkup = links.join('<span aria-hidden="true"> / </span>');
   const productPathMarkup = links.join('<span aria-hidden="true"> › </span>');
@@ -1469,6 +1454,19 @@ const updateProductCategoryPath = async (product) => {
 
 const storefrontCategoryStyle = document.createElement('style');
 storefrontCategoryStyle.textContent = '.catalog-taxonomy{margin:0 0 16px}.catalog-taxonomy__root{width:100%;display:flex;align-items:center;justify-content:space-between;gap:12px;text-align:left}.catalog-taxonomy__root b,.catalog-taxonomy__child b{color:#6d8c00;font-size:11px}.catalog-taxonomy__root.is-selected{color:#587900}.catalog-taxonomy__group{margin:0 0 3px}.catalog-taxonomy__root-row{display:grid;grid-template-columns:minmax(0,1fr) 32px;align-items:stretch}.catalog-taxonomy__toggle{border:0;border-left:1px solid #e3e8e5;background:transparent;color:#60706d;font-size:17px;cursor:pointer}.catalog-taxonomy__toggle:hover{background:#f1f5ef;color:#587900}.catalog-taxonomy__children{display:none;margin:1px 0 7px 15px;padding:3px 0 4px 14px;border-left:1px solid #d8ff37}.catalog-taxonomy__group.is-open .catalog-taxonomy__children{display:block}.catalog-taxonomy__group.is-open .catalog-taxonomy__toggle{color:#587900}.catalog-taxonomy__child{display:flex!important;align-items:center;justify-content:space-between;gap:8px;padding:8px 0!important;color:#60706d!important;font-size:12px!important}.catalog-taxonomy__child.is-selected{color:#587900!important}.catalog-taxonomy__child span:first-child{padding-right:8px}.catalog-taxonomy__empty{display:none}@media(max-width:780px){.catalog-taxonomy{display:flex;gap:8px;min-width:max-content}.catalog-taxonomy__group{display:contents}.catalog-taxonomy__root-row{display:flex}.catalog-taxonomy__children{display:none!important;position:absolute;z-index:5;margin:42px 0 0;padding:8px;border:1px solid var(--line);background:#fff}.catalog-taxonomy__group.is-open .catalog-taxonomy__children{display:block!important}.catalog-taxonomy__root,.catalog-taxonomy__child{min-width:max-content;width:auto!important;padding:8px 10px!important;border:1px solid var(--line)!important;background:#fff!important}.catalog-taxonomy__root b,.catalog-taxonomy__child b{display:none}.catalog-taxonomy__toggle{width:32px;border:1px solid var(--line);border-left:0}}';
+storefrontCategoryStyle.textContent += `
+.mega-grid{align-items:start}.mega-children{max-height:65vh;overflow:auto}
+.mega-category-branch{min-width:0;border:1px solid var(--line,#dfe7f1);border-radius:10px;padding:8px}
+.mega-grid .mega-category-branch>a{border:0;font-weight:700;padding:8px}
+.mega-category-branch ul{list-style:none;margin:0;padding:0 0 0 14px;border-left:1px solid #e1e8f1}
+.mega-grid .mega-category-branch li>a{display:block;border:0;border-radius:5px;padding:7px 8px;font-size:13px;overflow-wrap:anywhere}
+.catalog-subcategories{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,220px),1fr));gap:12px;margin:20px 0 28px}
+.catalog-subcategories[hidden]{display:none}.catalog-subcategories>a{display:flex;align-items:center;gap:12px;border:1px solid var(--line,#dfe7f1);padding:16px;border-radius:12px;background:#fff;color:inherit;text-decoration:none}
+.catalog-subcategories>a:hover{border-color:#0875e9}.catalog-subcategories>a>span:last-child{margin-left:auto}.catalog-subcategories svg{width:30px;height:30px;flex-shrink:0}
+.catalog-taxonomy__group>.catalog-taxonomy__children{display:none!important}
+.catalog-taxonomy__group.is-open>.catalog-taxonomy__children{display:block!important}
+@media(max-width:780px){.catalog-taxonomy{display:block;min-width:0}.catalog-taxonomy__group{display:block}.catalog-taxonomy__children{position:static!important;margin:0 0 4px 8px!important;padding:2px 0 2px 8px!important}.catalog-taxonomy__root-row{display:grid}.catalog-taxonomy__root,.catalog-taxonomy__child{min-width:0;width:100%!important;text-align:left}.catalog-taxonomy__toggle{width:32px}.mega-category-branch{padding:4px}}
+`;
 document.head.append(storefrontCategoryStyle);
 
 const renderStorefrontCategoryNavigation = (filters, selectedCategory) => {
@@ -1476,25 +1474,19 @@ const renderStorefrontCategoryNavigation = (filters, selectedCategory) => {
   if (!refine || !storefrontCategories.length) return;
   filters.querySelectorAll('[data-category],.category-nest,.category-constellation,.catalog-taxonomy').forEach((node) => node.remove());
 
-  const byParent = new Map();
-  storefrontCategories.forEach((category) => {
-    const children = byParent.get(category.parent_id) || [];
-    children.push(category);
-    byParent.set(category.parent_id, children);
-  });
   const quantity = (slug) => products.filter((product) => !product.parentProductId && storefrontCategoryMatches(product, slug)).length;
-  const roots = storefrontCategories.filter((category) => !category.parent_id && quantity(category.slug));
+  const roots = storefrontTree.roots.filter((category) => quantity(category.slug));
   const navigation = document.createElement('div');
   navigation.className = 'catalog-taxonomy';
   const button = (category, child = false) => '<button type="button" class="' + (child ? 'catalog-taxonomy__child' : 'catalog-taxonomy__root') + (selectedCategory === category.slug ? ' is-selected' : '') + '" data-catalog-taxonomy="' + escapeHtml(category.slug) + '"><span>' + escapeHtml(category.name) + '</span><b>' + quantity(category.slug) + '</b></button>';
-  const children = (parentId) => (byParent.get(parentId) || []).filter((category) => quantity(category.slug)).map((category) => button(category, true)).join('');
-  const group = (category) => {
-    const nested = children(category.id);
+  const group = (category,depth=0,seen=new Set()) => {
+    if(seen.has(String(category.id)))return '';const next=new Set([...seen,String(category.id)]);
+    const nested = storefrontTree.children(category.id).filter(child=>quantity(child.slug)).map(child=>group(child,depth+1,next)).join('');
     const selectedInside = storefrontCategoryBranch(category.slug).has(selectedCategory);
-    if (!nested) return button(category);
-    return '<div class="catalog-taxonomy__group' + (selectedInside ? ' is-open' : '') + '"><div class="catalog-taxonomy__root-row">' + button(category) + '<button type="button" class="catalog-taxonomy__toggle" data-taxonomy-toggle aria-label="Показати підкатегорії" aria-expanded="' + (selectedInside ? 'true' : 'false') + '">' + (selectedInside ? '−' : '+') + '</button></div><div class="catalog-taxonomy__children">' + nested + '</div></div>';
+    if (!nested) return button(category,depth>0);
+    return '<div class="catalog-taxonomy__group' + (selectedInside ? ' is-open' : '') + '"><div class="catalog-taxonomy__root-row">' + button(category,depth>0) + '<button type="button" class="catalog-taxonomy__toggle" data-taxonomy-toggle aria-label="Показати підкатегорії '+escapeHtml(category.name)+'" aria-expanded="' + (selectedInside ? 'true' : 'false') + '">' + (selectedInside ? '−' : '+') + '</button></div><div class="catalog-taxonomy__children">' + nested + '</div></div>';
   };
-  navigation.innerHTML = '<button type="button" class="catalog-taxonomy__root' + (selectedCategory === 'all' ? ' is-selected' : '') + '" data-catalog-taxonomy="all"><span>Усі товари</span><b>' + products.filter((product) => !product.parentProductId).length + '</b></button>' + roots.map(group).join('');
+  navigation.innerHTML = '<button type="button" class="catalog-taxonomy__root' + (selectedCategory === 'all' ? ' is-selected' : '') + '" data-catalog-taxonomy="all"><span>Усі товари</span><b>' + products.filter((product) => !product.parentProductId).length + '</b></button>' + roots.map(row=>group(row)).join('');
   refine.before(navigation);
 };
 
@@ -2014,20 +2006,18 @@ catalog = function () {
     const breadcrumbs = document.getElementById('catalogBreadcrumbs');
     if (!heading || !breadcrumbs) return;
     const current = storefrontCategories.find((item) => item.slug === category);
+    let subcategories=document.getElementById('catalogSubcategories');
+    if(!subcategories){subcategories=document.createElement('nav');subcategories.id='catalogSubcategories';subcategories.className='catalog-subcategories';subcategories.setAttribute('aria-label','Підкатегорії');heading.after(subcategories);}
+    const children=current?storefrontTree.children(current.id):[];
+    subcategories.hidden=!children.length;
+    subcategories.innerHTML=children.map(child=>'<a href="catalog.html?category='+encodeURIComponent(child.slug)+'">'+categoryIcon(child)+'<span>'+escapeHtml(child.name)+'</span><span aria-hidden="true">→</span></a>').join('');
     const fallbackTitle = saleOnly ? 'Акційні товари' : 'Каталог техніки';
     if (!current) {
       heading.textContent = fallbackTitle;
       breadcrumbs.innerHTML = '<a href="index.html">Головна</a> / ' + (saleOnly ? '<a href="catalog.html">Каталог</a> / Акційні товари' : 'Каталог');
       return;
     }
-    const path = [];
-    const visited = new Set();
-    let item = current;
-    while (item && !visited.has(Number(item.id))) {
-      path.unshift(item);
-      visited.add(Number(item.id));
-      item = item.parent_id == null ? null : storefrontCategories.find((candidate) => Number(candidate.id) === Number(item.parent_id));
-    }
+    const path = storefrontTree.path(current.slug);
     heading.textContent = current.name;
     const crumbs = ['<a href="index.html">Головна</a>', '<a href="catalog.html">Каталог</a>'];
     path.forEach((entry, index) => {

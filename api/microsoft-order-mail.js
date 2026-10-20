@@ -12,6 +12,9 @@ export function orderMail(order) {
   ].join('\n')};
 }
 export async function sendMicrosoftMail(message,{secret=process.env.MS_GRAPH_CLIENT_SECRET,fetcher=fetch}={}) {
+  return sendGraphMail(message,mailbox,{secret,fetcher});
+}
+async function sendGraphMail(message,recipient,{secret=process.env.MS_GRAPH_CLIENT_SECRET,fetcher=fetch}={}) {
   if(!secret) return {status:'not_configured'};
   const request=async(url,options)=>{
     try {return await fetcher(url,{...options,redirect:'error',signal:AbortSignal.timeout(8000)});}
@@ -27,11 +30,24 @@ export async function sendMicrosoftMail(message,{secret=process.env.MS_GRAPH_CLI
   const sent=await request(`https://graph.microsoft.com/v1.0/users/${encodeURIComponent(mailbox)}/sendMail`,{
     method:'POST',headers:{Authorization:`Bearer ${token.access_token}`,'Content-Type':'application/json'},
     body:JSON.stringify({message:{subject:message.subject,body:{contentType:'Text',content:message.text},
-      toRecipients:[{emailAddress:{address:mailbox}}]},saveToSentItems:true})
+      toRecipients:[{emailAddress:{address:recipient}}]},saveToSentItems:true})
   });
   // 202 means accepted, not proof of final mailbox delivery. Don't retry ambiguous sends.
   if(sent.status!==202)throw new Error(`mail_send_${sent.status}`);
   return {status:'accepted'};
+}
+export async function sendAdminInvitationMail({email,fullName,role,actionLink},options={}){
+  if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)||email.length>254||!['owner','manager'].includes(role))throw new Error('invalid_invitation');
+  const url=new URL(actionLink);
+  if(url.protocol!=='https:'||url.hostname!=='yioxzymgswewjphkuxjs.supabase.co'||url.pathname!=='/auth/v1/verify'
+    ||!['invite','recovery'].includes(url.searchParams.get('type'))
+    ||url.searchParams.get('redirect_to')!=='https://www.technoroom.com.ua/admin')throw new Error('invalid_invitation_link');
+  return sendGraphMail({subject:'TECHNOROOM: запрошення до адмінки',text:[
+    'Вітаємо, '+fullName+'!','Вас запрошено до адмінки TECHNOROOM.',
+    'Роль: '+(role==='owner'?'Власник — включно з керуванням користувачами.':'Менеджер — робота з каталогом і замовленнями, без керування користувачами.'),
+    '', 'Відкрийте одноразове посилання та задайте власний пароль:',actionLink,
+    '', 'Не пересилайте це посилання іншим. Якщо ви не очікували запрошення, не відкривайте його.'
+  ].join('\n')},email,options);
 }
 export async function notifyNewOrder(db,id,{sender=sendMicrosoftMail}={}) {
   let order;

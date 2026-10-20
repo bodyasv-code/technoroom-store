@@ -1,5 +1,9 @@
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
-import {mountAdminNavigation} from './admin-navigation.js?v=20261020-suppliers';
+import {mountAdminNavigation} from './admin-navigation.js?v=20261020-users';
+import {mountAdminUsers} from './admin-users.js?v=20261020-users';
+import {isInvitePasswordSetup,saveAdminPassword} from './admin-password-setup.js?v=20261020-users';
+// Capture invite type before the Supabase client consumes the callback hash.
+let passwordSetupMode=isInvitePasswordSetup(location.search,location.hash);
 import {mountOrderActions} from './order-actions.js?v=20261016-actions';
 import {orderDetailsMarkup,saveOrderChanges,matchesOrderSearch,hasFailedOrderEmail} from './order-admin.js?v=20261015-order-search';
 import {orderHistoryMarkup,readOrderHistory} from './order-history.js?v=20261015-supply';
@@ -329,7 +333,7 @@ async function saveProductWithProjectorFields(event){
 async function dashboard(){const {data:{user}}=await supabase.auth.getUser();if(!user){view('login');return}const {data:profile}=await supabase.from('profiles').select('full_name,role').eq('id',user.id).maybeSingle();if(!profile){await supabase.auth.signOut();view('login');notice('Доступ відсутній.',true);return}view('app');$('#adminName').textContent=profile.full_name||'Адміністраторе';await loadData()}
 $('#loginForm').onsubmit=async e=>{e.preventDefault();const r=Object.fromEntries(new FormData(e.currentTarget));const {error}=await supabase.auth.signInWithPassword({email:r.email,password:r.password});if(error){notice('Невірна email-адреса або пароль',true);return}dashboard()};
 $('#requestPasswordReset').onclick=async()=>{const email=$('#loginForm').elements.email.value.trim();if(!email){notice('Введіть email, на який надіслати посилання для відновлення.',true);return}const {error}=await supabase.auth.resetPasswordForEmail(email,{redirectTo:location.origin+'/admin'});if(error){notice('Не вдалося надіслати посилання: '+error.message,true);return}notice('Перевірте пошту: надіслано посилання для створення нового пароля.')};
-$('#recoveryForm').onsubmit=async e=>{e.preventDefault();const r=Object.fromEntries(new FormData(e.currentTarget));if(r.password!==r.confirmPassword)return;await supabase.auth.updateUser({password:r.password});await supabase.auth.signOut();view('login')};
+$('#recoveryForm').onsubmit=async e=>{e.preventDefault();const form=e.currentTarget,r=Object.fromEntries(new FormData(form)),button=form.querySelector('button'),message=$('#recoveryNotice');button.disabled=true;message.hidden=true;try{await saveAdminPassword(supabase,r.password,r.confirmPassword);passwordSetupMode=false;form.reset();history.replaceState(null,'',location.pathname);view('login');notice('Пароль збережено. Увійдіть за своєю email-адресою та новим паролем.');}catch(error){message.textContent=error.message;message.hidden=false;}finally{button.disabled=false;}};
 $('#logout').onclick=async()=>{await supabase.auth.signOut();view('login')};
 $$('[data-add-product]').forEach(b=>b.onclick=()=>productDialog());
 $('#addCategory').onclick=()=>categoryDialog();$('#addBrand').onclick=()=>brandDialog();$('#closeBrandDialog').onclick=()=>$('#brandDialog').close();
@@ -444,8 +448,8 @@ $('#normalizeBrands').onclick=async()=>{
 };
 const runBrandConsolidation=$('#normalizeBrands').onclick;
 $('#normalizeBrands').onclick=async event=>{const button=$('#normalizeBrands');if(button.disabled)return;button.disabled=true;try{await runBrandConsolidation(event);}finally{button.disabled=false;}};
-supabase.auth.onAuthStateChange(ev=>{if(ev==='PASSWORD_RECOVERY')view('recovery')});
-supabase.auth.getSession().then(({data:{session}})=>session?dashboard():view('login'));
+supabase.auth.onAuthStateChange((ev,session)=>{if(ev==='PASSWORD_RECOVERY')passwordSetupMode=true;if(passwordSetupMode&&session)view('recovery');});
+supabase.auth.getSession().then(({data:{session}})=>session?(passwordSetupMode?view('recovery'):dashboard()):view('login'));
 
 // Універсальний імпорт XML: читає поширені структури постачальників і не перезаписує ручні дані.
 (() => {
@@ -1822,4 +1826,5 @@ renderAll = () => { renderAllWithCatalogAudit(); renderCatalogAudit(); renderCat
 
 // Import panels are inserted above. Mount routing after every section exists.
 document.querySelector('.admin-main').prepend(appNotice);
+mountAdminUsers(supabase);
 mountAdminNavigation();

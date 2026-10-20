@@ -1,0 +1,21 @@
+import assert from 'node:assert/strict';
+import {readFile} from 'node:fs/promises';
+const read=name=>readFile(new URL('../public/'+name,import.meta.url),'utf8');
+const html=await read('admin.html'),css=await read('admin-modern.css');
+assert.match(html,/<body class="admin-body admin-modern">/);
+assert.equal((html.match(/href="admin-modern\.css\?/g)||[]).length,1);
+assert.ok(html.indexOf('admin-modern.css')<html.indexOf('</head>'),'Critical styles load before content');
+assert.match(css,/\.admin-modern \[hidden\] \{ display: none!important; \}/);
+assert.match(html,/data-view="app" hidden/);assert.match(html,/data-view="recovery" hidden/);
+assert.match(html,/data-view="login" hidden/);
+for(const id of ['loginForm','recoveryForm','requestPasswordReset','logout','productSearch','categoryFilter','selectAllProducts','productForm','categoryForm','orderDialog','saveOrderStatus'])assert.ok(html.includes('id="'+id+'"'));
+assert.ok(html.includes('src="admin.js?v=20261020-chief"'),'No auth or action script changes');
+assert.match(css,/@media\(max-width:900px\)/);assert.match(css,/@media\(prefers-reduced-motion:reduce\)/);
+assert.match(css,/:focus-visible/);assert.match(css,/min-height: 44px/);
+assert.match(css,/\.button\.danger-action/);
+for(const page of ['index.html','catalog.html','product.html','checkout.html'])assert.ok(!(await read(page)).includes('admin-modern.css'));
+const cleaned=css.replace(/\/\*[\s\S]*?\*\//g,'').replace(/"(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*'/g,'');
+const pairs={'{':'}','(':')','[':']'},stack=[];
+for(const character of cleaned){if(pairs[character])stack.push(pairs[character]);else if('})]'.includes(character))assert.equal(character,stack.pop());}
+assert.equal(stack.length,0);
+console.log('Admin design: scoped CSS, render-blocking load, hidden/auth views retained, existing action IDs, mobile picker styles, focus/reduced motion and balanced CSS: PASS (visual QA pending)');

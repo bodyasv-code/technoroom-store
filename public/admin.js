@@ -1,9 +1,9 @@
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
 import {mountAdminNavigation} from './admin-navigation.js?v=20261020-users';
 import {mountAdminUsers} from './admin-users.js?v=20261020-users';
-import {isInvitePasswordSetup,saveAdminPassword} from './admin-password-setup.js?v=20261020-users';
-// Capture invite type before the Supabase client consumes the callback hash.
-let passwordSetupMode=isInvitePasswordSetup(location.search,location.hash);
+import {isAdminPasswordSetup,openAdminDashboard,saveAdminPassword} from './admin-password-setup.js?v=20261020-recovery';
+// Capture both callback types before the Supabase client consumes the hash.
+let passwordSetupMode=isAdminPasswordSetup(location.search,location.hash);
 import {mountOrderActions} from './order-actions.js?v=20261016-actions';
 import {orderDetailsMarkup,saveOrderChanges,matchesOrderSearch,hasFailedOrderEmail} from './order-admin.js?v=20261015-order-search';
 import {orderHistoryMarkup,readOrderHistory} from './order-history.js?v=20261015-supply';
@@ -330,7 +330,7 @@ async function saveProductWithProjectorFields(event){
   }
   return originalSaveProduct(event);
 }
-async function dashboard(){const {data:{user}}=await supabase.auth.getUser();if(!user){view('login');return}const {data:profile}=await supabase.from('profiles').select('full_name,role').eq('id',user.id).maybeSingle();if(!profile){await supabase.auth.signOut();view('login');notice('Доступ відсутній.',true);return}view('app');$('#adminName').textContent=profile.full_name||'Адміністраторе';await loadData()}
+async function dashboard(){return openAdminDashboard(supabase,{isPasswordSetup:()=>passwordSetupMode,show:view,onProfile:profile=>{$('#adminName').textContent=profile.full_name||'Адміністраторе';},onReady:loadData,onDenied:()=>notice('Доступ відсутній.',true)});}
 $('#loginForm').onsubmit=async e=>{e.preventDefault();const r=Object.fromEntries(new FormData(e.currentTarget));const {error}=await supabase.auth.signInWithPassword({email:r.email,password:r.password});if(error){notice('Невірна email-адреса або пароль',true);return}dashboard()};
 $('#requestPasswordReset').onclick=async()=>{const email=$('#loginForm').elements.email.value.trim();if(!email){notice('Введіть email, на який надіслати посилання для відновлення.',true);return}const {error}=await supabase.auth.resetPasswordForEmail(email,{redirectTo:location.origin+'/admin'});if(error){notice('Не вдалося надіслати посилання: '+error.message,true);return}notice('Перевірте пошту: надіслано посилання для створення нового пароля.')};
 $('#recoveryForm').onsubmit=async e=>{e.preventDefault();const form=e.currentTarget,r=Object.fromEntries(new FormData(form)),button=form.querySelector('button'),message=$('#recoveryNotice');button.disabled=true;message.hidden=true;try{await saveAdminPassword(supabase,r.password,r.confirmPassword);passwordSetupMode=false;form.reset();history.replaceState(null,'',location.pathname);view('login');notice('Пароль збережено. Увійдіть за своєю email-адресою та новим паролем.');}catch(error){message.textContent=error.message;message.hidden=false;}finally{button.disabled=false;}};

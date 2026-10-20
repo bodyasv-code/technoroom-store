@@ -1,0 +1,58 @@
+import assert from 'node:assert/strict';
+import {readFile} from 'node:fs/promises';
+import {PGlite} from '@electric-sql/pglite';
+import {manualOverrideSummary,preserveManualSpecifications} from '../public/product-manual-overrides.js';
+import {buildImportChangePlan,importChangeMarkup,importSnapshot} from '../public/import-change-plan.js';
+import {writeImportProduct} from '../public/import-history.js';
+const current={id:1,sku:'S',category:'manual',brand:'Canon',specifications:{Формат:'A3'},manual_overrides:{category:true,brand:true,specifications:{Формат:true,Інтерфейси:true}}};
+const source={vendor:'Other',specifications:{Формат:'A4',Інтерфейс:'Wi-Fi',Ресурс:'500'},images:[]};
+const plan=buildImportChangePlan(source,current,{category:true},'supplier');
+assert.equal(plan.patch.category,undefined);assert.equal(plan.patch.specifications.Формат,'A3');
+assert.equal(plan.patch.specifications.Інтерфейс,undefined);assert.equal(plan.patch.specifications.Ресурс,'500');
+assert.equal(plan.conflicts.length,4);assert.match(importChangeMarkup(plan,String),/У постачальника \(не застосовується\)/);
+assert.match(manualOverrideSummary(current),/Виправлено вручну/);
+assert.match(manualOverrideSummary({id:2}),/ще не підключено/);
+assert.notEqual(importSnapshot(current),importSnapshot({...current,manual_overrides:{}}));
+const projector={category:'projectors',name:'Проєктор',specifications:{'Технологія проекції':'DLP'},manual_overrides:{specifications:{'Технологія проекції':true,'Технологія':true}}};
+assert.deepEqual(preserveManualSpecifications({'Технологія':'LCD'},projector),{'Технологія проекції':'DLP'});
+assert.deepEqual(buildImportChangePlan({specifications:{'Технологія':'DLP™'}},projector).conflicts,[]);
+let args;await writeImportProduct({rpc:async(_,params)=>{args=params;return {data:{}};}},'run',current,{price:5});
+assert.deepEqual(args.p_expected.manual_overrides,current.manual_overrides);
+const db=await PGlite.create();const admin='11111111-1111-1111-1111-111111111111';
+try {
+ await db.exec(`create role anon;create role authenticated;create schema auth;
+ create table auth.users(id uuid primary key);insert into auth.users values('${admin}');
+ create function auth.uid() returns uuid language sql stable as $$select nullif(current_setting('request.jwt.claim.sub',true),'')::uuid$$;
+ create function public.is_admin() returns boolean language sql stable as $$select auth.uid()='${admin}'::uuid$$;
+ grant usage on schema auth to authenticated;
+ create table products(id bigint generated always as identity primary key,name text not null,slug text unique not null,sku text unique,brand_id bigint,brand text,category text,price numeric,stock_quantity integer,in_stock boolean,availability_status text,description text,specifications jsonb,is_active boolean,image_path text,image_paths jsonb);
+ insert into products(name,slug,sku,brand,category,price,specifications) values('Legacy','legacy','S','Canon','old',10,'{"Формат":"A4","Інтерфейси":"USB"}');
+ grant select,insert,update on products to authenticated;grant usage on sequence products_id_seq to authenticated;`);
+ const history=await readFile(new URL('../supabase/import-history-upgrade.sql',import.meta.url),'utf8');
+ const migration=await readFile(new URL('../supabase/product-manual-overrides-upgrade.sql',import.meta.url),'utf8');
+ await db.exec(history);await db.exec(migration);await db.exec(migration);await db.exec(history);
+ assert.deepEqual((await db.query('select manual_overrides from products')).rows[0].manual_overrides,{});
+ await db.exec(`set role authenticated;set request.jwt.claim.sub='${admin}';
+ update products set category='manual',brand='HP',specifications='{"Формат":"A3"}' where id=1;`);
+ const product=async()=> (await db.query('select * from products where id=1')).rows[0];
+ let saved=await product();assert.deepEqual(saved.manual_overrides,{category:true,brand:true,specifications:{Формат:true,Інтерфейси:true}});
+ const call=async(name,params)=>(await db.query('select public.'+name+'('+params.map((_,i)=>'$'+(i+1)).join(',')+') value',params)).rows[0].value;
+ const run=await call('start_product_import',['{}',10]);
+ const write=(patch,expected)=>call('apply_product_import',[run,1,JSON.stringify(patch),JSON.stringify({sku:'S',...expected}),false]);
+ await assert.rejects(write({category:'wrong'},{category:'manual'}),/corrected manually/);
+ await assert.rejects(write({specifications:{Формат:'A4'}},{specifications:saved.specifications}),/corrected manually/);
+ await assert.rejects(write({specifications:{Формат:'A3',Інтерфейси:'Wi-Fi'}},{specifications:saved.specifications}),/corrected manually/);
+ await write({price:20,specifications:{Формат:'A3',Ресурс:'500'}},{price:10,specifications:saved.specifications});
+ saved=await product();assert.equal(saved.manual_overrides.specifications.Ресурс,undefined);
+ // Mode restored after importer: a later manual edit in the same session is recorded.
+ await db.exec(`update products set specifications=specifications||'{"Ресурс":"600"}' where id=1;`);
+ saved=await product();assert.equal(saved.manual_overrides.specifications.Ресурс,true);
+ const created=await call('apply_product_import',[run,null,JSON.stringify({name:'Imported',slug:'imported',sku:'NEW',category:'imported',price:1,specifications:{Формат:'A4'}}),'{}',false]);
+ assert.deepEqual((await db.query('select manual_overrides from products where id=$1',[created.id])).rows[0].manual_overrides,{});
+ await db.exec(`insert into products(name,slug,sku,category,price,specifications) values('Manual','manual','M','printers',5,'{"Формат":"A4"}');`);
+ assert.equal((await db.query("select manual_overrides from products where sku='M'")).rows[0].manual_overrides.category,true);
+ // Expected provenance prevents a lock-only change after preview being ignored.
+ await assert.rejects(write({price:30},{price:20,manual_overrides:{}}),/changed after preview/);
+ assert.equal(Number((await product()).price),20);
+} finally {await db.close();}
+console.log('Manual provenance, aliases/tombstones, conflict preview, bulk/direct admin edits, server protection, import exclusion and stale locks: OK');

@@ -51,6 +51,7 @@ create or replace function public.apply_product_import(p_run uuid,p_id bigint,p_
 returns jsonb language plpgsql security definer set search_path=public as $$
 declare
   old_row public.products; new_row public.products;
+  manual jsonb; manual_key text; previous_mode text;
   allowed text[]; field text; assignments text;
   before_data jsonb; after_data jsonb; old_json jsonb; new_json jsonb;
 begin
@@ -65,10 +66,25 @@ begin
     if not field=any(allowed) then raise exception 'Unsupported import field: %',field; end if;
   end loop;
   if p_images and p_id is null then raise exception 'Images require an existing product'; end if;
+  previous_mode:=current_setting('technoroom.import_write',true);
+  perform set_config('technoroom.import_write','true',true);
   if p_id is not null then
     select * into old_row from public.products where id=p_id for update;
     if not found then raise exception 'Product no longer exists'; end if;
     old_json:=to_jsonb(old_row);
+    manual:=coalesce(old_json->'manual_overrides','{}'::jsonb);
+    if manual->'category'='true'::jsonb and p_patch ? 'category'
+       and old_json->'category' is distinct from p_patch->'category' then
+      raise exception 'Category was corrected manually. Refresh import preview.' using errcode='40001';
+    end if;
+    if p_patch ? 'specifications' then
+      for manual_key in select jsonb_object_keys(coalesce(manual->'specifications','{}'::jsonb)) loop
+        if coalesce(old_row.specifications->manual_key,'null'::jsonb) is distinct from
+           coalesce(p_patch->'specifications'->manual_key,'null'::jsonb) then
+          raise exception 'Specification was corrected manually: %',manual_key using errcode='40001';
+        end if;
+      end loop;
+    end if;
     if jsonb_typeof(p_expected) is distinct from 'object' then raise exception 'Missing expected values'; end if;
     for field in select jsonb_object_keys(p_patch) loop
       if not p_expected ? field then raise exception 'Missing expected field: %',field; end if;
@@ -102,6 +118,7 @@ begin
       values(p_run,new_row.id,new_row.sku,new_row.name,case when p_images then 'images' when p_id is null then 'created' else 'updated' end,
         case when p_id is null then null else before_data end,after_data);
   end if;
+  perform set_config('technoroom.import_write',coalesce(previous_mode,''),true);
   return jsonb_build_object('id',new_row.id,'unchanged',after_data='{}'::jsonb);
 end $$;
 

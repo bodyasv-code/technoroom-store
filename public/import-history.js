@@ -1,4 +1,4 @@
-import {importChangeMarkup} from './import-change-plan.js?v=20261017-change-preview';
+import {importChangeMarkup} from './import-change-plan.js?v=20261020-manual';
 const escape=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const labels={running:'Не завершено / виконується',completed:'Завершено',partial:'Частково виконано',failed:'Помилка'};
 const fields={name:'Назва',slug:'URL',sku:'SKU',brand:'Бренд',brand_id:'ID бренду',category:'Категорія',price:'Ціна, ₴',stock_quantity:'Залишок, шт.',in_stock:'У наявності',availability_status:'Статус наявності',description:'Опис',specifications:'Характеристики',is_active:'Публікувати',image_path:'Головне фото',image_paths:'Галерея'};
@@ -12,6 +12,7 @@ export async function startImportRun(db,options,count){
 export async function writeImportProduct(db,runId,current,patch,{images=false}={}){
   if(current&&!Object.keys(patch).length)return {data:{id:current.id,unchanged:true},error:null};
   const expected=current?Object.fromEntries(['sku',...Object.keys(patch)].map(key=>[key,current[key]??null])):{};
+  if(current&&Object.hasOwn(current,'manual_overrides'))expected.manual_overrides=current.manual_overrides;
   return db.rpc('apply_product_import',{p_run:runId,p_id:current?.id??null,p_patch:patch,p_expected:expected,p_images:images});
 }
 export async function finishImportRun(db,runId,report,failed=false){

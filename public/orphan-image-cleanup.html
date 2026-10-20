@@ -1,0 +1,13 @@
+<!doctype html><html lang="uk"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Очищення фото — TECHNOROOM</title>
+<style>body{font:16px/1.5 Arial,sans-serif;color:#122a43;background:#f4f7fb;margin:0}main{max-width:940px;margin:32px auto;padding:24px;background:white;border:1px solid #d5e1ee;border-radius:16px}button,input{font:inherit;padding:12px;margin:8px 8px 8px 0}button{cursor:pointer;border:1px solid #b8ccdf;border-radius:8px}button:disabled{opacity:.45;cursor:default}#remove{background:#a52020;color:white}label{display:block;margin:16px 0}pre{white-space:pre-wrap;overflow-wrap:anywhere;background:#eef4fa;padding:16px}a{color:#0875e9}</style></head><body><main>
+<a href="admin#supplierRegistry">← До адмінки</a><h1>Фото видалених товарів</h1>
+<p>Лише підтверджений набір: <b>1877 файлів, 755 051 158 байтів (755,05 МБ)</b>. Шість інших фото без посилань не видаляються. Приховані товари, варіанти, категорії, бренди, банери та статті перевіряються.</p>
+<p><b>Зворотної дії немає.</b> Копія карток планшетів не містить зображень. Завантажений список файлів — журнал, а не резервна копія фото.</p>
+<p>На час операції не запускайте імпорт і не редагуйте картки/статті в інших вкладках. Перед кожним пакетом посилання перевіряються знову, але не можна атомарно об’єднати редагування сайту й видалення Storage API.</p>
+<button id="scan" type="button">Перевірити список без видалення</button><button id="download" type="button" disabled>Завантажити список файлів</button>
+<label><input id="ack" type="checkbox"> Розумію незворотність видалення; імпорт і редагування зараз зупинені.</label>
+<label>Для підтвердження введіть «ВИДАЛИТИ 1877»<br><input id="phrase" autocomplete="off" placeholder="ВИДАЛИТИ 1877"></label>
+<button id="remove" type="button" disabled>Видалити лише перевірені 1877 фото</button>
+<pre id="status" role="status">Натисніть перевірку. Без авторизованої адмін-сесії операція недоступна.</pre>
+<p>Якщо кількість, розмір або метадані відрізняються, видалення блокується. При помилці операція зупиняється — не натискайте повторно без нового підрахунку.</p>
+</main><script src="supabase-config.js"></script><script type="module" src="orphan-image-cleanup.js?v=20261020-cleanup"></script></body></html>

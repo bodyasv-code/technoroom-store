@@ -42,6 +42,19 @@ export async function handleAdminUsers(request,response,{db,sender,configured}={
   if(auth.error||!auth.data?.user)return response.status(401).json({error:'Потрібен вхід власника.'});
   const actor=auth.data.user.id,profile=await db.from('profiles').select('role').eq('id',actor).maybeSingle();
   if(profile.error||profile.data?.role!=='owner')return response.status(403).json({error:'Керувати користувачами може лише власник.'});
+  if(request.body?.action==='edit'){
+    const body=request.body,name=typeof body.fullName==='string'?body.fullName.trim():'';
+    if(!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(body.id||'')||!name||name.length>120||/[\u0000-\u001f\u007f]/.test(name)
+      ||!['owner','manager'].includes(body.role)||!['owner','manager'].includes(body.expectedRole)
+      ||!(body.expectedName===null||typeof body.expectedName==='string'&&body.expectedName.length<=120)||body.confirm!==true)
+      return response.status(400).json({error:'Перевірте ім’я, роль та підтвердження зміни.'});
+    const result=await db.rpc('edit_admin_user',{p_actor:actor,p_target:body.id,p_name:name,p_role:body.role,p_expected_name:body.expectedName,p_expected_role:body.expectedRole});
+    if(result.error){
+      const setup=['42883','PGRST202','42P01','PGRST205'].includes(result.error.code);
+      return response.status(setup?503:409).json({error:setup?'Виконайте admin-users-edit-upgrade.sql для редагування користувачів.':result.error.code==='55P03'?'Спочатку користувач має завершити запрошення. Спробуйте пізніше.':'Зміни не збережено. Оновіть список: дані могли змінитися. Власну роль і роль останнього власника змінювати не можна.'});
+    }
+    return response.status(200).json({message:'Ім’я та роль збережено. Email і пароль не змінено.'});
+  }
   if(request.body?.action==='list'){
     const result=await db.rpc('list_admin_users',{p_actor:actor});
     if(result.error)return response.status(503).json({error:'Керування користувачами ще не підключено. Виконайте admin-users-upgrade.sql.'});

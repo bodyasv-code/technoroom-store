@@ -80,5 +80,30 @@ try{
   await db.exec('reset role');await db.query("update admin_user_invitations set updated_at=now()-interval '61 seconds' where id=$1",[claimed.id]);await db.query('update auth.users set last_sign_in_at=now() where id=$1',[newId]);await db.exec('set role service_role');
   await assert.rejects(()=>call('claim_admin_user_invitation',[owner,'new@test.ua','New','manager',attempt]),/already signed in/);
   await db.exec('reset role');assert.equal((await db.query("select role from profiles where id=$1",[owner])).rows[0].role,'owner');
+  const editMigration=await readFile(new URL('../supabase/admin-users-edit-upgrade.sql',import.meta.url),'utf8');
+  await db.exec(editMigration);await db.exec(editMigration);
+  await db.exec(`set role authenticated;set request.jwt.claim.sub='${manager}';`);
+  await assert.rejects(()=>call('edit_admin_user',[owner,manager,'Name','owner','Changed name','manager']),/permission denied/);
+  await assert.rejects(()=>db.query('select * from admin_user_change_log'),/permission denied/);
+  await db.exec('reset role;set role service_role');
+  await assert.rejects(()=>call('edit_admin_user',[manager,owner,'Name','manager','Owner','owner']),/Owner required/);
+  await assert.rejects(()=>call('edit_admin_user',[owner,owner,'Owner','manager','Owner','owner']),/Cannot change own role/);
+  await assert.rejects(()=>call('edit_admin_user',[owner,manager,'Name','owner','stale','manager']),/Profile changed/);
+  await assert.rejects(()=>call('edit_admin_user',[owner,manager,'','owner','Changed name','manager']),/Invalid edit/);
+  await call('edit_admin_user',[owner,manager,'Renamed manager','owner','Changed name','manager']);
+  await call('edit_admin_user',[owner,manager,'Renamed manager','manager','Renamed manager','owner']);
+  await call('edit_admin_user',[owner,owner,'Renamed owner','owner','Owner','owner']);
+  // Reset new invitation to pending: its profile must not change behind a sent link.
+  await db.exec('reset role');await db.query('update auth.users set last_sign_in_at=null where id=$1',[newId]);await db.exec('set role service_role');
+  await assert.rejects(()=>call('edit_admin_user',[owner,newId,'Other name','owner','New','manager']),/Pending invitation/);
+  await db.exec('reset role');
+  assert.equal((await db.query('select count(*)::int n from admin_user_change_log')).rows[0].n,3);
+  assert.equal((await db.query('select role from profiles where id=$1',[manager])).rows[0].role,'manager');
+  assert.equal((await db.query('select email from auth.users where id=$1',[manager])).rows[0].email,'manager@test.ua');
+  // Endpoint validates edits independently; actor always comes from the verified JWT.
+  actorRole='manager';res=response();await handleAdminUsers({...request,body:{action:'edit'}},res,{db:apiDb});assert.equal(res.code,403);
+  actorRole='owner';res=response();await handleAdminUsers({...request,body:{action:'edit',id:manager,fullName:'New',role:'owner',expectedName:'Old',expectedRole:'manager',confirm:false}},res,{db:apiDb});assert.equal(res.code,400);
+  let editArgs;const editDb={...apiDb,rpc:async(name,args)=>{assert.equal(name,'edit_admin_user');editArgs=args;return {error:null};}};
+  res=response();await handleAdminUsers({...request,body:{action:'edit',actor:'SPOOF',id:manager,fullName:'New',role:'owner',expectedName:'Old',expectedRole:'manager',confirm:true}},res,{db:editDb});assert.equal(res.code,200);assert.equal(editArgs.p_actor,'OWNER');assert.equal(editArgs.p_target,manager);
   console.log('Admin users: repeatable SQL, owner-only endpoint/service RPCs, manager self-promotion blocked, name edits retained, email ownership, leases, safe retry, sanitized errors, fixed invite redirects, Microsoft delivery, password setup and escaping: PASS');
 }finally{await db.close();}

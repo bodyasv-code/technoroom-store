@@ -1,6 +1,6 @@
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
 import {mountAdminNavigation} from './admin-navigation.js?v=20261020-users';
-import {mountAdminUsers} from './admin-users.js?v=20261020-users';
+import {mountAdminUsers} from './admin-users.js?v=20261020-user-edit';
 import {isAdminPasswordSetup,openAdminDashboard,saveAdminPassword} from './admin-password-setup.js?v=20261020-recovery';
 // Capture both callback types before the Supabase client consumes the hash.
 let passwordSetupMode=isAdminPasswordSetup(location.search,location.hash);

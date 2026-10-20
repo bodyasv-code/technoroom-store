@@ -20,6 +20,9 @@ assert.deepEqual(rankAdminProducts(products,'Картридж').map(p=>p.id),[1,
 const many=[...Array.from({length:25},(_,id)=>({...products[0],id:100+id})),products[2]];
 assert.equal(rankAdminProducts(many,'lw-400').slice(0,10)[0].id,3);
 assert.equal(many[0].id,100);
+const variants=[{id:5,name:'Принтер Epson LabelWorks LW-400VP',sku:'VP'},products[2]];
+for(const query of ['lw-400','LW 400','lw400'])assert.equal(rankAdminProducts(variants,query)[0].id,3);
+assert.equal(rankAdminProducts(variants,'lw400vp')[0].id,5);
 const source=fs.readFileSync(new URL('../public/admin.js',import.meta.url),'utf8');
 assert.match(source,/a=rankAdminProducts\(a,q\);const size=/);
 console.log('Admin search ranking passed');

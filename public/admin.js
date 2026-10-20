@@ -1,5 +1,5 @@
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
-import {mountAdminNavigation} from './admin-navigation.js?v=20261016-navigation';
+import {mountAdminNavigation} from './admin-navigation.js?v=20261020-suppliers';
 import {mountOrderActions} from './order-actions.js?v=20261016-actions';
 import {orderDetailsMarkup,saveOrderChanges,matchesOrderSearch,hasFailedOrderEmail} from './order-admin.js?v=20261015-order-search';
 import {orderHistoryMarkup,readOrderHistory} from './order-history.js?v=20261015-supply';
@@ -10,7 +10,11 @@ import {createArticleEditor} from './article-editor.js?v=20261011-article-links'
 import {articleHasContent} from './article-format.js?v=20261011-article-links';
 import {productNameWithSku, officeSupplyCategoryPlan, isSpecializedPrinterName} from './product-identity.js?v=20261019-labelworks';
 import {createCategoryTree,categoryOptions} from './category-tree.js?v=20261019-nested';
-import {rankAdminProducts} from './admin-product-search.js?v=20261020-ranking-exact';
+import {rankAdminProducts as rankAdminProductMatches} from './admin-product-search.js?v=20261020-ranking-exact';
+import {supplierImportBlock} from './product-suppliers.js?v=20261020-suppliers';
+import {mountSupplierAdmin,supplierFilteredProducts} from './product-suppliers-admin.js?v=20261020-suppliers';
+const supplierRegistry={ready:false,links:[],exclusions:[]};
+const rankAdminProducts=(products,query)=>rankAdminProductMatches(supplierFilteredProducts(products,supplierRegistry,document.querySelector('#supplierFilter')?.value),query);
 import {adminCatalogMessage,adminRead,loadAdminDataGroups} from './admin-data-loading.js?v=20261020-loading';
 import {resolveProjectorSpecifications, normalizeProjectorResolution, isProjectorProduct, normalizeProjectorLightSource, projectorResolutionLabel, projectorResolutionFilterValue, projectorResolutionStandards} from './projector-specs.js?v=20261013-spec-colons';
 import {resolveEditorBrand} from './brand-editor.js?v=20261012';
@@ -29,7 +33,7 @@ import {removeUnusedBrandDuplicate} from './brand-cleanup.js?v=20261012-brand-cl
 import {createQualityAudit, mountQualityPanel} from './catalog-quality.js?v=20261017-customer-content';
 import {createImportAudit, auditEligible, auditMarkup, showImportReview} from './import-audit.js?v=20261019-labelworks';
 import {buildImportChangePlan,showImportChangePlans,importSnapshot} from './import-change-plan.js?v=20261020-manual';
-import {startImportRun,writeImportProduct,finishImportRun,mountImportHistory} from './import-history.js?v=20261020-manual';
+import {startImportRun,writeImportProduct,finishImportRun,mountImportHistory} from './import-history.js?v=20261020-suppliers';
 import {manualOverrideSummary} from './product-manual-overrides.js?v=20261020-manual';
 import {printerDeviceKind,verifiedCanonPrintMode,inferredPrintColour,installationAccessory,printPaperPlan} from './printer-import-context.js?v=20261017-photo-paper';
 const supabase=createClient(window.TECHNOROOM_SUPABASE.url,window.TECHNOROOM_SUPABASE.publishableKey);
@@ -450,7 +454,7 @@ supabase.auth.getSession().then(({data:{session}})=>session?dashboard():view('lo
   let importRunning = false;
   let importPreparing = false;
   let assessImport;
-  const importAssessment = row => (assessImport ||= createImportAudit(importer.rows,state.products))(row,{...importRowMeta(row),updateCategory:$('#supplierImportCategory')?.checked===true});
+  const importAssessment = row => {const audit=(assessImport ||= createImportAudit(importer.rows,state.products))(row,{...importRowMeta(row),updateCategory:$('#supplierImportCategory')?.checked===true});const block=supplierImportBlock(supplierRegistry,row);return block?{...audit,blocked:true,issues:[...audit.issues,{code:'supplier-exclusion',level:'block',message:block}]}:audit;};
   const canImportRow = row => auditEligible(importAssessment(row),reviewedImports);
   const supportedImageHosts = new Set(['www.tradeinn.com','www.audiotrends.com.au','static-ecapac.acer.com','media4home.com.pl','media.sonos.com','images.samsung.com','assets2.razerzone.com','d7qztf2ityad6.cloudfront.net','hp.widen.net','img06.en25.com','koss.com.ua','ssl-product-images.www8-hp.com','www.3ona51.com','www.hp.com','www.koss.com','yugcontract.ua','www.it4profit.com','content.it4profit.com','erc.ua','www.erc.ua']);
   const cleanImportText = (value = '') => String(value ?? '').replace(/\s+/g, ' ').trim();
@@ -1312,6 +1316,7 @@ supabase.auth.getSession().then(({data:{session}})=>session?dashboard():view('lo
       const images = [...new Set([...sourceImages, ercSkuImage].filter(Boolean))];
       const row = { key: sku + '-' + index, vendor, name: cleanImportText(name), sku, sourceCategory, subcategory, price: importNumber(priceValue), hasPrice: Boolean(cleanImportText(priceValue)), stock, hasStock: Boolean(cleanImportText(stockValue) || availabilityStatus), availabilityStatus: availabilityStatus || undefined, description: importDescription(shortDescription, comment) || cleanImportText(sourceName), specifications, images };
       row.rawStock = stockValue;
+      row.supplier = isAsbis ? 'ASBIS' : 'ERC';
       if (row.name) importer.rows.push(row);
       index += 1;
     }
@@ -1488,7 +1493,7 @@ supabase.auth.getSession().then(({data:{session}})=>session?dashboard():view('lo
         // Preview and writer share exactly the same preservation rules.
         const plan=buildImportChangePlan(row,current,updateOptions,category);
         const shouldImportImages=plan.images==='add';
-        const result=await writeImportProduct(supabase,runId,current,plan.patch);
+        const result=await writeImportProduct(supabase,runId,current,plan.patch,{supplier:row.supplier});
         if (result.error) fail(row, result.error.message || result.error.code);
         else {
           if(result.data?.unchanged&&!shouldImportImages)unchanged++;else updated += 1;
@@ -1499,7 +1504,7 @@ supabase.auth.getSession().then(({data:{session}})=>session?dashboard():view('lo
       } else {
         const importedBrand = state.brands.find((brand) => brand.is_active && txt(brand.name) === txt(row.vendor));
         const payload = { ...inventory, price: row.hasPrice ? row.price : 0, stock_quantity: row.hasStock ? row.stock : 0, in_stock: row.hasStock && row.stock > 0, availability_status: row.availabilityStatus || (row.hasStock && row.stock > 0 ? 'in_stock' : 'out_of_stock'), name: row.name, slug: newSlug(row.name, row.sku, usedSlugs), sku: row.sku, brand_id: importedBrand?.id || null, brand: importedBrand?.name || row.vendor || null, description: row.description || null, specifications: row.specifications, is_active: publishNew && row.hasPrice && Number(row.price)>0 };
-        const result = await writeImportProduct(supabase,runId,null,payload);
+        const result = await writeImportProduct(supabase,runId,null,payload,{supplier:row.supplier});
         if (result.error) fail(row, result.error.message || result.error.code);
         else {
           created += 1;
@@ -1537,6 +1542,7 @@ supabase.auth.getSession().then(({data:{session}})=>session?dashboard():view('lo
     document.querySelector('.admin-nav').insertAdjacentHTML('beforeend', '<a href="#supplierImport">Імпорт ERC / ASBIS</a>');
     const section = $('#supplierImport');
     refreshImportHistory=mountImportHistory(supabase,$('#supplierImportRows').closest('.admin-table-wrap'));
+    mountSupplierAdmin({db:supabase,registry:supplierRegistry,getProducts:()=>state.products,rerender:renderProducts,onRegistry:renderImportPreview});
     refreshImportHistory();
     $('#supplierImportSpecifications').closest('label').insertAdjacentHTML('beforebegin','<label class="check"><input id="supplierImportPrices" type="checkbox" checked> Оновлювати ціни</label><label class="check"><input id="supplierImportStock" type="checkbox" checked> Оновлювати залишки</label><label class="check"><input id="supplierImportCategory" type="checkbox"> Оновлювати категорії після перевірки</label><label class="check"><input id="supplierImportDescription" type="checkbox" checked> Додати відсутній опис</label>');
     $('#supplierImportSummary').insertAdjacentHTML('beforebegin','<p class="recovery-help">Перемикачі оновлень захищають наявні товари. Їхні назви, бренди та фото не перезаписуються. Нові товари отримують ціну й залишок із джерела. Перед записом обов’язковий перегляд «було → стане».</p>');
@@ -1666,7 +1672,7 @@ supabase.auth.getSession().then(({data:{session}})=>session?dashboard():view('lo
     const description = importDescription(source.description, source.Description, source.fullDescription, source.FullDescription, source.gdesc, source.GDesc);
     const sourceSpecifications = { ...parseSpecifications(description), ...ercSpecifications(source), ...rawSpecs };
     return {
-      key: 'erc-' + (sku || index), vendor, name, sku, sourceCategory: cleanImportText(source.category || source.Category || source.categoryName || ''), subcategory: cleanImportText(source.subcategory || source.Subcategory || ''),
+      key: 'erc-' + (sku || index), supplier:'ERC', vendor, name, sku, sourceCategory: cleanImportText(source.category || source.Category || source.categoryName || ''), subcategory: cleanImportText(source.subcategory || source.Subcategory || ''),
       price, hasPrice: rawPrice != null && price > 0, stock: hasStock ? stock : 0, hasStock, availabilityStatus: hasStock ? (stock > 0 ? 'in_stock' : 'out_of_stock') : '',
       description, specifications: normalizeImportedProjector(name, vendor, description, mergeMissingSpecifications(sourceSpecifications, templateSpecifications([name, sourceName, description].join(' '))), sku), images: [ercImage(source.pic || source.Pic || source.image || source.Image)].filter(Boolean),
     };

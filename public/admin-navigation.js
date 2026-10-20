@@ -1,4 +1,4 @@
-export const adminSectionIds=['overview','reports','quality','products','categories','brands','orders','customers','promotions','banners','articles','supplierImport','ercCatalogApi'];
+export const adminSectionIds=['overview','reports','quality','products','categories','brands','orders','customers','promotions','banners','articles','supplierImport','supplierRegistry','ercCatalogApi'];
 export function adminSectionFromHash(hash,ids=adminSectionIds){
   let id='';try{id=decodeURIComponent(String(hash||'').replace(/^#/,''))}catch{}
   return ids.includes(id)?id:(ids.includes('overview')?'overview':ids[0]);

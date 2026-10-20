@@ -9,10 +9,11 @@ export async function startImportRun(db,options,count){
   if(result.error)throw new Error(setupError(result.error)?historySetupMessage:result.error.message);
   return result.data;
 }
-export async function writeImportProduct(db,runId,current,patch,{images=false}={}){
-  if(current&&!Object.keys(patch).length)return {data:{id:current.id,unchanged:true},error:null};
+export async function writeImportProduct(db,runId,current,patch,{images=false,supplier=null}={}){
+  if(current&&!Object.keys(patch).length&&!supplier)return {data:{id:current.id,unchanged:true},error:null};
   const expected=current?Object.fromEntries(['sku',...Object.keys(patch)].map(key=>[key,current[key]??null])):{};
   if(current&&Object.hasOwn(current,'manual_overrides'))expected.manual_overrides=current.manual_overrides;
+  if(supplier)return db.rpc('apply_product_supplier_import',{p_run:runId,p_id:current?.id??null,p_patch:patch,p_expected:expected,p_supplier:supplier});
   return db.rpc('apply_product_import',{p_run:runId,p_id:current?.id??null,p_patch:patch,p_expected:expected,p_images:images});
 }
 export async function finishImportRun(db,runId,report,failed=false){

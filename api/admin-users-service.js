@@ -1,5 +1,6 @@
 import {randomUUID} from 'node:crypto';
 export const adminInviteRedirect='https://www.technoroom.com.ua/admin';
+export const chiefOwnerEmail='bodyasv@gmail.com';
 export function validateAdminInvitation(body){
   const email=String(body?.email??'').trim().toLowerCase(),fullName=String(body?.fullName??'').trim(),role=body?.role;
   if(email.length>254||!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)||!fullName||fullName.length>120||/[\r\n\u0000-\u001f]/.test(fullName)||!['owner','manager'].includes(role)||body.confirm!==true)throw new Error('invalid_invitation');
@@ -41,7 +42,7 @@ export async function handleAdminUsers(request,response,{db,sender,configured}={
   const auth=await db.auth.getUser(bearer[1]);
   if(auth.error||!auth.data?.user)return response.status(401).json({error:'Потрібен вхід власника.'});
   const actor=auth.data.user.id,profile=await db.from('profiles').select('role').eq('id',actor).maybeSingle();
-  if(profile.error||profile.data?.role!=='owner')return response.status(403).json({error:'Керувати користувачами може лише власник.'});
+  if(profile.error||profile.data?.role!=='owner'||String(auth.data.user.email||'').toLowerCase()!==chiefOwnerEmail)return response.status(403).json({error:'Керувати користувачами може лише головний власник — bodyasv@gmail.com.'});
   if(request.body?.action==='edit'){
     const body=request.body,name=typeof body.fullName==='string'?body.fullName.trim():'';
     if(!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(body.id||'')||!name||name.length>120||/[\u0000-\u001f\u007f]/.test(name)

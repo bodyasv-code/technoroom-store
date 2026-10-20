@@ -27,7 +27,7 @@ create or replace function public.claim_admin_user_invitation(
 ) returns jsonb language plpgsql security definer set search_path=public as $$
 declare inv public.admin_user_invitations; target auth.users; code text:=lower(btrim(p_email));
 begin
-  if not exists(select 1 from profiles where id=p_actor and role='owner') then raise exception 'Owner required' using errcode='42501';end if;
+  if not exists(select 1 from profiles p join auth.users u on u.id=p.id where p.id=p_actor and p.role='owner' and lower(u.email)='bodyasv@gmail.com') then raise exception 'Owner required' using errcode='42501';end if;
   if code is null or length(code)>254 or code !~ '^[^[:space:]@]+@[^[:space:]@]+\.[^[:space:]@]+$'
     or p_name is null or length(btrim(p_name)) not between 1 and 120
     or p_role is null or p_role not in ('manager','owner') or p_attempt is null then raise exception 'Invalid invitation' using errcode='22023';end if;
@@ -65,7 +65,7 @@ create or replace function public.bind_admin_user_invitation(p_actor uuid,p_id u
 returns void language plpgsql security definer set search_path=public as $$
 declare inv public.admin_user_invitations;target auth.users;
 begin
-  if not exists(select 1 from profiles where id=p_actor and role='owner') then raise exception 'Owner required' using errcode='42501';end if;
+  if not exists(select 1 from profiles p join auth.users u on u.id=p.id where p.id=p_actor and p.role='owner' and lower(u.email)='bodyasv@gmail.com') then raise exception 'Owner required' using errcode='42501';end if;
   select * into inv from admin_user_invitations where id=p_id and attempt_id=p_attempt and status='preparing' for update;
   if not found then raise exception 'Invitation lease lost';end if;
   select * into target from auth.users where id=p_target and lower(email)=inv.email;
@@ -79,7 +79,7 @@ end $$;
 create or replace function public.finish_admin_user_invitation(p_actor uuid,p_id uuid,p_attempt uuid,p_status text)
 returns void language plpgsql security definer set search_path=public as $$
 begin
-  if not exists(select 1 from profiles where id=p_actor and role='owner') then raise exception 'Owner required' using errcode='42501';end if;
+  if not exists(select 1 from profiles p join auth.users u on u.id=p.id where p.id=p_actor and p.role='owner' and lower(u.email)='bodyasv@gmail.com') then raise exception 'Owner required' using errcode='42501';end if;
   if p_status is null or p_status not in ('accepted','failed') then raise exception 'Invalid status';end if;
   update admin_user_invitations set status=p_status,updated_at=now()
     where id=p_id and attempt_id=p_attempt and status in ('preparing','ready');
@@ -89,7 +89,7 @@ end $$;
 create or replace function public.list_admin_users(p_actor uuid)
 returns jsonb language plpgsql stable security definer set search_path=public as $$
 begin
-  if not exists(select 1 from profiles where id=p_actor and role='owner') then raise exception 'Owner required' using errcode='42501';end if;
+  if not exists(select 1 from profiles p join auth.users u on u.id=p.id where p.id=p_actor and p.role='owner' and lower(u.email)='bodyasv@gmail.com') then raise exception 'Owner required' using errcode='42501';end if;
   return coalesce((select jsonb_agg(x order by x.created_at desc) from (
     select p.id,u.email,p.full_name,p.role,p.created_at,u.last_sign_in_at,
       i.status invitation_status,(i.id is not null and u.last_sign_in_at is null) can_resend

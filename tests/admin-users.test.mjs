@@ -33,7 +33,8 @@ calls.length=0;assert.equal((await inviteAdminUser(mock,'OWNER',input,{configure
 assert.equal((await inviteAdminUser(mock,'OWNER',input,{sender:async()=>{throw new Error('SECRET_TEST_TOKEN');}})).status,502);assert.equal(calls.at(-1).args.p_status,'failed');
 calls.length=0;inv.target_user_id='NEW';await inviteAdminUser(mock,'OWNER',input,{sender:async()=>({status:'accepted'})});assert.equal(calls[1].args.type,'recovery');inv.target_user_id=null;
 let actorRole='manager',verified=true;let rpcCount=0;
-const apiDb={auth:{getUser:async()=>verified?{data:{user:{id:'OWNER'}}}:{error:{},data:{}}},from:()=>({select(){return this;},eq(){return this;},maybeSingle:async()=>({data:{role:actorRole}})}),rpc:async()=>{rpcCount++;return {data:[]};}};
+let actorEmail='bodyasv@gmail.com';
+const apiDb={auth:{getUser:async()=>verified?{data:{user:{id:'OWNER',email:actorEmail}}}:{error:{},data:{}}},from:()=>({select(){return this;},eq(){return this;},maybeSingle:async()=>({data:{role:actorRole}})}),rpc:async()=>{rpcCount++;return {data:[]};}};
 const response=()=>({code:0,body:null,setHeader(){},status(code){this.code=code;return this;},json(body){this.body=body;return this;}});
 const request={method:'POST',headers:{authorization:'Bearer TEST'},body:{action:'list'}};
 let res=response();await handleAdminUsers(request,res,{db:apiDb});assert.equal(res.code,403);assert.equal(rpcCount,0);
@@ -47,7 +48,7 @@ const owner='11111111-1111-1111-1111-111111111111',manager='22222222-2222-2222-2
 try{
   await db.exec(`create role anon;create role authenticated;create role service_role bypassrls;create schema auth;
     create table auth.users(id uuid primary key,email text,raw_user_meta_data jsonb default '{}',last_sign_in_at timestamptz);
-    insert into auth.users(id,email)values('${owner}','owner@test.ua'),('${manager}','manager@test.ua'),('${alien}','alien@test.ua');
+    insert into auth.users(id,email)values('${owner}','bodyasv@gmail.com'),('${manager}','manager@test.ua'),('${alien}','alien@test.ua');
     create function auth.uid() returns uuid language sql stable as $$select nullif(current_setting('request.jwt.claim.sub',true),'')::uuid$$;
     create type user_role as enum('owner','manager');create table profiles(id uuid primary key references auth.users(id),role user_role,full_name text,created_at timestamptz default now());
     insert into profiles values('${owner}','owner','Owner',now()),('${manager}','manager','Manager',now());
@@ -105,5 +106,24 @@ try{
   actorRole='owner';res=response();await handleAdminUsers({...request,body:{action:'edit',id:manager,fullName:'New',role:'owner',expectedName:'Old',expectedRole:'manager',confirm:false}},res,{db:apiDb});assert.equal(res.code,400);
   let editArgs;const editDb={...apiDb,rpc:async(name,args)=>{assert.equal(name,'edit_admin_user');editArgs=args;return {error:null};}};
   res=response();await handleAdminUsers({...request,body:{action:'edit',actor:'SPOOF',id:manager,fullName:'New',role:'owner',expectedName:'Old',expectedRole:'manager',confirm:true}},res,{db:editDb});assert.equal(res.code,200);assert.equal(editArgs.p_actor,'OWNER');assert.equal(editArgs.p_target,manager);
+  const chiefMigration=await readFile(new URL('../supabase/admin-users-chief-owner-upgrade.sql',import.meta.url),'utf8');
+  // Exercise upgrading the old all-owner guards, not only fresh definitions.
+  const oldGuard="if not exists(select 1 from profiles where id=p_actor and role='owner')";
+  const newGuard="if not exists(select 1 from profiles p join auth.users u on u.id=p.id where p.id=p_actor and p.role='owner' and lower(u.email)='bodyasv@gmail.com')";
+  await db.exec(migration.replaceAll(newGuard,oldGuard));await db.exec(editMigration.replaceAll(newGuard,oldGuard));
+  await db.exec(chiefMigration);await db.exec(chiefMigration);
+  await db.query("update profiles set role='owner' where id=$1",[manager]);
+  await db.exec('set role service_role');
+  await assert.rejects(()=>call('list_admin_users',[manager]),/Owner required/);
+  await assert.rejects(()=>call('claim_admin_user_invitation',[manager,'another@test.ua','Name','manager',attempt]),/Owner required/);
+  await assert.rejects(()=>call('bind_admin_user_invitation',[manager,claimed.id,attempt,newId]),/Owner required/);
+  await assert.rejects(()=>call('finish_admin_user_invitation',[manager,claimed.id,attempt,'accepted']),/Owner required/);
+  await assert.rejects(()=>call('edit_admin_user',[manager,owner,'Name','owner','Renamed owner','owner']),/Owner required/);
+  assert.equal((await call('list_admin_users',[owner])).length,3);
+  await call('edit_admin_user',[owner,manager,'Other owner','owner','Renamed manager','owner']);
+  await db.exec('reset role');assert.equal((await db.query('select role from profiles where id=$1',[manager])).rows[0].role,'owner');
+  actorEmail='office@tehnoroom.com.ua';
+  for(const action of ['list','invite','resend','edit']){res=response();await handleAdminUsers({...request,body:{...input,action,actor:'OWNER',email:'bodyasv@gmail.com'}},res,{db:apiDb});assert.equal(res.code,403);}
+  actorEmail='bodyasv@gmail.com';
   console.log('Admin users: repeatable SQL, owner-only endpoint/service RPCs, manager self-promotion blocked, name edits retained, email ownership, leases, safe retry, sanitized errors, fixed invite redirects, Microsoft delivery, password setup and escaping: PASS');
 }finally{await db.close();}

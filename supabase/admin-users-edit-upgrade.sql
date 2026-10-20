@@ -18,7 +18,7 @@ declare target public.profiles;
 begin
   -- Serialize owner edits, then recheck the actor inside the same transaction.
   perform pg_advisory_xact_lock(hashtextextended('admin-user-role-edit',0));
-  if not exists(select 1 from profiles where id=p_actor and role='owner') then
+  if not exists(select 1 from profiles p join auth.users u on u.id=p.id where p.id=p_actor and p.role='owner' and lower(u.email)='bodyasv@gmail.com') then
     raise exception 'Owner required' using errcode='42501';end if;
   if p_name is null or length(btrim(p_name)) not between 1 and 120 or p_name ~ '[[:cntrl:]]'
     or p_role is null or p_role not in ('owner','manager') then

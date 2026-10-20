@@ -44,7 +44,7 @@ export async function sendAdminInvitationMail({email,fullName,role,actionLink},o
     ||url.searchParams.get('redirect_to')!=='https://www.technoroom.com.ua/admin')throw new Error('invalid_invitation_link');
   return sendGraphMail({subject:'TECHNOROOM: запрошення до адмінки',text:[
     'Вітаємо, '+fullName+'!','Вас запрошено до адмінки TECHNOROOM.',
-    'Роль: '+(role==='owner'?'Власник — включно з керуванням користувачами.':'Менеджер — робота з каталогом і замовленнями, без керування користувачами.'),
+    'Роль: '+(role==='owner'?'Власник — робота з магазином. Користувачами керує лише головний власник.':'Менеджер — робота з каталогом і замовленнями, без керування користувачами.'),
     '', 'Відкрийте одноразове посилання та задайте власний пароль:',actionLink,
     '', 'Не пересилайте це посилання іншим. Якщо ви не очікували запрошення, не відкривайте його.'
   ].join('\n')},email,options);

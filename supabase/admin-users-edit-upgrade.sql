@@ -15,6 +15,7 @@ create or replace function public.edit_admin_user(
   p_actor uuid,p_target uuid,p_name text,p_role text,p_expected_name text,p_expected_role text
 ) returns void language plpgsql security definer set search_path=public as $$
 declare
+  v_previous jsonb;
   v_previous_name text;
   v_previous_role text;
 begin
@@ -25,9 +26,11 @@ begin
   if p_name is null or length(btrim(p_name)) not between 1 and 120 or p_name ~ '[[:cntrl:]]'
     or p_role is null or p_role not in ('owner','manager') then
     raise exception 'Invalid edit' using errcode='22023';end if;
-  select p.full_name,p.role::text into v_previous_name,v_previous_role
-    from public.profiles p where p.id=p_target for update;
-  if not found then raise exception 'User not found' using errcode='P0002';end if;
+  v_previous := (select jsonb_build_object('name',p.full_name,'role',p.role::text)
+    from public.profiles p where p.id=p_target for update);
+  if v_previous is null then raise exception 'User not found' using errcode='P0002';end if;
+  v_previous_name := v_previous->>'name';
+  v_previous_role := v_previous->>'role';
   if v_previous_name is distinct from p_expected_name or v_previous_role is distinct from p_expected_role then
     raise exception 'Profile changed; refresh first' using errcode='40001';end if;
   if p_actor=p_target and v_previous_role<>p_role then

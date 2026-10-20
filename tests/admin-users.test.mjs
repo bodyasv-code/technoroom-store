@@ -115,6 +115,9 @@ try{
   const editorEdit=await readFile(new URL('../supabase/admin-users-edit-sql-editor.sql',import.meta.url),'utf8');
   const editorChief=await readFile(new URL('../supabase/admin-users-chief-owner-sql-editor.sql',import.meta.url),'utf8');
   assert.ok(!editorEdit.includes('$$'));assert.ok(!editorChief.includes('$$'));
+  // Hosted editor probe treated SELECT ... INTO variables as table names.
+  // Keep the edit function free of that construct, including the row-lock read.
+  assert.ok(!/\bselect\b[^;]*\binto\s+v_/i.test(editorEdit));
   await db.exec(editorEdit);await db.exec(editorChief);await db.exec(editorEdit);await db.exec(editorChief);
   await db.query("update profiles set role='owner' where id=$1",[manager]);
   await db.exec('set role service_role');

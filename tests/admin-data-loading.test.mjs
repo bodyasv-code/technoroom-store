@@ -1,0 +1,45 @@
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import vm from 'node:vm';
+import {adminCatalogMessage,adminRead,loadAdminDataGroups} from '../public/admin-data-loading.js';
+assert.match(adminCatalogMessage({catalogLoading:true}),/Завантажуємо/);
+assert.match(adminCatalogMessage({catalogError:true}),/Не вдалося/);
+assert.equal(adminCatalogMessage({catalogReady:true}),'');
+assert.deepEqual(await adminRead(Promise.resolve({data:[1]})),[1]);
+await assert.rejects(adminRead(Promise.resolve({error:new Error('offline')})),/offline/);
+await assert.rejects(adminRead(new Promise(()=>{}),10),/Час очікування/);
+const deferred=()=>{let resolve,reject;const promise=new Promise((a,b)=>{resolve=a;reject=b;});return {promise,resolve,reject};};
+for(const slower of ['catalog','secondary']) {
+ const slow=deferred(),events=[];
+ const run=loadAdminDataGroups({catalog:()=>slower==='catalog'?slow.promise:Promise.resolve('products'),secondary:()=>slower==='secondary'?slow.promise:Promise.resolve('orders'),onCatalog:()=>events.push('catalog'),onSecondary:()=>events.push('secondary'),onCatalogError:()=>events.push('catalog-error'),onSecondaryError:()=>events.push('secondary-error')});
+ await new Promise(resolve=>setImmediate(resolve));
+ assert.deepEqual(events,[slower==='catalog'?'secondary':'catalog']);
+ slow.resolve([]);await run;assert.equal(events.length,2);
+}
+let available=false,failed=false;
+await loadAdminDataGroups({catalog:()=>Promise.resolve([]),secondary:()=>Promise.reject(new Error('reports')),onCatalog:()=>{available=true;},onSecondary:()=>{},onCatalogError:()=>{},onSecondaryError:()=>{failed=true;}});
+assert.equal(available,true);assert.equal(failed,true);
+// Exercise the real loadData and retry handler with small DOM/query doubles.
+const source=fs.readFileSync(new URL('../public/admin.js',import.meta.url),'utf8');
+const loader=source.slice(source.indexOf('let adminLoadPromise=null;'),source.indexOf('function renderMetrics()'));
+const nodes=new Map();
+const node=selector=>{if(!nodes.has(selector))nodes.set(selector,{hidden:false,disabled:false,textContent:'',innerHTML:'',setAttribute(){},querySelector(part){return node(selector+' '+part);}});return nodes.get(selector);};
+const context={state:{catalogReady:false,catalogLoading:true,catalogError:false,ordersReady:false,products:[{id:'existing'}]},$:node,esc:value=>value,adminCatalogMessage,adminRead,loadAdminDataGroups,document:{dispatchEvent(){}},Event:class{},appNotice:node('notice'),notice(){},renders:0,renderAll(){context.renders++;},allProducts:async()=>{throw new Error('offline');},loadArticles:async()=>[],supabase:{from(){const q={select(){return q;},order(){return q;},then(resolve,reject){return Promise.resolve({data:[]}).then(resolve,reject);}};return q;}}};
+vm.createContext(context);vm.runInContext(loader,context);
+await vm.runInContext('loadData()',context);
+assert.equal(context.state.catalogReady,false);assert.equal(context.state.catalogError,true);
+assert.equal(context.state.products[0].id,'existing');
+assert.match(node('#adminProducts').innerHTML,/Не вдалося/);
+assert.equal(node('#adminCatalogStatus button').disabled,false);
+context.allProducts=async()=>[{id:42}];
+node('#adminCatalogStatus button').onclick();
+await vm.runInContext('adminLoadPromise',context);
+assert.equal(context.state.catalogReady,true);assert.equal(context.state.catalogError,false);
+assert.equal(context.state.products[0].id,42);assert.equal(node('#adminCatalogStatus').hidden,true);
+assert.ok(context.renders>0);
+assert.match(source,/renderCatalogLoading\(\);if\(!state.catalogReady\)return;/);
+assert.match(source,/renderOrderActions\(state.orders,\{ready:state.ordersReady\}\)/);
+const html=fs.readFileSync(new URL('../public/admin.html',import.meta.url),'utf8');
+assert.match(html,/id="adminCatalogStatus"[^>]*role="status"/);
+assert.match(html,/Спробувати ще раз/);
+console.log('Independent catalog loading, timeout, preserved data, real retry and non-empty loading UI: OK');

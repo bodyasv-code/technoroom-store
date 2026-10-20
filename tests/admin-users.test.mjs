@@ -112,6 +112,10 @@ try{
   const newGuard="if not exists(select 1 from profiles p join auth.users u on u.id=p.id where p.id=p_actor and p.role='owner' and lower(u.email)='bodyasv@gmail.com')";
   await db.exec(migration.replaceAll(newGuard,oldGuard));await db.exec(editMigration.replaceAll(newGuard,oldGuard));
   await db.exec(chiefMigration);await db.exec(chiefMigration);
+  const editorEdit=await readFile(new URL('../supabase/admin-users-edit-sql-editor.sql',import.meta.url),'utf8');
+  const editorChief=await readFile(new URL('../supabase/admin-users-chief-owner-sql-editor.sql',import.meta.url),'utf8');
+  assert.ok(!editorEdit.includes('$$'));assert.ok(!editorChief.includes('$$'));
+  await db.exec(editorEdit);await db.exec(editorChief);await db.exec(editorEdit);await db.exec(editorChief);
   await db.query("update profiles set role='owner' where id=$1",[manager]);
   await db.exec('set role service_role');
   await assert.rejects(()=>call('list_admin_users',[manager]),/Owner required/);

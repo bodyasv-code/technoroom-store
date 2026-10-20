@@ -25,7 +25,8 @@ begin
     execute format('revoke all on function %s from public,anon,authenticated',signature);
     execute format('grant execute on function %s to service_role',signature);
   end loop;
-end $$;
+end;
+$$;
 notify pgrst,'reload schema';
 commit;
 select u.email,p.role,'Головний власник — керування користувачами' as access

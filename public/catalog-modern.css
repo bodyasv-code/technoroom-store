@@ -8,8 +8,10 @@
 .store-modern .catalog-filter-panel .catalog-refine:before { display: none; }
 .store-modern .catalog-filter-panel .catalog-refine { min-width: 0; margin: 0; padding: 0; border: 0; background: transparent; }
 .store-modern .catalog-filter-panel .catalog-refine>label { margin-bottom: 10px; font-size: 12px; }
-.store-modern .catalog-filter-panel .price-values { gap: 8px; }
-.store-modern .catalog-filter-panel .price-values input { min-width: 0; width: 100%; }
+.store-modern .catalog-filter-panel .price-values { grid-template-columns: repeat(2,minmax(0,1fr)); gap: 8px; }
+.store-modern .catalog-filter-panel .price-values input { min-width: 0; width: 100%; padding-inline: 8px; appearance: textfield; -moz-appearance: textfield; }
+.store-modern .catalog-filter-panel .price-values input::-webkit-inner-spin-button,
+.store-modern .catalog-filter-panel .price-values input::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
 .store-modern .catalog-filter-panel .price-presets { gap: 4px; margin: 6px 0 8px; }
 .store-modern .catalog-filter-panel .price-presets button { min-width: 0; min-height: 32px; padding: 6px 8px; font-size: 11px; border-radius: 8px; }
 .store-modern .catalog-filter-panel .clear-filters { min-height: 36px; margin-top: 6px; padding: 6px 0; text-align: center; border: 1px solid var(--line); border-radius: 9px; color: var(--store-blue); }
@@ -41,6 +43,7 @@
   .store-modern .catalog-filter-panel .filters { padding: 8px 16px 16px!important; }
   .store-modern .catalog-filter-panel .catalog-refine { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 8px 16px; }
   .store-modern .catalog-refine :is(.price-range-label,#screenSpecificationFilters,.clear-filters) { grid-column: 1/-1; }
+  .store-modern .catalog-filter-panel .luminous-flux-filter { grid-column: 1/-1; }
   .store-modern .catalog-show-results { display: block; width: 100%; min-width: 0; min-height: 44px; margin-top: 10px; padding: 10px; border: 0; border-radius: 10px; background: var(--store-blue); color: #fff; text-align: center; font-size: 14px; font-weight: 800; }
   .store-modern .catalog-toolbar { padding: 14px; gap: 12px; }
   .store-modern .catalog-toolbar-actions { width: 100%; display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1.4fr); gap: 10px; }

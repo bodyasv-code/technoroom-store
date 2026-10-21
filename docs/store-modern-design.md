@@ -20,3 +20,12 @@ Validation: Node regression suite and structural style/isolation test. Browser t
 timed out; desktop/mobile screenshot review and interactive QA remain outstanding.
 Do not describe the design as visually verified. Keep local for user preview before
 publishing. Admin redesign is the next pass, not part of these storefront files.
+
+Follow-up: after the user's instruction to publish immediately, storefront and
+admin design were published on 21.10.2026. The next design pass extends the opt-in
+stylesheet to articles.html/article.html, brings recommendation/article cards
+into the same visual system, and adds a shared static footer to the five store
+pages. Recommendation selection, recent-history storage, article rendering,
+checkout and administration logic are unchanged. Footer links only use existing
+catalog, article, delivery and warranty destinations; no new business claims or
+contact details are introduced. No new photos are added.

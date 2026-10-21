@@ -2,12 +2,14 @@ import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
 const read=name=>readFile(new URL('../public/'+name,import.meta.url),'utf8');
 const css=await read('store-modern.css');
-for(const page of ['index.html','catalog.html','product.html']){
+for(const page of ['index.html','catalog.html','product.html','articles.html','article.html']){
   const html=await read(page);
   assert.match(html,/<body class="[^"]*\bstore-modern\b/);
   assert.equal((html.match(/href="store-modern\.css\?/g)||[]).length,1);
   assert.ok(html.indexOf('store-modern.css')>html.indexOf('href="styles.css'));
-  assert.match(html,/aria-label="Знайти товари"/);
+  if(!page.startsWith('article'))assert.match(html,/aria-label="Знайти товари"/);
+  assert.equal((html.match(/class="store-footer"/g)||[]).length,1);
+  assert.match(html,/aria-label="Навігація внизу сторінки"/);
   const ids=[...html.matchAll(/\bid="([^"]+)"/g)].map(x=>x[1]);
   assert.equal(new Set(ids).size,ids.length,'No duplicate IDs: '+page);
 }
@@ -26,6 +28,8 @@ assert.match(css,/font-size: 13px!important/);
 assert.match(css,/grid-template-columns: var\(--store-logo-width\) auto/);
 assert.match(css,/\.store-modern \.home-logo \{ width: var\(--store-logo-width\)!important; min-width: 0!important/);
 assert.match(css,/\.store-modern \.home-catalog-wrap \{ display: flex; align-items: center;/);
+assert.match(css,/\.store-modern \.storefront-recommendation-card/);
+assert.match(css,/\.store-modern \.article-page #articleView:not\(\.article-empty\)/);
 // Lightweight delimiter/quote check; this is not a browser render test.
 const cleaned=css.replace(/\/\*[\s\S]*?\*\//g,'').replace(/"(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*'/g,'');
 const pairs={'{':'}','(':')','[':']'},stack=[];

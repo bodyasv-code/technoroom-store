@@ -5,6 +5,7 @@ Live audit: robots.txt advertised the old Vercel sitemap. That sitemap returned 
 Implemented:
 - Fixed origin https://www.technoroom.com.ua and extensionless sitemap URLs.
 - /sitemap.xml rewrite to the existing read-only endpoint; updated robots discovery URL.
+- Removed obsolete public/sitemap.xml (3 old-domain links including admin), which shadowed the rewrite. Git retains this file for recovery.
 - Ordered 500-row database pagination; active products, category hierarchy visibility and published articles.
 - XML escaping, deduplication, no fabricated modification dates or priority claims.
 - Short CDN cache; database failures produce 503, not a partial-success sitemap. Above 50000 URLs a sitemap index will be required.

@@ -17,4 +17,5 @@ const robots=await readFile(new URL('../public/robots.txt',import.meta.url),'utf
 assert.ok(robots.includes('Sitemap: https://www.technoroom.com.ua/sitemap.xml'));
 const config=JSON.parse(await readFile(new URL('../vercel.json',import.meta.url),'utf8'));
 assert.ok(config.rewrites.some(rule=>rule.source==='/sitemap.xml'&&rule.destination==='/api/sitemap'));
+await assert.rejects(readFile(new URL('../public/sitemap.xml',import.meta.url)),{code:'ENOENT'},'No static file may shadow the dynamic rewrite');
 console.log('Sitemap: production clean URLs, >1000 active products, visible category hierarchy, published articles, XML escaping and fail-closed reads: PASS');

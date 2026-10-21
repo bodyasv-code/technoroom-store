@@ -1,0 +1,260 @@
+{
+  "checkedAt": "2026-10-21T20:13:21.871Z",
+  "feedStats": {
+    "activeRead": 3031,
+    "included": 563,
+    "excluded": {
+      "not_orderable": 2300,
+      "no_uploaded_photo": 160,
+      "missing_title_description_brand": 6,
+      "invalid_price": 2
+    },
+    "missingIdentifiers": 540
+  },
+  "counts": {
+    "items": 563,
+    "uniqueImages": 563,
+    "readableDimensions": 562,
+    "under100": 8,
+    "under500": 275,
+    "atLeast500": 287,
+    "over16MB": 0,
+    "errors": 1
+  },
+  "errorCounts": {
+    "206": 1
+  },
+  "brandCounts": {
+    "Epson": 73,
+    "Acer": 33,
+    "ASUS": 4,
+    "Samsung": 1,
+    "2E": 14,
+    "KSL": 1,
+    "APPLE": 25,
+    "Brother": 11,
+    "Canon": 181,
+    "HP": 43,
+    "Kodak": 1,
+    "Pantum peripherals": 4,
+    "Ricoh": 2,
+    "Xerox": 167,
+    "Pantum supplies": 3
+  },
+  "issues": [
+    {
+      "id": "4960",
+      "image": "https://yioxzymgswewjphkuxjs.supabase.co/storage/v1/object/public/product-images/products/import-4960-1791534711980-0.jpg",
+      "name": "Картридж із друкуючою головкою струменевий Canon PG-440Bk MG2140/3140/3240/3540/3640/4140/4240/TS5140 (5219B001)",
+      "sku": "5219B001",
+      "brand": "Canon",
+      "photo": {
+        "status": 206,
+        "type": "image/jpeg",
+        "bytes": 2137,
+        "width": 128,
+        "height": 24,
+        "format": "jpeg"
+      }
+    },
+    {
+      "id": "4961",
+      "image": "https://yioxzymgswewjphkuxjs.supabase.co/storage/v1/object/public/product-images/products/import-4961-1791534715949-0.jpg",
+      "name": "Картридж із друкуючою головкою струменевий Canon PG-440Bk XL MG2140/3140/3240/3540/3640/4140/4240/TS5140 (5216B001)",
+      "sku": "5216B001",
+      "brand": "Canon",
+      "photo": {
+        "status": 206,
+        "type": "image/jpeg",
+        "bytes": 2137,
+        "width": 128,
+        "height": 24,
+        "format": "jpeg"
+      }
+    },
+    {
+      "id": "5350",
+      "image": "https://yioxzymgswewjphkuxjs.supabase.co/storage/v1/object/public/product-images/products/import-5350-1791536760056-0.jpg",
+      "name": "Картридж струменевий Epson SC-Т3405/5405 black, 700мл (C13T41E540)",
+      "sku": "C13T41E540",
+      "brand": "Epson",
+      "photo": {
+        "status": 206,
+        "type": "image/jpeg",
+        "bytes": 1414,
+        "width": 100,
+        "height": 76,
+        "format": "jpeg"
+      }
+    },
+    {
+      "id": "5351",
+      "image": "https://yioxzymgswewjphkuxjs.supabase.co/storage/v1/object/public/product-images/products/import-5351-1791536762492-0.jpg",
+      "name": "Картридж струменевий Epson SC-Т3405/5405 cyan, 700мл (C13T41E240)",
+      "sku": "C13T41E240",
+      "brand": "Epson",
+      "photo": {
+        "status": 206,
+        "type": "image/jpeg",
+        "bytes": 1428,
+        "width": 100,
+        "height": 76,
+        "format": "jpeg"
+      }
+    },
+    {
+      "id": "5352",
+      "image": "https://yioxzymgswewjphkuxjs.supabase.co/storage/v1/object/public/product-images/products/import-5352-1791536766135-0.jpg",
+      "name": "Картридж струменевий Epson SC-Т3405/5405 magenta, 700мл (C13T41E34N)",
+      "sku": "C13T41E34N",
+      "brand": "Epson",
+      "photo": {
+        "status": 206,
+        "type": "image/jpeg",
+        "bytes": 1406,
+        "width": 100,
+        "height": 76,
+        "format": "jpeg"
+      }
+    },
+    {
+      "id": "5353",
+      "image": "https://yioxzymgswewjphkuxjs.supabase.co/storage/v1/object/public/product-images/products/import-5353-1791536768532-0.jpg",
+      "name": "Картридж струменевий Epson SC-Т3405/5405 yellow, 700мл (C13T41E440)",
+      "sku": "C13T41E440",
+      "brand": "Epson",
+      "photo": {
+        "status": 206,
+        "type": "image/jpeg",
+        "bytes": 1400,
+        "width": 100,
+        "height": 76,
+        "format": "jpeg"
+      }
+    },
+    {
+      "id": "6018",
+      "image": "https://yioxzymgswewjphkuxjs.supabase.co/storage/v1/object/public/product-images/products/import-6018-1791541758387-0.jpg",
+      "name": "Ємність для відпрацьованого тонера Xerox 4110 (210 000 стор) (008R13036)",
+      "sku": "008R13036",
+      "brand": "Xerox",
+      "photo": {
+        "status": 206,
+        "type": "image/jpeg",
+        "bytes": 1407,
+        "width": 112,
+        "height": 84,
+        "format": "jpeg"
+      }
+    },
+    {
+      "id": "6039",
+      "image": "https://yioxzymgswewjphkuxjs.supabase.co/storage/v1/object/public/product-images/products/import-6039-1791541807045-0.jpg",
+      "name": "Ф`юзерний модуль Xerox Color 550/560/700 C60/C70 700DCP PL C9070 (200 000 стор) (008R13065)",
+      "sku": "008R13065",
+      "brand": "Xerox",
+      "photo": {
+        "status": 206,
+        "type": "image/jpeg",
+        "bytes": 1136,
+        "width": 114,
+        "height": 55,
+        "format": "jpeg"
+      }
+    }
+  ],
+  "unresolved": [
+    {
+      "id": "439",
+      "photo": {
+        "status": 206,
+        "type": "image/avif",
+        "bytes": 46159,
+        "error": "dimensions_unreadable"
+      }
+    }
+  ],
+  "upgradeExamples": [
+    {
+      "id": "22",
+      "image": "https://yioxzymgswewjphkuxjs.supabase.co/storage/v1/object/public/product-images/products/import-22-1791487902000-0.jpg",
+      "name": "Проєктор Acer HL1810U UHD (MR.P0E11.001)",
+      "sku": "MR.P0E11.001",
+      "brand": "Acer",
+      "photo": {
+        "status": 206,
+        "type": "image/jpeg",
+        "bytes": 14947,
+        "width": 445,
+        "height": 371,
+        "format": "jpeg"
+      }
+    },
+    {
+      "id": "25",
+      "image": "https://yioxzymgswewjphkuxjs.supabase.co/storage/v1/object/public/product-images/products/import-25-1791487909793-0.jpg",
+      "name": "Проєктор Acer PD1520s FHD (MR.JY611.001)",
+      "sku": "MR.JY611.001",
+      "brand": "Acer",
+      "photo": {
+        "status": 206,
+        "type": "image/jpeg",
+        "bytes": 13373,
+        "width": 631,
+        "height": 350,
+        "format": "jpeg"
+      }
+    },
+    {
+      "id": "31",
+      "image": "https://yioxzymgswewjphkuxjs.supabase.co/storage/v1/object/public/product-images/products/import-31-1791487919961-0.jpg",
+      "name": "Проєктор Acer Vero HL6522GTV FHD (MR.P0S11.001)",
+      "sku": "MR.P0S11.001",
+      "brand": "Acer",
+      "photo": {
+        "status": 206,
+        "type": "image/jpeg",
+        "bytes": 22455,
+        "width": 720,
+        "height": 249,
+        "format": "jpeg"
+      }
+    },
+    {
+      "id": "36",
+      "image": "https://yioxzymgswewjphkuxjs.supabase.co/storage/v1/object/public/product-images/products/import-36-1791487931045-0.jpg",
+      "name": "Проєктор Acer Vero HL6820G UHD (MR.JYN11.005)",
+      "sku": "MR.JYN11.005",
+      "brand": "Acer",
+      "photo": {
+        "status": 206,
+        "type": "image/jpeg",
+        "bytes": 11631,
+        "width": 449,
+        "height": 292,
+        "format": "jpeg"
+      }
+    }
+  ],
+  "limitations": [
+    "Header dimensions and HTTP only, not visual product identity, watermark or policy certification.",
+    "GTIN/MPN absence is explicit feed fields, not proof that manufacturer identifiers do not exist."
+  ],
+  "avifDecoderCheck": {
+    "id": "439",
+    "format": "AVIF",
+    "width": 1368,
+    "height": 1094,
+    "bytes": 46159,
+    "decoder": "Pillow",
+    "saved": false
+  },
+  "finalCounts": {
+    "items": 563,
+    "readableDimensions": 563,
+    "atLeast500": 288,
+    "atLeast100ButBelow500": 267,
+    "below100": 8,
+    "unresolved": 0
+  }
+}

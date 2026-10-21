@@ -3,7 +3,7 @@ import {COMMERCE_EVENT,ANALYTICS_READY,normalizeCommerce} from './store-commerce
 export const MEASUREMENT_ID='G-L3NG1R28PY';
 export const CONSENT_KEY='technoroom-analytics-consent-v2';
 const CONSENT_AGE=180*24*60*60*1000;
-const PAGES={'/':'TECHNOROOM','/index':'TECHNOROOM','/catalog':'Каталог — TECHNOROOM','/product':'Товар — TECHNOROOM','/articles':'Статті — TECHNOROOM','/article':'Стаття — TECHNOROOM','/checkout':'Оформлення — TECHNOROOM'};
+const PAGES={'/':'TECHNOROOM','/index':'TECHNOROOM','/catalog':'Каталог — TECHNOROOM','/product':'Товар — TECHNOROOM','/articles':'Статті — TECHNOROOM','/article':'Стаття — TECHNOROOM','/checkout':'Оформлення — TECHNOROOM','/contacts':'Контакти — TECHNOROOM'};
 const hostAllowed=hostname=>['technoroom.com.ua','www.technoroom.com.ua'].includes(hostname);
 
 export function analyticsPage(raw,referrer='') {

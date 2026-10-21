@@ -1,0 +1,19 @@
+.store-modern .information-page { padding: 32px 0 48px; min-height: 60vh; }
+.information-page h1 { margin: 0 0 14px; font: 800 clamp(30px,3vw,42px)/1.2 Manrope,Arial,sans-serif; letter-spacing: -.04em; }
+.information-page .information-lead { color: #66758a; margin: 0 0 24px; line-height: 1.7; }
+.information-grid { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 18px; }
+.information-card { min-width: 0; padding: 24px; border: 1px solid #e2e8f0; border-radius: 16px; background: #fff; }
+.information-card h2 { margin: 0 0 14px; font-size: 18px; }
+.information-card address { font-size: 17px; font-style: normal; line-height: 1.7; }
+.information-contact { display: inline-flex; align-items: center; min-height: 44px; color: #0969da; font-weight: 700; font-size: 18px; overflow-wrap: anywhere; }
+.information-hours { margin: 0; }
+.information-hours>div { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 6px 16px; padding: 9px 0; border-bottom: 1px solid #edf1f6; font-size: 14px; }
+.information-hours dt { color: #66758a; }
+.information-hours dd { margin: 0; font-weight: 700; }
+.store-footer-top>div>a:not(.store-footer-brand) { display: inline-flex; align-items: center; min-height: 36px; color: #d5dfec; font-size: 13px; }
+@media(max-width:700px) {
+  .store-modern .information-page { padding-top: 24px; }
+  .information-grid { grid-template-columns: minmax(0,1fr); gap: 12px; }
+  .information-card { padding: 18px; }
+  .information-contact { font-size: 16px; }
+}

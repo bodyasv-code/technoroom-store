@@ -115,6 +115,7 @@ body.store-modern {
 .store-modern .store-footer-brand { display: inline-block; font-size: 22px; font-weight: 800; letter-spacing: -.05em; color: #fff; }
 .store-modern .store-footer-brand>span { color: #59b8f6; }
 .store-modern .store-footer-top p { margin: 8px 0 0; color: #a8b8cc; font-size: 12px; }
+.store-modern .store-footer-top>div>a:not(.store-footer-brand) { display: inline-flex; align-items: center; min-height: 36px; color: #d5dfec; font-size: 13px; }
 .store-modern .store-footer-top nav { display: flex; flex-wrap: wrap; gap: 12px 24px; max-width: 600px; }
 .store-modern .store-footer-top nav a { display: inline-flex; align-items: center; min-height: 44px; color: #d5dfec; font-size: 13px; }
 .store-modern .store-footer .footer-bottom { display: flex; justify-content: space-between; padding-top: 22px; color: #9eafc5; }

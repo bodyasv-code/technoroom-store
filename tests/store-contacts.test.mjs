@@ -1,0 +1,18 @@
+import assert from 'node:assert/strict';
+import {readFile} from 'node:fs/promises';
+import {analyticsPage} from '../public/store-analytics.js';
+const read=file=>readFile(new URL('../public/'+file,import.meta.url),'utf8');
+const html=await read('contacts.html');
+assert.match(html,/м\. Київ, вул\. Мрії, 12Н, офіс 28/);
+assert.match(html,/tel:\+380443605539/);
+assert.match(html,/mailto:office@tehnoroom.com.ua/);
+assert.ok(!html.includes('Туполева'));
+for(const hours of ['09:00–19:00','10:00–15:00','Вихідний'])assert.ok(html.includes(hours));
+assert.match(html,/rel="canonical" href="https:\/\/www.technoroom.com.ua\/contacts"/);
+const schema=JSON.parse(html.match(/<script type="application\/ld\+json">(.*?)<\/script>/s)[1]);
+assert.equal(schema['@type'],'Organization');assert.equal(schema.address.addressCountry,'UA');assert.equal(schema.telephone,'+380443605539');
+assert.ok(!schema.legalName,'No invented legal business identity');
+for(const file of ['index.html','catalog.html','product.html','articles.html','article.html','checkout.html'])assert.ok((await read(file)).includes('href="contacts.html"'),file);
+assert.equal(analyticsPage('https://www.technoroom.com.ua/contacts?email=secret').page_location,'https://www.technoroom.com.ua/contacts');
+assert.ok(!html.includes('app.js'),'Static contact page does not download the full catalog');
+console.log('Contacts: user-supplied phone/email/address/hours, corrected street, real navigation and canonical, Organization data without invented identity, static responsive page: PASS (visual QA pending)');

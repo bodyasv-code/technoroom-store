@@ -1,12 +1,18 @@
 import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
-import handler,{buildMerchantFeed,loadMerchantFeed,readFeedRows,feedText,validGtin,FEED_COLUMNS} from '../server/merchant-feed.js';
+import handler,{buildMerchantFeed,loadMerchantFeed,readFeedRows,feedText,validGtin,FEED_COLUMNS,SMALL_IMAGE_HOLDS} from '../server/merchant-feed.js';
 import xmlHandler from '../api/sitemap.js';
 const categories=[{id:1,slug:'root',name:'Техніка',is_active:true},{id:2,slug:'projectors',parent_id:1,name:'Проєктори',is_active:true},{id:3,slug:'hidden',is_active:false},{id:4,slug:'child',parent_id:3,is_active:true}];
 const base={id:1,name:'Проєктор <b>Epson &amp; X</b>',description:'<p>Опис &amp; техніка</p>',brand:'Epson',brand_id:2,sku:'INTERNAL-SKU',category:'projectors',price:'1000.01',in_stock:true,stock_quantity:2,availability_status:'in_stock',image_path:'products/1 фото.jpg',specifications:{},is_active:true};
 const build=(products,extra={})=>buildMerchantFeed({products,categories,storageOrigin:'https://example.supabase.co',...extra});
 let result=build([base],{promotions:[{id:2,target_type:'all',discount_type:'percent',discount_value:10,is_active:true}]});
 assert.equal(result.stats.included,1);assert.equal(result.stats.missingIdentifiers,1);
+assert.equal(SMALL_IMAGE_HOLDS.size,8);
+for(const [id,sku] of SMALL_IMAGE_HOLDS){
+ const product={...base,id:Number(id),sku},before=JSON.stringify(product),outcome=build([product]);
+ assert.equal(outcome.stats.included,0);assert.equal(outcome.stats.excluded.small_image_hold,1);assert.equal(JSON.stringify(product),before,'Feed hold never mutates catalog row');
+ assert.equal(build([{...product,sku:'OTHER-SKU'}]).stats.included,1,'Hold is scoped to exact ID and SKU');
+}
 for(const fragment of ['<g:id>1</g:id>','Проєктор Epson &amp; X','<g:price>1000.01 UAH</g:price>','<g:sale_price>900.01 UAH</g:sale_price>','<g:availability>in_stock</g:availability>','Техніка &gt; Проєктори','https://www.technoroom.com.ua/product?id=1','products/1%20%D1%84%D0%BE%D1%82%D0%BE.jpg'])assert.ok(result.xml.includes(fragment),fragment);
 assert.ok(!/INTERNAL-SKU|identifier_exists|shipping_weight|<g:shipping>|service_role/.test(result.xml));
 assert.equal(validGtin('4006381333931'),'4006381333931');assert.equal(validGtin('4006381333932'),'');assert.equal(validGtin('00000000'),'');

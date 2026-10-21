@@ -5,6 +5,12 @@ import {cleanCustomerText} from '../public/product-content-policy.js';
 import {matchingPromotion,discountedPrice} from '../public/store-pricing.js';
 
 export const FEED_ORIGIN='https://www.technoroom.com.ua';
+// User-approved temporary feed-only holds: measured main images below 100px.
+// Do not change catalog visibility/stock. Remove a hold after verifying a replacement photo.
+export const SMALL_IMAGE_HOLDS=new Map([
+  ['4960','5219B001'],['4961','5216B001'],['5350','C13T41E540'],['5351','C13T41E240'],
+  ['5352','C13T41E34N'],['5353','C13T41E440'],['6018','008R13036'],['6039','008R13065']
+]);
 const PAGE_SIZE=500,MAX_ROWS=50000;
 // Select only storefront data. Never export supplier pricing, orders or customer records.
 export const FEED_COLUMNS='id,name,description,brand,brand_id,sku,category,price,in_stock,stock_quantity,availability_status,image_path,specifications,parent_product_id,is_active';
@@ -58,6 +64,7 @@ export function buildMerchantFeed({products,categories,promotions=[],promotionLi
   for(const p of products){
     const id=String(p.id);if(!/^\d+$/.test(id)||seen.has(id)){omit('invalid_or_duplicate_id');continue;}seen.add(id);
     if(p.is_active!==true){omit('inactive');continue;}
+    if(SMALL_IMAGE_HOLDS.has(id)&&SMALL_IMAGE_HOLDS.get(id)===String(p.sku||'').trim()){omit('small_image_hold');continue;}
     if(!visible.has(p.category)){omit('hidden_or_unknown_category');continue;}
     // Inquiry-only and unavailable products are excluded from this first rollout, not labelled as preorder.
     if(p.availability_status==='under_order'||!p.in_stock||!(Number(p.stock_quantity)>0)){omit('not_orderable');continue;}

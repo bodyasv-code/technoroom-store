@@ -19,7 +19,7 @@ Current sub-100 images requiring better originals or an approved feed exclusion:
 | 6018 | 008R13036 | 112×84 |
 | 6039 | 008R13065 | 114×55 |
 
-No feed exclusions applied by this work; it still contains 563 products. Tests: 66 passing including new image-header/rate-limit unit tests (mock network only). Image identity/watermarks and full manufacturer identifier matching remain separate review tasks.
+The user subsequently approved temporary feed-only exclusion of the eight sub-100 products above. Implemented an exact ID+SKU hold list in server/merchant-feed.js; no catalog visibility, availability or image was modified. Expected initial feed size after publication: 555 (563 minus 8). Holds do not automatically clear on image_path changes: verify the new image and explicitly remove the hold after replacement. Regression tests cover all eight, exact scope and no product mutation. Image identity/watermarks and full manufacturer identifier matching remain separate review tasks.
 
 Scope: 563 currently included feed products (3031 active catalog records). No production catalog edits, identifier writes, photo replacement or Merchant account changes. Added a local read-only inspection utility tools/audit-merchant-feed.mjs; source dimensions checks for PNG and JPEG passed. Images were read in memory with bounded byte ranges, not saved to disk. This is NOT a visual correctness/watermark/product-identity audit.
 

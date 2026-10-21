@@ -1,0 +1,52 @@
+/* Product detail only: preserve content, gallery sizing, prices and action handlers. */
+.store-modern .product-page { padding-top: 26px; }
+.store-modern .product-showcase { padding: 24px; gap: 24px; box-shadow: none; }
+.store-modern .product-overview { padding: 0; }
+.store-modern .product-topline { flex-wrap: wrap; gap: 6px 14px; font-size: 11px; }
+.store-modern .product-code { white-space: normal; overflow-wrap: anywhere; }
+.store-modern .product-brand { margin: 16px 0 8px; font-size: 11px; }
+.store-modern .product-overview h1 { font-size: clamp(26px,2.6vw,38px); line-height: 1.25; overflow-wrap: anywhere; }
+.store-modern .product-buy-card { margin-top: 20px; padding: 18px; border-radius: 14px; background: #f8fafd; }
+.store-modern .product-buy-card .detail-price { margin: 12px 0 4px; font: 800 clamp(28px,2.8vw,36px)/1.2 Manrope,Arial,sans-serif; letter-spacing: -.035em; }
+.store-modern .product-buy-card .detail-actions { margin: 16px 0; gap: 10px; }
+.store-modern .product-buy-card :is(.product-buy,.product-back) { min-height: 44px; display: inline-flex; justify-content: center; align-items: center; border-radius: 10px; line-height: 1.4; text-align: center; }
+.store-modern .product-service-grid { padding-top: 12px; gap: 10px; }
+.store-modern .product-service-grid span { margin-top: 3px; line-height: 1.5; }
+.store-modern .product-content-grid { gap: 20px; margin-top: 20px; align-items: start; }
+.store-modern :is(.product-description-card,.product-specs-card) { padding: 22px; }
+.store-modern :is(.product-description-card,.product-specs-card) h2 { font-size: 25px; }
+.store-modern .product-section-heading { margin-bottom: 12px; }
+.store-modern .product-description-card>p:last-child { margin-top: 12px; font-size: 14px; line-height: 1.75; overflow-wrap: anywhere; }
+.store-modern .product-specs-card .specs { gap: 0 20px; }
+.store-modern .product-specs-card .specs div { padding: 10px 0; gap: 8px; font-size: 12px; line-height: 1.6; }
+.store-modern .product-specs-card .specs :is(dt,dd) { min-width: 0; overflow-wrap: anywhere; }
+@media(max-width:1050px) {
+  .store-modern .product-showcase { gap: 20px; }
+  .store-modern .product-content-grid { grid-template-columns: minmax(0,1fr); }
+}
+@media(max-width:700px) {
+  .store-modern .product-showcase { gap: 16px; }
+  .store-modern .product-topline { flex-direction: row; align-items: baseline; }
+  .store-modern .product-overview h1 { font-size: 25px!important; line-height: 1.25; }
+  .store-modern .product-brand { margin: 10px 0 6px!important; }
+  .store-modern .product-buy-card { margin-top: 14px!important; padding: 14px!important; }
+  .store-modern .product-buy-card .detail-price { font-size: 30px; }
+  .store-modern .product-buy-card .detail-actions { margin: 14px 0; }
+  .store-modern .product-buy-card .product-buy { padding: 11px 16px!important; }
+  .store-modern .product-buy-card .product-back { min-height: 40px; padding: 8px 12px; font-size: 12px; }
+  .store-modern .product-service-grid { grid-template-columns: repeat(3,minmax(0,1fr)); gap: 8px!important; }
+  .store-modern .product-service-grid b { font-size: 11px; line-height: 1.5; }
+  .store-modern .product-service-grid span { font-size: 10px; }
+  .store-modern .product-content-grid { margin-top: 14px; gap: 14px; }
+  .store-modern :is(.product-description-card,.product-specs-card) { padding: 16px; border-radius: 14px; }
+  .store-modern :is(.product-description-card,.product-specs-card) h2 { font-size: 22px!important; }
+  .store-modern .product-section-heading { margin-bottom: 8px; }
+  .store-modern .product-specs-card .specs div { grid-template-columns: minmax(0,.42fr) minmax(0,.58fr); padding: 9px 0; gap: 10px; }
+  .store-modern .product-specs-card .specs dd { text-align: left; }
+}
+@media(max-width:380px) {
+  .store-modern .product-service-grid { grid-template-columns: minmax(0,1fr); gap: 6px!important; }
+  .store-modern .product-service-grid div { display: grid; grid-template-columns: minmax(0,.4fr) minmax(0,.6fr); gap: 8px; }
+  .store-modern .product-service-grid span { margin: 0; }
+  .store-modern .product-specs-card .specs div { grid-template-columns: minmax(0,1fr); gap: 2px; }
+}

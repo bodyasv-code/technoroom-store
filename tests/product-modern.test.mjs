@@ -1,0 +1,16 @@
+import assert from 'node:assert/strict';
+import {readFile} from 'node:fs/promises';
+const read=name=>readFile(new URL('../public/'+name,import.meta.url),'utf8');
+const html=await read('product.html'),css=await read('product-modern.css');
+assert.ok(html.indexOf('product-modern.css')>html.indexOf('store-modern.css'));
+for(const page of ['index.html','catalog.html','admin.html','checkout.html'])assert.ok(!(await read(page)).includes('product-modern.css'));
+assert.match(html,/id="productView"/);
+assert.match(html,/app.js\?v=20261021-image-navigation/);
+assert.match(css,/min-height: 44px/);
+assert.match(css,/@media\(max-width:700px\)/);
+assert.match(css,/@media\(max-width:380px\)/);
+assert.match(css,/overflow-wrap: anywhere/);
+assert.ok(!css.includes('product-detail-visual'),'Keep previously repaired gallery height');
+assert.ok(!css.includes('display: none'),'Do not hide product information');
+assert.equal((css.match(/{/g)||[]).length,(css.match(/}/g)||[]).length);
+console.log('Product styling: page isolation, preserved gallery and actions, compact specs and small-screen wrapping: PASS (visual QA pending)');

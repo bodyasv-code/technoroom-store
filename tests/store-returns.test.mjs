@@ -7,6 +7,7 @@ for(const text of ['14 днів','статтею 9','статей 12–13','ст
 assert.match(html,/rel="canonical" href="https:\/\/www.technoroom.com.ua\/returns"/);
 assert.ok(!/паспорт|особистий кабінет|30 банківських|app\.js/.test(html));
 assert.ok(html.includes('самі по собі не позбавляють права'));
+for(const text of ['у магазині, у пункті видачі або поштою','7 календарних днів після отримання нами поверненого товару','Якщо закон вимагає повернути кошти раніше','Готова етикетка для повернення не надається','Комісія за повернення товару (поновлення запасів) не стягується'])assert.ok(html.includes(text),text);
 for(const file of ['index.html','catalog.html','product.html','articles.html','article.html','checkout.html','contacts.html','delivery.html'])assert.ok((await read(file)).includes('href="returns.html"'),file);
 assert.equal(analyticsPage('https://www.technoroom.com.ua/returns?email=private').page_location,'https://www.technoroom.com.ua/returns');
 console.log('Returns: approved seller-paid distance return costs, separate exchange/defect rules, real contacts and navigation, sanitized analytics: PASS (legal review and visual QA not certified)');

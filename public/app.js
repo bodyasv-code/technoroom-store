@@ -1,4 +1,5 @@
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
+import {reportCommerce,commerceItems,ANALYTICS_READY} from './store-commerce-events.js?v=20261021-commerce';
 import {catalogPriceBounds,catalogPriceRangeMax,readCatalogFilterState,catalogFilterUrl,safeCatalogReturnUrl} from './catalog-filter-state.js?v=20261017-customer-content';
 import {printerDuplexFilterValues} from './printer-duplex.js?v=20261017-customer-content';
 import {printerProductFormatValues,printerMediaWidthValues} from './printer-format-filter.js?v=20261017-customer-content';
@@ -816,6 +817,7 @@ add = (id) => {
 
   save();
   renderCart();
+  reportCommerce('add_to_cart',{items:commerceItems([{product:item,quantity:1}],salePrice)});
 };
 renderCart = () => {
   const count=document.getElementById('cartCount'),root=document.getElementById('cartItems'),total=document.getElementById('cartTotal'),checkoutButton=document.getElementById('checkoutButton');
@@ -1031,6 +1033,15 @@ checkout = () => {
     root.querySelectorAll('[data-checkout-remove]').forEach(b=>b.onclick=()=>{cart.splice(+b.dataset.checkoutRemove,1);save();renderCart();renderSummary()});
   };
   renderSummary();
+  const trackCheckoutStart=()=>{
+    const rows=cart.map(entry=>({product:get(Number(entry.productId)),quantity:Number(entry.quantity||1)}));
+    if(rows.length&&rows.every(row=>row.product&&availability(row.product).orderable))reportCommerce('begin_checkout',{items:commerceItems(rows,salePrice)});
+  };
+  trackCheckoutStart();
+  // Hydration may call checkout again; retain only the newest callback.
+  if(form._analyticsCheckoutReady)document.removeEventListener(ANALYTICS_READY,form._analyticsCheckoutReady);
+  form._analyticsCheckoutReady=trackCheckoutStart;
+  document.addEventListener(ANALYTICS_READY,trackCheckoutStart);
 
   const deliveryRadios=form.querySelectorAll('[name="deliveryMethod"]'), addressLabel=document.getElementById('deliveryAddressLabel'), companyToggle=document.getElementById('companyOrder'), companyFields=document.getElementById('companyFields');
 
@@ -1054,6 +1065,7 @@ checkout = () => {
     const currentItems=cart.map(entry=>({product:get(Number(entry.productId)),quantity:Number(entry.quantity||1)})).filter(x=>x.product);
     if (!currentItems.length) return alert('Кошик порожній.');
     if (currentItems.some(item=>!availability(item.product).orderable)) return alert('У кошику є недоступний товар.');
+    const analyticsItems=commerceItems(currentItems,salePrice);
 
     const data =
       Object.fromEntries(
@@ -1111,6 +1123,9 @@ checkout = () => {
         const result=await response.json().catch(()=>({}));
         throw new Error(result.error||'Не вдалося створити замовлення. Спробуйте ще раз.');
       }
+
+      const savedOrder=await response.json().catch(()=>({}));
+      reportCommerce('purchase',{orderId:savedOrder.orderId,items:analyticsItems});
 
       localStorage.removeItem(
         'technoroom-cart'

@@ -1,0 +1,48 @@
+import assert from 'node:assert/strict';
+import {readFile} from 'node:fs/promises';
+import {runInNewContext} from 'node:vm';
+import {normalizeCommerce,commerceItems,COMMERCE_EVENT} from '../public/store-commerce-events.js';
+import {createAnalyticsController,MEASUREMENT_ID,CONSENT_KEY} from '../public/store-analytics.js';
+const items=[{item_id:'42',price:100.25,quantity:2,email:'secret',item_name:'secret'}];
+const expected={currency:'UAH',value:200.5,items:[{item_id:'42',price:100.25,quantity:2}]};
+assert.deepEqual(normalizeCommerce('add_to_cart',{items,email:'secret',value:999999}),expected);
+assert.deepEqual(normalizeCommerce('purchase',{items,orderId:123}),{...expected,transaction_id:'TR-123'});
+for(const bad of [[],[{item_id:'x',price:1,quantity:1}],[{item_id:'1',price:-1,quantity:1}],[{item_id:'1',price:NaN,quantity:1}],[{item_id:'1',price:1,quantity:0}]])assert.equal(normalizeCommerce('purchase',{items:bad,orderId:123}),null);
+assert.equal(normalizeCommerce('purchase',{items}),null);assert.equal(normalizeCommerce('login',{items}),null);
+assert.equal(normalizeCommerce('begin_checkout',{items:[{item_id:'1',price:.1,quantity:3}]}).value,.3);
+const handlers={},scripts=[],memory=new Map(),session=new Map();
+const win={location:{href:'https://www.technoroom.com.ua/checkout?email=secret',hostname:'www.technoroom.com.ua'},localStorage:{getItem:key=>memory.get(key),setItem:(key,value)=>memory.set(key,value)},sessionStorage:{getItem:key=>session.get(key),setItem:(key,value)=>session.set(key,value)},addEventListener(){}};
+const doc={referrer:'',head:{append:script=>scripts.push(script)},createElement:()=>({}),addEventListener:(key,fn)=>handlers[key]=fn};
+const controller=createAnalyticsController(win,doc);
+const emit=(name,detail={items,orderId:123})=>handlers[COMMERCE_EVENT]({detail:{name,detail}});
+emit('add_to_cart');assert.equal(win.dataLayer,undefined);
+controller.choose('denied');emit('purchase');assert.equal(win.dataLayer,undefined);
+controller.choose('granted');emit('add_to_cart');emit('add_to_cart');emit('begin_checkout');emit('begin_checkout');emit('purchase');emit('purchase');
+const commerce=win.dataLayer.map(args=>Array.from(args)).filter(args=>['add_to_cart','begin_checkout','purchase'].includes(args[1]));
+assert.equal(commerce.length,4);assert.equal(commerce.filter(args=>args[1]==='begin_checkout').length,1);assert.equal(commerce.filter(args=>args[1]==='purchase').length,1);
+assert.ok(!JSON.stringify(commerce).includes('secret'));
+assert.equal(session.get('technoroom-ga-TR-123'),'sent');
+controller.choose('denied');const count=win.dataLayer.length;emit('purchase',{items,orderId:124});assert.equal(win.dataLayer.length,count);
+controller.choose('granted');win.gtag=()=>{throw Error('blocked');};assert.doesNotThrow(()=>emit('add_to_cart'));
+
+// Exercise the real submit handler with fake API responses; never create a real order.
+const app=(await readFile(new URL('../public/app.js',import.meta.url),'utf8')).replace(/\r\n/g,'\n');
+const start=app.lastIndexOf('  form.onsubmit = async (event) => {'),end=app.indexOf('\n  };\n\n};',start);
+assert.ok(start>0&&end>start);
+const handlerSource=app.slice(start,end+5).trim().replace(/^form.onsubmit = /,'').replace(/;$/,'');
+async function submit({ok=true,result={orderId:567},jsonError=false}={}){
+  const product={id:42,price:100.25},cart=[{productId:42,quantity:2}],events=[],button={},notice={hidden:true,scrollIntoView(){}},requests=[];
+  const form={querySelector:()=>button,querySelectorAll:()=>[],elements:{}};
+  const scope={cart,get:()=>product,availability:()=>({orderable:true}),commerceItems,salePrice:p=>p.price,reportCommerce:(name,detail)=>{const value=normalizeCommerce(name,detail);if(value)events.push({name,value});},FormData:class{*[Symbol.iterator](){yield ['name','Private Buyer'];yield ['phone','Private Phone'];yield ['consent','on'];}},form,fetch:async(url,options)=>{requests.push({url,options});return {ok,json:async()=>{if(jsonError)throw Error('bad json');return result;}};},localStorage:{removeItem(){}},renderCart(){},document:{getElementById:()=>notice},alert(){}};
+  const handler=runInNewContext('('+handlerSource+')',scope);
+  await handler({preventDefault(){}});
+  return {events,cart,notice,requests};
+}
+const accepted=await submit();assert.equal(accepted.events.length,1);assert.equal(accepted.events[0].name,'purchase');assert.equal(accepted.events[0].value.value,200.5);assert.equal(accepted.events[0].value.transaction_id,'TR-567');assert.equal(accepted.cart.length,0);assert.equal(accepted.notice.hidden,false);
+assert.ok(!JSON.stringify(accepted.events).includes('Private'));
+const failed=await submit({ok:false,result:{error:'Server unavailable'}});assert.equal(failed.events.length,0);assert.equal(failed.cart.length,1);
+const missing=await submit({result:{}});assert.equal(missing.events.length,0);assert.equal(missing.cart.length,0);
+const invalid=await submit({jsonError:true});assert.equal(invalid.events.length,0);assert.equal(invalid.cart.length,0);
+assert.match(app,/reportCommerce\('add_to_cart',\{items:commerceItems\(\[\{product:item,quantity:1\}\],salePrice\)\}\)/);
+assert.ok(app.indexOf("reportCommerce('purchase'",start)>app.indexOf('if (!response.ok)',start));
+console.log('Commerce: consent gating, strict numeric item payloads, UAH/discount math, begin/purchase dedup, blocked SDK safety and real checkout handler with fake success/failure/malformed responses: PASS');

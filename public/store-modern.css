@@ -148,6 +148,10 @@ body.store-modern {
   .store-modern .home-head-row { grid-template-columns: var(--store-logo-width) auto minmax(180px,1fr) auto; gap: 14px; }
   .store-modern .home-product-grid { grid-template-columns: repeat(3,minmax(0,1fr)); }
 }
+@media(max-width:1050px) {
+  .store-modern .product-gallery-panel .product-detail-visual { height: clamp(300px,52vw,440px); min-height: 300px!important; max-height: 440px; }
+  .store-modern .product-gallery-panel .product-detail-visual .product-image { min-height: 0!important; }
+}
 @media(max-width:900px) {
   .store-modern :is(.home-wide,.catalog-page>.container,.product-page>.container) { width: calc(100% - 32px); }
   .store-modern .home-head-row { display: flex; flex-wrap: wrap; height: auto; padding: 12px 0; }
@@ -166,6 +170,16 @@ body.store-modern {
   body.store-modern { --store-logo-width: clamp(120px,35vw,148px); }
   .store-modern .home-logo { height: 46px!important; }
   .store-modern :is(.home-catalog-button,.catalog-menu-toggle) { min-height: 42px; }
+  .store-modern :is(.home-search,.header-search) input,
+  .store-modern .catalog-refine :is(input:not([type=range]):not([type=checkbox]),select),
+  .store-modern .catalog-toolbar select { font-size: 16px!important; }
+  .store-modern .product-gallery-panel .product-detail-visual { height: clamp(260px,75vw,380px); min-height: 260px!important; max-height: 380px; }
+  .store-modern .product-gallery-panel .product-detail-visual .product-image { min-height: 0!important; }
+  .store-modern :is(.product-overview h1,.product-code,.product-specs-card .specs dd) { overflow-wrap: anywhere; }
+  .store-modern .product-code { max-width: 100%; white-space: normal; }
+  .store-modern .screen-specification-filter__options label { min-height: 44px; align-items: center; font-size: 12px!important; }
+  .store-modern .screen-specification-filter__options label>span { min-width: 0; overflow-wrap: anywhere; }
+  .store-modern .catalog-refine input[type=checkbox] { flex-shrink: 0; width: 20px!important; height: 20px; }
   .store-modern .store-intro { flex-direction: column; gap: 20px; padding: 24px 0; }
   .store-modern .store-intro h2 { font-size: 32px; }
   .store-modern .store-intro p:last-child { font-size: 14px; }

@@ -27,3 +27,12 @@ Checks: full Node regression suite; additional CSS assertions and numeric bounds
 for the clamp rule at 320, 360, 375, 390, 414, 430, 640 and 700px. These calculations
 do not establish absence of overflow in a rendered browser. Still needed: phone
 screenshots/interactive review of menu, filters, gallery and zoom.
+
+Follow-up after user reported cart overlapping Catalog: replace implicit header
+placement with named logo/catalog/search/cart grid areas. Apply the same desktop
+and two-row compact layout to the homepage and catalog/product shared headers.
+On phones reserve 108px for Catalog and 44px for the cart with a 10px gap; constrain
+the logo to its track. Replace variable-size cart emoji with a 22px SVG and keep
+cart counters within the button. Existing cart IDs, links and click handlers stay
+unchanged. Added structural checks and arithmetic track-budget tests (280–700px);
+these are not visual browser measurements. Screenshot requested from user.

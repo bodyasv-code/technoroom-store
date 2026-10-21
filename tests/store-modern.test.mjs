@@ -25,7 +25,7 @@ assert.match(css,/:focus-visible/);
 assert.match(css,/min-height: 44px/);
 assert.match(css,/font-size: 13px!important/);
 // Logo intrinsic/legacy width must not overflow its grid track onto Catalog.
-assert.match(css,/grid-template-columns: var\(--store-logo-width\) auto/);
+assert.match(css,/grid-template-columns: var\(--store-logo-width\) var\(--store-catalog-width\) minmax\(0,1fr\) var\(--store-cart-width\)/);
 assert.match(css,/\.store-modern \.home-logo \{ width: var\(--store-logo-width\)!important; min-width: 0!important/);
 assert.match(css,/\.store-modern \.home-catalog-wrap \{ display: flex; align-items: center;/);
 assert.match(css,/\.store-modern \.storefront-recommendation-card/);

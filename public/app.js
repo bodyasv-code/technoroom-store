@@ -195,6 +195,16 @@ async function home() {
           setMenuOpen(mega.hidden);
         };
         mountMobileCategoryMenu({menu:mega,toggle,categories:cats,escape:escapeHtml,icon:categoryIcon,restoreDesktop:()=>{renderRoots();if(roots[0]&&!compactMenu())show(roots[0]);}});
+        document.querySelectorAll('[data-open-catalog]').forEach(link=>{
+          link.onclick=event=>{
+            event.preventDefault();
+            if(mega.hidden) toggle.click();
+            if(!compactMenu()){
+              toggle.scrollIntoView({block:'center'});
+              rootsEl.querySelector('button')?.focus({preventScroll:true});
+            }
+          };
+        });
         document.addEventListener('pointerdown',(event)=>{
           if(!mega.hidden&&!mega.contains(event.target)&&!toggle.contains(event.target)) setMenuOpen(false);
         });

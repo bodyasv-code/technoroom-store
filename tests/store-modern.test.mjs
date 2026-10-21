@@ -17,6 +17,11 @@ for(const page of ['admin.html','checkout.html']){
   const html=await read(page);assert.ok(!html.includes('store-modern.css'));assert.ok(!html.includes('class="store-modern'));
 }
 const home=await read('index.html');
+assert.equal((home.match(/data-open-catalog aria-controls="homeCatalogMega"/g)||[]).length,2);
+assert.match(home,/class="store-intro-link" href="#homeCategoryCards"/);
+const app=await read('app.js');
+assert.match(app,/querySelectorAll\('\[data-open-catalog\]'\)/);
+assert.match(app,/if\(mega.hidden\) toggle.click\(\)/);
 for(const id of ['homeCatalogToggle','homeCatalogMega','homeSearch','homeSearchGo','homeCategoryCards','productGrid','cartCount','cartDrawer','checkoutButton'])assert.ok(home.includes('id="'+id+'"'));
 assert.ok(home.indexOf('store-intro home-wide')<home.indexOf('home-stage'));
 assert.match(css,/@media\(max-width:700px\)/);

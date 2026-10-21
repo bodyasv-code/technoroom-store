@@ -2,7 +2,10 @@ User-agent: *
 Allow: /
 
 Disallow: /admin.html
+Disallow: /admin
+Disallow: /checkout
 Disallow: /api/
+Allow: /api/sitemap
 Disallow: /supabase/
 
-Sitemap: https://technoroom-store.vercel.app/api/sitemap
+Sitemap: https://www.technoroom.com.ua/sitemap.xml

@@ -1,0 +1,12 @@
+import assert from 'node:assert/strict';
+import {readFile} from 'node:fs/promises';
+import {analyticsPage} from '../public/store-analytics.js';
+const read=file=>readFile(new URL('../public/'+file,import.meta.url),'utf8');
+const html=await read('delivery.html');
+for(const text of ['Новою поштою','100% передоплата','протягом 1–2 днів','Строк перевезення','Доставку оплачує покупець','за тарифами'])assert.ok(html.includes(text),text);
+assert.match(html,/rel="canonical" href="https:\/\/www.technoroom.com.ua\/delivery"/);
+assert.ok(!/5 грн|безкоштовно|09:00–20:00|app\.js/.test(html));
+for(const file of ['index.html','catalog.html','product.html','articles.html','article.html','checkout.html','contacts.html'])assert.ok((await read(file)).includes('href="delivery.html"'),file);
+assert.equal(analyticsPage('https://www.technoroom.com.ua/delivery?email=private').page_location,'https://www.technoroom.com.ua/delivery');
+assert.ok((await read('contacts.html')).includes('Адреса та повернення товарів'));
+console.log('Delivery: confirmed dispatch/payment/tariffs, actual navigation, consent analytics routing, no obsolete Kyiv promises: PASS (visual QA pending)');

@@ -25,7 +25,7 @@ export async function sitemapUrls(client) {
     readAll(client,'categories','id,slug,parent_id,is_active'),
     readAll(client,'articles','id,slug',['is_published',true])
   ]);
-  const urls=[SITE_ORIGIN+'/',SITE_ORIGIN+'/catalog',SITE_ORIGIN+'/articles',SITE_ORIGIN+'/contacts'];
+  const urls=[SITE_ORIGIN+'/',SITE_ORIGIN+'/catalog',SITE_ORIGIN+'/articles',SITE_ORIGIN+'/contacts',SITE_ORIGIN+'/delivery'];
   for(const category of visibleCategoryRows(categories))if(category.slug)urls.push(SITE_ORIGIN+'/catalog?category='+encodeURIComponent(category.slug));
   for(const product of products)if(/^\d+$/.test(String(product.id)))urls.push(SITE_ORIGIN+'/product?id='+encodeURIComponent(product.id));
   for(const article of articles)if(article.slug)urls.push(SITE_ORIGIN+'/article?slug='+encodeURIComponent(article.slug));

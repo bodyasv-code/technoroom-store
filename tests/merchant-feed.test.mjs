@@ -11,6 +11,9 @@ for(const fragment of ['<g:id>1</g:id>','Проєктор Epson &amp; X','<g:pri
 assert.ok(!/INTERNAL-SKU|identifier_exists|shipping_weight|<g:shipping>|service_role/.test(result.xml));
 assert.equal(validGtin('4006381333931'),'4006381333931');assert.equal(validGtin('4006381333932'),'');assert.equal(validGtin('00000000'),'');
 result=build([{...base,specifications:{EAN:'4006381333931','Код виробника':'REAL-MPN'}}]);assert.ok(result.xml.includes('<g:gtin>4006381333931</g:gtin>'));assert.ok(result.xml.includes('<g:mpn>REAL-MPN</g:mpn>'));
+for(const field of ['EAN Код',' ean код ','EAN-13 Код'])assert.ok(build([{...base,specifications:{[field]:'195949882623'}}]).xml.includes('<g:gtin>195949882623</g:gtin>'),field);
+for(const specs of [{'EAN Код':'4006381333932'},{'EAN Код':'195949882623 / 4006381333931'},{'EAN Код':['195949882623']},{'EAN Код':'195949882623',EAN:'4006381333931'}])assert.ok(!build([{...base,specifications:specs}]).xml.includes('<g:gtin>'),JSON.stringify(specs));
+assert.ok(build([{...base,specifications:{'EAN Код':'195949882623',UPC:'195949882623'}}]).xml.includes('<g:gtin>195949882623</g:gtin>'));
 for(const patch of [{is_active:false},{category:'child'},{category:'unknown'},{availability_status:'under_order'},{in_stock:false},{stock_quantity:0},{image_path:null},{image_path:'https://remote.test/a.jpg'},{image_path:'../private.jpg'},{image_path:'products/%2e%2e/test.jpg'},{description:''},{brand:''},{price:0},{price:'bad'}]){
  const outcome=build([{...base,...patch}]);
  // Percent escapes are escaped again, not traversal; this is a literal storage object name.

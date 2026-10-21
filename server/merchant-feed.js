@@ -40,14 +40,15 @@ export function validGtin(value){
   return (10-sum%10)%10===Number(v.at(-1))?v:'';
 }
 function identifiers(specs){
-  let gtin='',mpn='';
+  const gtins=new Set();let mpn='';
   for(const [key,value] of Object.entries(specs||{})){
     if(typeof value!=='string'&&typeof value!=='number')continue;
-    if(/^(?:gtin|ean(?:-?13)?|upc|штрих[ -]?код|штрихкод\s*ean)$/iu.test(key.trim()))gtin ||= validGtin(value);
+    if(/^(?:gtin|ean(?:-?13)?(?:\s+код)?|upc|штрих[ -]?код|штрихкод\s*ean)$/iu.test(key.trim())){const code=validGtin(value);if(code)gtins.add(code);}
     if(/^(?:mpn|manufacturer part number|код виробника|артикул виробника|номер деталі виробника)$/iu.test(key.trim()))mpn ||= feedText(value,70);
   }
   // Supplier/internal SKU is not evidence of a manufacturer MPN. Missing UPIs do not mean identifier_exists=no.
-  return {gtin,mpn};
+  // Conflicting codes need variant/pack-size review, not an arbitrary first match.
+  return {gtin:gtins.size===1?[...gtins][0]:'',mpn};
 }
 export function buildMerchantFeed({products,categories,promotions=[],promotionLinks=[],storageOrigin,now=Date.now()}){
   const tree=createCategoryTree(categories),visible=new Set(visibleCategoryRows(categories).map(c=>c.slug)),links=new Map(),seen=new Set();

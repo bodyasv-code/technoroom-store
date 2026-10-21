@@ -1,0 +1,17 @@
+/* Isolated consent UI; equally accessible accept and reject, no scroll lock. */
+.analytics-consent { position: fixed; z-index: 100001; inset: auto 16px 16px; max-width: 940px; margin: 0 auto; display: flex; align-items: center; gap: 20px; padding: 18px 20px; box-sizing: border-box; border: 1px solid #d6e1ee; border-radius: 14px; background: #fff; color: #12243d; box-shadow: 0 8px 36px #10243e26; font: 13px/1.6 Manrope,Arial,sans-serif; max-height: 70dvh; overflow: auto; }
+.analytics-consent[hidden] { display: none!important; }
+.analytics-consent-copy { flex: 1; min-width: 0; }
+.analytics-consent strong { font-size: 15px; }
+.analytics-consent p { margin: 5px 0; }
+.analytics-consent summary { cursor: pointer; color: #0969da; padding: 4px 0; }
+.analytics-consent a { color: #0969da; text-decoration: underline; }
+.analytics-consent-actions { display: flex; gap: 8px; flex-shrink: 0; }
+.analytics-consent-actions button,.analytics-settings button { min-height: 44px; padding: 10px 14px; box-sizing: border-box; border: 1px solid #b9cce2; border-radius: 9px; background: #f7faff; color: #164b88; font: 700 13px/1.4 Manrope,Arial,sans-serif; cursor: pointer; }
+.analytics-settings { padding: 12px 16px; text-align: center; background: #f6f8fb; }
+.analytics-settings button { font-size: 12px; background: #fff; }
+.analytics-consent :is(button,summary,a):focus-visible,.analytics-settings button:focus-visible { outline: 3px solid #0969da; outline-offset: 3px; }
+@media(max-width:700px) {
+  .analytics-consent { inset: auto 10px max(10px,env(safe-area-inset-bottom)); padding: 14px; gap: 12px; flex-direction: column; align-items: stretch; }
+  .analytics-consent-actions button { flex: 1; }
+}

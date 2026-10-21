@@ -1,0 +1,90 @@
+// GA4 basic consent: no Google script or request before explicit analytics opt-in.
+export const MEASUREMENT_ID='G-L3NG1R28PY';
+export const CONSENT_KEY='technoroom-analytics-consent-v1';
+const CONSENT_AGE=180*24*60*60*1000;
+const PAGES={'/':'TECHNOROOM','/index':'TECHNOROOM','/catalog':'Каталог — TECHNOROOM','/product':'Товар — TECHNOROOM','/articles':'Статті — TECHNOROOM','/article':'Стаття — TECHNOROOM','/checkout':'Оформлення — TECHNOROOM'};
+const hostAllowed=hostname=>['technoroom.com.ua','www.technoroom.com.ua'].includes(hostname);
+
+export function analyticsPage(raw,referrer='') {
+  const source=new URL(raw);
+  const path=source.pathname.replace(/\.html$/,'').replace(/\/$/,'')||'/';
+  if(!hostAllowed(source.hostname)||!PAGES[path])return null;
+  const clean=new URL(path==='/index'?'/':path,'https://www.technoroom.com.ua');
+  const key=path==='/product'?'id':path==='/catalog'?'category':path==='/article'?'slug':'';
+  const value=source.searchParams.get(key);
+  if(key&&value&&(key==='id'?/^[1-9]\d{0,15}$/.test(value):/^[\p{L}\p{N}_-]{1,180}$/u.test(value)))clean.searchParams.set(key,value);
+  let safeReferrer='';
+  try{const url=new URL(referrer);if(['http:','https:'].includes(url.protocol))safeReferrer=url.origin+'/';}catch{}
+  return {page_location:clean.href,page_title:PAGES[path],page_referrer:safeReferrer};
+}
+
+export function createAnalyticsController(win,doc,onChange=()=>{}) {
+  const context=analyticsPage(win.location.href,doc.referrer);
+  if(!context)return null;
+  const disableKey='ga-disable-'+MEASUREMENT_ID;
+  win[disableKey]=true;
+  let choice=null,loaded=false;
+  const stored=()=>{
+    try{const data=JSON.parse(win.localStorage.getItem(CONSENT_KEY));return data&&['granted','denied'].includes(data.choice)&&Number.isFinite(data.at)&&data.at<=Date.now()&&Date.now()-data.at<CONSENT_AGE?data.choice:null;}catch{return null;}
+  };
+  const clearCookies=()=>{
+    // Only our analytics cookies; never touch carts, authentication or other storage.
+    for(const name of ['_ga','_ga_'+MEASUREMENT_ID.slice(2).replace(/-/g,'')]){
+      for(const domain of ['',win.location.hostname,'technoroom.com.ua'])doc.cookie=name+'=; Max-Age=0; Path=/; SameSite=Lax'+(domain?'; Domain='+domain:'');
+    }
+  };
+  const start=()=>{
+    if(choice!=='granted'||loaded)return;
+    loaded=true;win[disableKey]=false;
+    win.dataLayer=win.dataLayer||[];
+    win.gtag=function(){win.dataLayer.push(arguments);};
+    win.gtag('consent','default',{analytics_storage:'denied',ad_storage:'denied',ad_user_data:'denied',ad_personalization:'denied'});
+    win.gtag('consent','update',{analytics_storage:'granted'});
+    win.gtag('js',new Date());
+    win.gtag('set',context);
+    win.gtag('config',MEASUREMENT_ID,{...context,send_page_view:false,allow_google_signals:false,allow_ad_personalization_signals:false,cookie_expires:15552000});
+    win.gtag('event','page_view',{...context,send_to:MEASUREMENT_ID});
+    const script=doc.createElement('script');script.id='storeGoogleAnalytics';script.async=true;
+    script.src='https://www.googletagmanager.com/gtag/js?id='+MEASUREMENT_ID;
+    script.referrerPolicy='origin';
+    doc.head.append(script);
+  };
+  const apply=next=>{
+    const previous=choice;choice=next;
+    if(next==='granted'){
+      if(loaded&&previous!=='granted'){
+        win[disableKey]=false;
+        win.gtag('consent','update',{analytics_storage:'granted'});
+        // A repeat opt-in on this page must not duplicate its page_view.
+      }else start();
+    }else{
+      win[disableKey]=true;
+      clearCookies();
+      // Do not issue a denied-consent ping: the global opt-out flag blocks GA collection.
+    }
+    onChange(choice);
+  };
+  const choose=next=>{
+    if(!['granted','denied'].includes(next))return;
+    try{win.localStorage.setItem(CONSENT_KEY,JSON.stringify({choice:next,at:Date.now()}));}catch{}
+    apply(next);
+  };
+  win.addEventListener('storage',event=>{if(event.key===CONSENT_KEY||event.key===null)apply(stored());});
+  apply(stored());
+  return {choose,getChoice:()=>choice};
+}
+
+export function mountStoreAnalytics(win=window,doc=document) {
+  if(!analyticsPage(win.location.href,doc.referrer)||doc.getElementById('storeAnalyticsConsent'))return;
+  const banner=doc.createElement('section');banner.id='storeAnalyticsConsent';banner.className='analytics-consent';
+  banner.setAttribute('aria-label','Налаштування аналітики');
+  banner.innerHTML='<div class="analytics-consent-copy"><strong>Аналітика магазину</strong><p>Дозволити Google Analytics вимірювати відвідування сайту? Це необов’язково: покупки працюють і без аналітики.</p><details><summary>Що збирається?</summary><p>Після вашої згоди Google отримує дані про переглянуті сторінки, браузер і пристрій та використовує аналітичні cookies. Поля замовлення, телефон, email і текст пошуку не передаємо. Рекламну персоналізацію не вмикаємо. Вибір зберігаємо на цьому пристрої до 180 днів; його можна змінити кнопкою «Налаштування аналітики» внизу сторінки. <a href="https://policies.google.com/privacy?hl=uk" target="_blank" rel="noopener noreferrer">Конфіденційність Google</a>.</p></details></div><div class="analytics-consent-actions"><button type="button" data-analytics-choice="denied">Відхилити</button><button type="button" data-analytics-choice="granted">Дозволити</button></div>';
+  const footer=doc.createElement('div');footer.className='analytics-settings';
+  const settings=doc.createElement('button');settings.type='button';settings.textContent='Налаштування аналітики';
+  settings.setAttribute('aria-controls',banner.id);settings.setAttribute('aria-expanded','false');footer.append(settings);
+  const controller=createAnalyticsController(win,doc,choice=>{banner.hidden=choice!==null;settings.setAttribute('aria-expanded',String(choice===null));});
+  settings.onclick=()=>{banner.hidden=false;settings.setAttribute('aria-expanded','true');banner.querySelector('button').focus({preventScroll:true});};
+  banner.querySelectorAll('[data-analytics-choice]').forEach(button=>{button.onclick=()=>{controller.choose(button.dataset.analyticsChoice);settings.focus({preventScroll:true});};});
+  doc.body.append(footer,banner);
+}
+if(typeof document!=='undefined')mountStoreAnalytics();

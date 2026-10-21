@@ -1,0 +1,12 @@
+import assert from 'node:assert/strict';
+import {readFile} from 'node:fs/promises';
+import {analyticsPage} from '../public/store-analytics.js';
+const read=file=>readFile(new URL('../public/'+file,import.meta.url),'utf8');
+const html=await read('returns.html');
+for(const text of ['14 днів','статтею 9','статей 12–13','статті 8','покладаються на продавця','не потребує попереднього схвалення','м. Київ, вул. Мрії, 12Н, офіс 28','tel:+380443605539','mailto:office@tehnoroom.com.ua','не пізніше 7 днів'])assert.ok(html.includes(text),text);
+assert.match(html,/rel="canonical" href="https:\/\/www.technoroom.com.ua\/returns"/);
+assert.ok(!/паспорт|особистий кабінет|30 банківських|app\.js/.test(html));
+assert.ok(html.includes('самі по собі не позбавляють права'));
+for(const file of ['index.html','catalog.html','product.html','articles.html','article.html','checkout.html','contacts.html','delivery.html'])assert.ok((await read(file)).includes('href="returns.html"'),file);
+assert.equal(analyticsPage('https://www.technoroom.com.ua/returns?email=private').page_location,'https://www.technoroom.com.ua/returns');
+console.log('Returns: approved seller-paid distance return costs, separate exchange/defect rules, real contacts and navigation, sanitized analytics: PASS (legal review and visual QA not certified)');

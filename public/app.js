@@ -816,8 +816,8 @@ add = (id) => {
   }
 
   save();
-  renderCart();
   reportCommerce('add_to_cart',{items:commerceItems([{product:item,quantity:1}],salePrice)});
+  renderCart();
 };
 renderCart = () => {
   const count=document.getElementById('cartCount'),root=document.getElementById('cartItems'),total=document.getElementById('cartTotal'),checkoutButton=document.getElementById('checkoutButton');

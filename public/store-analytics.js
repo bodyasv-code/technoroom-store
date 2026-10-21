@@ -25,6 +25,15 @@ export function createAnalyticsController(win,doc,onChange=()=>{}) {
   const disableKey='ga-disable-'+MEASUREMENT_ID;
   win[disableKey]=true;
   let choice=null,loaded=false;
+  let diagnostic='Очікуємо дії з товаром.';
+  let sdkStatus='Тег ще не завантажувався.';
+  const debug=(()=>{try{
+    const requested=new URL(win.location.href).searchParams.get('analytics_debug');
+    if(requested==='1')win.sessionStorage.setItem('technoroom-ga-debug','1');
+    if(requested==='0')win.sessionStorage.removeItem('technoroom-ga-debug');
+    return requested==='1'||requested!=='0'&&win.sessionStorage.getItem('technoroom-ga-debug')==='1';
+  }catch{return false;}})();
+  const notify=()=>onChange(choice,{debug,diagnostic,sdkStatus});
   let checkoutTracked=false;
   const transactions=new Set();
   const stored=()=>{
@@ -50,6 +59,9 @@ export function createAnalyticsController(win,doc,onChange=()=>{}) {
     const script=doc.createElement('script');script.id='storeGoogleAnalytics';script.async=true;
     script.src='https://www.googletagmanager.com/gtag/js?id='+MEASUREMENT_ID;
     script.referrerPolicy='origin';
+    sdkStatus='Завантажуємо тег Google…';
+    script.onload=()=>{sdkStatus='Тег Google завантажився.';notify();};
+    script.onerror=()=>{sdkStatus='Не вдалося завантажити тег Google (можливе блокування).';notify();};
     doc.head.append(script);
   };
   const apply=next=>{
@@ -65,7 +77,7 @@ export function createAnalyticsController(win,doc,onChange=()=>{}) {
       clearCookies();
       // Do not issue a denied-consent ping: the global opt-out flag blocks GA collection.
     }
-    onChange(choice);
+    notify();
     if(choice==='granted'&&doc.dispatchEvent&&win.CustomEvent)doc.dispatchEvent(new win.CustomEvent(ANALYTICS_READY));
   };
   const choose=next=>{
@@ -75,24 +87,29 @@ export function createAnalyticsController(win,doc,onChange=()=>{}) {
   };
   win.addEventListener('storage',event=>{if(event.key===CONSENT_KEY||event.key===null)apply(stored());});
   doc.addEventListener?.(COMMERCE_EVENT,event=>{
-    if(choice!=='granted'||win[disableKey]||typeof win.gtag!=='function')return;
     const {name,detail}=event.detail||{},payload=normalizeCommerce(name,detail);
+    const label=['add_to_cart','begin_checkout','purchase'].includes(name)?name:'невідома подія';
+    if(choice!=='granted'||win[disableKey]||typeof win.gtag!=='function'){
+      diagnostic=label+': не надіслано — немає дозволу на аналітику.';notify();return;
+    }
+    if(!payload){diagnostic=label+': не надіслано — некоректні ID, ціна або кількість.';notify();return;}
     if(!payload||name==='begin_checkout'&&checkoutTracked)return;
     if(name==='purchase'){
       if(transactions.has(payload.transaction_id))return;
       try{if(win.sessionStorage.getItem('technoroom-ga-'+payload.transaction_id)==='sent')return;}catch{}
     }
     try{
-      win.gtag('event',name,{...payload,...context,send_to:MEASUREMENT_ID});
+      win.gtag('event',name,{...payload,...context,send_to:MEASUREMENT_ID,...(debug?{debug_mode:true}:{})});
+      diagnostic=label+': передано тегу ('+new Date().toLocaleTimeString('uk-UA')+'). Це ще не підтвердження отримання Google.';notify();
       if(name==='begin_checkout')checkoutTracked=true;
       if(name==='purchase'){
         transactions.add(payload.transaction_id);
         try{win.sessionStorage.setItem('technoroom-ga-'+payload.transaction_id,'sent');}catch{}
       }
-    }catch{/* A blocked analytics SDK must not affect checkout. */}
+    }catch{diagnostic=label+': помилка виклику тега.';notify();}
   });
   apply(stored());
-  return {choose,getChoice:()=>choice};
+  return {choose,getChoice:()=>choice,getDiagnostics:()=>({debug,diagnostic,sdkStatus})};
 }
 
 export function mountStoreAnalytics(win=window,doc=document) {
@@ -103,7 +120,14 @@ export function mountStoreAnalytics(win=window,doc=document) {
   const footer=doc.createElement('div');footer.className='analytics-settings';
   const settings=doc.createElement('button');settings.type='button';settings.textContent='Налаштування аналітики';
   settings.setAttribute('aria-controls',banner.id);settings.setAttribute('aria-expanded','false');footer.append(settings);
-  const controller=createAnalyticsController(win,doc,choice=>{banner.hidden=choice!==null;settings.setAttribute('aria-expanded',String(choice===null));});
+  const diagnostics=doc.createElement('p');diagnostics.hidden=true;diagnostics.setAttribute('aria-live','polite');
+  diagnostics.style.cssText='max-width:700px;margin:8px auto;font:12px/1.6 Arial,sans-serif;color:#173b62;overflow-wrap:anywhere';
+  footer.append(diagnostics);
+  const controller=createAnalyticsController(win,doc,(choice,state)=>{
+    banner.hidden=choice!==null;settings.setAttribute('aria-expanded',String(choice===null));
+    diagnostics.hidden=!state.debug;
+    diagnostics.textContent='Діагностика аналітики · '+(choice==='granted'?'дозволено':choice==='denied'?'відхилено':'вибір не зроблено')+' · '+state.sdkStatus+' '+state.diagnostic;
+  });
   settings.onclick=()=>{banner.hidden=false;settings.setAttribute('aria-expanded','true');banner.querySelector('button').focus({preventScroll:true});};
   banner.querySelectorAll('[data-analytics-choice]').forEach(button=>{button.onclick=()=>{controller.choose(button.dataset.analyticsChoice);settings.focus({preventScroll:true});};});
   doc.body.append(footer,banner);

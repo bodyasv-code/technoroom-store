@@ -24,11 +24,21 @@ assert.ok(!JSON.stringify(commerce).includes('secret'));
 assert.equal(session.get('technoroom-ga-TR-123'),'sent');
 controller.choose('denied');const count=win.dataLayer.length;emit('purchase',{items,orderId:124});assert.equal(win.dataLayer.length,count);
 controller.choose('granted');win.gtag=()=>{throw Error('blocked');};assert.doesNotThrow(()=>emit('add_to_cart'));
+assert.match(controller.getDiagnostics().diagnostic,/помилка виклику/);
+scripts[0].onload();assert.match(controller.getDiagnostics().sdkStatus,/завантажився/);
+scripts[0].onerror();assert.match(controller.getDiagnostics().sdkStatus,/Не вдалося/);
 
 // Exercise the real submit handler with fake API responses; never create a real order.
 const app=(await readFile(new URL('../public/app.js',import.meta.url),'utf8')).replace(/\r\n/g,'\n');
 const start=app.lastIndexOf('  form.onsubmit = async (event) => {'),end=app.indexOf('\n  };\n\n};',start);
 assert.ok(start>0&&end>start);
+const addStart=app.indexOf('add = (id) => {'),addEnd=app.indexOf('\n};',addStart);
+const addSource=app.slice(addStart,addEnd+2).replace(/^add = /,'');
+const cart=[],added=[];let saved=0;
+const add=runInNewContext('('+addSource+')',{get:()=>({id:42,price:100}),availability:()=>({orderable:true}),cart,save:()=>saved++,renderCart:()=>{throw Error('simulated UI failure');},reportCommerce:(name,detail)=>added.push({name,payload:normalizeCommerce(name,detail)}),commerceItems,salePrice:p=>p.price});
+assert.throws(()=>add(42),/simulated UI failure/);
+assert.equal(saved,1);assert.equal(cart[0].quantity,1);assert.equal(added[0].name,'add_to_cart');assert.equal(added[0].payload.items[0].quantity,1);
+assert.throws(()=>add(42),/simulated UI failure/);assert.equal(cart[0].quantity,2);assert.equal(added[1].payload.items[0].quantity,1);
 const handlerSource=app.slice(start,end+5).trim().replace(/^form.onsubmit = /,'').replace(/;$/,'');
 async function submit({ok=true,result={orderId:567},jsonError=false}={}){
   const product={id:42,price:100.25},cart=[{productId:42,quantity:2}],events=[],button={},notice={hidden:true,scrollIntoView(){}},requests=[];

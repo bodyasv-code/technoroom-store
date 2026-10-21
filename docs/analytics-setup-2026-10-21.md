@@ -28,4 +28,12 @@ User screenshot subsequently confirmed live page_view receipt: 3 page views (hom
 
 Next: user accepts the revised consent, adds one item and opens checkout without submitting; verify add_to_cart/begin_checkout in Realtime. Confirm purchase on a genuine later order or an explicitly authorized test order. Quantity editing +/- and remove_from_cart are not tracked in this phase.
 
+## Missing add_to_cart investigation
+
+User confirmed clicking Add on the product page; begin_checkout was visible in Realtime but add_to_cart was not. Public HTML confirmed current commerce script versions on home/catalog/product/checkout. Exact browser-side cause is still unconfirmed; do not claim a proven fix.
+
+Moved add_to_cart emission immediately after successful cart save, before renderCart, so an unrelated UI render failure cannot suppress that event. Regression tests execute the real add implementation with an intentionally failing renderer and confirm saved quantity and one-unit event for both first/repeat adds.
+
+Optional analytics_debug=1 query enables local diagnostic text beside the analytics settings at the bottom, persisting for the tab via sessionStorage; analytics_debug=0 turns it off. Diagnostics distinguish consent rejection, invalid numeric item payload, SDK load/error and passing the event to gtag. A gtag queue entry is NOT proof Google received it. Debug mode includes debug_mode=true only on consented ecommerce events; no diagnostic query or personal payload is sent. Browser/GA confirmation remains pending.
+
 Search Console: user screenshot confirmed sitemap successfully processed, 3165 discovered pages; this is not a guarantee of indexing.

@@ -6,7 +6,6 @@ Disallow: /admin
 Disallow: /checkout
 Disallow: /api/
 Allow: /api/sitemap
-Allow: /api/merchant-feed
 Disallow: /supabase/
 
 Sitemap: https://www.technoroom.com.ua/sitemap.xml

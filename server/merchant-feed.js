@@ -1,3 +1,4 @@
+// Shared server module, deliberately outside api/ so it is not a separate Vercel function.
 import {createClient} from '@supabase/supabase-js';
 import {visibleCategoryRows,createCategoryTree} from '../public/category-tree.js';
 import {cleanCustomerText} from '../public/product-content-policy.js';

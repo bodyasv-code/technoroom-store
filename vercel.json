@@ -1,8 +1,8 @@
 {
   "cleanUrls": true,
-  "rewrites": [{"source":"/sitemap.xml","destination":"/api/sitemap"},{"source":"/google-merchant.xml","destination":"/api/merchant-feed"}],
+  "rewrites": [{"source":"/sitemap.xml","destination":"/api/sitemap"},{"source":"/google-merchant.xml","destination":"/api/sitemap?format=merchant"}],
   "functions": {
-    "api/merchant-feed.js": {"maxDuration": 60},
+    "api/sitemap.js": {"maxDuration": 60},
     "api/admin-users.js": {"maxDuration": 60},
     "api/orders.js": {"maxDuration": 60},
     "api/test-order-mail.js": {"maxDuration": 60},

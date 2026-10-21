@@ -1,5 +1,6 @@
 import {createClient} from '@supabase/supabase-js';
 import {visibleCategoryRows} from '../public/category-tree.js';
+import merchantFeedHandler from '../server/merchant-feed.js';
 
 export const SITE_ORIGIN='https://www.technoroom.com.ua';
 const PAGE_SIZE=500;
@@ -40,6 +41,7 @@ export function sitemapXml(urls) {
 }
 
 export default async function handler(req,res) {
+  if(req.query?.format==='merchant')return merchantFeedHandler(req,res);
   if(!['GET','HEAD'].includes(req.method||'GET')){res.setHeader('Allow','GET, HEAD');return res.status(405).end();}
   try{
     const client=createClient(process.env.SUPABASE_URL,process.env.SUPABASE_SERVICE_ROLE_KEY,{auth:{persistSession:false,autoRefreshToken:false}});

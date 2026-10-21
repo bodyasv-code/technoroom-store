@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
-import handler,{buildMerchantFeed,loadMerchantFeed,readFeedRows,feedText,validGtin,FEED_COLUMNS} from '../api/merchant-feed.js';
+import handler,{buildMerchantFeed,loadMerchantFeed,readFeedRows,feedText,validGtin,FEED_COLUMNS} from '../server/merchant-feed.js';
+import xmlHandler from '../api/sitemap.js';
 const categories=[{id:1,slug:'root',name:'Техніка',is_active:true},{id:2,slug:'projectors',parent_id:1,name:'Проєктори',is_active:true},{id:3,slug:'hidden',is_active:false},{id:4,slug:'child',parent_id:3,is_active:true}];
 const base={id:1,name:'Проєктор <b>Epson &amp; X</b>',description:'<p>Опис &amp; техніка</p>',brand:'Epson',brand_id:2,sku:'INTERNAL-SKU',category:'projectors',price:'1000.01',in_stock:true,stock_quantity:2,availability_status:'in_stock',image_path:'products/1 фото.jpg',specifications:{},is_active:true};
 const build=(products,extra={})=>buildMerchantFeed({products,categories,storageOrigin:'https://example.supabase.co',...extra});
@@ -29,5 +30,10 @@ await assert.rejects(readFeedRows({from(){return {select(){return this;},order()
 const res=()=>({headers:{},setHeader(k,v){this.headers[k]=v;},status(n){this.code=n;return this;},end(){return this;},send(body){this.body=body;return this;}});
 let response=res();await handler({method:'POST'},response);assert.equal(response.code,405);assert.equal(response.headers.Allow,'GET, HEAD');
 const oldUrl=process.env.SUPABASE_URL;delete process.env.SUPABASE_URL;try{response=res();await handler({method:'GET'},response);assert.equal(response.code,503);assert.equal(response.headers['Cache-Control'],'no-store');assert.equal(response.body,'Product feed temporarily unavailable');}finally{if(oldUrl!==undefined)process.env.SUPABASE_URL=oldUrl;}
-const config=JSON.parse(await readFile(new URL('../vercel.json',import.meta.url),'utf8'));assert.ok(config.rewrites.some(r=>r.source==='/google-merchant.xml'&&r.destination==='/api/merchant-feed'));
+const config=JSON.parse(await readFile(new URL('../vercel.json',import.meta.url),'utf8'));assert.ok(config.rewrites.some(r=>r.source==='/google-merchant.xml'&&r.destination==='/api/sitemap?format=merchant'));
+response=res();await xmlHandler({method:'POST',query:{format:'merchant'}},response);assert.equal(response.code,405);
+const {readdir}=await import('node:fs/promises');
+const functions=(await readdir(new URL('../api/',import.meta.url))).filter(name=>name.endsWith('.js'));
+assert.ok(functions.length<=12,'Stay within Vercel Hobby function budget');
+assert.ok(!functions.includes('merchant-feed.js'),'Feed implementation must not create a thirteenth function');
 console.log('Merchant feed: paginated public fields only, hierarchy/stock/photo gates, actual discounts, XML escaping, no fabricated identifiers/weights/shipping and fail-closed errors: PASS');

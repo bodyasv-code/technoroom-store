@@ -1,6 +1,8 @@
 # Google Merchant product feed
 
-Public read-only URL: https://www.technoroom.com.ua/google-merchant.xml (rewrite to /api/merchant-feed). RSS 2.0 with Google namespace, UTF-8. No Google account writes, feed registration, Ads campaign or budget changes are performed by this implementation.
+Public read-only URL: https://www.technoroom.com.ua/google-merchant.xml (rewrite to /api/sitemap?format=merchant). RSS 2.0 with Google namespace, UTF-8. No Google account writes, feed registration, Ads campaign or budget changes are performed by this implementation.
+
+Deployment repair: Vercel rejected the original thirteenth api/*.js file under the Hobby 12-function cap. Moved feed implementation outside api/ to server/merchant-feed.js and dispatch it through the existing sitemap function via format=merchant. Both public XML URLs remain unchanged. There are now 12 api JS entry files; a regression test enforces the budget. No paid plan, business data migration, deleted endpoint or account setting change required.
 
 Uses current products/categories/promotions/promotion_products, stable ordered 500-row pagination with a hard limit and a response-size guard. Explicit storefront column selection; no supplier prices, contacts, customers or orders. Generic no-store 503 on partial read failures, empty eligibility or oversized response; no silently truncated successful file. GET/HEAD only. Five-minute shared cache, must-revalidate, no stale-while-revalidate. Google polling is separate from server regeneration (the selected Merchant UI schedule was daily).
 

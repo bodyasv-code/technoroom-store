@@ -1,5 +1,7 @@
 # Delivery policy preparation
 
+Latest user-approved revision: buyer pays carrier tariffs for orders below 50000 UAH; free outbound delivery at 50000 UAH inclusive and above; estimated total 2–7 working days including handling and transit, with prepaid orders counted after payment receipt. Dispatch 1–2 days after prepayment retained. No delivery minimum order value; the user confirmed orders below the free-shipping threshold are delivered. Updated delivery page/meta and the outbound-delivery paragraph on returns for consistency; return-shipping allocation unchanged. No invented numeric charge below threshold, no checkout total/payment workflow changes, no Merchant account mutation. Merchant still needs a valid numeric shipping estimate below threshold before feed launch.
+
 Confirmed by user: Nova Poshta or another carrier agreed with the manager; payment on receipt or 100% prepayment; dispatch in 1–2 days after prepayment (not an arrival guarantee); outbound delivery paid by buyer at carrier tariffs. Return destination: Kyiv, vul. Mrii 12Н office 28. Old free Kyiv / 5 UAH per kilometre terms were explicitly rejected and are not published.
 
 Static delivery page, links from storefront and checkout, sitemap and sanitized consent-based analytics route added. Removed unsupported home-page card-payment promise; no checkout flow, tariffs or totals changed. Contacts identify the supplied address as the return destination too. No legal seller identity or postal code invented.

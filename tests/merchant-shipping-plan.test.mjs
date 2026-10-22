@@ -1,0 +1,13 @@
+import assert from 'node:assert/strict';
+import {proposeShippingGroup} from '../tools/plan-merchant-shipping.mjs';
+const plan=specifications=>proposeShippingGroup({specifications});
+const small={'Вага упаковки брутто':'0.084 кілограм','Ширина упаковки (мм)':'194.3 мм','Глибина упаковки':'97.1 мм','Висота упаковки':'16.3 мм','Штук в упаковці':'1','Вага коробки брутто':'20 кілограм'};
+assert.equal(plan(small).group,'compact_2kg');assert.equal(plan(small).grossKg,.084);
+assert.equal(plan({'Вага':'1 кг','Габарити (мм)':'200x100x50'}).group,'needs_data');
+assert.equal(plan({...small,'Штук в упаковці':'10'}).reason,'multipack_quantity_review');
+assert.equal(plan({'Вага коробки брутто':'20 кілограм'}).reason,'missing_explicit_package_gross');
+assert.equal(plan({'Маса в упаковці (кг)':'22','Габарити упаковки (см)':'345x22x14'}).group,'oversize_review');
+assert.equal(plan({'Маса в упаковці (кг)':'2','Габарити упаковки (см)':'40x40x40'}).group,'large_30kg');
+assert.equal(plan({...small,'Вага з упаковкою':'2 кг'}).reason,'ambiguous_package_gross');
+assert.equal(plan({...small,'Висота упаковки':'18'}).reason,'missing_package_dimensions');
+console.log('Shipping proposals: explicit single-package gross and dimensions, units, volume/oversize, unknown/multipack safeguards, no tariffs or writes: PASS');

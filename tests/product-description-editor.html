@@ -1,0 +1,22 @@
+<!doctype html><html lang="uk"><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Перевірка опису товару</title>
+<link rel="stylesheet" href="../public/article-editor.css"><link rel="stylesheet" href="../public/product-modern.css">
+<style>body{font:16px Arial;max-width:960px;margin:30px auto;padding:0 20px;color:#12243d}textarea[hidden]{display:none}#checks{white-space:pre-wrap;background:#eef8ef;padding:18px}button{padding:10px;margin:10px 0}.product-description-rich{border:1px solid #dce7f3;padding:20px}</style>
+<h1>Опис товару — локальна перевірка</h1><p>Жодних змін у базі або реальних завантажень. Фото для тесту не надсилається на сервер.</p>
+<form><label>Опис<textarea name="description">Старий опис</textarea></label></form><button id="roundtrip">Перевірити збереження опису</button><pre id="checks"></pre><div id="rendered" class="product-description-rich"></div>
+<script type="module">
+import {createArticleEditor} from '../public/article-editor.js';
+import {serializeArticleContent,renderArticleContent,articleHasContent} from '../public/article-format.js';
+const checks=[],check=(name,ok)=>{if(!ok)throw new Error(name);checks.push('✓ '+name)};
+const editor=createArticleEditor(document.querySelector('textarea'),{label:'Опис товару',placeholder:'Опис із фотографіями…',uploadImage:async file=>{check('Обраний файл передано редактору',Boolean(file.name));return new URL('/favicon.svg',location.href).href}});
+editor.setValue('Старий опис\n\nДругий абзац');
+check('Початковий текст не втрачено',document.querySelectorAll('.article-editor-body p').length===2);
+check('Поле має назву опису товару',document.querySelector('.article-editor-body').getAttribute('aria-label')==='Опис товару');
+const rich=serializeArticleContent('<h2>Можливості товару</h2><p>Опис зі <strong>зручним форматуванням</strong>.</p><ul><li>Перший пункт</li><li>Другий пункт</li></ul><img src="/favicon.svg" alt="Тестове зображення"><script>alert(1)<\/script><img src="javascript:alert(1)" onerror="alert(1)">');
+editor.setValue(rich);const rendered=renderArticleContent(editor.getValue());
+check('Зображення збережене в описі',rendered.includes('<img')&&rendered.includes('Тестове зображення'));
+check('Списки та заголовки збережені',rendered.includes('<h2>')&&rendered.includes('<ul>'));
+check('Небезпечний HTML прибраний',!/<script|onerror|javascript:/.test(rendered));
+check('Опис лише з фото теж не порожній',articleHasContent(serializeArticleContent('<img src="/favicon.svg">')));
+document.querySelector('#rendered').innerHTML=rendered;document.querySelector('#checks').textContent=checks.join('\n');
+document.querySelector('#roundtrip').onclick=()=>{document.querySelector('#rendered').innerHTML=renderArticleContent(editor.getValue());document.querySelector('#checks').textContent=checks.join('\n')+'\n✓ Поточні зміни відображено після збереження'};
+</script></html>

@@ -30,5 +30,5 @@ const css=readFileSync(new URL('../public/mobile-category-menu.css',import.meta.
 assert.ok(css.includes('height:100dvh!important'));assert.ok(css.includes('minmax(0,1fr)'));
 assert.ok(css.includes('overscroll-behavior:contain'));assert.ok(css.includes('safe-area-inset-bottom'));
 const app=readFileSync(new URL('../public/app.js',import.meta.url),'utf8');
-assert.equal((app.match(/mountMobileCategoryMenu\(\{/g)||[]).length,2);
+assert.equal((app.match(/mountMobileCategoryMenu\(\{/g)||[]).length,1,'One shared mount handles home and catalog');
 console.log('One mobile level at a time, four levels, back/all/close, escaping, focus/scroll restoration, both menus and viewport sizing: OK');

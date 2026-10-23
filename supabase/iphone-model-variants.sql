@@ -43,6 +43,8 @@ with candidates as (
   where p.parent_product_id is null
     and coalesce(p.brand, '') ~* '^apple$'
     and p.name ~* '^\s*(?:смартфон|smartphone|iphone)\M'
+    and p.name !~* '(case|cover|чохол|чехол|кабель|cable|charger|зарядн|адаптер)'
+    and not (coalesce(p.specifications,'{}'::jsonb) ? 'Тип чохла')
     and (p.name ~* '\miphone[[:space:]-]*(15|16|17|18)\M'
       or p.name ~* '\miphone[[:space:]-]*air\M')
 ),

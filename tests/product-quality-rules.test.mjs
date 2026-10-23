@@ -1,0 +1,12 @@
+import assert from 'node:assert/strict';
+import {hasProductImage,qualityScopeMatches,isModelFamily,isPhoneAccessory,familyContentIssue} from '../public/product-quality-rules.js';
+import {createQualityAudit} from '../public/catalog-quality.js';
+assert.equal(hasProductImage({image_path:' ',image_paths:['photo.jpg']}),true);assert.equal(hasProductImage({image_paths:[' ']}),false);
+assert.equal(qualityScopeMatches({is_active:false}),false);assert.equal(qualityScopeMatches({is_active:false},'all'),true);
+const family={id:1,slug:'apple-family-iphone-17',name:'Смартфон iPhone 17',description:'ПЛЕТЕНИЙ ЧОХОЛ IPHONE',price:0,specifications:{'Тип чохла':'Чохол'}};
+assert.equal(isModelFamily(family),true);assert.equal(isPhoneAccessory(family),true);assert.match(familyContentIssue(family,[]),/аксесуара/);
+assert.equal(isPhoneAccessory({name:'Смартфон iPhone 17',description:'Камера, дисплей, MagSafe'}),false);
+const printer={id:3,category:'office-mfp-color',name:'Багатофункціональний пристрій А4 кол. HP Color Laser 178nw з Wi-Fi (4ZB96A)',brand:'HP',image_path:'test.jpg',price:100,specifications:{'Тип друку':'Кольоровий','Технологія друку':'Лазерний'}};
+assert.ok(!createQualityAudit([printer],[{slug:printer.category}])[0].issues.some(issue=>issue.detail.includes('формат')));
+assert.ok(!createQualityAudit([family],[])[0].issues.some(issue=>issue.code==='no_price'),'Family wrapper has variant prices, not a fictitious standalone price');
+console.log('Quality: shared image/scope predicate, family anomalies and actual HP A4 title evidence: PASS');

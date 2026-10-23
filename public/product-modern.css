@@ -50,3 +50,10 @@
   .store-modern .product-service-grid span { margin: 0; }
   .store-modern .product-specs-card .specs div { grid-template-columns: minmax(0,1fr); gap: 2px; }
 }
+/* Sanitized rich descriptions, including photographs inserted by the admin. */
+.product-description-rich { overflow-wrap: anywhere; line-height: 1.7; }
+.product-description-rich img { display: block; max-width: 100%; height: auto; margin: 18px auto; border-radius: 10px; }
+.product-description-rich :is(p,ul,ol,blockquote) { margin: 0 0 16px; }
+.product-description-rich :is(h2,h3) { margin: 24px 0 12px; line-height: 1.3; }
+.product-description-rich a { color: #0969da; text-decoration: underline; }
+.product-description-rich blockquote { padding-left: 16px; border-left: 3px solid #dce7f3; }

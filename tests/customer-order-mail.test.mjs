@@ -1,0 +1,14 @@
+import assert from 'node:assert/strict';
+import {customerOrderMail,notifyCustomerOrder} from '../api/microsoft-order-mail.js';
+const order={id:5,customer_email:'buyer@example.test',total:37765,checkout_details:{notification:{status:'accepted'},comment:'PRIVATE DELIVERY'},order_items:[{product_name:'Epson EB-W55',quantity:1,unit_price:37765}]};
+const message=customerOrderMail(order);assert.match(message.subject,/№5/);assert.match(message.text,/Epson EB-W55/);assert.match(message.text,/37\s*765/);assert.ok(!message.text.includes('/admin'));assert.ok(!message.text.includes('PRIVATE DELIVERY'));assert.match(message.text,/не підтвердження оплати/);
+let saved,calls=0;
+const db={from(){return {select(){return this},eq(){return this},single:async()=>({data:order}),update(payload){saved=payload;return this},then(resolve){return Promise.resolve({error:null}).then(resolve)}}}};
+const sender=async (mail,to)=>{calls++;assert.equal(to,'buyer@example.test');assert.equal(mail.subject,message.subject);return {status:'accepted'}};
+assert.equal((await notifyCustomerOrder(db,5,{sender})).status,'accepted');assert.equal(calls,1);assert.equal(saved.checkout_details.notification.status,'accepted');assert.equal(saved.checkout_details.customer_notification.status,'accepted');
+order.checkout_details=saved.checkout_details;
+assert.equal((await notifyCustomerOrder(db,5,{sender})).status,'accepted');assert.equal(calls,1,'No repeat sends');
+delete order.checkout_details.customer_notification;order.customer_email='';assert.equal((await notifyCustomerOrder(db,5,{sender})).code,'no_email');assert.equal(calls,1);
+order.customer_email='a@example.test\r\nBcc:other@example.test';assert.equal((await notifyCustomerOrder(db,5,{sender})).code,'invalid_email');assert.equal(calls,1);
+order.customer_email='buyer@example.test';assert.equal((await notifyCustomerOrder(db,5,{sender:async()=>{throw new Error('secret token')}})).code,'mail_internal_error');assert.ok(!JSON.stringify(saved).includes('secret token'));
+console.log('Customer mail: requested recipient, order-only content, optional/invalid email, no duplicate send and isolated status: PASS (no email sent)');

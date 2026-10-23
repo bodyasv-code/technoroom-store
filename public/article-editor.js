@@ -1,14 +1,14 @@
 import {renderArticleContent,serializeArticleContent,sanitizeArticleHtml,plainTextToHtml,safeArticleUrl} from './article-format.js?v=20261011-article-links';
 
-export function createArticleEditor(textarea,{uploadImage}={}){
+export function createArticleEditor(textarea,{uploadImage,label='Текст статті',placeholder='Напишіть текст статті…'}={}){
   if(textarea.parentElement.tagName==='LABEL'){
     const field=document.createElement('div');field.className='article-editor-field';
-    const label=document.createElement('div');label.className='article-editor-label';label.textContent='Текст статті';
-    textarea.parentElement.replaceWith(field);field.append(label,textarea);
+    const fieldLabel=document.createElement('div');fieldLabel.className='article-editor-label';fieldLabel.textContent=label;
+    textarea.parentElement.replaceWith(field);field.append(fieldLabel,textarea);
   }
   textarea.hidden=true;textarea.required=false;
   const shell=document.createElement('div');shell.className='article-editor';
-  shell.innerHTML=`<div class="article-editor-toolbar" role="toolbar" aria-label="Форматування статті">
+  shell.innerHTML=`<div class="article-editor-toolbar" role="toolbar" aria-label="Форматування тексту">
     <select aria-label="Стиль абзацу"><option value="p">Абзац</option><option value="h2">Заголовок 2</option><option value="h3">Заголовок 3</option><option value="blockquote">Цитата</option></select>
     <button type="button" data-command="bold" title="Жирний (Ctrl+B)" aria-label="Жирний"><b>B</b></button>
     <button type="button" data-command="italic" title="Курсив (Ctrl+I)" aria-label="Курсив"><i>I</i></button>
@@ -26,6 +26,7 @@ export function createArticleEditor(textarea,{uploadImage}={}){
   <input type="file" class="article-editor-file" accept="image/jpeg,image/png,image/webp,image/avif" hidden>`;
   textarea.after(shell);
   const body=shell.querySelector('.article-editor-body'),preview=shell.querySelector('.article-editor-preview'),status=shell.querySelector('.article-editor-status');
+  body.setAttribute('aria-label',label);body.dataset.placeholder=placeholder;
   let bookmark=null,pending=false,version=0;
   function remember(){const selection=window.getSelection();if(selection.rangeCount&&body.contains(selection.anchorNode)&&body.contains(selection.focusNode))bookmark=selection.getRangeAt(0).cloneRange()}
   function restore(){body.focus();const selection=window.getSelection();selection.removeAllRanges();if(bookmark&&body.contains(bookmark.commonAncestorContainer)){selection.addRange(bookmark)}else{const range=document.createRange();range.selectNodeContents(body);range.collapse(false);selection.addRange(range)}}

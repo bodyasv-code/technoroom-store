@@ -35,6 +35,7 @@ export function orderDetailsMarkup(order) {
     (company?block('Реквізити компанії',[company.name,'ЄДРПОУ / ІПН: '+(company.code||'—'),company.contact,company.invoiceEmail]):'')+
     (order.comment?block('Коментар і деталі оформлення',[order.comment]):'')+
     block('Email-сповіщення',[notificationLabel(notification?.status),notification?.at?'Остання спроба: '+notification.at:null])+
+    block('Лист покупцю',[details.customer_notification?.status==='skipped'?'Не надіслано: email не вказаний або некоректний':details.customer_notification?notificationLabel(details.customer_notification.status):'Для цього замовлення лист покупцю ще не надсилався',details.customer_notification?.at?'Остання спроба: '+details.customer_notification.at:null])+
     '</div>'+(canRetryNotification(notification)?
       '<div class="order-email-retry"><p>Після мережевого збою лист міг уже надійти. Перевірте пошту перед повтором.</p><label><input type="checkbox" id="confirmOrderEmailRetry"> Розумію, що може надійти повторний лист</label><button type="button" id="retryOrderEmail" disabled>Повторити email-сповіщення</button></div>':'');
 }

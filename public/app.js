@@ -1,5 +1,7 @@
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
 import {reportCommerce,commerceItems,ANALYTICS_READY} from './store-commerce-events.js?v=20261021-commerce';
+import {renderArticleContent,articleHasContent} from './article-format.js?v=20261011-article-links';
+import {screenFacetDefinitions,printerKindValues} from './catalog-refinements.js?v=20261023-facets';
 import {catalogPriceBounds,catalogPriceRangeMax,readCatalogFilterState,catalogFilterUrl,safeCatalogReturnUrl} from './catalog-filter-state.js?v=20261017-customer-content';
 import {printerDuplexFilterValues} from './printer-duplex.js?v=20261017-customer-content';
 import {printerProductFormatValues,printerMediaWidthValues} from './printer-format-filter.js?v=20261017-customer-content';
@@ -158,58 +160,7 @@ async function home() {
     if(cats.length){
       const roots=createCategoryTree(cats).roots;
       if(cards) cards.innerHTML=roots.slice(0,8).map(c=>{const source=c.image_path?(String(c.image_path).startsWith('http')?c.image_path:supabase.storage.from('product-images').getPublicUrl(c.image_path).data.publicUrl):'';return `<a href="catalog.html?category=${encodeURIComponent(c.slug)}"><div class="home-cat-visual">${source?'<img src="'+escapeHtml(source)+'" alt="" loading="lazy">':categoryIcon(c)}</div><b>${escapeHtml(c.name)}</b><span>Переглянути →</span></a>`}).join('');
-      const mega=document.getElementById('homeCatalogMega'), rootsEl=document.getElementById('homeMegaRoots'), childrenEl=document.getElementById('homeMegaChildren'), toggle=document.getElementById('homeCatalogToggle');
-      if(mega&&rootsEl&&childrenEl&&toggle){
-        const compactMenu=()=>window.matchMedia('(max-width:700px)').matches;
-        const renderRoots=()=>{
-          rootsEl.hidden=false;
-          childrenEl.hidden=true;
-          rootsEl.innerHTML=roots.map(r=>`<button type="button" data-slug="${escapeHtml(r.slug)}">${categoryIcon(r)}<span>${escapeHtml(r.name)}</span><b>›</b></button>`).join('');
-          rootsEl.querySelectorAll('button').forEach(button=>{
-            const root=roots.find(item=>item.slug===button.dataset.slug);
-            button.onmouseenter=()=>{if(!compactMenu()) show(root)};
-            button.onclick=()=>show(root);
-          });
-        };
-        const show=r=>{
-          rootsEl.querySelectorAll('button').forEach(b=>b.classList.toggle('active',b.dataset.slug===r.slug));
-          const back=compactMenu()?'<button type="button" class="mega-back" data-mega-back>← Усі категорії</button>':'';
-          childrenEl.innerHTML=`${back}<div class="mega-title"><h2>${escapeHtml(r.name)}</h2><a href="catalog.html?category=${encodeURIComponent(r.slug)}">Усі товари →</a></div><div class="mega-grid">${categoryMenuMarkup(cats,r,escapeHtml)}</div>`;
-          if(compactMenu()){
-            rootsEl.hidden=true;
-            childrenEl.hidden=false;
-            childrenEl.querySelector('[data-mega-back]').onclick=renderRoots;
-          }else childrenEl.hidden=false;
-        };
-        renderRoots();
-        if(roots[0]&&!compactMenu()) show(roots[0]);
-        const setMenuOpen=(isOpen)=>{
-          mega.hidden=!isOpen;
-          if(isOpen&&compactMenu())renderRoots();
-          toggle.setAttribute('aria-expanded', String(isOpen));
-        };
-        // Меню відкривається тільки явним натисканням: на сенсорних екранах і мишкою
-        // воно не закривається миттєво через випадковий mouseleave.
-        toggle.onclick=(event)=>{
-          event.preventDefault();
-          event.stopPropagation();
-          setMenuOpen(mega.hidden);
-        };
-        mountMobileCategoryMenu({menu:mega,toggle,categories:cats,escape:escapeHtml,icon:categoryIcon,restoreDesktop:()=>{renderRoots();if(roots[0]&&!compactMenu())show(roots[0]);}});
-        document.querySelectorAll('[data-open-catalog]').forEach(link=>{
-          link.onclick=event=>{
-            event.preventDefault();
-            if(mega.hidden) toggle.click();
-            if(!compactMenu()){
-              toggle.scrollIntoView({block:'center'});
-              rootsEl.querySelector('button')?.focus({preventScroll:true});
-            }
-          };
-        });
-        document.addEventListener('pointerdown',(event)=>{
-          if(!mega.hidden&&!mega.contains(event.target)&&!toggle.contains(event.target)) setMenuOpen(false);
-        });
-      }
+      await mountMegaCatalog();
     }
   } catch(e){ console.warn('Категорії головної',e); }
   const q=document.getElementById('homeSideSearch'), brand=document.getElementById('homeBrand'), minI=document.getElementById('homePriceMin'), maxI=document.getElementById('homePriceMax'), minR=document.getElementById('homePriceMinRange'), maxR=document.getElementById('homePriceMaxRange'), cap=document.getElementById('homePriceCaption'), stock=document.getElementById('homeStockOnly'), sort=document.getElementById('homeSort');
@@ -461,7 +412,7 @@ schema.textContent = JSON.stringify({
 document.head.appendChild(schema); const specs = item.specifications ? Object.entries(item.specifications).map(([key, value]) => `<div><dt>${key}</dt><dd>${value}</dd></div>`).join('') : `<div><dt>Характеристики</dt><dd>${item.details || 'Уточнюйте у менеджера'}</dd></div>`; root.innerHTML = `<div class="product-detail-visual ${item.type}"><div class="product-image ${item.type}">${image(item)}</div></div><div class="product-detail-copy"><p class="eyebrow">${item.brand || ''}</p><h1>${item.name}</h1><p class="product-description">${item.description || ''}</p><p class="availability">${item.stock ? 'В наявності' : 'Немає в наявності'}</p><strong class="detail-price">${money(salePrice(item))}</strong><div class="detail-actions"><button class="button primary" data-add="${item.id}" ${item.stock ? '' : 'disabled'}>${item.stock ? 'Додати в кошик' : 'Немає в наявності'}</button><a class="button outline" href="catalog.html">До каталогу</a></div><dl class="specs"><div><dt>Виробник</dt><dd>${item.brand || '—'}</dd></div>${specs}</dl></div>`; bind(root); }
 function checkout() { const form = document.getElementById('checkoutForm'); if (!form) return; const items = cart.map(get).filter(Boolean), total = items.reduce((sum, item) => sum + item.price, 0), root = document.getElementById('checkoutSummary'); root.innerHTML = items.length ? items.map((item) => `<div><span>${item.name}</span><strong>${money(salePrice(item))}</strong></div>`).join('') + `<div class="checkout-total"><span>Разом</span><strong>${money(total)}</strong></div>` : '<p>Ваш кошик порожній. <a href="catalog.html">Перейти до каталогу</a></p>'; form.onsubmit = async (event) => { event.preventDefault(); if (items.some((item) => !item.stock)) return alert('У кошику є недоступний товар.'); const data = Object.fromEntries(new FormData(form)), button = form.querySelector('button'); button.disabled = true; try { const response = await fetch('/api/orders', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ customer: { name: data.name, phone: data.phone, email: data.email }, delivery: { city: data.city, address: data.address, comment: data.comment }, items: cart.map((productId) => ({ productId, quantity: 1 })) }) }); if (!response.ok) throw new Error(); localStorage.removeItem('technoroom-cart'); cart.length = 0; renderCart(); document.getElementById('checkoutNotice').hidden = false; button.textContent = 'Замовлення прийнято'; } catch { button.disabled = false; alert('Не вдалося створити замовлення. Спробуйте ще раз.'); } }; }
 function mount() { renderCart(); home(); catalog(); product(); checkout(); refreshStorefrontRecommendations(); restoreScrollPosition(); const drawer = document.getElementById('cartDrawer'), overlay = document.getElementById('overlay'), close = () => { drawer?.classList.remove('open'); if (overlay) overlay.hidden = true; }; document.getElementById('cartButton')?.addEventListener('click', () => { drawer?.classList.add('open'); if (overlay) overlay.hidden = false; }); document.getElementById('closeCart')?.addEventListener('click', close); overlay?.addEventListener('click', close); document.getElementById('checkoutButton')?.addEventListener('click', () => location.href = 'checkout.html'); }
-const storeProductFromRow = (rawItem) => { const item=applyCustomerProductPolicy(rawItem); return ({ id: item.id, sku: readableText(item.sku), name: compactProductName(item.name, item.sku, item.brand), description: readableText(item.description), price: Number(item.price), type: item.category, brand: readableText(item.brand), brand_id:item.brand_id, parentProductId:item.parent_product_id, variantLabel:readableText(item.variant_label), specifications: isProjectorProduct(item)?resolveProjectorSpecifications(item):normalizeSpecifications(item.specifications), availabilityStatus: item.availability_status, stockQuantity: Number(item.stock_quantity || 0), stock: item.in_stock && Number(item.stock_quantity || 0) > 0, image: item.image_path, imagePaths: item.image_paths, createdAt:item.created_at }); };
+const storeProductFromRow = (rawItem) => { const item=applyCustomerProductPolicy(rawItem); return ({ id: item.id, sku: readableText(item.sku), name: compactProductName(item.name, item.sku, item.brand), descriptionContent:item.description, description: readableText(String(item.description||'').replace(/<!--technoroom-rich-text:v1-->/g,'').replace(/<[^>]*>/g,' ')), price: Number(item.price), type: item.category, brand: readableText(item.brand), brand_id:item.brand_id, parentProductId:item.parent_product_id, variantLabel:readableText(item.variant_label), specifications: isProjectorProduct(item)?resolveProjectorSpecifications(item):normalizeSpecifications(item.specifications), availabilityStatus: item.availability_status, stockQuantity: Number(item.stock_quantity || 0), stock: item.in_stock && Number(item.stock_quantity || 0) > 0, image: item.image_path, imagePaths: item.image_paths, createdAt:item.created_at }); };
 
 async function lookupStoreSearch(query) {
   if (!isProductPage && !productsHydrating && catalogProductScope==='all') return null;
@@ -707,10 +658,16 @@ mountHomeBanners();
 
 
 async function mountMegaCatalog() {
-  const mega=document.getElementById('catalogMega'), rootsEl=document.getElementById('megaRoots'), childrenEl=document.getElementById('megaChildren');
+  const mega=document.getElementById('catalogMega')||document.getElementById('homeCatalogMega'), rootsEl=document.getElementById('megaRoots')||document.getElementById('homeMegaRoots'), childrenEl=document.getElementById('megaChildren')||document.getElementById('homeMegaChildren');
   if(!mega||!rootsEl||!childrenEl) return;
+  if(mega.dataset.catalogReady==='true')return;
   const cats=await loadStorefrontCategories();
   if(!cats?.length) return;
+  if(mega.dataset.catalogReady==='true')return;
+  mega.dataset.catalogReady='true';
+  if(mega.id==='homeCatalogMega'&&!mega.querySelector('.catalog-mega-inner')){
+    const inner=document.createElement('div');inner.className='home-wide catalog-mega-inner';inner.append(rootsEl,childrenEl);mega.append(inner);
+  }
   const roots=createCategoryTree(cats).roots;
   const compactMenu=()=>window.matchMedia('(max-width:700px)').matches;
   const renderRoots=()=>{
@@ -735,11 +692,13 @@ async function mountMegaCatalog() {
   };
   renderRoots();
   if(roots[0]&&!compactMenu()) show(roots[0]);
-  const toggle=document.getElementById('catalogMenuToggle');
+  const toggle=document.getElementById('catalogMenuToggle')||document.getElementById('homeCatalogToggle');
+  toggle.setAttribute('aria-controls',mega.id);toggle.setAttribute('aria-expanded','false');
   toggle.onclick=(event)=>{ event.preventDefault(); mega.hidden=!mega.hidden;if(!mega.hidden&&compactMenu())renderRoots();toggle.setAttribute('aria-expanded',String(!mega.hidden)); };
   mountMobileCategoryMenu({menu:mega,toggle,categories:cats,escape:escapeHtml,icon:categoryIcon,restoreDesktop:()=>{renderRoots();if(roots[0]&&!compactMenu())show(roots[0]);}});
+  document.querySelectorAll('[data-open-catalog]').forEach(link=>link.onclick=event=>{event.preventDefault();if(mega.hidden) toggle.click();toggle.scrollIntoView({block:'nearest'});rootsEl.querySelector('button')?.focus({preventScroll:true})});
   document.addEventListener('pointerdown',(event)=>{
-    if(!mega.hidden&&!mega.contains(event.target)&&!toggle.contains(event.target)) mega.hidden=true;
+    if(!mega.hidden&&!mega.contains(event.target)&&!toggle.contains(event.target)){mega.hidden=true;toggle.setAttribute('aria-expanded','false');}
   });
   attachStoreSearch(document.getElementById('headerCatalogSearch'), document.getElementById('headerCatalogSearchGo'), {
     products:()=>products, escape:escapeHtml, image:imageUrl, price:money, availability, text:readableText,
@@ -1273,7 +1232,7 @@ product = function () {
       + '<strong class="detail-price">' + money(salePrice(item)) + '</strong><p class="product-price-note">Ціна вказана за 1 одиницю товару</p>'
       + '<div class="detail-actions">' + (state.inquiry ? '<button class="button product-buy" data-inquiry="' + item.id + '">Уточнити наявність</button>' : '<button class="button product-buy" data-add="' + item.id + '" ' + (state.orderable ? '' : 'disabled') + '>' + (state.orderable ? 'Додати в кошик' : 'Немає в наявності') + '</button>') + '<a class="button product-back" href="' + catalogCardEscape(catalogReturnUrl) + '">До каталогу</a></div>'
       + '<div class="product-service-grid"><div><b>Доставка</b><span>Підберемо зручний спосіб</span></div><div><b>Гарантія</b><span>Офіційна техніка</span></div><div><b>Консультація</b><span>Допоможемо з вибором</span></div></div></div></div></section>'
-      + '<section class="product-content-grid">' + (specificationDisplayText(item.description).trim() ? '<article class="product-description-card"><p class="section-kicker">Про товар</p><h2>Опис</h2><p>' + safe(item.description) + '</p></article>' : '') + '<article class="product-specs-card"><div class="product-section-heading"><div><p class="section-kicker">Технічні дані</p><h2>Характеристики</h2></div><span>' + (specEntries.length ? specEntries.length + ' параметрів' : '') + '</span></div><dl class="specs"><div><dt>Виробник</dt><dd>' + safeBrand + '</dd></div>' + specs + '</dl></article></section>'
+      + '<section class="product-content-grid">' + (articleHasContent(item.descriptionContent||item.description) ? '<article class="product-description-card"><p class="section-kicker">Про товар</p><h2>Опис</h2><div class="product-description-rich">' + renderArticleContent(item.descriptionContent||item.description) + '</div></article>' : '') + '<article class="product-specs-card"><div class="product-section-heading"><div><p class="section-kicker">Технічні дані</p><h2>Характеристики</h2></div><span>' + (specEntries.length ? specEntries.length + ' параметрів' : '') + '</span></div><dl class="specs"><div><dt>Виробник</dt><dd>' + safeBrand + '</dd></div>' + specs + '</dl></article></section>'
       + (related.length ? '<section class="related-products"><div class="related-heading"><div><p class="section-kicker">Добірка</p><h2>Схожі товари</h2></div><a href="catalog.html?category=' + encodeURIComponent(item.type || '') + '">Переглянути всі →</a></div><div class="product-grid">' + related.map(card).join('') + '</div></section>' : '');
     bind(root);
     root.querySelectorAll('[data-gallery-path]').forEach((button) => button.addEventListener('click', () => renderProductGallery(decodeURIComponent(button.dataset.galleryPath))));
@@ -1903,6 +1862,7 @@ catalog = function () {
   };
   const printerDuplexValues = printerDuplexFilterValues;
   const printerFilterOptions = (categoryProducts) => compactFilterOptions(categoryProducts, [
+    { id: 'printer-kind', label: 'Пристрій', values: printerKindValues },
     { id: 'printer-color', label: 'Кольоровість', values: printerColorValues },
     { id: 'printer-technology', label: 'Технологія друку', values: printerTechnologyValues },
     { id: 'printer-format', label: 'Формат', values: printerFormatValues },
@@ -1931,7 +1891,7 @@ catalog = function () {
     const categoryProducts = products.filter((product) => !product.parentProductId && category !== 'all' && storefrontCategoryMatches(product, category));
     if (!categoryProducts.length) return [];
     if (category === screenCategory) {
-      return screenSpecificationDefinitions.map((definition) => {
+      return screenFacetDefinitions.map((definition) => {
         const values = new Set();
         categoryProducts.forEach((product) => valuesForScreenFilter(product, definition).forEach((value) => values.add(value)));
         const options = [...values].sort(definition.sort || ((left, right) => left.localeCompare(right, 'uk')));
@@ -1939,6 +1899,7 @@ catalog = function () {
       }).filter(Boolean);
     }
     if (/^office-(?:printers|mfp)(?:-|$)|^office-wide-format$/iu.test(category)) return printerFilterOptions(categoryProducts);
+    if(category==='office-equipment')return printerFilterOptions(categoryProducts.filter(product=>printerKindValues(product).length));
     if (/^office-consumables(?:-|$)/iu.test(category)) return printConsumableFilterOptions(categoryProducts);
     const phoneProducts = categoryProducts.filter((product) => isPhoneProduct(product));
     if (/(?:смартфон|телефон|phone)/iu.test(category) || phoneProducts.length >= Math.max(2, categoryProducts.length * 0.7)) return phoneFilterOptions(phoneProducts.length ? phoneProducts : categoryProducts);
@@ -1952,7 +1913,8 @@ catalog = function () {
     if (/(?:планшет|tablet|ipad)/iu.test(category) || tabletProducts.length >= Math.max(2, categoryProducts.length * 0.7)) return tabletFilterOptions(tabletProducts.length ? tabletProducts : categoryProducts);
     const laptopProducts = categoryProducts.filter((product) => /(?:ноутбук|laptop|macbook)/iu.test(readableText(product.name) + ' ' + readableText(product.type)));
     if (/(?:ноутбук|laptop|macbook)/iu.test(category) || laptopProducts.length >= Math.max(2, categoryProducts.length * 0.7)) return laptopFilterOptions(laptopProducts.length ? laptopProducts : categoryProducts);
-    return genericSpecificationDefinitions(categoryProducts);
+    // Never expose a scanner's sensor or raw device description in a mixed category.
+    return genericSpecificationDefinitions(categoryProducts).filter(definition=>!/(?:тип\s+(?:пристрою|матриці))/iu.test(definition.label));
   };
   const renderScreenSpecificationFilters = () => {
     if (!screenSpecificationFilters) return;

@@ -31,8 +31,8 @@ const cyclic=[{id:1,slug:'a',name:'A',parent_id:2},{id:2,slug:'b',name:'B',paren
 assert.equal(createCategoryTree(cyclic).flattened.length,2);assert.equal(createCategoryTree(cyclic).path('a').length,2);
 assert.deepEqual(visibleCategoryRows(cyclic),[]);assert.equal(createCategoryTree(cyclic).branch('a').size,2);
 const app=readFileSync(new URL('../public/app.js',import.meta.url),'utf8');
-assert.equal((app.match(/categoryMenuMarkup\(cats,/g)||[]).length,2);
-assert.ok(app.includes('if(isOpen&&compactMenu())renderRoots()'));
+assert.equal((app.match(/categoryMenuMarkup\(cats,/g)||[]).length,1,'Home and catalog share one menu renderer');
+assert.ok(app.includes("document.getElementById('catalogMega')||document.getElementById('homeCatalogMega')"));
 assert.ok(app.includes('if(!mega.hidden&&compactMenu())renderRoots()'));
 assert.ok(app.includes('storefrontTree.path(leaf.slug)'));
 assert.ok(app.includes('storefrontTree.children(current.id)'));

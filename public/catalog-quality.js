@@ -4,6 +4,8 @@ import {isProjectorProduct, resolveProjectorSpecifications, normalizeProjectorRe
 import {equivalentSpecification} from './specification-comparison.js?v=20261012-focus';
 import {isSpecializedPrinterName,officeSupplyCategoryPlan} from './product-identity.js?v=20261012-consumables-brands';
 import {printerDuplexMode} from './printer-duplex.js?v=20261016-duplex';
+import {readPrinterEditorFormat} from './printer-format-editor.js?v=20261017-customer-content';
+import {hasProductImage,qualityScopeMatches,isModelFamily,familyContentIssue} from './product-quality-rules.js?v=20261023-quality';
 
 export const qualityLabels = {duplicate_sku:'Повтор SKU', conflict:'Суперечливі характеристики', no_brand:'Без бренду', no_image:'Без фото', no_price:'Без ціни', category:'Перевірити категорію', filters:'Неповні фільтри'};
 const text = value => String(value ?? '').trim();
@@ -16,8 +18,9 @@ export function createQualityAudit(products, categories=[], brands=[], expectedC
     const duplicateIds=skuGroups.get(auditSku(product.sku))||[];
     if(duplicateIds.length>1)add('duplicate_sku','SKU '+text(product.sku)+' також мають товари ID: '+duplicateIds.filter(id=>id!==product.id).join(', '));
     if(!text(product.brand)&&!brandIds.has(Number(product.brand_id)))add('no_brand','Не вказано бренд і немає зв’язку з довідником брендів.');
-    if(!text(product.image_path)&&!(Array.isArray(product.image_paths)&&product.image_paths.some(path=>text(path))))add('no_image','Немає головного фото або фото в галереї.');
-    if(!Number.isFinite(Number(product.price))||Number(product.price)<=0)add('no_price','Ціна відсутня, нульова або некоректна.');
+    if(!hasProductImage(product))add('no_image','Немає головного фото або фото в галереї.');
+    if(!isModelFamily(product)&&(!Number.isFinite(Number(product.price))||Number(product.price)<=0))add('no_price','Ціна відсутня, нульова або некоректна.');
+    const familyIssue=familyContentIssue(product,products);if(familyIssue)add('category',familyIssue);
     const supply=officeSupplyCategoryPlan(product.name,product.category);
     const current=categoryMap.get(product.category), target=supply?.childSlug||expectedCategory(product);
     if(!current)add('category','Категорія відсутня або не знайдена в довіднику.');
@@ -42,7 +45,7 @@ export function createQualityAudit(products, categories=[], brands=[], expectedC
       const spec=new Map(entries.map(([key,value])=>[normalized(key),text(value)])), missing=[];
       if(!spec.get('тип друку')&&!spec.get('кольоровість'))missing.push('кольоровість');
       if(!spec.get('технологія друку')&&!spec.get('технологія'))missing.push('технологія друку');
-      if(!spec.get('формат'))missing.push('формат');
+      if(!readPrinterEditorFormat(product.specifications||{},product.name))missing.push('формат');
       if(missing.length)add('filters','Для принтера / БФП не вказано: '+missing.join(', ')+'.');
     }
     return {product,issues,critical:issues.some(issue=>['duplicate_sku','conflict'].includes(issue.code))};
@@ -56,7 +59,7 @@ export function mountQualityPanel(host, onEdit) {
   const el=selector=>host.querySelector(selector), limit=20;
   const render=()=>{
     const scope=el('[data-quality-scope]').value, kind=el('[data-quality-kind]').value, query=normalized(el('[data-quality-search]').value);
-    const scoped=audit.filter(row=>scope==='all'||(scope==='active'?row.product.is_active:!row.product.is_active));
+    const scoped=audit.filter(row=>qualityScopeMatches(row.product,scope));
     const attention=scoped.filter(row=>row.issues.length);
     el('[data-quality-total]').textContent=attention.length+' із '+scoped.length+' товарів';
     el('[data-quality-summary]').innerHTML=Object.entries(qualityLabels).map(([code,label])=>'<button type="button" data-quality-filter="'+code+'" aria-pressed="'+(kind===code)+'"><strong>'+attention.filter(row=>row.issues.some(issue=>issue.code===code)).length+'</strong><span>'+label+'</span></button>').join('');

@@ -36,7 +36,7 @@ assert.equal(normalizeOrder({...body,items:[...body.items,{...body.items[0],quan
 let rpcCall;
 const handlerSource=readFileSync(new URL('../api/orders.js',import.meta.url),'utf8');
 const handler=handlerSource.slice(handlerSource.indexOf('export default async function handler')).replace('export default ','');
-const context={normalizeOrder,notifyNewOrder:async()=>({status:'accepted'}),console,supabase:{async rpc(name,args){rpcCall={name,args};return {data:123,error:null};}}};
+const context={normalizeOrder,notifyCustomerOrder:async()=>({status:'accepted'}),notifyNewOrder:async()=>({status:'accepted'}),console,supabase:{async rpc(name,args){rpcCall={name,args};return {data:123,error:null};}}};
 vm.createContext(context);vm.runInContext(handler,context);
 const response={statusCode:0,body:null,setHeader(){},status(code){this.statusCode=code;return this},json(value){this.body=value;return this}};
 await context.handler({method:'POST',body},response);

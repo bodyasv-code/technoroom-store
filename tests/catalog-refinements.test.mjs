@@ -1,0 +1,13 @@
+import assert from 'node:assert/strict';
+import {printerKindValues,screenAspectValues,screenDiagonalValues,screenConstructionValues,screenMountValues,screenDriveValues} from '../public/catalog-refinements.js';
+assert.deepEqual(printerKindValues({name:'БФП моно А4 Pantum BM5110ADW'}),['БФП']);
+assert.deepEqual(printerKindValues({name:'Багатофункціональний пристрій А4 HP Color Laser'}),['БФП']);
+assert.deepEqual(printerKindValues({name:'Лампа для принтера'}),[]);
+const p=value=>({specifications:{'Співвідношення сторін':value}});
+for(const value of ['16:9','16*9','16x9','16х9'])assert.deepEqual(screenAspectValues(p(value)),['16:9']);
+assert.deepEqual(screenAspectValues(p('1x1')),['1:1']);assert.deepEqual(screenAspectValues(p('9')),[]);
+assert.deepEqual(screenDiagonalValues({specifications:{'Діагональ':'254/100'}}),[]);
+assert.deepEqual(screenDiagonalValues({specifications:{'Діагональ':'100"'}}),['100″']);
+const screen={name:'Екран моторизований 2E',specifications:{'Тип екрану':'настінний, стельовий, з електроприводом','Монтаж':'настінний, стельовий'}};
+assert.deepEqual(screenConstructionValues(screen),['Рулонний']);assert.deepEqual(screenMountValues(screen),['Настінний','Стельовий']);assert.deepEqual(screenDriveValues(screen),['Моторизований']);
+console.log('Clean facets: printer kinds, ratio aliases, invalid values, independent screen construction/mount/drive: PASS');

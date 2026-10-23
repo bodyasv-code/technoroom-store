@@ -1,6 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
 import {normalizeOrder} from './order-input.js';
-import {notifyNewOrder} from './microsoft-order-mail.js';
+import {notifyNewOrder,notifyCustomerOrder} from './microsoft-order-mail.js';
 
 const supabase = createClient(
   process.env.SUPABASE_URL,
@@ -29,6 +29,9 @@ export default async function handler(request, response) {
   let notification;
   try {notification=await notifyNewOrder(supabase,orderId);}
   catch {notification={status:'failed'};console.warn('Order email failed',{orderId});}
-  return response.status(201).json({ orderId,notification:notification.status });
+  let customerNotification;
+  try {customerNotification=await notifyCustomerOrder(supabase,orderId);}
+  catch {customerNotification={status:'failed'};console.warn('Customer order email failed',{orderId});}
+  return response.status(201).json({ orderId,notification:notification.status,customerNotification:customerNotification.status });
 }
 

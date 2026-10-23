@@ -45,7 +45,24 @@ body.store-modern {
 .store-modern :is(.home-catalog-button,.catalog-menu-toggle) { display: inline-flex; align-items: center; justify-content: center; align-self: center; white-space: nowrap; line-height: 1; border-radius: 12px; background: var(--store-blue); min-height: 48px; cursor: pointer; }
 .store-modern :is(.home-search,.header-search) { border-radius: 12px; background: #f6f8fb; border: 1px solid #dfe6ef; box-shadow: none; }
 .store-modern :is(.home-search,.header-search) input { background: transparent; font-size: 14px; }
+.store-modern :is(.home-search,.header-search):focus-within { outline: 2px solid var(--store-blue); outline-offset: 2px; }
+.store-modern :is(.home-search,.header-search) input:focus,.store-modern :is(.home-search,.header-search) input:focus-visible { outline: none!important; box-shadow: none!important; border: 0; }
 .store-modern :is(.home-search,.header-search)>button { border-radius: 0 11px 11px 0; background: var(--store-blue); }
+/* Same desktop mega menu on home and catalog; mobile uses the shared drilldown. */
+@media(min-width:701px) {
+  .store-home .home-catalog-wrap,.store-home .home-head-row { position: static; }
+  .store-home .home-header { position: sticky; top: 0; z-index: 1300; }
+  .store-home .home-catalog-mega { top: 100%; left: 0; right: 0; width: auto; height: auto; padding: 10px 0 24px; display: block; overflow: visible; border: 0; border-radius: 0; background: transparent; box-shadow: none; }
+  .store-modern .home-catalog-mega[hidden] { display: none!important; }
+  .store-home .home-catalog-mega .catalog-mega-inner { display: grid; grid-template-columns: 300px minmax(0,1fr); min-height: 440px; max-height: calc(100dvh - 160px); padding: 14px; overflow: auto; background: #fff; border: 1px solid var(--line); border-radius: 16px; box-shadow: 0 18px 45px #10243e26; }
+  .store-home .home-catalog-mega .mega-roots { padding: 0 12px 0 0; }
+  .store-home .home-catalog-mega .mega-children { display: block; padding: 10px 6px 10px 20px; }
+  .store-home .home-catalog-mega .mega-grid { grid-template-columns: repeat(3,minmax(0,1fr)); }
+}
+@media(min-width:701px) and (max-width:1000px) {
+  .store-home .home-catalog-mega .catalog-mega-inner { grid-template-columns: 240px minmax(0,1fr); }
+  .store-home .home-catalog-mega .mega-grid { grid-template-columns: repeat(2,minmax(0,1fr)); }
+}
 .store-modern .home-main { padding-top: 0; }
 .store-modern .store-intro {
   display: flex; justify-content: space-between; align-items: flex-end;

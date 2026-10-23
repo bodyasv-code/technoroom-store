@@ -27,6 +27,8 @@ with candidates as (
   where p.parent_product_id is null
     and coalesce(p.brand, '') ~* '^samsung$'
     and p.name ~* '^\s*(?:смартфон|smartphone|samsung)\M'
+    and p.name !~* '(case|cover|чохол|чехол|кабель|cable|charger|зарядн|адаптер)'
+    and not (coalesce(p.specifications,'{}'::jsonb) ? 'Тип чохла')
     and p.name ~* '\mgalaxy[[:space:]]+(?:z[[:space:]]+(?:fold|flip)[[:space:]]*[0-9]+|s[0-9]{2}[[:space:]]*(?:ultra|fe|\+)?|a[0-9]{2})\M'
 ), eligible_models as (
   select model_name

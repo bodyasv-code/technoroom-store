@@ -49,6 +49,39 @@ export async function sendAdminInvitationMail({email,fullName,role,actionLink},o
     '', 'Не пересилайте це посилання іншим. Якщо ви не очікували запрошення, не відкривайте його.'
   ].join('\n')},email,options);
 }
+export function customerOrderMail(order) {
+  const money=value=>new Intl.NumberFormat('uk-UA',{minimumFractionDigits:2,maximumFractionDigits:2}).format(Number(value))+' ₴';
+  return {subject:`TECHNOROOM: ваше замовлення №${order.id} отримано`,text:[
+    'Дякуємо за замовлення в TECHNOROOM!',`Номер замовлення: ${order.id}`,'',
+    ...(order.order_items||[]).map(item=>`${item.product_name} — ${item.quantity} шт. × ${money(item.unit_price)}`),
+    '',`Сума замовлення: ${money(order.total)}`,
+    'Це підтвердження отримання замовлення, а не підтвердження оплати або відправлення.',
+    'Менеджер уточнить наявність і деталі виконання.',
+    '', 'Зв’язок із магазином: +380 (44) 360-55-39',mailbox,
+    'https://www.technoroom.com.ua/'
+  ].join('\n')};
+}
+export async function notifyCustomerOrder(db,id,{sender=sendGraphMail}={}) {
+  let order,result;
+  try {
+    const loaded=await db.from('orders').select('id,total,customer_email,checkout_details,order_items(product_name,unit_price,quantity)').eq('id',id).single();
+    if(loaded.error||!loaded.data)throw new Error('mail_order_read_failed');
+    order=loaded.data;
+    // A previous accepted/ambiguous attempt must never be sent again automatically.
+    if(order.checkout_details?.customer_notification)return order.checkout_details.customer_notification;
+    const email=String(order.customer_email||'').trim();
+    result=!email?{status:'skipped',code:'no_email'}:
+      !/^[^\s@<>\r\n]+@[^\s@<>\r\n]+\.[^\s@<>\r\n]+$/.test(email)||email.length>254?{status:'skipped',code:'invalid_email'}:
+      await sender(customerOrderMail(order),email);
+  }catch(error){result={status:'failed',code:/^mail_[a-z0-9_]+$/.test(error.message)?error.message:'mail_internal_error'}}
+  if(order){
+    try{
+      const saved=await db.from('orders').update({checkout_details:{...order.checkout_details,customer_notification:{...result,at:new Date().toISOString()}}}).eq('id',id);
+      if(saved.error)console.warn('Customer mail status could not be saved',{orderId:id});
+    }catch{console.warn('Customer mail status could not be saved',{orderId:id})}
+  }
+  return result;
+}
 export async function notifyNewOrder(db,id,{sender=sendMicrosoftMail}={}) {
   let order;
   let result;

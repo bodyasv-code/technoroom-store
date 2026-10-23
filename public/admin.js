@@ -1,5 +1,6 @@
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
 import {mountAdminNavigation} from './admin-navigation.js?v=20261020-users';
+import {mountAdminSidebar} from './admin-sidebar.js?v=20261023-sidebar';
 import {mountAdminUsers} from './admin-users.js?v=20261020-chief';
 import {isAdminPasswordSetup,openAdminDashboard,saveAdminPassword} from './admin-password-setup.js?v=20261020-recovery';
 // Capture both callback types before the Supabase client consumes the hash.
@@ -1828,3 +1829,4 @@ renderAll = () => { renderAllWithCatalogAudit(); renderCatalogAudit(); renderCat
 document.querySelector('.admin-main').prepend(appNotice);
 mountAdminUsers(supabase);
 mountAdminNavigation();
+mountAdminSidebar();

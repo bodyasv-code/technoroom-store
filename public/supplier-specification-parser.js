@@ -2,9 +2,17 @@
 // label/value records; rejected prose remains in the supplier description.
 const plain=value=>String(value??'').replace(/\s+/gu,' ').trim();
 const fold=value=>plain(value).normalize('NFKC').toLocaleLowerCase('uk-UA');
+export function specificationLabelProblem(raw) {
+  const key=plain(raw).replace(/\s*\(інше значення \d+\)$/u,'');
+  if(/^(?:https?|ftp)(?::|$)|^\/\//iu.test(key))return 'url-label';
+  if(/^(?:до\s+\d|\d+base[-–]|mopria\s*,)/iu.test(key))return 'prose-label';
+  const opens=(key.match(/\(/gu)||[]).length,closes=(key.match(/\)/gu)||[]).length;
+  if(opens!==closes||/^(?:кол\.?|ч\/б|max у копій|windows(?: \d.*)?|macos(?: .*)?)$/iu.test(key)||/^["',)]/u.test(key))return 'fragment';
+  return null;
+}
 export function isSpecificationLabel(raw) {
   const key=plain(raw);
-  if(key.length<2||key.length>100||!/^\p{L}/u.test(key))return false;
+  if(specificationLabelProblem(key)||key.length<2||key.length>100||!/^(?:\p{L}|3D\b|[345]G\b)/iu.test(key))return false;
   if(/[;:<>\n]|\.\s|^["',)]/u.test(key))return false;
   let depth=0;
   for(const char of key){if(char==='(')depth++;if(char===')'&&--depth<0)return false;}
@@ -35,6 +43,11 @@ export function parseSpecificationText(source,{canonicalKey=plain}={}) {
   }
   records.push(input.slice(start));
   for(const record of records){
+    // A standalone URL is a source document, never a key named "https".
+    // Retain its complete address rather than discarding supplier information.
+    if(/^https?:\/\/[^\s<>]+$/iu.test(record.trim())){
+      appendSpecification(result,'Документ постачальника',record.trim());continue;
+    }
     const match=/^([^:：]+)[:：]\s*(.+)$/u.exec(record.trim());
     if(!match||!isSpecificationLabel(match[1]))continue;
     const value=plain(match[2]);
@@ -49,8 +62,8 @@ export function specificationContentProblems(specifications={}) {
   const problems=[];
   for(const [key,raw] of Object.entries(specifications||{})){
     const label=plain(key).replace(/\s*\(інше значення \d+\)$/u,''),value=String(Array.isArray(raw)?raw.join(' · '):raw??'');
-    const opens=(label.match(/\(/gu)||[]).length,closes=(label.match(/\)/gu)||[]).length;
-    if(opens!==closes||/^(?:кол\.?|max у копій|windows(?: \d.*)?|macos(?: .*)?)$/iu.test(label)||/^["',)]/u.test(label))problems.push({key,reason:'fragment'});
+    const labelProblem=specificationLabelProblem(label);
+    if(labelProblem)problems.push({key,reason:labelProblem});
     else if(/<\/?(?:br|p|div|span|b|strong)(?:\s|\/?>)/iu.test(label+' '+value))problems.push({key,reason:'markup'});
     else if(/(?:^|\s)(?:Дуплекс|Інтерфейс(?:и)?|Глибина кольору|Пам.?ять|Лотки|ОС|Панель управління|Навантаження)\s*:\s*\S/iu.test(value))problems.push({key,reason:'flattened'});
   }
@@ -61,7 +74,7 @@ export function parseSupplierSpecificationMarkup(markup,{canonicalKey=plain}={})
   parsed.querySelectorAll('script,style').forEach(node=>node.remove());
   parsed.querySelectorAll('tr').forEach(row=>{
     const cells=[...row.querySelectorAll('th,td')].map(cell=>supplierSpecificationText(cell.innerHTML)).filter(Boolean);
-    if(cells.length>=2&&cells[0].length<=120&&cells.slice(1).join(' ').length<=700)appendSpecification(structured,canonicalKey(cells[0]),cells.slice(1).join(' '));
+    if(cells.length>=2&&isSpecificationLabel(cells[0])&&cells.slice(1).join(' ').length<=700)appendSpecification(structured,canonicalKey(cells[0]),cells.slice(1).join(' '));
   });
   parsed.querySelectorAll('table').forEach(node=>node.remove());
   const lineMarkup=parsed.body.innerHTML.replace(/<(?:br\s*\/?|\/(?:p|div|li|tr|h[1-6]))\s*[^>]*>/giu,'\n');

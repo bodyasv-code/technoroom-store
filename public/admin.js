@@ -28,7 +28,7 @@ import {printerDuplexMode, duplexLabels, writePrinterDuplex} from './printer-dup
 import {applyVerifiedDuplexRepair, confirmVerifiedDuplexRepair} from './verified-duplex-repair.js?v=20261016-import-guards-2';
 import {verifiedCatalogRepair as verifiedDuplexRepair} from './verified-catalog-repair.js?v=20261017-customer-content';
 import {normalizeImportedProductSpecifications,mergeImportedSpecifications} from './import-specification-rules.js?v=20261017-customer-content';
-import {parseSupplierSpecificationMarkup,supplierSpecificationText,appendSpecification,mergeSpecificationSources} from './supplier-specification-parser.js?v=20261024-parser';
+import {parseSupplierSpecificationMarkup,supplierSpecificationText,appendSpecification,mergeSpecificationSources} from './supplier-specification-parser.js?v=20261024-office';
 import {readPrinterEditorFormat,writePrinterEditorFormat,hasPrinterFormat} from './printer-format-editor.js?v=20261017-customer-content';
 import {mediaWidthKey,mediaWidthLabels} from './wide-format-printers.js?v=20261017-customer-content';
 import {readPrinterMediaWidth} from './printer-media-width.js?v=20261017-customer-content';
@@ -37,8 +37,8 @@ import {cleanCustomerText,applyCustomerProductPolicy,epsonPrintTechnology,custom
 import {normalizeSpecifications} from './specification-normalization.js?v=20261017-customer-content';
 import {canonicalBrandName, brandConsolidationPlan} from './brand-normalization.js?v=20261012-brand-cleanup';
 import {removeUnusedBrandDuplicate} from './brand-cleanup.js?v=20261012-brand-cleanup';
-import {createQualityAudit, mountQualityPanel} from './catalog-quality.js?v=20261024-parser';
-import {createImportAudit, auditEligible, auditMarkup, showImportReview} from './import-audit.js?v=20261024-parser';
+import {createQualityAudit, mountQualityPanel} from './catalog-quality.js?v=20261024-office';
+import {createImportAudit, auditEligible, auditMarkup, showImportReview} from './import-audit.js?v=20261024-office';
 import {buildImportChangePlan,showImportChangePlans,importSnapshot} from './import-change-plan.js?v=20261020-manual';
 import {startImportRun,writeImportProduct,finishImportRun,mountImportHistory} from './import-history.js?v=20261020-suppliers';
 import {manualOverrideSummary} from './product-manual-overrides.js?v=20261020-manual';

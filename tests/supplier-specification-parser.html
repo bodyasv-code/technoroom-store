@@ -13,6 +13,10 @@ check('HTML прибрано, межа слів збережена',supplierSpec
 check('Нуль і false не губляться',supplierSpecificationText(0)==='0'&&supplierSpecificationText(false)==='false');
 check('Різні значення не перезаписуються',Object.keys(mergeSpecificationSources({'Формат':'A4'},{'Формат':'A3'})).length===2);
 check('Уривки кол. та незакриті дужки не стають полями',!Object.hasOwn(parse(document.querySelector('#source').value),'кол.'));
+const guarded=parse('<table><tr><td>https</td><td>//example.com/a</td></tr><tr><td>Принтер (швидкість</td><td>25</td></tr><tr><td>3D</td><td>Так</td></tr><tr><td>Маса (кг)</td><td>2.4</td></tr></table><p>https://example.com/doc</p>');
+check('Табличний імпорт теж відхиляє URL-назви й уривки',!Object.hasOwn(guarded,'https')&&!Object.hasOwn(guarded,'Принтер (швидкість'));
+check('Технічні назви 3D та одиниці в дужках збережено',guarded['3D']==='Так'&&guarded['Маса (кг)']==='2.4');
+check('Окреме посилання збережено повністю як документ',guarded['Документ постачальника']==='https://example.com/doc');
 document.querySelector('#checks').replaceChildren(...checks.map(([label,pass])=>{const li=document.createElement('li');li.textContent=(pass?'✓ PASS — ':'✗ FAIL — ')+label;li.className=pass?'ok':'bad';return li;}));
 function render(){const specs=parse(document.querySelector('#source').value);document.querySelector('#result').replaceChildren(...Object.entries(specs).map(([key,value])=>{const row=document.createElement('tr');for(const text of [key,value]){const cell=document.createElement('td');cell.textContent=text;row.append(cell);}return row;}));}
 document.querySelector('#parse').onclick=render;render();

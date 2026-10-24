@@ -29,4 +29,9 @@ const canonicalSource=admin.match(/  const canonicalSpecKey = \(value\) => \{[\s
 const canonical=new Function('normaliseSpecKey','cleanImportText',canonicalSource+';return canonicalSpecKey;')(value=>value.toLowerCase().trim(),value=>value.trim());
 assert.equal(canonical('Роздільна здатність сканування, оптична'),'Роздільна здатність сканування, оптична');
 assert.equal(canonical('Resolution'),'Роздільна здатність');
+assert.deepEqual(parse('https://example.com/datasheet\nФормат: A4'),{'Документ постачальника':'https://example.com/datasheet','Формат':'A4'});
+assert.equal(problems({https:'//example.com/a'})[0].reason,'url-label');
+assert.equal(problems({'до 15 зображень/хв., дозвіл':'1200 dpi'})[0].reason,'prose-label');
+assert.equal(problems({'Mopria, Canon PRINT Business -SENSYS MF667Cdw':'text'})[0].reason,'prose-label');
+assert.deepEqual(parse('3D: Так\nФакс (швидкість: 33.6\nhttps: //example.com/a'),{'3D':'Так'});
 console.log('Supplier prose parsing: fragments excluded, values retained, duplicates conflict-preserved, review required and existing data read-only: PASS');

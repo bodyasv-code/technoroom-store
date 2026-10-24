@@ -25,6 +25,7 @@ import {resolveProjectorSpecifications, isProjectorProduct, normalizeProjectorLi
 import {normalizeSpecificationEntries, normalizeSpecifications} from './specification-normalization.js?v=20261017-customer-content';
 import {productSectionNavigation,productServiceSections,mountProductPageLayout} from './product-page-layout.js?v=20261024-groups';
 import {groupProductSpecifications,renderProductSpecificationGroups,specificationCountLabel} from './product-specification-groups.js?v=20261024-groups';
+import {renderProductHighlights} from './product-highlights.js?v=20261024-highlights';
 
 const supabase = createClient(window.TECHNOROOM_SUPABASE.url, window.TECHNOROOM_SUPABASE.publishableKey);
 const catalogImageStyles = document.createElement('style');
@@ -1209,6 +1210,7 @@ product = function () {
   const safeBrand = safe(titleItem.brand || item.brand || 'TECHNOROOM');
   const specEntries = displaySpecificationEntries(item);
   const hasDescription = articleHasContent(item.descriptionContent||item.description);
+  const highlights = renderProductHighlights(specEntries,{projector:isProjectorProduct(item),printer:isPrinterDevice(item),screen:!isProjectorProduct(item)&&(/екран|screen/iu.test(item.type||'')||item.type==='erc-display-06')});
   const specGroups = groupProductSpecifications([['Виробник',titleItem.brand || item.brand || 'TECHNOROOM'],...specEntries],{projector:isProjectorProduct(item),printer:isPrinterDevice(item)});
   const specs = renderProductSpecificationGroups(specGroups);
   const specCount = specGroups.reduce((count,group)=>count+group.entries.length,0);
@@ -1236,6 +1238,7 @@ product = function () {
       + '<div class="product-buy-card"><div class="product-availability ' + (state.orderable || state.inquiry ? 'is-available' : 'is-unavailable') + '"><i></i><span>' + state.label + '</span></div>'
       + '<strong class="detail-price">' + money(salePrice(item)) + '</strong><p class="product-price-note">Ціна вказана за 1 одиницю товару</p>'
       + '<div class="detail-actions">' + (state.inquiry ? '<button class="button product-buy" data-inquiry="' + item.id + '">Уточнити наявність</button>' : '<button class="button product-buy" data-add="' + item.id + '" ' + (state.orderable ? '' : 'disabled') + '>' + (state.orderable ? 'Додати в кошик' : 'Немає в наявності') + '</button>') + '<a class="button product-back" href="' + catalogCardEscape(catalogReturnUrl) + '">До каталогу</a></div>'
+      + highlights
       + '<div class="product-service-grid"><div><b>Доставка</b><span>Підберемо зручний спосіб</span></div><div><b>Гарантія</b><span>Офіційна техніка</span></div><div><b>Консультація</b><span>Допоможемо з вибором</span></div></div></div></div></section>'
       + productSectionNavigation(hasDescription)
       + '<section class="product-content-grid">' + (hasDescription ? '<article class="product-description-card" id="product-description" tabindex="-1" aria-labelledby="product-description-title"><p class="section-kicker">Про товар</p><h2 id="product-description-title">Опис</h2><div class="product-description-rich">' + renderArticleContent(item.descriptionContent||item.description) + '</div></article>' : '') + '<article class="product-specs-card" id="product-specifications" tabindex="-1" aria-labelledby="product-specifications-title"><div class="product-section-heading"><div><p class="section-kicker">Технічні дані</p><h2 id="product-specifications-title">Характеристики</h2></div><span>' + specificationCountLabel(specCount) + '</span></div>' + specs + (specEntries.length ? '' : '<p class="product-specification-notice">Повні характеристики уточнюйте у менеджера.</p>') + '</article></section>'

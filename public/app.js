@@ -23,7 +23,8 @@ import {attachStoreSearch, searchScore, normalizeSearch} from './store-search.js
 import {productNameWithSku} from './product-identity.js?v=20261012-consumables-brands';
 import {resolveProjectorSpecifications, isProjectorProduct, normalizeProjectorLightSource, projectorResolutionLabel, projectorResolutionFilterValue, compareProjectorResolutions} from './projector-specs.js?v=20261013-spec-colons';
 import {normalizeSpecificationEntries, normalizeSpecifications} from './specification-normalization.js?v=20261017-customer-content';
-import {productSectionNavigation,productServiceSections,mountProductPageLayout} from './product-page-layout.js?v=20261024-sections';
+import {productSectionNavigation,productServiceSections,mountProductPageLayout} from './product-page-layout.js?v=20261024-groups';
+import {groupProductSpecifications,renderProductSpecificationGroups,specificationCountLabel} from './product-specification-groups.js?v=20261024-groups';
 
 const supabase = createClient(window.TECHNOROOM_SUPABASE.url, window.TECHNOROOM_SUPABASE.publishableKey);
 const catalogImageStyles = document.createElement('style');
@@ -1208,9 +1209,9 @@ product = function () {
   const safeBrand = safe(titleItem.brand || item.brand || 'TECHNOROOM');
   const specEntries = displaySpecificationEntries(item);
   const hasDescription = articleHasContent(item.descriptionContent||item.description);
-  const specs = specEntries.length
-    ? specEntries.map(([key, value]) => '<div><dt>' + safe(key) + '</dt><dd>' + safe(Array.isArray(value) ? value.join(', ') : value) + '</dd></div>').join('')
-    : '<div><dt>Характеристики</dt><dd>Уточнюйте у менеджера</dd></div>';
+  const specGroups = groupProductSpecifications([['Виробник',titleItem.brand || item.brand || 'TECHNOROOM'],...specEntries],{projector:isProjectorProduct(item),printer:isPrinterDevice(item)});
+  const specs = renderProductSpecificationGroups(specGroups);
+  const specCount = specGroups.reduce((count,group)=>count+group.entries.length,0);
   const variantChoices = [];
   const labels = new Map();
   variants.forEach((entry) => {
@@ -1237,7 +1238,7 @@ product = function () {
       + '<div class="detail-actions">' + (state.inquiry ? '<button class="button product-buy" data-inquiry="' + item.id + '">Уточнити наявність</button>' : '<button class="button product-buy" data-add="' + item.id + '" ' + (state.orderable ? '' : 'disabled') + '>' + (state.orderable ? 'Додати в кошик' : 'Немає в наявності') + '</button>') + '<a class="button product-back" href="' + catalogCardEscape(catalogReturnUrl) + '">До каталогу</a></div>'
       + '<div class="product-service-grid"><div><b>Доставка</b><span>Підберемо зручний спосіб</span></div><div><b>Гарантія</b><span>Офіційна техніка</span></div><div><b>Консультація</b><span>Допоможемо з вибором</span></div></div></div></div></section>'
       + productSectionNavigation(hasDescription)
-      + '<section class="product-content-grid">' + (hasDescription ? '<article class="product-description-card" id="product-description" tabindex="-1" aria-labelledby="product-description-title"><p class="section-kicker">Про товар</p><h2 id="product-description-title">Опис</h2><div class="product-description-rich">' + renderArticleContent(item.descriptionContent||item.description) + '</div></article>' : '') + '<article class="product-specs-card" id="product-specifications" tabindex="-1" aria-labelledby="product-specifications-title"><div class="product-section-heading"><div><p class="section-kicker">Технічні дані</p><h2 id="product-specifications-title">Характеристики</h2></div><span>' + (specEntries.length ? specEntries.length + ' параметрів' : '') + '</span></div><dl class="specs"><div><dt>Виробник</dt><dd>' + safeBrand + '</dd></div>' + specs + '</dl></article></section>'
+      + '<section class="product-content-grid">' + (hasDescription ? '<article class="product-description-card" id="product-description" tabindex="-1" aria-labelledby="product-description-title"><p class="section-kicker">Про товар</p><h2 id="product-description-title">Опис</h2><div class="product-description-rich">' + renderArticleContent(item.descriptionContent||item.description) + '</div></article>' : '') + '<article class="product-specs-card" id="product-specifications" tabindex="-1" aria-labelledby="product-specifications-title"><div class="product-section-heading"><div><p class="section-kicker">Технічні дані</p><h2 id="product-specifications-title">Характеристики</h2></div><span>' + specificationCountLabel(specCount) + '</span></div>' + specs + (specEntries.length ? '' : '<p class="product-specification-notice">Повні характеристики уточнюйте у менеджера.</p>') + '</article></section>'
       + productServiceSections()
       + (related.length ? '<section class="related-products"><div class="related-heading"><div><p class="section-kicker">Добірка</p><h2>Схожі товари</h2></div><a href="catalog.html?category=' + encodeURIComponent(item.type || '') + '">Переглянути всі →</a></div><div class="product-grid">' + related.map(card).join('') + '</div></section>' : '');
     bind(root);

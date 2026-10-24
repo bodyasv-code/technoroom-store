@@ -62,7 +62,7 @@ export function mountProductPageLayout(root, {win = window, doc = document} = {}
   const schedule = () => {
     if (!frame) frame = win.requestAnimationFrame(() => { frame = 0; measure(); });
   };
-  const navigate = (target, {updateHistory = false, focus = false} = {}) => {
+  const navigate = (target, {updateHistory = false, focus = false, instant = false} = {}) => {
     const absoluteTop = target.getBoundingClientRect().top + win.scrollY;
     if (absoluteTop > 180) {
       compact = true;
@@ -75,7 +75,7 @@ export function mountProductPageLayout(root, {win = window, doc = document} = {}
     body.style.setProperty('--product-section-offset', productSectionOffset(headerHeight, navHeight) + 'px');
     if (updateHistory) win.history.pushState(null, '', '#' + target.id);
     const reduced = win.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    win.scrollTo({top: Math.max(0, target.getBoundingClientRect().top + win.scrollY - productSectionOffset(headerHeight, navHeight)), behavior: reduced ? 'instant' : 'smooth'});
+    win.scrollTo({top: Math.max(0, target.getBoundingClientRect().top + win.scrollY - productSectionOffset(headerHeight, navHeight)), behavior: reduced || instant ? 'instant' : 'smooth'});
     if (focus) target.focus({preventScroll: true});
     schedule();
   };
@@ -91,6 +91,15 @@ export function mountProductPageLayout(root, {win = window, doc = document} = {}
     const target = sections.find(section => '#' + section.id === win.location.hash);
     if (target) navigate(target);
   };
+  // Images above a deep-linked table can load later and move its heading.
+  // Keep only the initial anchor aligned until the visitor starts interacting.
+  let initialTarget = !hashHandled.has(root) ? sections.find(section => '#' + section.id === win.location.hash) : null;
+  const releaseInitial = () => { initialTarget = null; };
+  const imageLoaded = event => {
+    if (initialTarget && event.target.tagName === 'IMG' && event.target.getBoundingClientRect().top < initialTarget.getBoundingClientRect().top) navigate(initialTarget,{instant:true});
+  };
+  root.addEventListener('load',imageLoaded,true);
+  for (const type of ['pointerdown','wheel','touchstart','keydown']) win.addEventListener(type,releaseInitial,{passive:true});
   nav.addEventListener('click', click);
   win.addEventListener('scroll', schedule, {passive: true});
   win.addEventListener('resize', schedule);
@@ -112,6 +121,8 @@ export function mountProductPageLayout(root, {win = window, doc = document} = {}
     win.removeEventListener('resize', schedule);
     win.removeEventListener('hashchange', hashChange);
     observer?.disconnect();
+    root.removeEventListener('load',imageLoaded,true);
+    for (const type of ['pointerdown','wheel','touchstart','keydown']) win.removeEventListener(type,releaseInitial);
     if (frame) win.cancelAnimationFrame(frame);
     mountedRoots.delete(root);
   };

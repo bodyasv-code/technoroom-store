@@ -22,7 +22,8 @@ const link={hash:'#product-specifications',setAttribute:(k,v)=>attributes.set(k,
 const nav={querySelectorAll:()=>[link],getBoundingClientRect:()=>({height:56}),contains:x=>x===link,addEventListener:(k,v)=>navListeners.set(k,v),removeEventListener:k=>navListeners.delete(k)};
 const body={classList:{add:k=>classes.add(k),contains:k=>classes.has(k),toggle:(k,on)=>on?classes.add(k):classes.delete(k)},style:{setProperty:(k,v)=>styles.set(k,v)}};
 const doc={body,querySelector:()=>({getBoundingClientRect:()=>({height:classes.has('product-header-compact')?64:96})}),getElementById:id=>id===section.id?section:null};
-const root={querySelector:()=>nav};
+const rootListeners=new Map();
+const root={querySelector:()=>nav,addEventListener:(k,v)=>rootListeners.set(k,v),removeEventListener:k=>rootListeners.delete(k)};
 const win={scrollY:0,location:{hash:''},history:{pushState:(_a,_b,hash)=>{win.location.hash=hash;}},matchMedia:()=>({matches:true}),scrollTo:x=>{scrollCall=x;},requestAnimationFrame:()=>1,cancelAnimationFrame:()=>{},addEventListener:(k,v)=>listeners.set(k,v),removeEventListener:k=>listeners.delete(k),ResizeObserver:class{observe(){}disconnect(){disconnected++;}}};
 const cleanup=mountProductPageLayout(root,{win,doc});
 assert.equal(styles.get('--product-header-height'),'96px');
@@ -44,6 +45,15 @@ secondCleanup();
 assert.equal(listeners.size,0);
 assert.equal(navListeners.size,0);
 assert.equal(disconnected,2);
+const deepCleanup=mountProductPageLayout({...root},{win,doc});
+scrollCall=null;
+rootListeners.get('load')({target:{tagName:'IMG',getBoundingClientRect:()=>({top:100})}});
+assert.deepEqual(scrollCall,{top:360,behavior:'instant'},'Late images above a deep link re-align the target');
+listeners.get('wheel')();
+scrollCall=null;
+rootListeners.get('load')({target:{tagName:'IMG',getBoundingClientRect:()=>({top:100})}});
+assert.equal(scrollCall,null,'User interaction stops automatic re-alignment');
+deepCleanup();
 
 const read=name=>readFile(new URL('../public/'+name,import.meta.url),'utf8');
 const html=await read('product.html'),css=await read('product-page-layout.css'),app=await read('app.js');

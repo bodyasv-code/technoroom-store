@@ -5,7 +5,7 @@ const html=await read('product.html'),css=await read('product-modern.css');
 assert.ok(html.indexOf('product-modern.css')>html.indexOf('store-modern.css'));
 for(const page of ['index.html','catalog.html','admin.html','checkout.html'])assert.ok(!(await read(page)).includes('product-modern.css'));
 assert.match(html,/id="productView"/);
-assert.match(html,/app.js\?v=20261023-catalog-repair/);
+assert.match(html,/app.js\?v=20261024-product-sections/);
 assert.match(css,/min-height: 44px/);
 assert.match(css,/@media\(max-width:700px\)/);
 assert.match(css,/@media\(max-width:380px\)/);

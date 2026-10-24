@@ -1,4 +1,4 @@
-import {auditSku} from './import-audit.js?v=20261012-consumables-brands';
+import {auditSku} from './import-audit.js?v=20261024-parser';
 import {normalizeSpecificationEntries} from './specification-normalization.js?v=20261013-spec-colons';
 import {isProjectorProduct, resolveProjectorSpecifications, normalizeProjectorResolution} from './projector-specs.js?v=20261013-spec-colons';
 import {equivalentSpecification} from './specification-comparison.js?v=20261012-focus';
@@ -6,8 +6,9 @@ import {isSpecializedPrinterName,officeSupplyCategoryPlan} from './product-ident
 import {printerDuplexMode} from './printer-duplex.js?v=20261016-duplex';
 import {readPrinterEditorFormat} from './printer-format-editor.js?v=20261017-customer-content';
 import {hasProductImage,qualityScopeMatches,isModelFamily,familyContentIssue} from './product-quality-rules.js?v=20261023-quality';
+import {specificationContentProblems} from './supplier-specification-parser.js?v=20261024-parser';
 
-export const qualityLabels = {duplicate_sku:'Повтор SKU', conflict:'Суперечливі характеристики', no_brand:'Без бренду', no_image:'Без фото', no_price:'Без ціни', category:'Перевірити категорію', filters:'Неповні фільтри'};
+export const qualityLabels = {duplicate_sku:'Повтор SKU', conflict:'Суперечливі характеристики', specifications:'Перевірити характеристики', no_brand:'Без бренду', no_image:'Без фото', no_price:'Без ціни', category:'Перевірити категорію', filters:'Неповні фільтри'};
 const text = value => String(value ?? '').trim();
 const normalized = value => text(value).toLocaleLowerCase('uk-UA').replace(/\s+/g,' ');
 export function createQualityAudit(products, categories=[], brands=[], expectedCategory=()=>null) {
@@ -15,6 +16,8 @@ export function createQualityAudit(products, categories=[], brands=[], expectedC
   for(const product of products){const sku=auditSku(product.sku);if(sku){if(!skuGroups.has(sku))skuGroups.set(sku,[]);skuGroups.get(sku).push(product.id);}}
   return products.map(product=>{
     const issues=[], add=(code,detail)=>issues.push({code,detail});
+    const contentProblems=specificationContentProblems(product.specifications);
+    if(contentProblems.length)add('specifications','Уривки опису, злиті поля або HTML: '+contentProblems.slice(0,4).map(item=>item.key).join('; ')+(contentProblems.length>4?' та ще '+(contentProblems.length-4):'')+'. Потрібна перевірка; автоматично не видаляються.');
     const duplicateIds=skuGroups.get(auditSku(product.sku))||[];
     if(duplicateIds.length>1)add('duplicate_sku','SKU '+text(product.sku)+' також мають товари ID: '+duplicateIds.filter(id=>id!==product.id).join(', '));
     if(!text(product.brand)&&!brandIds.has(Number(product.brand_id)))add('no_brand','Не вказано бренд і немає зв’язку з довідником брендів.');

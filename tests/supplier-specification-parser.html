@@ -1,0 +1,19 @@
+<!doctype html><html lang="uk"><meta charset="utf-8"><title>Перевірка імпорту характеристик</title>
+<style>body{max-width:1050px;margin:40px auto;font:17px/1.6 system-ui;color:#14273f;background:#f5f8fc}section{padding:24px;background:white;border:1px solid #dce5f0;border-radius:16px;margin:20px 0}table{border-collapse:collapse;width:100%}td,th{padding:10px;border-bottom:1px solid #e2e8f0;text-align:left}li{padding:5px}.ok{color:#096c45}.bad{color:#b31b1b}textarea{width:100%;height:100px;box-sizing:border-box}button{padding:12px;font:inherit}</style>
+<h1>Перевірка нового розбору характеристик</h1><p>Локальний тест. Жодних записів у базу або імпортів товарів.</p>
+<section><h2>Автоматичні перевірки</h2><ul id="checks"></ul></section>
+<section><h2>Приклад опису постачальника</h2><textarea id="source" aria-label="Опис постачальника">Лазерний БФП А4; Принтер (швидкість друку ч/б: 18 стор/хв; кол.: 4 стор/хв); Лотки: 150 арк.; Інтерфейси: USB, Ethernet; Контраст: 350:1</textarea><button id="parse">Перевірити без імпорту</button><table><thead><tr><th>Параметр</th><th>Значення</th></tr></thead><tbody id="result"></tbody></table></section>
+<script type="module">
+import {parseSupplierSpecificationMarkup as parse,supplierSpecificationText,mergeSpecificationSources} from '../public/supplier-specification-parser.js';
+const checks=[];const check=(label,pass)=>checks.push([label,pass]);
+const table=parse('<table><tr><th>Роздільна здатність сканування</th><td>600 × 600 dpi</td></tr><tr><td>Контраст</td><td>350:1</td></tr></table><p>Формат: A4</p>');
+check('Таблиця та окремі рядки зберігаються без повторного розбору',Object.keys(table).length===3&&table['Контраст']==='350:1');
+check('Друк і сканування не змішуються',table['Роздільна здатність сканування']==='600 × 600 dpi');
+check('HTML прибрано, межа слів збережена',supplierSpecificationText('Поліестер<br/>Тканина &amp; матеріал<script>bad()</'+'script>')==='Поліестер Тканина & матеріал');
+check('Нуль і false не губляться',supplierSpecificationText(0)==='0'&&supplierSpecificationText(false)==='false');
+check('Різні значення не перезаписуються',Object.keys(mergeSpecificationSources({'Формат':'A4'},{'Формат':'A3'})).length===2);
+check('Уривки кол. та незакриті дужки не стають полями',!Object.hasOwn(parse(document.querySelector('#source').value),'кол.'));
+document.querySelector('#checks').replaceChildren(...checks.map(([label,pass])=>{const li=document.createElement('li');li.textContent=(pass?'✓ PASS — ':'✗ FAIL — ')+label;li.className=pass?'ok':'bad';return li;}));
+function render(){const specs=parse(document.querySelector('#source').value);document.querySelector('#result').replaceChildren(...Object.entries(specs).map(([key,value])=>{const row=document.createElement('tr');for(const text of [key,value]){const cell=document.createElement('td');cell.textContent=text;row.append(cell);}return row;}));}
+document.querySelector('#parse').onclick=render;render();
+</script></html>

@@ -28,6 +28,7 @@ import {printerDuplexMode, duplexLabels, writePrinterDuplex} from './printer-dup
 import {applyVerifiedDuplexRepair, confirmVerifiedDuplexRepair} from './verified-duplex-repair.js?v=20261016-import-guards-2';
 import {verifiedCatalogRepair as verifiedDuplexRepair} from './verified-catalog-repair.js?v=20261017-customer-content';
 import {normalizeImportedProductSpecifications,mergeImportedSpecifications} from './import-specification-rules.js?v=20261017-customer-content';
+import {parseSupplierSpecificationMarkup,supplierSpecificationText,appendSpecification,mergeSpecificationSources} from './supplier-specification-parser.js?v=20261024-parser';
 import {readPrinterEditorFormat,writePrinterEditorFormat,hasPrinterFormat} from './printer-format-editor.js?v=20261017-customer-content';
 import {mediaWidthKey,mediaWidthLabels} from './wide-format-printers.js?v=20261017-customer-content';
 import {readPrinterMediaWidth} from './printer-media-width.js?v=20261017-customer-content';
@@ -36,8 +37,8 @@ import {cleanCustomerText,applyCustomerProductPolicy,epsonPrintTechnology,custom
 import {normalizeSpecifications} from './specification-normalization.js?v=20261017-customer-content';
 import {canonicalBrandName, brandConsolidationPlan} from './brand-normalization.js?v=20261012-brand-cleanup';
 import {removeUnusedBrandDuplicate} from './brand-cleanup.js?v=20261012-brand-cleanup';
-import {createQualityAudit, mountQualityPanel} from './catalog-quality.js?v=20261023-catalog-repair';
-import {createImportAudit, auditEligible, auditMarkup, showImportReview} from './import-audit.js?v=20261019-labelworks';
+import {createQualityAudit, mountQualityPanel} from './catalog-quality.js?v=20261024-parser';
+import {createImportAudit, auditEligible, auditMarkup, showImportReview} from './import-audit.js?v=20261024-parser';
 import {buildImportChangePlan,showImportChangePlans,importSnapshot} from './import-change-plan.js?v=20261020-manual';
 import {startImportRun,writeImportProduct,finishImportRun,mountImportHistory} from './import-history.js?v=20261020-suppliers';
 import {manualOverrideSummary} from './product-manual-overrides.js?v=20261020-manual';
@@ -519,7 +520,7 @@ supabase.auth.getSession().then(({data:{session}})=>session?(passwordSetupMode?v
     if (/оперативн.*пам.?ят|\bram\b/.test(key)) return 'Оперативна пам’ять';
     if (/процесор|processor|\bcpu\b|чипсет|чип\b/.test(key)) return 'Процесор';
     if (/накопичувач|\bssd\b|обсяг.*диск/.test(key)) return 'Накопичувач';
-    if (/роздільн.*здатн|\bresolution\b/.test(key)) return 'Роздільна здатність';
+    if (/^(?:роздільна здатність|resolution|native resolution)\s*[:：]?$/iu.test(key)) return 'Роздільна здатність';
     if (/технолог.*проекц|projection technology/.test(key)) return 'Технологія проекції';
     if (/проекційн.*(?:співвіднош|віднош)|throw\s*ratio/.test(key)) return 'Проекційне співвідношення';
     if (/світлов.*потік|яскравість|\bbrightness\b/.test(key)) return 'Яскравість';
@@ -540,32 +541,13 @@ supabase.auth.getSession().then(({data:{session}})=>session?(passwordSetupMode?v
   const isSupplierPromotionText = (value = '') => /(?:програма\s+захисту\s+рентабельності|зареєструват(?:ись|и)|знижк[ау]\s+на\s+бізнес|дилерськ(?:ого|ий)\s+прайс|кінцев(?:ого|ий)\s+замовник|представництв[ао]\s+epson)/iu.test(value);
   const importDescription = (...values) => values.map(parseDescription).find((value) => value && !isSupplierPromotionText(value)) || '';
   const parseSpecifications = (markup = '') => {
-    const parsed = new DOMParser().parseFromString(decodeEntities(markup), 'text/html');
-    const specifications = {};
-    const add = (key, value) => {
-      const label = canonicalSpecKey(key), text = cleanImportText(value);
-      if (label && text && label.length <= 120 && text.length <= 700) specifications[label] = text;
-    };
-    parsed.querySelectorAll('tr').forEach((row) => {
-      const cells = [...row.querySelectorAll('th,td')].map((cell) => cleanImportText(cell.textContent)).filter(Boolean);
-      if (cells.length >= 2) add(cells[0], cells.slice(1).join(' '));
-    });
-    // ERC нерідко передає параметри не окремим XML-блоком, а рядками у
-    // ProductDescription: <br>, абзацами чи списком. Зберігаємо межі цих
-    // рядків, щоб «Параметр: значення» також став характеристикою.
-    const lineMarkup=decodeEntities(markup).replace(/<(?:br\s*\/?|\/(?:p|div|li|tr|h[1-6]))\s*[^>]*>/giu, '\n');
-    const lineDocument=new DOMParser().parseFromString(lineMarkup, 'text/html');
-    [parsed.body.innerText || '', lineDocument.body.textContent || ''].join('\n').split(/[\n;]+/).forEach((line) => {
-      const match = cleanImportText(line).match(/^([^:]{2,120}):\s*(.+)$/);
-      if (match) add(match[1], match[2]);
-    });
-    return specifications;
+    return parseSupplierSpecificationMarkup(decodeEntities(markup),{canonicalKey:canonicalSpecKey});
   };
   const attributeSpecifications = (node) => {
     const specifications = {};
     const add = (rawKey, rawValue) => {
-      const key = canonicalSpecKey(rawKey || ''), value = cleanImportText(rawValue || '');
-      if (key && value && key.length <= 120 && value.length <= 700) specifications[key] = value;
+      const key = canonicalSpecKey(supplierSpecificationText(rawKey)), value = supplierSpecificationText(rawValue);
+      if (key && value && key.length <= 120 && value.length <= 700) appendSpecification(specifications,key,value);
     };
     [...node.querySelectorAll('AttrList element, attrlist element, attribute, attr, parameter, property, specification, spec, feature, characteristic')].forEach((item) => {
       add(item.getAttribute('Name') || item.getAttribute('name') || item.getAttribute('Key') || item.getAttribute('key') || item.getAttribute('Label') || item.getAttribute('label') || item.querySelector('name,key,label,title')?.textContent, item.getAttribute('Value') || item.getAttribute('value') || item.getAttribute('Data') || item.getAttribute('data') || item.querySelector('value,data,content')?.textContent || item.textContent);
@@ -1321,7 +1303,7 @@ supabase.auth.getSession().then(({data:{session}})=>session?(passwordSetupMode?v
       // У ERC технічні дані можуть бути як у MarketingInfo, так і прямо в
       // ProductDescription. Обидва джерела доповнюють XML-атрибути, але не
       // перезаписують уже надану виробником характеристику.
-      const importedSpecifications = { ...parseSpecifications(shortDescription), ...parseSpecifications(comment), ...attributeSpecifications(node), ...titleSpecifications(name) };
+      const importedSpecifications = mergeSpecificationSources(parseSpecifications(shortDescription),parseSpecifications(comment),attributeSpecifications(node),titleSpecifications(name));
       const specifications = normalizeImportedProjector(name, vendor, [shortDescription, comment].filter(Boolean).join(' '), mergeMissingSpecifications(importedSpecifications, templateSpecifications([sourceName, sourceCategory, subcategory, shortDescription, comment].filter(Boolean).join(' '))), sku);
       const parsedStock = importQuantity(stockValue);
       const stock = parsedStock || (/^(in_stock|limited_stock)$/i.test(availabilityStatus) ? 1 : 0);
@@ -1394,11 +1376,10 @@ supabase.auth.getSession().then(({data:{session}})=>session?(passwordSetupMode?v
       const vendor = canonicalBrandName(value(vendorColumn));
       const description = importDescription(value(descriptionColumn), value(extraDescriptionColumn));
       const dimensions = [value(widthColumn), value(heightColumn), value(depthColumn)].filter(Boolean).join(' × ');
-      const rawSpecifications = {
-        ...parseSpecifications([value(descriptionColumn), value(extraDescriptionColumn)].filter(Boolean).join('\n')),
+      const rawSpecifications = mergeSpecificationSources(parseSpecifications([value(descriptionColumn), value(extraDescriptionColumn)].filter(Boolean).join('\n')),{
         ...(value(weightColumn) ? { 'Вага': value(weightColumn) } : {}),
         ...(dimensions ? { 'Габарити': dimensions } : {}),
-      };
+      });
       // The ERC content catalogue uses the SKU as the image file name. A URL
       // present in the workbook wins; the predictable SKU URL is a fallback.
       const imageUrl = ercImage(value(imageColumn)) || ercImage('https://www.erc.ua/i/goods/' + encodeURIComponent(sku) + '.jpg');
@@ -1650,12 +1631,12 @@ supabase.auth.getSession().then(({data:{session}})=>session?(passwordSetupMode?v
   const ercSpecifications = (source = {}) => {
     const specifications = {};
     const add = (key, value) => {
-      const label = canonicalSpecKey(key || ''), text = cleanImportText(value || '');
-      if (label && text && label.length <= 120 && text.length <= 700) specifications[label] = text;
+      const label = canonicalSpecKey(supplierSpecificationText(key)), text = supplierSpecificationText(value);
+      if (label && text && label.length <= 120 && text.length <= 700) appendSpecification(specifications,label,text);
     };
     const visit = (value, depth = 0) => {
       if (depth > 4 || value == null) return;
-      if (typeof value === 'string') { Object.assign(specifications, parseSpecifications(value)); return; }
+      if (typeof value === 'string') { for(const [key,text] of Object.entries(parseSpecifications(value)))appendSpecification(specifications,key,text); return; }
       if (Array.isArray(value)) { value.forEach((entry) => visit(entry, depth + 1)); return; }
       if (typeof value !== 'object') return;
       const key = value.name || value.Name || value.key || value.Key || value.title || value.Title || value.label || value.Label || value.parameter || value.Parameter;
@@ -1687,7 +1668,7 @@ supabase.auth.getSession().then(({data:{session}})=>session?(passwordSetupMode?v
       ...(source.width || source.Width || source.height || source.Height || source.depth || source.Depth ? { 'Габарити': [source.width || source.Width, source.height || source.Height, source.depth || source.Depth].filter(Boolean).join(' × ') } : {}),
     };
     const description = importDescription(source.description, source.Description, source.fullDescription, source.FullDescription, source.gdesc, source.GDesc);
-    const sourceSpecifications = { ...parseSpecifications(description), ...ercSpecifications(source), ...rawSpecs };
+    const sourceSpecifications = mergeSpecificationSources(parseSpecifications(description),ercSpecifications(source),rawSpecs);
     return {
       key: 'erc-' + (sku || index), supplier:'ERC', vendor, name, sku, sourceCategory: cleanImportText(source.category || source.Category || source.categoryName || ''), subcategory: cleanImportText(source.subcategory || source.Subcategory || ''),
       price, hasPrice: rawPrice != null && price > 0, stock: hasStock ? stock : 0, hasStock, availabilityStatus: hasStock ? (stock > 0 ? 'in_stock' : 'out_of_stock') : '',

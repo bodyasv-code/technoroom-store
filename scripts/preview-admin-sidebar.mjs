@@ -13,6 +13,10 @@ const html='<!doctype html><html lang="uk"><head><meta charset="UTF-8"><meta nam
 const types={'.html':'text/html','.css':'text/css','.js':'text/javascript','.svg':'image/svg+xml','.json':'application/json','.png':'image/png','.webp':'image/webp','.jpg':'image/jpeg'};
 createServer(async(req,res)=>{try{
   const pathname=new URL(req.url,'http://localhost').pathname;
+  if(pathname==='/specification-check'){
+    res.setHeader('Content-Type','text/html; charset=utf-8');
+    res.end((await readFile(new URL('../tests/supplier-specification-parser.html',import.meta.url),'utf8')).replaceAll('../public/','/'));return;
+  }
   if(pathname==='/editor-check'){
     res.setHeader('Content-Type','text/html; charset=utf-8');
     res.end((await readFile(new URL('../tests/product-description-editor.html',import.meta.url),'utf8')).replaceAll('../public/','/'));return;

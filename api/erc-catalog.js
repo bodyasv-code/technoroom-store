@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
+import {handleProductContentPreview} from '../server/product-content-preview.js';
 
 const supabase = createClient(
   process.env.SUPABASE_URL,
@@ -28,6 +29,7 @@ const parseResponse = (value) => {
 
 export default async function handler(request, response) {
   if (request.method !== 'POST') return response.status(405).end();
+  if(['content-status','content-preview'].includes(request.body?.action))return handleProductContentPreview({method:request.method,headers:request.headers,body:{...request.body,action:request.body.action==='content-status'?'status':'preview'}},response,{db:supabase});
   if (!await requireAdmin(request, response)) return;
 
   const configured = Boolean(process.env.ERC_API_EMAIL && process.env.ERC_API_PASSWORD);

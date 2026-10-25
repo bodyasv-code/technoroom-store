@@ -1,0 +1,14 @@
+import assert from 'node:assert/strict';
+import {analyseIcecatResponse as analyse} from '../scripts/content-pilot-analysis.mjs';
+const product={brand:'HP',sku:'4ZB96A'};
+const response={msg:'OK',data:{GeneralInfo:{Brand:'HP',BrandPartCode:'4ZB96A',Description:{LongDesc:'Description'}},FeaturesGroups:[{FeatureGroup:{Name:{Value:'Printing'}},Features:[{Feature:{Name:{Value:'Duplex printing',Language:'EN'}},PresentationValue:'Manual'}]}],Image:{HighPic:'https://example.com/photo.jpg'},DemoAccount:true}};
+const before=JSON.stringify(response),result=analyse(product,response,{language:'UK',httpStatus:200});
+assert.equal(result.exactIdentity,true);assert.equal(result.features,1);assert.equal(result.imagePresent,true);assert.equal(result.ukrainianFeatureNames,0,'UK request alone is not Ukrainian content');
+assert.equal(result.demoResponse,true);assert.equal(JSON.stringify(response),before);
+assert.equal(analyse({...product,sku:'4ZB96A#different'},response,{language:'EN',httpStatus:200}).exactIdentity,false,'Regional suffix is never silently ignored');
+assert.equal(analyse(product,{msg:'Access denied'},{language:'EN',httpStatus:403}).received,false);
+const denied=analyse(product,{StatusCode:9,Error:'Forbidden',Message:'Full Icecat access required'},{language:'EN',httpStatus:403});
+assert.equal(denied.statusCode,9);assert.equal(denied.message,'Full Icecat access required');
+assert.equal(analyse(product,{StatusCode:8,Error:'Not Found',Message:'Not present'},{language:'EN',httpStatus:404}).statusCode,8);
+assert.equal(JSON.stringify(result).includes('photo.jpg'),false,'Media URLs not retained');
+console.log('Content pilot: exact identity, no locale assumptions, demo flag, read-only response and no media retention: PASS');

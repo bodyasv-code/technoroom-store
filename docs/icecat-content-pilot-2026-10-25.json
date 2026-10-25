@@ -1,0 +1,1304 @@
+{
+  "date": "2026-10-25T08:33:07.360Z",
+  "readOnly": true,
+  "databaseWrites": 0,
+  "credentialsUsed": false,
+  "access": "Documented public demo account openicecat-live, not the user subscription",
+  "sampleSize": 12,
+  "results": [
+    {
+      "id": 159,
+      "name": "Проєктор портативний Asus ZenBeam LATTE L1 HD (90LJ00E5-B00070)",
+      "sku": "90LJ00E5-B00070",
+      "category": "projectors",
+      "brand": "ASUS",
+      "english": {
+        "language": "EN",
+        "httpStatus": 200,
+        "message": "OK",
+        "error": null,
+        "statusCode": null,
+        "received": true,
+        "exactIdentity": true,
+        "returnedBrand": "ASUS",
+        "returnedMpn": "90LJ00E5-B00070",
+        "title": "ASUS ZenBeam Latte L1 Standard throw projector LED 1080p (1920x1080) Grey",
+        "icecatId": 89654060,
+        "demoResponse": true,
+        "groups": 16,
+        "features": 41,
+        "imagePresent": true,
+        "galleryImages": 11,
+        "descriptionPresent": true,
+        "descriptionLanguage": "EN",
+        "featureNameLanguages": [
+          "EN"
+        ],
+        "ukrainianFeatureNames": 0,
+        "checks": [
+          {
+            "group": "Projector",
+            "name": "Projector brightness",
+            "value": "300 LED lumens",
+            "unit": "",
+            "nameLanguage": "EN"
+          },
+          {
+            "group": "Projector",
+            "name": "Projector native resolution",
+            "value": "1080p (1920x1080)",
+            "unit": "",
+            "nameLanguage": "EN"
+          },
+          {
+            "group": "Network",
+            "name": "Ethernet LAN",
+            "value": "Yes",
+            "unit": "",
+            "nameLanguage": "EN"
+          },
+          {
+            "group": "Network",
+            "name": "Wi-Fi",
+            "value": "Yes",
+            "unit": "",
+            "nameLanguage": "EN"
+          }
+        ],
+        "firstFeatureNames": [
+          "Projector brightness",
+          "Screen size compatibility",
+          "Projection distance",
+          "Projection technology",
+          "Projector native resolution"
+        ]
+      },
+      "ukrainianRequest": {
+        "language": "UK",
+        "httpStatus": 200,
+        "message": "OK",
+        "error": null,
+        "statusCode": null,
+        "received": true,
+        "exactIdentity": true,
+        "returnedBrand": "ASUS",
+        "returnedMpn": "90LJ00E5-B00070",
+        "title": "ASUS ZenBeam Latte L1 Стандартный проектор LED 1080p (1920x1080) Сірий",
+        "icecatId": 89654060,
+        "demoResponse": true,
+        "groups": 16,
+        "features": 41,
+        "imagePresent": true,
+        "galleryImages": 11,
+        "descriptionPresent": false,
+        "descriptionLanguage": "",
+        "featureNameLanguages": [
+          "EN",
+          "UK"
+        ],
+        "ukrainianFeatureNames": 27,
+        "checks": [
+          {
+            "group": "Проектор",
+            "name": "Projector brightness",
+            "value": "300 LED lumens",
+            "unit": "",
+            "nameLanguage": "EN"
+          },
+          {
+            "group": "Мережа",
+            "name": "Підключення Ethernet",
+            "value": "Так",
+            "unit": "",
+            "nameLanguage": "UK"
+          },
+          {
+            "group": "Мережа",
+            "name": "Wi-Fi",
+            "value": "Так",
+            "unit": "",
+            "nameLanguage": "UK"
+          }
+        ],
+        "firstFeatureNames": [
+          "Projector brightness",
+          "Сумісна діагональ дисплею",
+          "Проекційна відстань",
+          "Проекційна технологія",
+          "Собственная разрешающая способность прэктора"
+        ]
+      }
+    },
+    {
+      "id": 247,
+      "name": "Проєктор Epson EB-994F FHD (V11HB60042)",
+      "sku": "V11HB60042",
+      "category": "projectors",
+      "brand": "Epson",
+      "english": {
+        "language": "EN",
+        "httpStatus": 200,
+        "message": "OK",
+        "error": null,
+        "statusCode": null,
+        "received": true,
+        "exactIdentity": true,
+        "returnedBrand": "Epson",
+        "returnedMpn": "V11HB60042",
+        "title": "Epson 4,100-lumen1 Full HD 1080p projector 4100 ANSI lumens 3LCD 1080p (1920x1080) White",
+        "icecatId": 145523101,
+        "demoResponse": true,
+        "groups": 14,
+        "features": 72,
+        "imagePresent": true,
+        "galleryImages": 6,
+        "descriptionPresent": true,
+        "descriptionLanguage": "EN",
+        "featureNameLanguages": [
+          "EN"
+        ],
+        "ukrainianFeatureNames": 0,
+        "checks": [
+          {
+            "group": "Projector",
+            "name": "Projector brightness",
+            "value": "4100 ANSI lumens",
+            "unit": "",
+            "nameLanguage": "EN"
+          },
+          {
+            "group": "Projector",
+            "name": "Projector native resolution",
+            "value": "1080p (1920x1080)",
+            "unit": "",
+            "nameLanguage": "EN"
+          },
+          {
+            "group": "Projector",
+            "name": "Native aspect ratio",
+            "value": "16:9",
+            "unit": "",
+            "nameLanguage": "EN"
+          },
+          {
+            "group": "Network",
+            "name": "Ethernet LAN",
+            "value": "Yes",
+            "unit": "",
+            "nameLanguage": "EN"
+          },
+          {
+            "group": "Network",
+            "name": "Ethernet LAN (RJ-45) ports",
+            "value": "1",
+            "unit": "",
+            "nameLanguage": "EN"
+          },
+          {
+            "group": "Network",
+            "name": "Ethernet LAN data rates",
+            "value": "10,100 Mbit/s",
+            "unit": "",
+            "nameLanguage": "EN"
+          },
+          {
+            "group": "Network",
+            "name": "Wi-Fi",
+            "value": "Yes",
+            "unit": "",
+            "nameLanguage": "EN"
+          },
+          {
+            "group": "Network",
+            "name": "Wi-Fi standards",
+            "value": "802.11a, 802.11b, 802.11g, Wi-Fi 4 (802.11n), Wi-Fi 5 (802.11ac)",
+            "unit": "",
+            "nameLanguage": "EN"
+          }
+        ],
+        "firstFeatureNames": [
+          "Smart projector",
+          "Screen size compatibility",
+          "Projection distance",
+          "Projection distance (wide)",
+          "Projection distance (tele)"
+        ]
+      },
+      "ukrainianRequest": {
+        "language": "UK",
+        "httpStatus": 200,
+        "message": "OK",
+        "error": null,
+        "statusCode": null,
+        "received": true,
+        "exactIdentity": true,
+        "returnedBrand": "Epson",
+        "returnedMpn": "V11HB60042",
+        "title": "Epson 4,100-lumen1 Full HD 1080p projector 4100 лм 3LCD 1080p (1920x1080) Білий",
+        "icecatId": 145523101,
+        "demoResponse": true,
+        "groups": 14,
+        "features": 72,
+        "imagePresent": true,
+        "galleryImages": 6,
+        "descriptionPresent": false,
+        "descriptionLanguage": "",
+        "featureNameLanguages": [
+          "RU",
+          "UK"
+        ],
+        "ukrainianFeatureNames": 48,
+        "checks": [
+          {
+            "group": "Проектор",
+            "name": "Яскравість проектора",
+            "value": "4100 лм",
+            "unit": "",
+            "nameLanguage": "UK"
+          },
+          {
+            "group": "Мережа",
+            "name": "Підключення Ethernet",
+            "value": "Так",
+            "unit": "",
+            "nameLanguage": "UK"
+          },
+          {
+            "group": "Мережа",
+            "name": "Кількість портів Ethernet LAN (RJ-45)",
+            "value": "1",
+            "unit": "",
+            "nameLanguage": "UK"
+          },
+          {
+            "group": "Мережа",
+            "name": "Швидкість передачі даних Ethernet LAN",
+            "value": "10,100 Мбіт/с",
+            "unit": "",
+            "nameLanguage": "UK"
+          },
+          {
+            "group": "Мережа",
+            "name": "Wi-Fi",
+            "value": "Так",
+            "unit": "",
+            "nameLanguage": "UK"
+          },
+          {
+            "group": "Мережа",
+            "name": "Wi-Fi стандартів",
+            "value": "802.11a, 802.11b, 802.11g, Wi-Fi 4 (802.11n), Wi-Fi 5 (802.11ac)",
+            "unit": "",
+            "nameLanguage": "UK"
+          }
+        ],
+        "firstFeatureNames": [
+          "Интеллектуальный проектор",
+          "Сумісна діагональ дисплею",
+          "Проекційна відстань",
+          "Проекційна відстань (шир.)",
+          "Проекційна відстань (теле)"
+        ]
+      }
+    },
+    {
+      "id": 439,
+      "name": "Проєктор ультракороткофокусний Samsung The Premiere 5 LPF5D FHD (SP-LPF5DSAXXUA)",
+      "sku": "SP-LPF5DSAXXUA",
+      "category": "projectors",
+      "brand": "Samsung",
+      "english": {
+        "language": "EN",
+        "httpStatus": 404,
+        "message": "The requested product is not present in the Icecat database",
+        "error": "Not Found",
+        "statusCode": 8,
+        "received": false,
+        "exactIdentity": false
+      },
+      "ukrainianRequest": {
+        "language": "UK",
+        "httpStatus": 404,
+        "message": "The requested product is not present in the Icecat database",
+        "error": "Not Found",
+        "statusCode": 8,
+        "received": false,
+        "exactIdentity": false
+      }
+    },
+    {
+      "id": 576,
+      "name": "Джерело безперебійного живлення 2E OD1000, 1000VA/900W, LCD (2E-OD1000)",
+      "sku": "2E-OD1000",
+      "category": "erc-business-03",
+      "brand": "2E",
+      "english": {
+        "language": "EN",
+        "httpStatus": 404,
+        "message": "The requested product is not present in the Icecat database",
+        "error": "Not Found",
+        "statusCode": 8,
+        "received": false,
+        "exactIdentity": false
+      },
+      "ukrainianRequest": {
+        "language": "UK",
+        "httpStatus": 404,
+        "message": "The requested product is not present in the Icecat database",
+        "error": "Not Found",
+        "statusCode": 8,
+        "received": false,
+        "exactIdentity": false
+      }
+    },
+    {
+      "id": 684,
+      "name": "Екран моторизований 2E 16:9, 100\", 2.21x1.23 м, MW",
+      "sku": "0169100E",
+      "category": "erc-display-06",
+      "brand": "2E",
+      "english": {
+        "language": "EN",
+        "httpStatus": 404,
+        "message": "The requested product is not present in the Icecat database",
+        "error": "Not Found",
+        "statusCode": 8,
+        "received": false,
+        "exactIdentity": false
+      },
+      "ukrainianRequest": {
+        "language": "UK",
+        "httpStatus": 404,
+        "message": "The requested product is not present in the Icecat database",
+        "error": "Not Found",
+        "statusCode": 8,
+        "received": false,
+        "exactIdentity": false
+      }
+    },
+    {
+      "id": 2522,
+      "name": "Гібридний однофазний інвертор Leapton H6000-LS2-G5 6кВт, 2xMPPT, IP66 для LV Batteries",
+      "sku": "H6000-LS2-G5",
+      "category": "erc-business-16",
+      "brand": "LEAPTON",
+      "english": {
+        "language": "EN",
+        "httpStatus": 404,
+        "message": "The requested product is not present in the Icecat database",
+        "error": "Not Found",
+        "statusCode": 8,
+        "received": false,
+        "exactIdentity": false
+      },
+      "ukrainianRequest": {
+        "language": "UK",
+        "httpStatus": 404,
+        "message": "The requested product is not present in the Icecat database",
+        "error": "Not Found",
+        "statusCode": 8,
+        "received": false,
+        "exactIdentity": false
+      }
+    },
+    {
+      "id": 2618,
+      "name": "Дисплей інтерактивний 65\" LG CreateBoard 65TR3DQ UHD 400nit 16/7 Android WiFi",
+      "sku": "65TR3DQ-B",
+      "category": "erc-display-19",
+      "brand": "LG",
+      "english": {
+        "language": "EN",
+        "httpStatus": 200,
+        "message": "OK",
+        "error": null,
+        "statusCode": null,
+        "received": true,
+        "exactIdentity": true,
+        "returnedBrand": "LG",
+        "returnedMpn": "65TR3DQ-B",
+        "title": "LG CreateBoard Standard interactive whiteboard 165.1 cm (65\") 3840 x 2160 pixels Touchscreen Black",
+        "icecatId": 130052895,
+        "demoResponse": true,
+        "groups": 15,
+        "features": 89,
+        "imagePresent": true,
+        "galleryImages": 10,
+        "descriptionPresent": true,
+        "descriptionLanguage": "EN",
+        "featureNameLanguages": [
+          "EN"
+        ],
+        "ukrainianFeatureNames": 0,
+        "checks": [
+          {
+            "group": "Display",
+            "name": "Display brightness",
+            "value": "400 cd/m²",
+            "unit": "",
+            "nameLanguage": "EN"
+          },
+          {
+            "group": "Display",
+            "name": "Display resolution",
+            "value": "3840 x 2160 pixels",
+            "unit": "",
+            "nameLanguage": "EN"
+          },
+          {
+            "group": "Display",
+            "name": "Native aspect ratio",
+            "value": "16:9",
+            "unit": "",
+            "nameLanguage": "EN"
+          },
+          {
+            "group": "Computer system",
+            "name": "Maximum internal memory",
+            "value": "64 GB",
+            "unit": "",
+            "nameLanguage": "EN"
+          },
+          {
+            "group": "Network",
+            "name": "Wi-Fi",
+            "value": "Yes",
+            "unit": "",
+            "nameLanguage": "EN"
+          },
+          {
+            "group": "Network",
+            "name": "Top Wi-Fi standard",
+            "value": "Wi-Fi 6E (802.11ax)",
+            "unit": "",
+            "nameLanguage": "EN"
+          },
+          {
+            "group": "Ports & interfaces",
+            "name": "Ethernet LAN (RJ-45) ports",
+            "value": "1",
+            "unit": "",
+            "nameLanguage": "EN"
+          }
+        ],
+        "firstFeatureNames": [
+          "Display diagonal",
+          "Display brightness",
+          "Display number of colours",
+          "Display resolution",
+          "Anti-glare screen"
+        ]
+      },
+      "ukrainianRequest": {
+        "language": "UK",
+        "httpStatus": 200,
+        "message": "OK",
+        "error": null,
+        "statusCode": null,
+        "received": true,
+        "exactIdentity": true,
+        "returnedBrand": "LG",
+        "returnedMpn": "65TR3DQ-B",
+        "title": "LG CreateBoard Standard interactive whiteboard 165,1 см (65\") 3840 x 2160 пікселів Сенсорний екран Чорний",
+        "icecatId": 130052895,
+        "demoResponse": true,
+        "groups": 15,
+        "features": 89,
+        "imagePresent": true,
+        "galleryImages": 10,
+        "descriptionPresent": false,
+        "descriptionLanguage": "",
+        "featureNameLanguages": [
+          "UK",
+          "EN",
+          "RU"
+        ],
+        "ukrainianFeatureNames": 65,
+        "checks": [
+          {
+            "group": "Дисплей",
+            "name": "Яскравість дисплея",
+            "value": "400 кд/м²",
+            "unit": "",
+            "nameLanguage": "UK"
+          },
+          {
+            "group": "Дисплей",
+            "name": "Роздільна здатність дисплея",
+            "value": "3840 x 2160 пікселів",
+            "unit": "",
+            "nameLanguage": "UK"
+          },
+          {
+            "group": "Мережа",
+            "name": "Wi-Fi",
+            "value": "Так",
+            "unit": "",
+            "nameLanguage": "UK"
+          },
+          {
+            "group": "Мережа",
+            "name": "Головний стандарт Wi-Fi",
+            "value": "Wi-Fi 6E (802.11ax)",
+            "unit": "",
+            "nameLanguage": "UK"
+          },
+          {
+            "group": "Порти та інтерфейси",
+            "name": "Кількість портів Ethernet LAN (RJ-45)",
+            "value": "1",
+            "unit": "",
+            "nameLanguage": "UK"
+          }
+        ],
+        "firstFeatureNames": [
+          "Діагональ дисплею",
+          "Яскравість дисплея",
+          "Кількість кольорів дисплея",
+          "Роздільна здатність дисплея",
+          "Антивідблисковий екран"
+        ]
+      }
+    },
+    {
+      "id": 3360,
+      "name": "BLUETTI AC70P 1000W",
+      "sku": "AC70P",
+      "category": "cat-power",
+      "brand": "Bluetti",
+      "english": {
+        "language": "EN",
+        "httpStatus": 403,
+        "message": "To access Full Icecat content, an app_key is required. Full Icecat users can find it on their My Profile page.",
+        "error": "Forbidden",
+        "statusCode": 9,
+        "received": false,
+        "exactIdentity": false
+      },
+      "ukrainianRequest": {
+        "language": "UK",
+        "httpStatus": 403,
+        "message": "To access Full Icecat content, an app_key is required. Full Icecat users can find it on their My Profile page.",
+        "error": "Forbidden",
+        "statusCode": 9,
+        "received": false,
+        "exactIdentity": false
+      }
+    },
+    {
+      "id": 4033,
+      "name": "АДАПТЕР USB-C TO 3.5 MM HEADPHONE ADAPTER-ZML (MW2Q3ZM/A)",
+      "sku": "MW2Q3ZM/A",
+      "category": "адаптер",
+      "brand": "APPLE",
+      "english": {
+        "language": "EN",
+        "httpStatus": 404,
+        "message": "Product has brand restrictions or access is limited",
+        "error": "Not Found",
+        "statusCode": 14,
+        "received": false,
+        "exactIdentity": false
+      },
+      "ukrainianRequest": {
+        "language": "UK",
+        "httpStatus": 404,
+        "message": "Product has brand restrictions or access is limited",
+        "error": "Not Found",
+        "statusCode": 14,
+        "received": false,
+        "exactIdentity": false
+      }
+    },
+    {
+      "id": 4331,
+      "name": "БФП А4 кол. Canon i-SENSYS MF667Cdw з Wi-Fi (6928C001)",
+      "sku": "6928C001",
+      "category": "office-mfp-color",
+      "brand": "Canon",
+      "english": {
+        "language": "EN",
+        "httpStatus": 200,
+        "message": "OK",
+        "error": null,
+        "statusCode": null,
+        "received": true,
+        "exactIdentity": true,
+        "returnedBrand": "Canon",
+        "returnedMpn": "6928C001",
+        "title": "Canon i-SENSYS MF667Cdw Laser A4 1200 x 1200 DPI 25 ppm Wi-Fi",
+        "icecatId": 134687210,
+        "demoResponse": true,
+        "groups": 15,
+        "features": 84,
+        "imagePresent": true,
+        "galleryImages": 7,
+        "descriptionPresent": true,
+        "descriptionLanguage": "EN",
+        "featureNameLanguages": [
+          "EN"
+        ],
+        "ukrainianFeatureNames": 0,
+        "checks": [
+          {
+            "group": "Printing",
+            "name": "Duplex printing",
+            "value": "Yes",
+            "unit": "",
+            "nameLanguage": "EN"
+          },
+          {
+            "group": "Printing",
+            "name": "Maximum resolution",
+            "value": "1200 x 1200 DPI",
+            "unit": "",
+            "nameLanguage": "EN"
+          },
+          {
+            "group": "Copying",
+            "name": "Duplex copying",
+            "value": "Yes",
+            "unit": "",
+            "nameLanguage": "EN"
+          },
+          {
+            "group": "Copying",
+            "name": "Duplex copying mode",
+            "value": "Auto",
+            "unit": "",
+            "nameLanguage": "EN"
+          },
+          {
+            "group": "Copying",
+            "name": "Maximum copy resolution",
+            "value": "600 x 600 DPI",
+            "unit": "",
+            "nameLanguage": "EN"
+          },
+          {
+            "group": "Scanning",
+            "name": "Scanning",
+            "value": "Colour scanning",
+            "unit": "",
+            "nameLanguage": "EN"
+          },
+          {
+            "group": "Scanning",
+            "name": "Optical scanning resolution",
+            "value": "600 x 600 DPI",
+            "unit": "",
+            "nameLanguage": "EN"
+          },
+          {
+            "group": "Scanning",
+            "name": "Scanner type",
+            "value": "Flatbed & ADF scanner",
+            "unit": "",
+            "nameLanguage": "EN"
+          },
+          {
+            "group": "Scanning",
+            "name": "Scan to",
+            "value": "Cloud, E-mail, FTP, PC, USB",
+            "unit": "",
+            "nameLanguage": "EN"
+          },
+          {
+            "group": "Scanning",
+            "name": "Scan drivers",
+            "value": "ICA, TWAIN, WIA",
+            "unit": "",
+            "nameLanguage": "EN"
+          },
+          {
+            "group": "Fax",
+            "name": "Duplex faxing",
+            "value": "Yes",
+            "unit": "",
+            "nameLanguage": "EN"
+          },
+          {
+            "group": "Features",
+            "name": "Duplex functions",
+            "value": "Copy, Fax, Print",
+            "unit": "",
+            "nameLanguage": "EN"
+          },
+          {
+            "group": "Network",
+            "name": "Wi-Fi",
+            "value": "Yes",
+            "unit": "",
+            "nameLanguage": "EN"
+          },
+          {
+            "group": "Network",
+            "name": "Ethernet LAN",
+            "value": "Yes",
+            "unit": "",
+            "nameLanguage": "EN"
+          }
+        ],
+        "firstFeatureNames": [
+          "Print technology",
+          "Printing",
+          "Duplex printing",
+          "Maximum resolution",
+          "Print speed (black, normal quality, A4/US Letter)"
+        ]
+      },
+      "ukrainianRequest": {
+        "language": "UK",
+        "httpStatus": 200,
+        "message": "OK",
+        "error": null,
+        "statusCode": null,
+        "received": true,
+        "exactIdentity": true,
+        "returnedBrand": "Canon",
+        "returnedMpn": "6928C001",
+        "title": "Canon i-SENSYS MF667Cdw Лазерний A4 1200 x 1200 dpi 25 стор/хв Wi-Fi",
+        "icecatId": 134687210,
+        "demoResponse": true,
+        "groups": 15,
+        "features": 84,
+        "imagePresent": true,
+        "galleryImages": 7,
+        "descriptionPresent": false,
+        "descriptionLanguage": "",
+        "featureNameLanguages": [
+          "UK"
+        ],
+        "ukrainianFeatureNames": 57,
+        "checks": [
+          {
+            "group": "Швидкість друку",
+            "name": "Двосторонній друк",
+            "value": "Так",
+            "unit": "",
+            "nameLanguage": "UK"
+          },
+          {
+            "group": "Швидкість друку",
+            "name": "Максимальна роздільна здатність",
+            "value": "1200 x 1200 dpi",
+            "unit": "",
+            "nameLanguage": "UK"
+          },
+          {
+            "group": "Копіювання",
+            "name": "Дуплексне копіювання",
+            "value": "Так",
+            "unit": "",
+            "nameLanguage": "UK"
+          },
+          {
+            "group": "Копіювання",
+            "name": "Максимальна роздільна здатність копіювання",
+            "value": "600 x 600 dpi",
+            "unit": "",
+            "nameLanguage": "UK"
+          },
+          {
+            "group": "Сканування",
+            "name": "Сканування",
+            "value": "Кольорове сканування",
+            "unit": "",
+            "nameLanguage": "UK"
+          },
+          {
+            "group": "Сканування",
+            "name": "Роздільна здатність оптичного сканування",
+            "value": "600 x 600 dpi",
+            "unit": "",
+            "nameLanguage": "UK"
+          },
+          {
+            "group": "Сканування",
+            "name": "Тип сканера",
+            "value": "Планшетний сканер з автоматичним подаванням документів",
+            "unit": "",
+            "nameLanguage": "UK"
+          },
+          {
+            "group": "Сканування",
+            "name": "Сканування в",
+            "value": "Хмара, Електронна пошта, FTP, ПК, USB",
+            "unit": "",
+            "nameLanguage": "UK"
+          },
+          {
+            "group": "Сканування",
+            "name": "Драйвери сканування",
+            "value": "ICA, TWAIN, WIA",
+            "unit": "",
+            "nameLanguage": "UK"
+          },
+          {
+            "group": "Факс",
+            "name": "Дуплексний факс",
+            "value": "Так",
+            "unit": "",
+            "nameLanguage": "UK"
+          },
+          {
+            "group": "Властивості",
+            "name": "Дуплексні функції",
+            "value": "Kопiювання, Факс, Друк",
+            "unit": "",
+            "nameLanguage": "UK"
+          },
+          {
+            "group": "Мережа",
+            "name": "Wi-Fi",
+            "value": "Так",
+            "unit": "",
+            "nameLanguage": "UK"
+          },
+          {
+            "group": "Мережа",
+            "name": "Підключення Ethernet",
+            "value": "Так",
+            "unit": "",
+            "nameLanguage": "UK"
+          },
+          {
+            "group": "Мережа",
+            "name": "Швидкість передачі даних Ethernet LAN",
+            "value": "10,100,1000 Мбіт/с",
+            "unit": "",
+            "nameLanguage": "UK"
+          }
+        ],
+        "firstFeatureNames": [
+          "Технологія друку",
+          "Друк",
+          "Двосторонній друк",
+          "Максимальна роздільна здатність",
+          "Швидкість друку (ч/б, норм. як., А4/US Letter)"
+        ]
+      }
+    },
+    {
+      "id": 4381,
+      "name": "Сканер А4 Canon CanoScan LIDE 300 (2995C010)",
+      "sku": "2995C010",
+      "category": "office-scanners",
+      "brand": "Canon",
+      "english": {
+        "language": "EN",
+        "httpStatus": 200,
+        "message": "OK",
+        "error": null,
+        "statusCode": null,
+        "received": true,
+        "exactIdentity": true,
+        "returnedBrand": "Canon",
+        "returnedMpn": "2995C010",
+        "title": "Canon CanoScan LiDE 300 flatbed scanner, Black",
+        "icecatId": 60173744,
+        "demoResponse": true,
+        "groups": 11,
+        "features": 31,
+        "imagePresent": true,
+        "galleryImages": 1,
+        "descriptionPresent": true,
+        "descriptionLanguage": "EN",
+        "featureNameLanguages": [
+          "EN"
+        ],
+        "ukrainianFeatureNames": 0,
+        "checks": [
+          {
+            "group": "Scanning",
+            "name": "Maximum scan size",
+            "value": "216 x 297 mm",
+            "unit": "",
+            "nameLanguage": "EN"
+          },
+          {
+            "group": "Scanning",
+            "name": "Optical scanning resolution",
+            "value": "2400 x 2400 DPI",
+            "unit": "",
+            "nameLanguage": "EN"
+          },
+          {
+            "group": "Scanning",
+            "name": "Colour scanning",
+            "value": "Yes",
+            "unit": "",
+            "nameLanguage": "EN"
+          },
+          {
+            "group": "Design",
+            "name": "Scanner type",
+            "value": "Flatbed scanner",
+            "unit": "",
+            "nameLanguage": "EN"
+          }
+        ],
+        "firstFeatureNames": [
+          "Maximum scan size",
+          "Optical scanning resolution",
+          "Colour scanning",
+          "Input colour depth",
+          "Output colour depth"
+        ]
+      },
+      "ukrainianRequest": {
+        "language": "UK",
+        "httpStatus": 200,
+        "message": "OK",
+        "error": null,
+        "statusCode": null,
+        "received": true,
+        "exactIdentity": true,
+        "returnedBrand": "Canon",
+        "returnedMpn": "2995C010",
+        "title": "Canon CanoScan 2995C010 сканер Планшетний сканер 2400 x 2400 dpi A4 Чорний",
+        "icecatId": 60173744,
+        "demoResponse": true,
+        "groups": 11,
+        "features": 31,
+        "imagePresent": true,
+        "galleryImages": 1,
+        "descriptionPresent": false,
+        "descriptionLanguage": "",
+        "featureNameLanguages": [
+          "UK"
+        ],
+        "ukrainianFeatureNames": 20,
+        "checks": [
+          {
+            "group": "Сканування",
+            "name": "Максимальний розмір сканування",
+            "value": "216 x 297 мм",
+            "unit": "",
+            "nameLanguage": "UK"
+          },
+          {
+            "group": "Сканування",
+            "name": "Роздільна здатність оптичного сканування",
+            "value": "2400 x 2400 dpi",
+            "unit": "",
+            "nameLanguage": "UK"
+          },
+          {
+            "group": "Сканування",
+            "name": "Кольорове сканування",
+            "value": "Так",
+            "unit": "",
+            "nameLanguage": "UK"
+          },
+          {
+            "group": "Дизайн",
+            "name": "Тип сканера",
+            "value": "Планшетний сканер",
+            "unit": "",
+            "nameLanguage": "UK"
+          }
+        ],
+        "firstFeatureNames": [
+          "Максимальний розмір сканування",
+          "Роздільна здатність оптичного сканування",
+          "Кольорове сканування",
+          "Глибина вхідного кольору",
+          "Вихідна глибина кольору"
+        ]
+      }
+    },
+    {
+      "id": 4530,
+      "name": "Багатофункціональний пристрій А4 кол. HP Color Laser 178nw з Wi-Fi (4ZB96A)",
+      "sku": "4ZB96A",
+      "category": "office-mfp-color",
+      "brand": "HP",
+      "english": {
+        "language": "EN",
+        "httpStatus": 200,
+        "message": "OK",
+        "error": null,
+        "statusCode": null,
+        "received": true,
+        "exactIdentity": true,
+        "returnedBrand": "HP",
+        "returnedMpn": "4ZB96A",
+        "title": "HP Laser 178nw Wireless Multifunction Color Printer, Copier, Scanner; Duplex",
+        "icecatId": 67458127,
+        "demoResponse": true,
+        "groups": 20,
+        "features": 138,
+        "imagePresent": true,
+        "galleryImages": 6,
+        "descriptionPresent": true,
+        "descriptionLanguage": "EN",
+        "featureNameLanguages": [
+          "EN"
+        ],
+        "ukrainianFeatureNames": 0,
+        "checks": [
+          {
+            "group": "Printing",
+            "name": "Duplex printing mode",
+            "value": "Manual",
+            "unit": "",
+            "nameLanguage": "EN"
+          },
+          {
+            "group": "Printing",
+            "name": "Print resolution colour",
+            "value": "600 x 600 DPI",
+            "unit": "",
+            "nameLanguage": "EN"
+          },
+          {
+            "group": "Printing",
+            "name": "Print resolution black",
+            "value": "600 x 600 DPI",
+            "unit": "",
+            "nameLanguage": "EN"
+          },
+          {
+            "group": "Printing",
+            "name": "Duplex printing",
+            "value": "Yes",
+            "unit": "",
+            "nameLanguage": "EN"
+          },
+          {
+            "group": "Printing",
+            "name": "Maximum resolution",
+            "value": "600 x 600 DPI",
+            "unit": "",
+            "nameLanguage": "EN"
+          },
+          {
+            "group": "Network",
+            "name": "Wi-Fi",
+            "value": "Yes",
+            "unit": "",
+            "nameLanguage": "EN"
+          },
+          {
+            "group": "Network",
+            "name": "Ethernet LAN",
+            "value": "Yes",
+            "unit": "",
+            "nameLanguage": "EN"
+          },
+          {
+            "group": "Network",
+            "name": "Ethernet LAN data rates",
+            "value": "10,100 Mbit/s",
+            "unit": "",
+            "nameLanguage": "EN"
+          },
+          {
+            "group": "Network",
+            "name": "Wi-Fi Direct",
+            "value": "Yes",
+            "unit": "",
+            "nameLanguage": "EN"
+          },
+          {
+            "group": "Network",
+            "name": "Wi-Fi standards",
+            "value": "Wi-Fi 4 (802.11n), 802.11g, 802.11b",
+            "unit": "",
+            "nameLanguage": "EN"
+          },
+          {
+            "group": "Performance",
+            "name": "Internal memory",
+            "value": "128 MB",
+            "unit": "",
+            "nameLanguage": "EN"
+          },
+          {
+            "group": "Performance",
+            "name": "Maximum internal memory",
+            "value": "128 MB",
+            "unit": "",
+            "nameLanguage": "EN"
+          },
+          {
+            "group": "Other features",
+            "name": "Optical scanning resolution",
+            "value": "600 x 600 DPI",
+            "unit": "",
+            "nameLanguage": "EN"
+          },
+          {
+            "group": "Other features",
+            "name": "Maximum scan area",
+            "value": "216 x 297 mm",
+            "unit": "",
+            "nameLanguage": "EN"
+          }
+        ],
+        "firstFeatureNames": [
+          "Duplex printing mode",
+          "Print resolution colour",
+          "Print resolution black",
+          "Print speed (colour, normal quality, A4/US Letter)",
+          "Colour"
+        ]
+      },
+      "ukrainianRequest": {
+        "language": "UK",
+        "httpStatus": 200,
+        "message": "OK",
+        "error": null,
+        "statusCode": null,
+        "received": true,
+        "exactIdentity": true,
+        "returnedBrand": "HP",
+        "returnedMpn": "4ZB96A",
+        "title": "HP Laser 178nw підключення до бездротової мережі Multifunction колір Принтер, Копіювач, сканер; Двосторонній друк",
+        "icecatId": 67458127,
+        "demoResponse": true,
+        "groups": 19,
+        "features": 133,
+        "imagePresent": true,
+        "galleryImages": 6,
+        "descriptionPresent": true,
+        "descriptionLanguage": "UK",
+        "featureNameLanguages": [
+          "UK",
+          "RU",
+          "EN"
+        ],
+        "ukrainianFeatureNames": 94,
+        "checks": [
+          {
+            "group": "Швидкість друку",
+            "name": "Роздільна здатність, кольор.",
+            "value": "600 x 600 dpi",
+            "unit": "",
+            "nameLanguage": "UK"
+          },
+          {
+            "group": "Швидкість друку",
+            "name": "Роздільна здатність чорно-білого друку",
+            "value": "600 x 600 dpi",
+            "unit": "",
+            "nameLanguage": "UK"
+          },
+          {
+            "group": "Швидкість друку",
+            "name": "Двосторонній друк",
+            "value": "Так",
+            "unit": "",
+            "nameLanguage": "UK"
+          },
+          {
+            "group": "Швидкість друку",
+            "name": "Максимальна роздільна здатність",
+            "value": "600 x 600 dpi",
+            "unit": "",
+            "nameLanguage": "UK"
+          },
+          {
+            "group": "Мережа",
+            "name": "Wi-Fi",
+            "value": "Так",
+            "unit": "",
+            "nameLanguage": "UK"
+          },
+          {
+            "group": "Мережа",
+            "name": "Підключення Ethernet",
+            "value": "Так",
+            "unit": "",
+            "nameLanguage": "UK"
+          },
+          {
+            "group": "Мережа",
+            "name": "Швидкість передачі даних Ethernet LAN",
+            "value": "10,100 Мбіт/с",
+            "unit": "",
+            "nameLanguage": "UK"
+          },
+          {
+            "group": "Мережа",
+            "name": "Wi-Fi Direct",
+            "value": "Так",
+            "unit": "",
+            "nameLanguage": "UK"
+          },
+          {
+            "group": "Мережа",
+            "name": "Wi-Fi стандартів",
+            "value": "Wi-Fi 4 (802.11n), 802.11g, 802.11b",
+            "unit": "",
+            "nameLanguage": "UK"
+          },
+          {
+            "group": "Характеристики",
+            "name": "Оперативна пам'ять",
+            "value": "128 МБ",
+            "unit": "",
+            "nameLanguage": "UK"
+          },
+          {
+            "group": "Інші характеристики",
+            "name": "Роздільна здатність оптичного сканування",
+            "value": "600 x 600 dpi",
+            "unit": "",
+            "nameLanguage": "UK"
+          },
+          {
+            "group": "Інші характеристики",
+            "name": "Максимальна область сканування",
+            "value": "216 x 297 мм",
+            "unit": "",
+            "nameLanguage": "UK"
+          },
+          {
+            "group": "Інші характеристики",
+            "name": "Максимальна роздільна здатність сканування",
+            "value": "19200 x 19200 dpi",
+            "unit": "",
+            "nameLanguage": "UK"
+          }
+        ],
+        "firstFeatureNames": [
+          "Тип дюплексного друку",
+          "Роздільна здатність, кольор.",
+          "Роздільна здатність чорно-білого друку",
+          "Швидкість друку (колір, норм. як., A4/US Letter)",
+          "Колір"
+        ]
+      }
+    }
+  ],
+  "summary": {
+    "receivedEnglish": 6,
+    "exactEnglish": 6,
+    "withFeatures": 6,
+    "withImages": 6,
+    "receivedUkRequests": 6,
+    "ukNameIndicator": 6,
+    "requiresFullAccess": 1,
+    "brandRestricted": 1,
+    "noExactRequestMatch": 4
+  },
+  "limitations": [
+    "Non-random 12-product sample; not catalog-wide coverage",
+    "Demo access is not a license or proof of production entitlement",
+    "Exact identity does not validate every technical value",
+    "UK request may return fallback languages; no automatic translation/publication"
+  ],
+  "auditDateLocal": "2026-10-25",
+  "manufacturerConflict": {
+    "productId": 159,
+    "sku": "90LJ00E5-B00070",
+    "field": "Projector native resolution",
+    "icecatValue": "1080p (1920x1080)",
+    "manufacturerValue": "1280x720 (HD)",
+    "manufacturerMaxInput": "1920x1080",
+    "source": "https://www.asus.com/displays-desktops/projectors/portable/zenbeam-latte-l1/techspec/",
+    "action": "Block automated application of native resolution; manufacturer source must take precedence after exact model verification."
+  }
+}

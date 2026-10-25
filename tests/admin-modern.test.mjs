@@ -9,7 +9,7 @@ assert.match(css,/\.admin-modern \[hidden\] \{ display: none!important; \}/);
 assert.match(html,/data-view="app" hidden/);assert.match(html,/data-view="recovery" hidden/);
 assert.match(html,/data-view="login" hidden/);
 for(const id of ['loginForm','recoveryForm','requestPasswordReset','logout','productSearch','categoryFilter','selectAllProducts','productForm','categoryForm','orderDialog','saveOrderStatus'])assert.ok(html.includes('id="'+id+'"'));
-assert.ok(html.includes('src="admin.js?v=20261025-content-mapping"'),'Versioned admin entry point');
+assert.ok(html.includes('src="admin.js?v=20261025-content-expanded"'),'Versioned admin entry point');
 assert.match(css,/@media\(max-width:900px\)/);assert.match(css,/@media\(prefers-reduced-motion:reduce\)/);
 assert.match(css,/:focus-visible/);assert.match(css,/min-height: 44px/);
 assert.match(css,/\.button\.danger-action/);

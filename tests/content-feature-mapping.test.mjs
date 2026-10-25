@@ -62,3 +62,45 @@ test('HP: translated duplex mode is compared separately from presence and is nev
   assert.equal(protectedResult.rows[0].status,'manual-protected');assert.equal(protectedResult.rows[0].current[0].value,'Ручний');
   assert.equal(result.databaseWrites,0);assert.ok(result.rows.every(r=>!r.automatic));
 });
+test('Composite trays, ADF and generic memory are context, never inferred components',()=>{
+  const card={...canon,specifications:{'Лотки':'подачі — 250 л., прийому — 100 л.','ADF':'є 50 л. Дуплекс: так',"пам'ять":'до 512 стор'}};
+  const before=JSON.stringify(card);
+  const result=preview(card,[['40554','Input','250 sheets'],['40555','Output','100 sheets'],['40560','ADF','Так'],['823','Capacity','50 sheets'],['6','RAM','1000 МБ']]);
+  assert.ok(result.rows.every(r=>r.status==='related'&&r.current.length===0&&r.relatedCurrent.length===1));
+  assert.equal(result.summary.related,5);assert.equal(result.rows[4].relatedCurrent[0].value,'до 512 стор');
+  assert.equal(JSON.stringify(card),before);assert.equal(result.databaseWrites,0);
+  const html=contentPreviewMarkup(result);assert.match(html,/не точна відповідність/);assert.match(html,/Не створювати дубль/);
+});
+test('Composite context manual overrides and tombstones remain protected',()=>{
+  for(const specifications of [{Лотки:'250/100'},{}]){
+    const card={...canon,specifications,manual_overrides:{specifications:{Лотки:true}}};
+    const result=preview(card,[['40554','Input','250 sheets'],['40555','Output','100 sheets']]);
+    assert.ok(result.rows.every(r=>r.status==='manual-protected'&&!r.automatic));
+  }
+});
+test('Input/output scan depth, file formats and copy duplex stay independent',()=>{
+  const card={...canon,specifications:{'Глибина кольору сканування':'24 біти','Формати файлів сканування':'PDF; JPEG; TIFF','Двосторонній друк':'Ручний'}};
+  const result=preview(card,[['7958','Input','24 біт'],['7959','Output','24 біт'],['2417','Images','JPEG, TIFF'],['7972','Documents','PDF'],['40540','Copy duplex','Так'],['39184','Copy mode','Авто']]);
+  assert.ok(result.rows.slice(0,4).every(r=>r.status==='related'&&r.current.length===0));
+  assert.notEqual(result.rows[0].canonical,result.rows[1].canonical);assert.notEqual(result.rows[2].canonical,result.rows[3].canonical);
+  assert.ok(result.rows.slice(4).every(r=>r.current.length===0));assert.equal(result.rows[4].canonical,'Двостороннє копіювання');
+});
+test('Copy limit exposes Canon discrepancy but recognizes explicit maximum count units',()=>{
+  const result=preview({...canon,specifications:{'макс. кількість копій':'9999','Масштабування копіювання':'25–400%'}},[['1974','Maximum','999 копій'],['701','Resize','25 - 400%']]);
+  assert.equal(result.rows[0].status,'conflict');assert.equal(result.rows[0].current[0].value,'9999');assert.equal(result.rows[1].status,'same');
+  assert.equal(preview({...canon,specifications:{'Максимальна кількість копій':'До 999'}},[['1974','Maximum','999 копій']]).rows[0].status,'same');
+});
+test('Projector brightness, noise modes, light lifespan and speaker details do not collapse',()=>{
+  const card={...asus,specifications:{'Яскравість':'4100 лм','Світловий потік (лм)':': 4100','Шум (дБ)':'37/28','Джерело світла':'UHP 230W, 5500/12000','Динамік (Вт)':'2x5Вт'}};
+  const result=preview(card,[['1181','Brightness','4100 лм'],['7889','Eco noise','28 дБ'],['37212','Standby noise','30 дБ'],['40501','Life','6500 год.'],['40500','Eco life','17000 год.'],['1854','Power','10 Вт']]);
+  assert.equal(result.rows[0].status,'same');assert.ok(result.rows[0].notes.length);
+  assert.ok(result.rows.slice(1).every(r=>r.status==='related'&&r.current.length===0));
+  assert.notEqual(result.rows[1].canonical,result.rows[2].canonical);assert.notEqual(result.rows[3].canonical,result.rows[4].canonical);
+  const bad=preview(card,[['1181','Brightness','4100 LED lumens']]);assert.equal(bad.rows[0].mapping,null);
+});
+test('Related text is escaped and never extracted into new technical facts',()=>{
+  const card={...canon,specifications:{Лотки:'<img src=x onerror=bad()> 250/100'}};
+  const result=preview(card,[['40554','Input','250 листів']]);
+  assert.equal(result.rows[0].status,'related');assert.ok(!contentPreviewMarkup(result).includes('<img'));assert.match(contentPreviewMarkup(result),/&lt;img/);
+  assert.equal(result.rows[0].current.length,0);assert.equal(result.rows[0].value,'250 листів');
+});

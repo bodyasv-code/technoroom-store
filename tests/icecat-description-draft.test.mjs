@@ -35,6 +35,11 @@ test('Generated bullets fallback, disclaimer, empty/large inputs and manual prot
   assert.deepEqual(draft.bullets,['Перевага']);assert.ok(draft.paragraphs.includes('Умови виробника'));assert.ok(draft.manualProtected);assert.ok(draft.warnings.some(w=>w.includes('іншу мовну')));
   assert.equal(build(product,{}).available,false);assert.equal(build(product,{Description:{LongDesc:'a'.repeat(40001)}}).available,false);
 });
+test('Malformed AC cable plus wattage bullet is withheld, not silently repaired into consumption',()=>{
+  const draft=build(product,{GeneratedBulletPoints:{Values:['Кабель змінного струму 284 Вт','Вбудовані колонки 16 Вт']}});
+  assert.deepEqual(draft.bullets,['Вбудовані колонки 16 Вт']);assert.deepEqual(draft.excludedBullets,['Кабель змінного струму 284 Вт']);
+  assert.ok(!draft.html.includes('284'));assert.ok(draft.warnings.some(w=>w.includes('Виключено')));assert.equal(draft.automatic,false);
+});
 test('Identity mismatch and demo response do not expose draft text; renderer does not trust HTML',()=>{
   const general={Brand:'Epson',BrandPartCode:product.sku,Description:{LongDesc:'Текст'}};
   assert.equal(buildContentPreview({...product,sku:'OTHER'},{data:{GeneralInfo:general}}).descriptionDraft,undefined);

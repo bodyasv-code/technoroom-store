@@ -11,6 +11,8 @@ const translations=[
   [/Стандартный\s+проектор/giu,'Стандартний проєктор'],
   [/Ручная\s+фокусировка/giu,'Ручне фокусування'],
   [/Встроенные\s+динамики/giu,'Вбудовані динаміки'],
+  [/Тип послідовного інтерфейса/giu,'Тип послідовного інтерфейсу'],
+  [/Тип сервісного порта/giu,'Тип сервісного порту'],
 ];
 function plain(raw){
   return String(raw??'')
@@ -51,10 +53,14 @@ export function buildIcecatDescriptionDraft(product,general){
   if(title&&body.startsWith(title))body=body.slice(title.length).replace(/^[.\s:]+/u,'');
   const modelIntro=plain([general.Brand,general.ProductName].filter(Boolean).join(' '));
   if(modelIntro&&body.startsWith(modelIntro+'.'))body=body.slice(modelIntro.length+1).trim();
-  const paragraphs=[],bullets=[],seen=new Set();
+  const paragraphs=[],bullets=[],excludedBullets=[],seen=new Set();
   for(const paragraph of body.split('\n'))if(paragraph&&!seen.has(key(paragraph))){seen.add(key(paragraph));paragraphs.push(paragraph);}
   for(const item of bulletValues){
-    for(const line of translated(item,translation,product).split('\n'))if(line&&!seen.has(key(line))){seen.add(key(line));bullets.push(line);}
+    for(const line of translated(item,translation,product).split('\n'))if(line&&!seen.has(key(line))){
+      seen.add(key(line));
+      if(/^Кабель\s+змінного\s+струму\s+\d+(?:[.,]\d+)?\s*Вт\s*$/iu.test(line)){excludedBullets.push(line);continue;}
+      bullets.push(line);
+    }
   }
   const disclaimer=translated(description.Disclaimer,translation,product);
   if(disclaimer&&!seen.has(key(disclaimer)))paragraphs.push(disclaimer);
@@ -65,7 +71,8 @@ export function buildIcecatDescriptionDraft(product,general){
   const languages=[description.Language,bulletBlock.Language].filter(Boolean).map(value=>String(value).toUpperCase());
   if(languages.some(language=>!['UK','UA'].includes(language)))warnings.push('Окремі частини джерела мають іншу мовну позначку. Потрібен переклад і редактура.');
   if(product.manual_overrides?.description)warnings.push('Поточний опис редагувався вручну: автоматична заміна заборонена.');
+  if(excludedBullets.length)warnings.push('Виключено некоректно побудований пункт про кабель і потужність. Потрібна технічна перевірка джерела; правильне значення не підставлялось.');
   return {available:Boolean(combined),readOnly:true,automatic:false,status:'editorial-review',source,paragraphs,bullets,translation,languages,
-    manualProtected:Boolean(product.manual_overrides?.description),warnings,
+    manualProtected:Boolean(product.manual_overrides?.description),warnings,excludedBullets,
     html:paragraphs.map(value=>'<p>'+escape(value)+'</p>').join('')+(bullets.length?'<ul>'+bullets.map(value=>'<li>'+escape(value)+'</li>').join('')+'</ul>':'')};
 }

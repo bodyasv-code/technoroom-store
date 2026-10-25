@@ -1,6 +1,7 @@
 // Evidence-only comparison. This module deliberately has no write/apply API.
 import {manualSpecIdentity} from './product-manual-overrides.js?v=20261020-manual';
 import {mapContentFeature,mappedContentKey,contentComparisonValue,contentTechnicalNotes,relatedContentFields} from './content-feature-mapping.js?v=20261025-expanded';
+import {buildIcecatDescriptionDraft} from './icecat-description-draft.js';
 const plain=value=>String(value??'').normalize('NFKC').replace(/\s+/gu,' ').trim();
 const identity=value=>plain(value).toLocaleLowerCase('uk-UA');
 const comparable=value=>identity(Array.isArray(value)?value.join(' · '):value).replace(/(\d)\s*[xх×]\s*(?=\d)/gu,'$1×');
@@ -46,6 +47,7 @@ export function buildContentPreview(product,icecat,{requestedLanguage='UK'}={}){
     }
   }
   result.descriptionAvailable=Boolean(plain(general.Description?.LongDesc));
+  result.descriptionDraft=buildIcecatDescriptionDraft(product,general);
   result.imageCount=(Array.isArray(data.Gallery)?data.Gallery.length:0)||(data.Image?.HighPic?1:0);
   result.summary={fields:result.rows.length,conflicts:result.rows.filter(r=>r.status==='conflict').length,protected:result.rows.filter(r=>r.status==='manual-protected').length,
     languageReview:result.rows.filter(r=>r.reasons.includes('language-review')).length,mappingReview:result.rows.filter(r=>r.status==='unmapped').length,related:result.rows.filter(r=>r.relatedCurrent?.length).length};
@@ -57,9 +59,18 @@ const statuses={'same':'Збігається','conflict':'Конфлікт','new
 const reasonLabels={'manual-protected':'Ручні дані не замінюються','composite-context':'Пов’язаний контекст не є точною відповідністю. Не створювати дубль без перевірки.','language-review':'Перевірити мову назви та значення','markup-review':'Перевірити розмітку','mapping-review':'Не означає, що характеристики немає в картці','value-conflict':'Значення відрізняються','technical-review':'Перевірити технічний зміст за виробником'};
 const fieldText=field=>field.name+': '+(Array.isArray(field.value)?field.value.join(' · '):field.value);
 const currentMarkup=row=>escape(row.current.map(fieldText).join('; ')||'—')+((row.relatedCurrent||[]).length?'<br><small>Пов’язаний контекст (не точна відповідність):<br>'+escape(row.relatedCurrent.map(fieldText).join('; '))+'</small>':'');
+function descriptionMarkup(draft){
+  if(!draft?.available)return '';
+  // Rebuild from text, not draft.html, to keep the renderer safe on arbitrary input.
+  return '<details class="content-description-draft"><summary>Чернетка опису з Icecat — перевірити український текст</summary>'
+    +'<ul>'+draft.warnings.map(w=>'<li>'+escape(w)+'</li>').join('')+'</ul>'
+    +draft.paragraphs.map(value=>'<p>'+escape(value)+'</p>').join('')
+    +(draft.bullets.length?'<ul>'+draft.bullets.map(value=>'<li>'+escape(value)+'</li>').join('')+'</ul>':'')+'</details>';
+}
 export function contentPreviewMarkup(preview){
   return '<h3>'+escape(preview.product.name)+' · '+escape(preview.product.sku)+'</h3><p>Лише перегляд. Каталог не змінюється.</p>'
     +'<ul>'+preview.warnings.map(w=>'<li>'+escape(w)+'</li>').join('')+'</ul>'
+    +descriptionMarkup(preview.descriptionDraft)
     +(preview.summary?'<p>Полів: '+preview.summary.fields+' · Конфліктів: '+preview.summary.conflicts+' · Захищено: '+preview.summary.protected+' · Перевірити мову: '+preview.summary.languageReview+' · Без відповідності: '+(preview.summary.mappingReview||0)+' · З пов’язаним контекстом: '+(preview.summary.related||0)+'</p>':'')
     +(preview.rows.length?'<div style="overflow-x:auto"><table class="import-change-table"><thead><tr><th>Поле</th><th>Наявна картка</th><th>Icecat</th><th>Перевірка</th></tr></thead><tbody>'
     +preview.rows.map(r=>'<tr><th>'+escape(r.canonical)+'<br><small>'+escape(r.group)+(r.mapping?'<br>Відповідність: '+escape(r.mapping==='feature-id'?'ID Icecat':'точна назва'):'')+'</small></th><td>'+currentMarkup(r)+'</td><td>'+escape(r.value)+'<br><small>'+escape(r.language||'Мову не вказано')+' · Icecat · '+escape(r.featureId)+'</small></td><td>'+escape(statuses[r.status]||r.status)+r.reasons.map(reason=>'<br>'+escape(reasonLabels[reason]||reason)).join('')+(r.notes||[]).map(note=>'<br>'+escape(note)).join('')+'</td></tr>').join('')+'</tbody></table></div>':'');

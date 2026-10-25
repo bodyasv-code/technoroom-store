@@ -42,7 +42,7 @@ import {createImportAudit, auditEligible, auditMarkup, showImportReview} from '.
 import {buildImportChangePlan,showImportChangePlans,importSnapshot} from './import-change-plan.js?v=20261020-manual';
 import {startImportRun,writeImportProduct,finishImportRun,mountImportHistory} from './import-history.js?v=20261020-suppliers';
 import {manualOverrideSummary} from './product-manual-overrides.js?v=20261020-manual';
-import {mountProductContentPreview} from './product-content-preview-admin.js?v=20261025-preview';
+import {mountProductContentPreview} from './product-content-preview-admin.js?v=20261025-mapping';
 import {printerDeviceKind,verifiedCanonPrintMode,inferredPrintColour,installationAccessory,printPaperPlan} from './printer-import-context.js?v=20261017-photo-paper';
 const supabase=createClient(window.TECHNOROOM_SUPABASE.url,window.TECHNOROOM_SUPABASE.publishableKey);
 const state={catalogReady:false,catalogLoading:true,catalogError:false,ordersReady:false,products:[],orders:[],categories:[],brands:[],promotions:[],banners:[],articles:[],page:1,brandPage:1,selectedProducts:new Set(),categoryTreeOpen:new Set()};

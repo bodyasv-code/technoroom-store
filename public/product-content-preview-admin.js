@@ -1,4 +1,4 @@
-import {contentPreviewMarkup} from './product-content-preview.js?v=20261025-preview';
+import {contentPreviewMarkup} from './product-content-preview.js?v=20261025-mapping';
 export function mountProductContentPreview({root=document,client}={}){
   const host=root.querySelector('#ercCatalogApi');if(!host||root.querySelector('#productContentPreview'))return;
   const panel=root.createElement('section');panel.id='productContentPreview';

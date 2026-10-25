@@ -29,7 +29,7 @@ export function buildContentPreview(product,icecat,{requestedLanguage='UK'}={}){
       const protectedField=manual.some(key=>manualSpecIdentity(mappedContentKey(key,product),product)===token);
       const reasons=[];
       if(protectedField)reasons.push('manual-protected');
-      if(language!==requestedLanguage||/[ыэъё]/iu.test(name+' '+value))reasons.push('language-review');
+      if(language!==requestedLanguage||/[ыэъё]/iu.test(name+' '+value)||/^Керівництво$/iu.test(value))reasons.push('language-review');
       if(/[<>]/u.test(name+' '+value))reasons.push('markup-review');
       if(!mapping&&!existing.length)reasons.push('mapping-review');
       const status=protectedField?'manual-protected':existing.length?(existing.every(([,old])=>(mapping?contentComparisonValue(canonical,old):comparable(old))===(mapping?contentComparisonValue(canonical,value):comparable(value)))?'same':'conflict'):reasons.includes('mapping-review')?'unmapped':'new';
@@ -47,6 +47,7 @@ export function buildContentPreview(product,icecat,{requestedLanguage='UK'}={}){
   result.imageCount=(Array.isArray(data.Gallery)?data.Gallery.length:0)||(data.Image?.HighPic?1:0);
   result.summary={fields:result.rows.length,conflicts:result.rows.filter(r=>r.status==='conflict').length,protected:result.rows.filter(r=>r.status==='manual-protected').length,
     languageReview:result.rows.filter(r=>r.reasons.includes('language-review')).length,mappingReview:result.rows.filter(r=>r.status==='unmapped').length};
+  if(result.summary.mappingReview)result.warnings.push('Зіставлено лише частину полів. Кількість конфліктів не є оцінкою правильності всієї картки.');
   return result;
 }
 const escape=value=>String(value??'').replace(/[&<>"']/gu,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));

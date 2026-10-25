@@ -37,10 +37,28 @@ test('ANSI and unqualified lumens never map to LED brightness',()=>{
     assert.equal(result.rows[0].mapping,null);assert.equal(result.rows[0].current.length,0);assert.equal(result.rows[0].status,'unmapped');
   }
 });
+test('Epson: supplier separators and range spacing are not technical conflicts',()=>{
+  const epson={id:247,name:'Проєктор Epson EB-994F',brand:'Epson',sku:'V11HB60042',category:'projectors',specifications:{'Технологія':': 3LCD','Технологія проекції':'3LCD','Контраст':': 16000:1','Проекційне співвідношення':'1.3-2.09','Роздільна здатність':'1920 x 1080 (Full HD)'}};
+  const before=JSON.stringify(epson);
+  const result=preview(epson,[['1179','Проекційна технологія','3LCD'],['34','Контраст','16000:1'],['1825','Throw ratio','1.3 - 2.09'],['11807','Native','1080p (1920x1080)']]);
+  assert.ok(result.rows.every(r=>r.status==='same'));assert.equal(JSON.stringify(epson),before);
+  const asusSame=preview({...asus,specifications:{'Роздільна здатність':'1280 x 720 (HD)'}},[['11807','Native','720p (1280x720)']]);
+  assert.equal(asusSame.rows[0].status,'same');
+});
 test('Category scope and unknown fields fail conservatively; language UK is not proof of translation',()=>{
   const unrelated={...canon,name:'Акумулятор',category:'batteries',specifications:{}};
   const result=preview(unrelated,[['11807','Собственный параметр','1920x1080'],['17727','Paper','A4'],['random','Невідомий параметр','Невідоме значення']]);
   assert.ok(result.rows.every(r=>r.status==='unmapped'&&r.mapping===null));
   assert.equal(result.summary.mappingReview,3);assert.equal(result.summary.languageReview,1);
   assert.match(contentPreviewMarkup(result),/Не означає, що характеристики немає/);
+});
+test('HP: translated duplex mode is compared separately from presence and is never auto-translated',()=>{
+  const hp={...canon,id:4530,name:'Багатофункціональний пристрій HP Color Laser 178nw',brand:'HP',sku:'4ZB96A',specifications:{'Двосторонній друк':'Ручний'}};
+  const result=preview(hp,[['9342','Тип дюплексного друку','Керівництво'],['3234','Підтримка двостороннього друку','Так']]);
+  assert.equal(result.rows[0].canonical,'Двосторонній друк');assert.equal(result.rows[0].current[0].value,'Ручний');assert.equal(result.rows[0].value,'Керівництво');
+  assert.equal(result.rows[0].status,'conflict');assert.ok(result.rows[0].reasons.includes('language-review'));assert.ok(result.rows[0].notes.length);
+  assert.equal(result.rows[1].current.length,0);assert.equal(result.rows[1].canonical,'Підтримка двостороннього друку');
+  const protectedResult=preview({...hp,manual_overrides:{specifications:{'Двосторонній друк':true}}},[['9342','Duplex printing mode','Auto','EN']]);
+  assert.equal(protectedResult.rows[0].status,'manual-protected');assert.equal(protectedResult.rows[0].current[0].value,'Ручний');
+  assert.equal(result.databaseWrites,0);assert.ok(result.rows.every(r=>!r.automatic));
 });

@@ -1,10 +1,11 @@
 // Preview-only semantic correspondence. No supplier or catalog values are rewritten.
+import {comparableSpecificationValue} from './specification-values.js?v=20261012-spec-format';
 const fold=value=>String(value??'').normalize('NFKC').trim().toLocaleLowerCase('uk-UA').replace(/\s*[:：]\s*$/u,'').replace(/\s+/gu,' ');
 const rules=[
   ['printer','78','Технологія друку',['Print technology','Технологія друку']],
   ['printer','11422','Тип друку',['Printing','Друк','Тип друку']],
   ['printer','3234','Підтримка двостороннього друку',['Duplex printing','Підтримка двостороннього друку']],
-  ['printer',null,'Двосторонній друк',['Duplex printing mode','Режим двостороннього друку','Двосторонній друк']],
+  ['printer','9342','Двосторонній друк',['Duplex printing mode','Режим двостороннього друку','Тип дюплексного друку','Двосторонній друк']],
   ['printer','17727','Формат',['Maximum ISO A-series paper size','Максимальний розмір паперу ISO A-формату','Формат','Формат друку','Максимальний формат друку']],
   ['printer','61','Роздільна здатність друку',['Maximum resolution','Максимальна роздільна здатність','Роздільна здатність друку','Максимальна роздільна здатність друку']],
   ['printer','727','Оптична роздільна здатність сканування',['Optical scanning resolution','Оптична роздільна здатність сканування','Роздільна здатність оптичного сканування']],
@@ -36,12 +37,13 @@ export function mappedContentKey(key,product){
   return rules.find(r=>applicable(r,product)&&[r[2],...r[3]].some(alias=>fold(alias)===normalized))?.[2]||key;
 }
 export function contentComparisonValue(key,value){
-  let text=fold(Array.isArray(value)?value.join(' · '):value).replace(/(\d)\s*[xх×]\s*(?=\d)/gu,'$1×');
+  let text=comparableSpecificationValue(key,value);
+  if(key==='Проекційне співвідношення')text=text.replace(/(?<=\d)\s*-\s*(?=\d)/gu,'-');
   if(key==='Тип друку')text=text.replace(/\s+друк$/u,'');
   if(['Wi-Fi','Ethernet','Підтримка двостороннього друку'].includes(key))text=({yes:'так',true:'так',no:'ні',false:'ні'})[text]||text;
   if(key==='Двосторонній друк')text=({auto:'автоматичний','авто':'автоматичний',manual:'ручний'})[text]||text;
   if(key==='Роздільна здатність'){
-    const dimensions=/^(?:(?:1080p|720p|hd|full hd|fhd|wxga|wuxga|xga|4k|uhd)\s*\()?([0-9]{3,5}×[0-9]{3,5})\)?$/u.exec(text);
+    const dimensions=/^(?:(?:1080p|720p|hd|full hd|fhd|wxga|wuxga|xga|4k|uhd)\s*\()?([0-9]{3,5}×[0-9]{3,5})\)?(?:\s*\((?:hd|full hd|fhd|wxga|wuxga|xga|4k|uhd)\))?$/u.exec(text);
     if(dimensions)return dimensions[1];
     return ({hd:'1280×720','720p':'1280×720','full hd':'1920×1080',fhd:'1920×1080','1080p':'1920×1080'})[text]||text;
   }
@@ -49,6 +51,7 @@ export function contentComparisonValue(key,value){
 }
 export function contentTechnicalNotes(mapping,value,product){
   const notes=[];
+  if(mapping?.canonical==='Двосторонній друк'&&/^Керівництво$/iu.test(value))notes.push('Неоднозначний переклад режиму дуплексу. «Керівництво» не є технічним режимом; звірте оригінал і дані виробника.');
   if(mapping?.canonical==='Технологія проекції'&&/^(?:led|laser|лазер)$/iu.test(value))notes.push('Джерело світла не є технологією формування зображення. Потрібна перевірка виробника.');
   if(mapping?.canonical==='Яскравість (LED люмени)')notes.push('LED люмени не прирівнюються до ANSI/ISO люменів.');
   if(mapping?.canonical==='Роздільна здатність'&&/^ASUS$/iu.test(product.brand||'')&&product.sku==='90LJ00E5-B00070'&&contentComparisonValue(mapping.canonical,value)!=='1280×720')notes.push('ASUS ZenBeam Latte L1: виробник вказує рідну 1280×720; 1920×1080 — максимальний вхідний сигнал. Дані Icecat потребують перевірки.');

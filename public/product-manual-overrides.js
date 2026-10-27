@@ -13,6 +13,7 @@ export function manualSpecIdentity(key,product={}) {
   return canonical.trim().toLocaleLowerCase('uk-UA').replace(/\s*\(інше значення \d+\)$/u,'');
 }
 export function preserveManualSpecifications(merged,current) {
+  if(manualFields(current).verified_specifications)return {...current.specifications};
   const result={...merged},saved=current?.specifications||{};
   const keys=Object.keys(manualFields(current).specifications||{});
   for(const key of keys) {
@@ -32,6 +33,13 @@ export function manualImportConflicts(row,current,category='') {
   if(fields.category&&category)compare('Категорія',current.category,category);
   if(fields.brand&&row.vendor)compare('Бренд',current.brand,row.vendor);
   const incoming=row.specifications||{};
+  if(fields.verified_specifications){
+    for(const [key,value] of Object.entries(incoming)){
+      const saved=Object.entries(current.specifications||{}).find(([candidate])=>manualSpecIdentity(candidate,current)===manualSpecIdentity(key,current));
+      compare('Перевірена характеристика: '+key,saved?.[1],value);
+    }
+    return result;
+  }
   const keys=Object.keys(fields.specifications||{});
   for(const key of keys)for(const [candidate,value] of Object.entries(incoming)) {
     if(!own(current.specifications,key)&&keys.some(live=>own(current.specifications,live)&&manualSpecIdentity(live,current)===manualSpecIdentity(key,current)))continue;
@@ -42,5 +50,6 @@ export function manualImportConflicts(row,current,category='') {
 export function manualOverrideSummary(product) {
   if(product&&!own(product,'manual_overrides'))return 'Облік ручних правок ще не підключено до бази.';
   const fields=manualFields(product),labels=[fields.category?'категорія':'',fields.brand?'бренд':'',...Object.keys(fields.specifications||{}).map(key=>'«'+key+'»')].filter(Boolean);
+  if(fields.verified_specifications)return 'Характеристики перевірено: імпорт зберігає всю таблицю. Ручне редагування доступне.'+(fields.description?' Опис також захищено від імпорту.':'');
   return labels.length?'Виправлено вручну: '+labels.join(', ')+'. Імпорт не змінює ці поля.':'Нові ручні зміни категорії, бренду та характеристик буде захищено від імпорту після збереження.';
 }

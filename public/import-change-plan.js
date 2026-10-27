@@ -1,6 +1,6 @@
 import {mergeImportedSpecifications} from './import-specification-rules.js?v=20261017-customer-content';
 import {cleanCustomerText} from './product-content-policy.js?v=20261017-customer-content-3';
-import {manualFields,preserveManualSpecifications,manualImportConflicts} from './product-manual-overrides.js?v=20261020-manual';
+import {manualFields,preserveManualSpecifications,manualImportConflicts} from './product-manual-overrides.js?v=20261027-reviewed';
 const same=(left,right)=>JSON.stringify(left??null)===JSON.stringify(right??null);
 export const importUpdateDefaults={price:true,stock:true,specifications:true,images:false,category:false,description:true};
 export function buildImportChangePlan(row,current,options={},category='') {
@@ -29,9 +29,10 @@ export function buildImportChangePlan(row,current,options={},category='') {
     }
   }
   preserved.push('Наявні значення характеристик не перезаписуються','Назва та бренд збережені');
+  if(manualFields(current).verified_specifications)preserved.push('Перевірена таблиця характеристик захищена повністю, включно з додаванням полів');
   if(!settings.category)preserved.push('Категорія збережена');
   const description=cleanCustomerText(row.description||'');
-  if(settings.description&&description&&!String(current.description||'').trim())change('description','Опис',description);
+  if(settings.description&&!manualFields(current).description&&description&&!String(current.description||'').trim())change('description','Опис',description);
   else preserved.push('Наявний опис збережений');
   const hasImages=Boolean(current.image_path)||(current.image_paths||[]).some(Boolean);
   const images=settings.images&&row.images?.length&&!hasImages?'add':'preserve';

@@ -39,9 +39,9 @@ import {canonicalBrandName, brandConsolidationPlan} from './brand-normalization.
 import {removeUnusedBrandDuplicate} from './brand-cleanup.js?v=20261012-brand-cleanup';
 import {createQualityAudit, mountQualityPanel} from './catalog-quality.js?v=20261024-office';
 import {createImportAudit, auditEligible, auditMarkup, showImportReview} from './import-audit.js?v=20261024-office';
-import {buildImportChangePlan,showImportChangePlans,importSnapshot} from './import-change-plan.js?v=20261020-manual';
+import {buildImportChangePlan,showImportChangePlans,importSnapshot} from './import-change-plan.js?v=20261027-reviewed';
 import {startImportRun,writeImportProduct,finishImportRun,mountImportHistory} from './import-history.js?v=20261020-suppliers';
-import {manualOverrideSummary} from './product-manual-overrides.js?v=20261020-manual';
+import {manualOverrideSummary} from './product-manual-overrides.js?v=20261027-reviewed';
 import {mountProductContentPreview} from './product-content-preview-admin.js?v=20261027-images';
 import {printerDeviceKind,verifiedCanonPrintMode,inferredPrintColour,installationAccessory,printPaperPlan} from './printer-import-context.js?v=20261017-photo-paper';
 const supabase=createClient(window.TECHNOROOM_SUPABASE.url,window.TECHNOROOM_SUPABASE.publishableKey);

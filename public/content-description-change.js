@@ -1,4 +1,5 @@
 import {startImportRun,finishImportRun,historySetupMessage} from './import-history.js?v=20261020-manual';
+import {articleContentMarker} from './article-format.js?v=20261027-content-format';
 const columns='id,name,sku,brand,description,manual_overrides';
 const same=(a,b)=>JSON.stringify(a??null)===JSON.stringify(b??null);
 const clone=value=>JSON.parse(JSON.stringify(value));
@@ -20,7 +21,7 @@ export function reviewedDescriptionHtml(text,reviewed){
     if(/^[-•]\s+/u.test(line))list.push(line.replace(/^[-•]\s+/u,''));
     else{flush();blocks.push('<p>'+escape(line)+'</p>');}
   }
-  flush();return blocks.join('');
+  flush();return articleContentMarker+blocks.join('');
 }
 async function readProduct(db,id){
   if(!Number.isSafeInteger(id)||id<=0)throw new Error('Некоректний код товару.');

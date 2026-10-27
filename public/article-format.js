@@ -1,4 +1,5 @@
 const marker='<!--technoroom-rich-text:v1-->';
+export {marker as articleContentMarker};
 const tags=new Set(['P','DIV','BR','H2','H3','STRONG','B','EM','I','U','S','UL','OL','LI','BLOCKQUOTE','A','IMG','HR']);
 const discard=new Set(['SCRIPT','STYLE','IFRAME','OBJECT','EMBED','SVG','MATH','TEMPLATE','FORM','INPUT','BUTTON','TEXTAREA','SELECT']);
 

@@ -1,4 +1,4 @@
-import {descriptionDraftText,prepareDescriptionChange,prepareDescriptionRollback,commitDescriptionChange} from './content-description-change.js?v=20261025-reviewed';
+import {descriptionDraftText,prepareDescriptionChange,prepareDescriptionRollback,commitDescriptionChange} from './content-description-change.js?v=20261027-format';
 
 // The comparison remains read-only. Writes require a separate reviewed plan and confirmation.
 export function mountDescriptionReview({host,client,preview}){
@@ -35,6 +35,7 @@ export function mountDescriptionReview({host,client,preview}){
     if(!plan)return;
     // One attempt per confirmation, including on a lost response: no automatic retries.
     const confirmed=plan;clear();
+    message.textContent='Зберігаю один опис і резервну копію…';
     uncertain=true;
     const result=await commitDescriptionChange(client,confirmed);
     uncertain=false;run.value=result.runId;reviewed.checked=false;

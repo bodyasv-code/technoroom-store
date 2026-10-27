@@ -1,5 +1,5 @@
 import {contentPreviewMarkup} from './product-content-preview.js?v=20261025-description';
-import {mountDescriptionReview} from './content-description-change-admin.js?v=20261025-reviewed';
+import {mountDescriptionReview} from './content-description-change-admin.js?v=20261027-format';
 export function mountProductContentPreview({root=document,client}={}){
   const host=root.querySelector('#ercCatalogApi');if(!host||root.querySelector('#productContentPreview'))return;
   const panel=root.createElement('section');panel.id='productContentPreview';

@@ -3,11 +3,13 @@ import test from 'node:test';
 import {readFile} from 'node:fs/promises';
 import {PGlite} from '@electric-sql/pglite';
 import {reviewedDescriptionHtml,descriptionDraftText,prepareDescriptionChange,prepareDescriptionRollback,commitDescriptionChange} from '../public/content-description-change.js';
+import {articleContentMarker} from '../public/article-format.js';
 
 test('Reviewed descriptions: language gate, service headings, escaped markup and bullet grouping',()=>{
   assert.throws(()=>reviewedDescriptionHtml('Текст',false),/Підтвердьте/);
   for(const text of ['', 'x'.repeat(40001),'Чёрный проектор','Фокус: Керівництво','Bullet Points Epson','Короткий підсумковий опис: x','Сумарний опис'])assert.throws(()=>reviewedDescriptionHtml(text,true));
-  assert.equal(reviewedDescriptionHtml('Опис <img src=x onerror=alert(1)>\n- Перший\n• Другий',true),'<p>Опис &lt;img src=x onerror=alert(1)&gt;</p><ul><li>Перший</li><li>Другий</li></ul>');
+  assert.equal(reviewedDescriptionHtml('Опис <img src=x onerror=alert(1)>\n- Перший\n• Другий',true),articleContentMarker+'<p>Опис &lt;img src=x onerror=alert(1)&gt;</p><ul><li>Перший</li><li>Другий</li></ul>');
+  assert.equal(articleContentMarker,'<!--technoroom-rich-text:v1-->');
   assert.match(descriptionDraftText({paragraphs:['Опис'],bullets:['Перша перевага']}),/- Перша перевага/);
 });
 

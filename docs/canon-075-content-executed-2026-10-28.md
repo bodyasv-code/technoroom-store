@@ -55,6 +55,15 @@ Cartridge type/series/capacity belong to general facts, printing color/resource
 to printing, and compatible devices/brand to a dedicated compatibility group.
 Printing color is no longer grouped as a body/power property.
 
+Commit `6580faa` was verified on the production domain after publication.
+All four storefront cards display their own declared resource and the complete
+four-model compatibility list in the compatibility group. The table shows eight
+displayed parameters (the seven saved fields plus the manufacturer row).
+Screenshot: parent workspace `canon-075h-cyan-verified-2026-10-28.png`.
+The same fix also made the existing semicolon-separated interfaces and print
+functions visible again on Canon MF667Cdw (ID 4331); no further database edit
+to that card was needed.
+
 ## Validation and recovery
 
 The initial complete suite passed 126/126. New checks cover exact yields,

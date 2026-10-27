@@ -1,11 +1,13 @@
 import {contentPreviewMarkup} from './product-content-preview.js?v=20261025-description';
 import {mountDescriptionReview} from './content-description-change-admin.js?v=20261027-format';
+import {mountIcecatImages} from './icecat-images-admin.js?v=20261027-images';
 export function mountProductContentPreview({root=document,client}={}){
   const host=root.querySelector('#ercCatalogApi');if(!host||root.querySelector('#productContentPreview'))return;
   const panel=root.createElement('section');panel.id='productContentPreview';
   panel.innerHTML='<h3>Контент товару: порівняння з Icecat</h3><p>Порівняння не змінює картку. Джерело кожного поля й розбіжності показуються окремо. Для опису нижче доступна окрема перевірка та підтвердження заміни з резервною копією. Потрібен власний доступ Icecat.</p><div class="admin-controls"><label>Код товару на сайті <input type="number" min="1" step="1" id="contentPreviewProductId" placeholder="Напр. 4331"></label><button type="button" class="button outline" data-content-status>Перевірити налаштування контенту</button><button type="button" class="button outline" data-content-preview>Порівняти без збереження</button></div><p role="status" aria-live="polite" data-content-message></p><div data-content-result></div>';
   host.append(panel);
   const restore=root.createElement('button');restore.type='button';restore.className='button outline';restore.textContent='Відновити опис із журналу без Icecat';panel.querySelector('.admin-controls').append(restore);
+  const photos=root.createElement('button');photos.type='button';photos.className='button outline';photos.textContent='Фото з Icecat';panel.querySelector('.admin-controls').append(photos);
   const message=panel.querySelector('[data-content-message]'),result=panel.querySelector('[data-content-result]'),buttons=[...panel.querySelectorAll('button')];
   let pending=false;
   const request=async(action)=>{
@@ -13,6 +15,7 @@ export function mountProductContentPreview({root=document,client}={}){
     const productId=Number(panel.querySelector('input').value);
     if(action!=='status'&&(!Number.isSafeInteger(productId)||productId<=0)){message.textContent='Вкажіть числовий код товару на сайті.';return;}
     if(action==='restore'){result.replaceChildren();message.textContent='Вкажіть код запуску журналу. Жодних змін ще не виконано.';mountDescriptionReview({host:result,client,preview:{product:{id:productId}}});return;}
+    if(action==='images'){result.replaceChildren();message.textContent='Окрема перевірка фотографій. Жодних змін ще не виконано.';mountIcecatImages({host:result,client,productId});return;}
     pending=true;buttons.forEach(b=>b.disabled=true);result.replaceChildren();message.textContent='Перевіряю…';
     try{
       const {data:{session}}=await client.auth.getSession();if(!session?.access_token)throw new Error('Увійдіть в адмінку повторно.');
@@ -26,4 +29,5 @@ export function mountProductContentPreview({root=document,client}={}){
   panel.querySelector('[data-content-status]').onclick=()=>request('status');
   panel.querySelector('[data-content-preview]').onclick=()=>request('preview');
   restore.onclick=()=>request('restore');
+  photos.onclick=()=>request('images');
 }

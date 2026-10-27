@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
+import {handleIcecatProductImages} from '../server/icecat-product-images.js';
 
 const supabase = createClient(
   process.env.SUPABASE_URL,
@@ -49,6 +50,11 @@ const fetchTrustedImage = async (url, redirectsLeft = 2) => {
 };
 
 export default async function handler(request, response) {
+  if(String(request.body?.action||'').startsWith('icecat-image-')){
+    const token=String(request.headers.authorization||'').replace(/^Bearer\s+/i,'');
+    const userDb=createClient(process.env.SUPABASE_URL,process.env.SUPABASE_SERVICE_ROLE_KEY,{global:{headers:{Authorization:'Bearer '+token}},auth:{persistSession:false}});
+    return handleIcecatProductImages(request,response,{db:supabase,userDb});
+  }
   if (request.method !== 'POST') return response.status(405).end();
   const token = String(request.headers.authorization || '').replace(/^Bearer\s+/i, '');
   const { data: auth, error: authError } = await supabase.auth.getUser(token);

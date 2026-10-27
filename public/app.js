@@ -1,6 +1,7 @@
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
 import {reportCommerce,commerceItems,ANALYTICS_READY} from './store-commerce-events.js?v=20261021-commerce';
 import {renderArticleContent,articleHasContent} from './article-format.js?v=20261011-article-links';
+import {icecatImageCredit} from './icecat-image-credit.js?v=20261027-images';
 import {screenFacetDefinitions,printerKindValues} from './catalog-refinements.js?v=20261023-facets';
 import {catalogPriceBounds,catalogPriceRangeMax,readCatalogFilterState,catalogFilterUrl,safeCatalogReturnUrl} from './catalog-filter-state.js?v=20261017-customer-content';
 import {printerDuplexFilterValues} from './printer-duplex.js?v=20261017-customer-content';
@@ -1232,7 +1233,7 @@ product = function () {
       ? '<div class="product-gallery-thumbs" aria-label="Інші фото товару">' + paths.map((path, index) => '<button class="product-gallery-thumb ' + (path === activePath ? 'is-active' : '') + '" type="button" data-gallery-path="' + encodeURIComponent(path) + '" aria-label="Фото ' + (index + 1) + '"><img src="' + galleryImageUrl(item, path) + '" alt="' + safeName + ' — фото ' + (index + 1) + '" draggable="false"></button>').join('') + '</div>'
       : '';
     root.innerHTML = '<section class="product-showcase">'
-      + '<div class="product-gallery-panel"><div class="product-detail-visual ' + safe(item.type) + '"><div class="product-image ' + safe(item.type) + '">' + (source ? '<img src="' + source + '" alt="' + safeName + '" draggable="false">' : '<div class="product-placeholder"><span>Фото товару<br>з’явиться незабаром</span></div>') + '</div><span class="product-photo-hint">Натисніть на фото, щоб збільшити</span></div>' + thumbs + '</div>'
+      + '<div class="product-gallery-panel"><div class="product-detail-visual ' + safe(item.type) + '"><div class="product-image ' + safe(item.type) + '">' + (source ? '<img src="' + source + '" alt="' + safeName + '" draggable="false">' : '<div class="product-placeholder"><span>Фото товару<br>з’явиться незабаром</span></div>') + '</div><span class="product-photo-hint">Натисніть на фото, щоб збільшити</span></div>' + thumbs + icecatImageCredit(paths) + '</div>'
       + '<div class="product-overview"><div class="product-topline"><span class="product-category-path"><a href="catalog.html?category=' + encodeURIComponent(item.type || '') + '" class="product-category-link">Каталог</a></span><span class="product-code">SKU: ' + safe(item.sku || '—') + ' · Код: ' + item.id + '</span></div>'
       + '<p class="product-brand">' + safeBrand + '</p><h1>' + safeName + '</h1>' + variantMarkup
       + '<div class="product-buy-card"><div class="product-availability ' + (state.orderable || state.inquiry ? 'is-available' : 'is-unavailable') + '"><i></i><span>' + state.label + '</span></div>'

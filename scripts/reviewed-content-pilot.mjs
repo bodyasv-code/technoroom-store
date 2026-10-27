@@ -31,7 +31,8 @@ export function reviewedPlans(rows,previous){
     manual_overrides:{...p.manual_overrides,verified_specifications:true,...(p.id===576?{}:{description:true})}}};
  });
 }
-export function reviewedSql(plans){
+export function reviewedSql(plans,{operationId=operation,expectedIds=[247,576,4331]}={}){
+ if(!/^[a-z0-9-]+$/.test(operationId)||!expectedIds.length||expectedIds.some(id=>!Number.isSafeInteger(id)||id<=0)||new Set(expectedIds).size!==expectedIds.length||plans.length!==expectedIds.length||new Set(plans.map(p=>p.id)).size!==expectedIds.length||plans.some(p=>!expectedIds.includes(p.id)))throw new Error('Exact unique scope required');
  const literal=JSON.stringify(plans).replaceAll("'","''");
  return `begin;
 set local lock_timeout='5s';set local statement_timeout='30s';set local standard_conforming_strings=on;
@@ -41,15 +42,15 @@ do $reviewed$
 declare item jsonb;before_row jsonb;after_row jsonb;
 begin
  if not(select relrowsecurity from pg_class where oid='technoroom_maintenance.product_repair_backup'::regclass) then raise exception 'Protected backup required';end if;
- if (select jsonb_array_length(payload) from reviewed_plan)<>3 then raise exception 'Unexpected plan size';end if;
- perform id from public.products where id in (247,576,4331) order by id for update;
+ if (select jsonb_array_length(payload) from reviewed_plan)<>${expectedIds.length} then raise exception 'Unexpected plan size';end if;
+ perform id from public.products where id in (${[...expectedIds].sort((a,b)=>a-b).join(',')}) order by id for update;
  for item in select value from reviewed_plan,jsonb_array_elements(payload) loop
   select to_jsonb(p) into before_row from public.products p where id=(item->>'id')::bigint;
   if before_row is null or before_row->>'sku' is distinct from item->>'sku' or before_row->>'brand' is distinct from item->>'brand' or before_row->>'name' is distinct from item->>'name' then raise exception 'Identity changed';end if;
   if before_row->'specifications' is distinct from item->'before'->'specifications' or before_row->'description' is distinct from item->'before'->'description' or before_row->'manual_overrides' is distinct from item->'before'->'manual_overrides' then raise exception 'Card changed after preview';end if;
-  if exists(select 1 from technoroom_maintenance.product_repair_backup where operation='${operation}' and product_id=(item->>'id')::bigint) then raise exception 'Already backed up; verify before retry';end if;
-  insert into technoroom_maintenance.product_repair_backup(operation,product_id,before_row,backed_up_at) values('${operation}',(item->>'id')::bigint,before_row,now());
-  insert into technoroom_maintenance.reviewed_product_content(product_id,sku,brand,source,protect_description,operation) values((item->>'id')::bigint,item->>'sku',item->>'brand',item->>'source',(item->>'protectDescription')::boolean,'${operation}');
+  if exists(select 1 from technoroom_maintenance.product_repair_backup where operation='${operationId}' and product_id=(item->>'id')::bigint) then raise exception 'Already backed up; verify before retry';end if;
+  insert into technoroom_maintenance.product_repair_backup(operation,product_id,before_row,backed_up_at) values('${operationId}',(item->>'id')::bigint,before_row,now());
+  insert into technoroom_maintenance.reviewed_product_content(product_id,sku,brand,source,protect_description,operation) values((item->>'id')::bigint,item->>'sku',item->>'brand',item->>'source',(item->>'protectDescription')::boolean,'${operationId}');
   -- A maintenance/manual write, never an importer write.
   perform set_config('technoroom.import_write','false',true);
   update public.products set specifications=item->'after'->'specifications' where id=(item->>'id')::bigint;

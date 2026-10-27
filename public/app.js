@@ -24,8 +24,9 @@ import {attachStoreSearch, searchScore, normalizeSearch} from './store-search.js
 import {productNameWithSku} from './product-identity.js?v=20261012-consumables-brands';
 import {resolveProjectorSpecifications, isProjectorProduct, normalizeProjectorLightSource, projectorResolutionLabel, projectorResolutionFilterValue, compareProjectorResolutions} from './projector-specs.js?v=20261013-spec-colons';
 import {normalizeSpecificationEntries, normalizeSpecifications} from './specification-normalization.js?v=20261017-customer-content';
+import {hasSpecificationCode} from './specification-values.js?v=20261028-semicolons';
 import {productSectionNavigation,productServiceSections,mountProductPageLayout} from './product-page-layout.js?v=20261024-groups';
-import {groupProductSpecifications,renderProductSpecificationGroups,specificationCountLabel} from './product-specification-groups.js?v=20261024-groups';
+import {groupProductSpecifications,renderProductSpecificationGroups,specificationCountLabel} from './product-specification-groups.js?v=20261028-consumables';
 import {renderProductHighlights} from './product-highlights.js?v=20261024-highlights';
 
 const supabase = createClient(window.TECHNOROOM_SUPABASE.url, window.TECHNOROOM_SUPABASE.publishableKey);
@@ -821,7 +822,7 @@ const specificationDisplayText = (value = '') => {
   text = holder.textContent || holder.innerText || '';
   text = readableText(text).replace(/\s*·\s*(?:·\s*)+/g, ' · ');
   // У деяких XML у поле характеристики помилково потрапляє CSS або код віджета.
-  if (/[{};]|(?:@media|iframe|display\s*:|container[-_:]|#\w+[\s\w-]*\{)/iu.test(text)) return '';
+  if (hasSpecificationCode(text)) return '';
   return text;
 };
 const compactProductName = (value = '', sku = '', brand = '') => {

@@ -61,6 +61,11 @@ content rejection and commercial updates, checked all three backups/review recor
 then rolled back every test write. SQL Editor returned:
 `Content guards and commercial updates passed; all test writes rolled back`.
 
+Commit `5c35652` reached Vercel Production with status Ready. The live Epson
+admin editor displayed the complete-table protection notice, with manual editing
+available and description protection shown. No manual save was submitted.
+Screenshot: parent workspace `reviewed-content-protection-2026-10-27.png`.
+
 ## UPS evidence and recovery
 
 Source: [2E exact SKU page](https://2e-world.com/en/products/2e-od1000-ups-1000va-900w-lcd-usb-2xschuko-2e-od1000/),
@@ -78,3 +83,13 @@ refuses the now-changed protection metadata.
 
 Do not regenerate the plan against already modified production rows or rerun
 the apply SQL. No mass import or new media download was performed.
+
+## Next in-scope sample (read-only)
+
+Four Canon cartridge cards have empty structured specifications: 4903/6365C002
+(075 black), 4904/6364C002 (075 cyan), 4905/6369C002 (075H black),
+4906/6368C002 (075H cyan). No changes to those rows yet.
+[Canon's exact 6369C002 page](https://www.canon.co.uk/store/canon-075-h-high-yield-black-toner-cartridge/6369C002/)
+confirms up to 3500 pages and MF664Cdw/MF667Cdw/LBP646Cdw/LBP647Cdw compatibility
+for that SKU. The other three SKUs still require individual source checks before
+enrichment; do not extrapolate the high-yield black cartridge's resource.

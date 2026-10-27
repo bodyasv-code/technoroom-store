@@ -1,7 +1,7 @@
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
 import {reportCommerce,commerceItems,ANALYTICS_READY} from './store-commerce-events.js?v=20261021-commerce';
 import {renderArticleContent,articleHasContent} from './article-format.js?v=20261011-article-links';
-import {icecatImageCredit} from './icecat-image-credit.js?v=20261027-images';
+import {icecatImageCredit} from './icecat-image-credit.js?v=20261027-images-layout';
 import {screenFacetDefinitions,printerKindValues} from './catalog-refinements.js?v=20261023-facets';
 import {catalogPriceBounds,catalogPriceRangeMax,readCatalogFilterState,catalogFilterUrl,safeCatalogReturnUrl} from './catalog-filter-state.js?v=20261017-customer-content';
 import {printerDuplexFilterValues} from './printer-duplex.js?v=20261017-customer-content';

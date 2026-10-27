@@ -86,7 +86,7 @@ test('Lost response never retries; CAS leaves a journalled orphan instead of del
 test('Icecat attribution is scoped to imported files and contains no supplied markup',()=>{
   assert.equal(icecatImageCredit(['products/normal.jpg']), '');
   const html=icecatImageCredit(['products/icecat/247/'+'a'.repeat(64)+'.png','<script>']);
-  assert.match(html,/Open Icecat/);assert.match(html,/All rights reserved/);assert.ok(!html.includes('<script>'));
+  assert.match(html,/Open Icecat/);assert.match(html,/All rights reserved/);assert.match(html,/grid-column:1\/-1/);assert.ok(!html.includes('<script>'));
 });
 
 test('Real SQL: append preserves existing main/gallery/other fields, CAS, journal atomicity and admin boundaries',async()=>{

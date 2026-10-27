@@ -83,10 +83,13 @@ test('Lost response never retries; CAS leaves a journalled orphan instead of del
   }
 });
 
-test('Icecat attribution is scoped to imported files and contains no supplied markup',()=>{
+test('Icecat attribution is collapsed at the bottom, not beneath gallery, and contains no supplied markup',async()=>{
   assert.equal(icecatImageCredit(['products/normal.jpg']), '');
   const html=icecatImageCredit(['products/icecat/247/'+'a'.repeat(64)+'.png','<script>']);
-  assert.match(html,/Open Icecat/);assert.match(html,/All rights reserved/);assert.match(html,/grid-column:1\/-1/);assert.ok(!html.includes('<script>'));
+  assert.match(html,/Open Icecat/);assert.match(html,/All rights reserved/);assert.match(html,/<details class="product-photo-credit"/);assert.match(html,/>Джерела фото<\/summary>/);assert.ok(!/<details[^>]*\sopen(?:[\s>])/u.test(html));assert.ok(!html.includes('<script>'));
+  const app=await readFile(new URL('../public/app.js',import.meta.url),'utf8');
+  assert.ok(!app.includes('+ thumbs + icecatImageCredit(paths)'));
+  assert.match(app,/\+ productServiceSections\(\)\s*\+ icecatImageCredit\(paths\)/u);
 });
 
 test('Real SQL: append preserves existing main/gallery/other fields, CAS, journal atomicity and admin boundaries',async()=>{

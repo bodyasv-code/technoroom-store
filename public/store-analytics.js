@@ -1,7 +1,8 @@
 import {COMMERCE_EVENT,ANALYTICS_READY,normalizeCommerce} from './store-commerce-events.js?v=20261021-commerce';
+import {attributionParameters} from './analytics-attribution.js?v=20261028-attribution';
 // GA4 basic consent: no Google script or request before explicit analytics opt-in.
 export const MEASUREMENT_ID='G-L3NG1R28PY';
-export const CONSENT_KEY='technoroom-analytics-consent-v2';
+export const CONSENT_KEY='technoroom-analytics-consent-v3';
 const CONSENT_AGE=180*24*60*60*1000;
 const PAGES={'/':'TECHNOROOM','/index':'TECHNOROOM','/catalog':'Каталог — TECHNOROOM','/product':'Товар — TECHNOROOM','/articles':'Статті — TECHNOROOM','/article':'Стаття — TECHNOROOM','/checkout':'Оформлення — TECHNOROOM','/contacts':'Контакти — TECHNOROOM','/delivery':'Доставка та оплата — TECHNOROOM','/returns':'Обмін і повернення — TECHNOROOM'};
 const hostAllowed=hostname=>['technoroom.com.ua','www.technoroom.com.ua'].includes(hostname);
@@ -14,6 +15,7 @@ export function analyticsPage(raw,referrer='') {
   const key=path==='/product'?'id':path==='/catalog'?'category':path==='/article'?'slug':'';
   const value=source.searchParams.get(key);
   if(key&&value&&(key==='id'?/^[1-9]\d{0,15}$/.test(value):/^[\p{L}\p{N}_-]{1,180}$/u.test(value)))clean.searchParams.set(key,value);
+  for (const [name,value] of attributionParameters(source.searchParams)) clean.searchParams.set(name,value);
   let safeReferrer='';
   try{const url=new URL(referrer);if(['http:','https:'].includes(url.protocol))safeReferrer=url.origin+'/';}catch{}
   return {page_location:clean.href,page_title:PAGES[path],page_referrer:safeReferrer};
@@ -37,7 +39,13 @@ export function createAnalyticsController(win,doc,onChange=()=>{}) {
   let checkoutTracked=false;
   const transactions=new Set();
   const stored=()=>{
-    try{const data=JSON.parse(win.localStorage.getItem(CONSENT_KEY));return data&&['granted','denied'].includes(data.choice)&&Number.isFinite(data.at)&&data.at<=Date.now()&&Date.now()-data.at<CONSENT_AGE?data.choice:null;}catch{return null;}
+    try{
+      const current=win.localStorage.getItem(CONSENT_KEY);
+      const data=JSON.parse(current || win.localStorage.getItem('technoroom-analytics-consent-v2'));
+      if(!data||!['granted','denied'].includes(data.choice)||!Number.isFinite(data.at)||data.at>Date.now()||Date.now()-data.at>=CONSENT_AGE)return null;
+      // Honor an earlier refusal, but ask again before expanding an earlier grant.
+      return current ? data.choice : data.choice==='denied' ? 'denied' : null;
+    }catch{return null;}
   };
   const clearCookies=()=>{
     // Only our analytics cookies; never touch carts, authentication or other storage.
@@ -116,7 +124,7 @@ export function mountStoreAnalytics(win=window,doc=document) {
   if(!analyticsPage(win.location.href,doc.referrer)||doc.getElementById('storeAnalyticsConsent'))return;
   const banner=doc.createElement('section');banner.id='storeAnalyticsConsent';banner.className='analytics-consent';
   banner.setAttribute('aria-label','Налаштування аналітики');
-  banner.innerHTML='<div class="analytics-consent-copy"><strong>Аналітика магазину</strong><p>Дозволити Google Analytics вимірювати відвідування сайту? Це необов’язково: покупки працюють і без аналітики.</p><details><summary>Що збирається?</summary><p>Після вашої згоди Google отримує дані про переглянуті сторінки, додавання товарів у кошик, створені замовлення, браузер і пристрій та використовує аналітичні cookies. Поля замовлення, телефон, email і текст пошуку не передаємо. Рекламну персоналізацію не вмикаємо. Вибір зберігаємо на цьому пристрої до 180 днів; його можна змінити кнопкою «Налаштування аналітики» внизу сторінки. <a href="https://policies.google.com/privacy?hl=uk" target="_blank" rel="noopener noreferrer">Конфіденційність Google</a>.</p></details></div><div class="analytics-consent-actions"><button type="button" data-analytics-choice="denied">Відхилити</button><button type="button" data-analytics-choice="granted">Дозволити</button></div>';
+  banner.innerHTML='<div class="analytics-consent-copy"><strong>Аналітика магазину</strong><p>Дозволити Google Analytics вимірювати відвідування сайту? Це необов’язково: покупки працюють і без аналітики.</p><details><summary>Що збирається?</summary><p>Після вашої згоди Google отримує дані про переглянуті сторінки, додавання товарів у кошик, створені замовлення, джерело переходу (зокрема дозволені рекламні мітки), браузер і пристрій та використовує аналітичні cookies. Поля замовлення, телефон, email і текст пошуку не передаємо. Рекламну персоналізацію не вмикаємо. Вибір зберігаємо на цьому пристрої до 180 днів; його можна змінити кнопкою «Налаштування аналітики» внизу сторінки. <a href="https://policies.google.com/privacy?hl=uk" target="_blank" rel="noopener noreferrer">Конфіденційність Google</a>.</p></details></div><div class="analytics-consent-actions"><button type="button" data-analytics-choice="denied">Відхилити</button><button type="button" data-analytics-choice="granted">Дозволити</button></div>';
   const footer=doc.createElement('div');footer.className='analytics-settings';
   const settings=doc.createElement('button');settings.type='button';settings.textContent='Налаштування аналітики';
   settings.setAttribute('aria-controls',banner.id);settings.setAttribute('aria-expanded','false');footer.append(settings);

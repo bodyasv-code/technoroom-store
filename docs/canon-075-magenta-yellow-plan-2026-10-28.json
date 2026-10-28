@@ -1,0 +1,114 @@
+[
+  {
+    "id": 4907,
+    "sku": "6367C002",
+    "brand": "Canon",
+    "name": "Картридж Canon 075H MF664Cdw/MF667Cdw/LBP646Cdw/LBP647Cdw Magenta (2500 стор.) (6367C002)",
+    "source": "https://www.canon.co.uk/store/canon-075-h-high-yield-magenta-toner-cartridge/6367C002/",
+    "protectDescription": false,
+    "before": {
+      "specifications": {},
+      "description": "~2500 стор. @5% (A4) для MF664Cdw/MF667Cdw/LBP646Cdw/LBP647Cdw, малиновий",
+      "manual_overrides": {}
+    },
+    "after": {
+      "specifications": {
+        "Тип витратного матеріалу": "Тонер-картридж",
+        "Серія картриджа": "075H",
+        "Колір друку": "Пурпуровий (Magenta)",
+        "Ресурс друку": "До 2500 сторінок",
+        "Ємність картриджа": "Підвищена",
+        "Сумісний бренд": "Canon",
+        "Сумісні пристрої": "Canon i-SENSYS MF664Cdw; MF667Cdw; LBP646Cdw; LBP647Cdw"
+      },
+      "description": "~2500 стор. @5% (A4) для MF664Cdw/MF667Cdw/LBP646Cdw/LBP647Cdw, малиновий",
+      "manual_overrides": {
+        "verified_specifications": true
+      }
+    }
+  },
+  {
+    "id": 4908,
+    "sku": "6366C002",
+    "brand": "Canon",
+    "name": "Картридж Canon 075H MF664Cdw/MF667Cdw/LBP646Cdw/LBP647Cdw Yellow (2500 стор.) (6366C002)",
+    "source": "https://www.canon.co.uk/store/canon-075-h-high-yield-yellow-toner-cartridge/6366C002/",
+    "protectDescription": false,
+    "before": {
+      "specifications": {},
+      "description": "~2500 стор. @5% (A4) для MF664Cdw/MF667Cdw/LBP646Cdw/LBP647Cdw, жовтий",
+      "manual_overrides": {}
+    },
+    "after": {
+      "specifications": {
+        "Тип витратного матеріалу": "Тонер-картридж",
+        "Серія картриджа": "075H",
+        "Колір друку": "Жовтий",
+        "Ресурс друку": "До 2500 сторінок",
+        "Ємність картриджа": "Підвищена",
+        "Сумісний бренд": "Canon",
+        "Сумісні пристрої": "Canon i-SENSYS MF664Cdw; MF667Cdw; LBP646Cdw; LBP647Cdw"
+      },
+      "description": "~2500 стор. @5% (A4) для MF664Cdw/MF667Cdw/LBP646Cdw/LBP647Cdw, жовтий",
+      "manual_overrides": {
+        "verified_specifications": true
+      }
+    }
+  },
+  {
+    "id": 4909,
+    "sku": "6363C002",
+    "brand": "Canon",
+    "name": "Картридж Canon 075M MF664Cdw/MF667Cdw/LBP646Cdw/LBP647Cdw Magenta (1300 стор.) (6363C002)",
+    "source": "https://www.canon.co.uk/store/canon-075-magenta-toner-cartridge/6363C002/",
+    "protectDescription": false,
+    "before": {
+      "specifications": {},
+      "description": "~1300 стор. @5% (A4) для MF664Cdw/MF667Cdw/LBP646Cdw/LBP647Cdw, малиновий",
+      "manual_overrides": {}
+    },
+    "after": {
+      "specifications": {
+        "Тип витратного матеріалу": "Тонер-картридж",
+        "Серія картриджа": "075",
+        "Колір друку": "Пурпуровий (Magenta)",
+        "Ресурс друку": "До 1300 сторінок",
+        "Ємність картриджа": "Стандартна",
+        "Сумісний бренд": "Canon",
+        "Сумісні пристрої": "Canon i-SENSYS MF664Cdw; MF667Cdw; LBP646Cdw; LBP647Cdw"
+      },
+      "description": "~1300 стор. @5% (A4) для MF664Cdw/MF667Cdw/LBP646Cdw/LBP647Cdw, малиновий",
+      "manual_overrides": {
+        "verified_specifications": true
+      }
+    }
+  },
+  {
+    "id": 4910,
+    "sku": "6362C002",
+    "brand": "Canon",
+    "name": "Картридж Canon 075Y MF664Cdw/MF667Cdw/LBP646Cdw/LBP647Cdw Yellow (1300 стор.) (6362C002)",
+    "source": "https://www.canon.co.uk/store/canon-075-yellow-toner-cartridge/6362C002/",
+    "protectDescription": false,
+    "before": {
+      "specifications": {},
+      "description": "~1300 стор. @5% (A4) для MF664Cdw/MF667Cdw/LBP646Cdw/LBP647Cdw, жовтий",
+      "manual_overrides": {}
+    },
+    "after": {
+      "specifications": {
+        "Тип витратного матеріалу": "Тонер-картридж",
+        "Серія картриджа": "075",
+        "Колір друку": "Жовтий",
+        "Ресурс друку": "До 1300 сторінок",
+        "Ємність картриджа": "Стандартна",
+        "Сумісний бренд": "Canon",
+        "Сумісні пристрої": "Canon i-SENSYS MF664Cdw; MF667Cdw; LBP646Cdw; LBP647Cdw"
+      },
+      "description": "~1300 стор. @5% (A4) для MF664Cdw/MF667Cdw/LBP646Cdw/LBP647Cdw, жовтий",
+      "manual_overrides": {
+        "verified_specifications": true
+      }
+    }
+  }
+]

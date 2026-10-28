@@ -9,10 +9,10 @@ export const cartridges=[
  {id:4906,sku:'6368C002',series:'075H',color:'Блакитний (Cyan)',pages:2500,source:'https://www.canon.co.uk/store/canon-075-h-high-yield-cyan-toner-cartridge/6368C002/'}
 ];
 export const expectedIds=cartridges.map(c=>c.id);
-export function cartridgePlans(rows){
+export function cartridgePlans(rows,catalog=cartridges){
  if(rows.length!==4||new Set(rows.map(p=>p.id)).size!==4)throw new Error('Four unique cards required');
  return rows.map(p=>{
-  const c=cartridges.find(c=>c.id===p.id);
+  const c=catalog.find(c=>c.id===p.id);
   if(!c||p.sku!==c.sku||p.brand!=='Canon'||p.category!=='office-consumables-cartridges')throw new Error('Exact cartridge identity required');
   if(!p.specifications||Array.isArray(p.specifications)||Object.keys(p.specifications).length||Object.keys(p.manual_overrides?.specifications||{}).length||p.manual_overrides?.verified_specifications)throw new Error('Empty unprotected table required');
   return {id:p.id,sku:p.sku,brand:p.brand,name:p.name,source:c.source,protectDescription:false,
@@ -21,9 +21,9 @@ export function cartridgePlans(rows){
  });
 }
 export const applyCartridgesSql=plans=>reviewedSql(plans,{operationId,expectedIds});
-export function restoreCartridgesSql(plans){
+export function restoreCartridgesSql(plans,{operationId:restoreOperation=operationId,expectedIds:restoreIds=expectedIds}={}){
  // Validate unique identities using the same generator as the apply path.
- applyCartridgesSql(plans);
+ reviewedSql(plans,{operationId:restoreOperation,expectedIds:restoreIds});
  return `begin;
 set local lock_timeout='5s';set local statement_timeout='30s';set local standard_conforming_strings=on;
 create temporary table cartridge_restore_plan(payload jsonb) on commit drop;
@@ -31,12 +31,12 @@ insert into cartridge_restore_plan values('${JSON.stringify(plans).replaceAll("'
 do $restore$
 declare item jsonb;current_row jsonb;saved jsonb;after_row jsonb;
 begin
- perform id from public.products where id in (4903,4904,4905,4906) order by id for update;
+ perform id from public.products where id in (${[...restoreIds].sort((a,b)=>a-b).join(',')}) order by id for update;
  for item in select value from cartridge_restore_plan,jsonb_array_elements(payload) loop
   select to_jsonb(p) into current_row from public.products p where id=(item->>'id')::bigint;
   if current_row is null or current_row->>'sku' is distinct from item->>'sku' or current_row->>'brand' is distinct from item->>'brand' or current_row->>'name' is distinct from item->>'name' then raise exception 'Identity changed';end if;
   if current_row->'specifications' is distinct from item->'after'->'specifications' or current_row->'description' is distinct from item->'after'->'description' or current_row->'manual_overrides' is distinct from item->'after'->'manual_overrides' then raise exception 'Card changed since enrichment';end if;
-  select before_row into saved from technoroom_maintenance.product_repair_backup where operation='${operationId}' and product_id=(item->>'id')::bigint;
+  select before_row into saved from technoroom_maintenance.product_repair_backup where operation='${restoreOperation}' and product_id=(item->>'id')::bigint;
   if saved is null then raise exception 'Backup missing';end if;
   perform set_config('technoroom.import_write','false',true);
   update public.products set specifications=saved->'specifications' where id=(item->>'id')::bigint;

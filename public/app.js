@@ -28,6 +28,7 @@ import {hasSpecificationCode} from './specification-values.js?v=20261028-semicol
 import {productSectionNavigation,productServiceSections,mountProductPageLayout} from './product-page-layout.js?v=20261024-groups';
 import {groupProductSpecifications,renderProductSpecificationGroups,specificationCountLabel} from './product-specification-groups.js?v=20261028-consumables';
 import {renderProductHighlights} from './product-highlights.js?v=20261024-highlights';
+import {renderProductCompatibility,loadCompatibleProductRows} from './product-compatibility.js?v=20261028-canon075';
 
 const supabase = createClient(window.TECHNOROOM_SUPABASE.url, window.TECHNOROOM_SUPABASE.publishableKey);
 const catalogImageStyles = document.createElement('style');
@@ -490,7 +491,7 @@ async function loadProductPageProducts() {
   // Тому блоки «Популярні» й «Нещодавно переглянуті» не мали з чого
   // побудуватися. Довантажуємо невелику добірку з цієї ж категорії та
   // товари, які відвідувач вже відкривав у цьому браузері.
-  const [categoryResult, recentResult] = await Promise.all([
+  const [categoryResult, recentResult, compatibleRows] = await Promise.all([
     supabase.from('products').select('*').eq('category', base.category).eq('is_active', true)
       .order('in_stock', { ascending: false }).order('created_at', { ascending: false }).limit(8),
     (() => {
@@ -498,11 +499,15 @@ async function loadProductPageProducts() {
       return recentIds.length
         ? supabase.from('products').select('*').in('id', recentIds).eq('is_active', true)
         : Promise.resolve({ data: [], error: null });
-    })()
+    })(),
+    loadCompatibleProductRows(supabase, requested).catch(error => {
+      console.warn('Не вдалося завантажити сумісні товари', error);
+      return [];
+    })
   ]);
   if (categoryResult.error) throw categoryResult.error;
   if (recentResult.error) throw recentResult.error;
-  const rows = [base, ...(variants || []), ...(categoryResult.data || []), ...(recentResult.data || [])];
+  const rows = [base, ...(variants || []), ...(categoryResult.data || []), ...(recentResult.data || []), ...compatibleRows];
   if (!rows.some((row) => Number(row.id) === Number(requested.id))) rows.push(requested);
   products = [...new Map(rows.map((row) => [Number(row.id), row])).values()].map(storeProductFromRow);
 }
@@ -1246,6 +1251,7 @@ product = function () {
       + '<section class="product-content-grid">' + (hasDescription ? '<article class="product-description-card" id="product-description" tabindex="-1" aria-labelledby="product-description-title"><p class="section-kicker">Про товар</p><h2 id="product-description-title">Опис</h2><div class="product-description-rich">' + renderArticleContent(item.descriptionContent||item.description) + '</div></article>' : '') + '<article class="product-specs-card" id="product-specifications" tabindex="-1" aria-labelledby="product-specifications-title"><div class="product-section-heading"><div><p class="section-kicker">Технічні дані</p><h2 id="product-specifications-title">Характеристики</h2></div><span>' + specificationCountLabel(specCount) + '</span></div>' + specs + (specEntries.length ? '' : '<p class="product-specification-notice">Повні характеристики уточнюйте у менеджера.</p>') + '</article></section>'
       + productServiceSections()
       + icecatImageCredit(paths)
+      + renderProductCompatibility(item, products, card)
       + (related.length ? '<section class="related-products"><div class="related-heading"><div><p class="section-kicker">Добірка</p><h2>Схожі товари</h2></div><a href="catalog.html?category=' + encodeURIComponent(item.type || '') + '">Переглянути всі →</a></div><div class="product-grid">' + related.map(card).join('') + '</div></section>' : '');
     bind(root);
     root.querySelectorAll('[data-gallery-path]').forEach((button) => button.addEventListener('click', () => renderProductGallery(decodeURIComponent(button.dataset.galleryPath))));

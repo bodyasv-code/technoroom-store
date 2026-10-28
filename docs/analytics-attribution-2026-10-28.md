@@ -1,6 +1,6 @@
 # Limited campaign attribution and conversion cleanup — 2026-10-28
 
-## Implemented, pending publication
+## Implemented and published
 
 `analyticsPage()` now appends only a restricted set of campaign parameters to its
 otherwise sanitized page URL, which is already used for config and measured events.
@@ -48,7 +48,13 @@ cases cover exact-case retention, approved fields, malformed/duplicate/free text
 host/page isolation, consent renewal, no custom ID persistence and prior refusals.
 Existing analytics and commerce tests continue to verify consent, amounts, order
 success/failure, duplicate purchase handling and absence of contact data.
-Production receipt of new campaign parameters must be verified after publication.
+Commit `6b41393` published to main. Public product HTML references the new analytics
+version; both deployed JS modules match the tested local sources after newline
+normalization. The live product page showed the expanded campaign/referral consent
+disclosure, with no consent grant performed. Screenshot:
+`../analytics-attribution-consent-live-2026-10-28.png`.
+Production receipt/attribution of campaign parameters remains unverified: no fake
+click identifier, paid ad click, test event or purchase was sent during this audit.
 
 Sources checked:
 - https://developers.google.com/analytics/devguides/collection/ga4/reference/config

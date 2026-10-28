@@ -82,5 +82,6 @@ been demonstrated by this recovery.
 
 Legacy action 7865646647 was subsequently archived reversibly; primary GA4 action
 7865937597 remains enabled. Limited landing attribution and consent-v3 changes are
-implemented and tested locally, pending publication. See
+published in commit `6b41393` and verified on the public site. Actual paid-click
+conversion attribution remains unverified. See
 `analytics-attribution-2026-10-28.md` for exact scope, recovery and validation.

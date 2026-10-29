@@ -1,0 +1,32 @@
+.projector-compare-button{align-self:flex-start;border:1px solid #cfdef0;border-radius:9px;padding:9px 14px;margin:12px 0 0;background:white;color:#1559a8;font:700 13px Manrope,sans-serif;cursor:pointer}
+.projector-compare-button[aria-pressed=true]{background:#eaf3ff;border-color:#0878ed}
+.has-projector-comparison{padding-bottom:100px}
+.projector-comparison-tray{position:fixed;z-index:90;bottom:16px;left:50%;transform:translateX(-50%);width:max-content;max-width:calc(100% - 24px);box-sizing:border-box;display:flex;align-items:center;gap:14px;flex-wrap:wrap;padding:14px 20px;border:1px solid #cbdcf0;border-radius:16px;background:#fff;box-shadow:0 8px 36px #17314b33;font:600 14px Manrope,sans-serif;color:#132b47}
+.projector-comparison-tray[hidden]{display:none}
+.projector-comparison-tray button{border:0;border-radius:9px;padding:10px 16px;font:700 14px Manrope,sans-serif;cursor:pointer;color:#1559a8;background:#eef4fc}
+.projector-comparison-tray [data-comparison-open]{background:#0878ed;color:white}
+.projector-comparison-tray button:disabled{opacity:.5;cursor:default}
+.comparison-status:empty{display:none}.comparison-status{flex-basis:100%;font-size:12px}
+.projector-comparison-dialog{box-sizing:border-box;width:min(1180px,calc(100% - 24px));max-height:90dvh;padding:24px;border:1px solid #d5e1ef;border-radius:20px;color:#132b47;background:white;font:14px Manrope,sans-serif}
+.projector-comparison-dialog::backdrop{background:#0c203ab3}
+.projector-comparison-dialog header{display:flex;align-items:start;gap:20px;justify-content:space-between;margin-bottom:20px}
+.projector-comparison-dialog h2{margin:0;font-size:26px}.projector-comparison-dialog p{line-height:1.6;color:#53657c;max-width:780px}
+.projector-comparison-dialog button{border:1px solid #cfdef0;border-radius:8px;padding:8px 12px;background:white;color:#1559a8;font:600 13px Manrope,sans-serif;cursor:pointer}
+.projector-comparison-dialog [data-comparison-close]{font-size:24px;padding:2px 12px}
+.projector-comparison-scroll{overflow:auto;max-height:64dvh;border:1px solid #dce6f2;border-radius:12px}
+.comparison-scroll-hint{display:none}
+@media(max-width:650px){.comparison-scroll-hint{display:block}}
+.projector-comparison-scroll table{border-collapse:separate;border-spacing:0;width:100%;table-layout:fixed;min-width:660px}
+.projector-comparison-scroll th,.projector-comparison-scroll td{padding:15px;text-align:left;vertical-align:top;border-bottom:1px solid #dce6f2;border-right:1px solid #dce6f2;overflow-wrap:anywhere}
+.projector-comparison-scroll th:first-child{width:175px;background:#f2f6fc;font-weight:600}
+.projector-comparison-scroll thead th{position:sticky;top:0;background:white;z-index:1;min-width:200px}
+.projector-comparison-scroll thead a{display:block;margin:12px 0;color:#1559a8;text-decoration:none;font-weight:800;line-height:1.5}
+.projector-comparison-scroll small,.projector-comparison-scroll strong,.projector-comparison-scroll th span{display:block;margin:8px 0}
+.projector-comparison-scroll strong{font-size:21px}.projector-comparison-scroll small{color:#53657c}
+.projector-comparison-scroll tbody tr:last-child>*{border-bottom:0}
+.store-modern .projector-comparison-scroll th,.store-modern .projector-comparison-scroll td{font-size:14px;text-transform:none;letter-spacing:normal;color:#132b47;line-height:1.55}
+.store-modern .projector-comparison-scroll th a{font-size:15px;text-transform:none;color:#1559a8}
+.store-modern .projector-comparison-scroll th small{font-size:12px}
+.projector-compare-button,.projector-comparison-tray button,.projector-comparison-dialog button{min-height:44px}
+.projector-compare-button:focus-visible,.projector-comparison-dialog button:focus-visible,.projector-comparison-scroll:focus-visible,.projector-comparison-tray button:focus-visible{outline:3px solid #0878ed;outline-offset:3px}
+@media(max-width:650px){.projector-comparison-dialog{padding:14px}.projector-comparison-dialog h2{font-size:21px}.projector-comparison-dialog p{font-size:12px}.projector-comparison-tray{gap:8px;padding:10px 12px;bottom:8px;font-size:12px}.projector-comparison-tray button{padding:9px 11px;font-size:12px}.projector-comparison-scroll table{min-width:900px}.projector-comparison-scroll th:first-child{width:120px}.projector-comparison-scroll th,.projector-comparison-scroll td{padding:12px}}

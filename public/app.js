@@ -29,6 +29,7 @@ import {productSectionNavigation,productServiceSections,mountProductPageLayout} 
 import {groupProductSpecifications,renderProductSpecificationGroups,specificationCountLabel} from './product-specification-groups.js?v=20261028-consumables';
 import {renderProductHighlights} from './product-highlights.js?v=20261024-highlights';
 import {renderProductCompatibility,loadCompatibleProductRows} from './product-compatibility.js?v=20261028-canon075';
+import {comparisonButton,mountProjectorComparison} from './projector-comparison.js?v=20261029-compare';
 
 const supabase = createClient(window.TECHNOROOM_SUPABASE.url, window.TECHNOROOM_SUPABASE.publishableKey);
 const catalogImageStyles = document.createElement('style');
@@ -38,6 +39,17 @@ document.head.append(catalogImageStyles);
 const saleStyle=document.createElement('style');saleStyle.textContent='.product{position:relative}.sale-badge{position:absolute;z-index:3;top:10px;left:10px;background:#e52629;color:#fff;border-radius:6px;padding:6px 9px;font-weight:800;font-size:12px}.old-price{display:block;color:#8996a8;font-size:12px;margin-bottom:2px}.product-footer .price{display:block;color:#e52629}';document.head.append(saleStyle);
 // Never present demo IDs, prices or stock while the real catalog is loading.
 let products = [];
+const comparisonStyles=document.createElement('link');
+comparisonStyles.rel='stylesheet';comparisonStyles.href='projector-comparison.css?v=20261029-compare';document.head.append(comparisonStyles);
+const projectorComparison=mountProjectorComparison({loadItems:async(ids)=>{
+  if(!ids.length)return [];
+  const {data,error}=await supabase.from('products').select('*').in('id',ids).eq('is_active',true);
+  if(error)throw error;
+  return (data||[]).map(storeProductFromRow).filter(isProjectorProduct).map(item=>({
+    id:item.id,name:item.name,sku:item.sku,entries:displaySpecificationEntries(item),
+    priceLabel:Number(item.price)>0?money(salePrice(item)):'Ціну уточнюйте',stockLabel:availability(item).label
+  }));
+}});
 let productsLoaded = false;
 let productsHydrating = false;
 let catalogLoadFailed = false;
@@ -129,7 +141,7 @@ function salePrice(product){return discountedPrice(product.price,promotionFor(pr
 function card(product) { const promo=promotionFor(product)||promotionByProductLink(product),price=promo?Math.max(0,promo.discount_type==='percent'?Number(product.price)*(1-Number(promo.discount_value)/100):Number(product.price)-Number(promo.discount_value)):Number(product.price),badge=promo?'<span class="sale-badge">'+(promo.discount_type==='percent'?'-'+Number(promo.discount_value)+'%':'АКЦІЯ')+'</span>':'',promoName=promo?'<div class="promotion-name">🏷 Акція: <b>'+escapeHtml(promo.name||'Спеціальна пропозиція')+'</b></div>':''; return `<article class="product">${badge}<div class="product-image ${product.type}">${image(product)}</div>${promoName}<h3><a href="product.html?id=${product.id}">${product.name}</a></h3><p class="availability">${product.stock ? 'В наявності' : 'Немає в наявності'}</p><p>${product.description || ''}</p><div class="product-footer"><div>${promo?'<del class="old-price">'+money(product.price)+'</del>':''}<strong class="price">${money(price)}</strong></div><button class="add-button" data-add="${product.id}" ${product.stock ? '' : 'disabled'}>${product.stock ? 'У кошик' : 'Немає'}</button></div></article>`; }
 // Card images are navigation links, not zoom controls. Detail-page zoom is
 // handled separately by the delegated .product-detail-visual listener below.
-function bind(root = document) { root.querySelectorAll('[data-add]').forEach((button) => button.onclick = () => add(button.dataset.add)); root.querySelectorAll('[data-inquiry]').forEach((button) => button.onclick = () => openInquiry(button.dataset.inquiry)); }
+function bind(root = document) { root.querySelectorAll('[data-add]').forEach((button) => button.onclick = () => add(button.dataset.add)); root.querySelectorAll('[data-inquiry]').forEach((button) => button.onclick = () => openInquiry(button.dataset.inquiry)); projectorComparison.refresh(); }
 async function loadHomeSaleProducts(initialProducts) {
   const selectedIds = [...promotionProductIds.values()].flatMap((ids) => [...ids]);
   const categoryTargets = activePromotions.filter((promotion) => promotion.target_type === 'category').map((promotion) => promotion.target_value).filter(Boolean);
@@ -924,6 +936,7 @@ card = (product) => {
       <h3><a href="product.html?id=${product.id}">${name}</a></h3>${variantsNote}
       ${promotion ? '<div class="promotion-name">🏷 Акція: <b>' + catalogCardEscape(promotion.name || 'Спеціальна пропозиція') + '</b></div>' : ''}
       <div class="product-footer"><div>${promotion ? '<del class="old-price">' + money(displayProduct.price) + '</del>' : ''}<strong class="price">${money(currentPrice)}</strong></div>${state.inquiry ? '<button class="add-button" data-inquiry="' + displayProduct.id + '">' + state.button + '</button>' : '<button class="add-button" data-add="' + displayProduct.id + '" ' + (state.orderable ? '' : 'disabled') + '>' + state.button + '</button>'}</div>
+      ${isProjectorProduct(product)?comparisonButton(product):''}
     </div>${hoverPreview}
   </article>`;
 };
@@ -1245,6 +1258,7 @@ product = function () {
       + '<div class="product-buy-card"><div class="product-availability ' + (state.orderable || state.inquiry ? 'is-available' : 'is-unavailable') + '"><i></i><span>' + state.label + '</span></div>'
       + '<strong class="detail-price">' + money(salePrice(item)) + '</strong><p class="product-price-note">Ціна вказана за 1 одиницю товару</p>'
       + '<div class="detail-actions">' + (state.inquiry ? '<button class="button product-buy" data-inquiry="' + item.id + '">Уточнити наявність</button>' : '<button class="button product-buy" data-add="' + item.id + '" ' + (state.orderable ? '' : 'disabled') + '>' + (state.orderable ? 'Додати в кошик' : 'Немає в наявності') + '</button>') + '<a class="button product-back" href="' + catalogCardEscape(catalogReturnUrl) + '">До каталогу</a></div>'
+      + (isProjectorProduct(item)?comparisonButton(item):'')
       + highlights
       + '<div class="product-service-grid"><div><b>Доставка</b><span>Підберемо зручний спосіб</span></div><div><b>Гарантія</b><span>Офіційна техніка</span></div><div><b>Консультація</b><span>Допоможемо з вибором</span></div></div></div></div></section>'
       + productSectionNavigation(hasDescription)

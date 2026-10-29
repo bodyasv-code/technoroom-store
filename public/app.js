@@ -28,7 +28,7 @@ import {hasSpecificationCode} from './specification-values.js?v=20261028-semicol
 import {productSectionNavigation,productServiceSections,mountProductPageLayout} from './product-page-layout.js?v=20261024-groups';
 import {groupProductSpecifications,renderProductSpecificationGroups,specificationCountLabel} from './product-specification-groups.js?v=20261029-help';
 import {renderProductHighlights} from './product-highlights.js?v=20261024-highlights';
-import {renderProductCompatibility,loadCompatibleProductRows} from './product-compatibility.js?v=20261028-canon075';
+import {renderProductCompatibility,loadCompatibleProductRows} from './product-compatibility.js?v=20261029-projector-accessories';
 import {comparisonButton,mountProjectorComparison} from './projector-comparison.js?v=20261029-help';
 
 const supabase = createClient(window.TECHNOROOM_SUPABASE.url, window.TECHNOROOM_SUPABASE.publishableKey);

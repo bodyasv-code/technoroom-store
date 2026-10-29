@@ -6,8 +6,9 @@ const rows=[
 {key:'c',sku:'PRINT',name:'Принтер монохромний',price:9000,hasPrice:true,specifications:{'Тип друку':'Кольоровий'},category:'office-printers-mono'},
 {key:'d',sku:'DRAFT',name:'Картридж — без ціни',price:0,hasPrice:false,category:'office-consumables-cartridges'},
 {key:'e',sku:'REVIEW',name:'Принтер — невідома кольоровість',price:9000,hasPrice:true,category:'office-printers'},
+{key:'f',sku:'SHARED-CODE',vendor:'Epson',supplier:'ERC',name:'Картридж Epson — артикул іншого бренду',price:500,hasPrice:true,category:'office-consumables-cartridges'},
 ];
-const assess=createImportAudit(rows,[]),reviewed=new Set();
+const assess=createImportAudit(rows,[{id:1,sku:'SHARED-CODE',brand:'Canon',category:'office-consumables-cartridges'}]),reviewed=new Set();
 const escape=value=>String(value).replace(/[&<>"']/g,char=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
 function render(){document.querySelector('#rows').innerHTML=rows.map(row=>{const result=assess(row,{mapped:true,category:row.category});return '<tr><td><input type="checkbox" data-key="'+row.key+'" '+(!auditEligible(result,reviewed)?'disabled':'')+'></td><td>'+escape(row.name)+'<br><small>SKU: '+escape(row.sku)+'</small></td><td>'+auditMarkup(result,escape)+(result.needsReview&&!result.blocked?'<button data-review="'+row.key+'">Перевірити позицію</button>':'')+'</td></tr>';}).join('');}
 document.querySelector('#bulk').onclick=()=>{document.querySelectorAll('[data-key]:not(:disabled)').forEach(input=>input.checked=true);document.querySelector('#count').textContent='Вибрано: '+document.querySelectorAll('[data-key]:checked').length;};

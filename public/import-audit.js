@@ -2,6 +2,7 @@ import {officeSupplyCategoryPlan,isSpecializedPrinterName} from './product-ident
 import {printerDuplexMode} from './printer-duplex.js?v=20261016-import-guards-2';
 import {printerDeviceKind,verifiedCanonPrintMode,printPaperPlan} from './printer-import-context.js?v=20261017-photo-paper';
 import {specificationContentProblems} from './supplier-specification-parser.js?v=20261024-office';
+import {supplierBrandConflict} from './supplier-product-content.js?v=20261029-shared';
 export const auditSku = value => {
   const sku=String(value ?? '').trim().replace(/^\*+|\*+$/g,'').toUpperCase();
   return /^(?:NULL|UNDEFINED|NONE|—|-)$/.test(sku) ? '' : sku;
@@ -28,6 +29,7 @@ export function createImportAudit(rows, products) {
     const sku=auditSku(row.sku), matches=existing.get(sku)||[], current=matches.length===1?matches[0]:null;
     const issues=[];
     const add=(code,level,message)=>issues.push({code,level,message});
+    if(current && supplierBrandConflict(row,current))add('brand-conflict','block','Артикул збігається з товаром іншого бренду. Автоматичне оновлення заблоковано; перевірте артикул виробника та постачальника.');
     if(specificationContentProblems(row.specifications).length)add('specification-prose','review','У характеристиках є уривки опису або HTML. Перевірте джерело перед імпортом.');
     if(Object.keys(row.specifications||{}).some(key=>/\(інше значення \d+\)$/u.test(key)))add('specification-values','review','Джерела містять різні значення одного параметра. Значення збережено окремо — звірте їх перед імпортом.');
     if(!sku) add('missing-sku','block','Немає SKU: неможливо безпечно зіставити товар.');

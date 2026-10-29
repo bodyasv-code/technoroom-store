@@ -38,8 +38,9 @@ import {normalizeSpecifications} from './specification-normalization.js?v=202610
 import {canonicalBrandName, brandConsolidationPlan} from './brand-normalization.js?v=20261012-brand-cleanup';
 import {removeUnusedBrandDuplicate} from './brand-cleanup.js?v=20261012-brand-cleanup';
 import {createQualityAudit, mountQualityPanel} from './catalog-quality.js?v=20261024-office';
-import {createImportAudit, auditEligible, auditMarkup, showImportReview} from './import-audit.js?v=20261024-office';
-import {buildImportChangePlan,showImportChangePlans,importSnapshot} from './import-change-plan.js?v=20261027-reviewed';
+import {createImportAudit, auditEligible, auditMarkup, showImportReview} from './import-audit.js?v=20261029-shared';
+import {buildImportChangePlan,showImportChangePlans,importSnapshot} from './import-change-plan.js?v=20261029-shared';
+import {supplierProductContent} from './supplier-product-content.js?v=20261029-shared';
 import {startImportRun,writeImportProduct,finishImportRun,mountImportHistory} from './import-history.js?v=20261020-suppliers';
 import {manualOverrideSummary} from './product-manual-overrides.js?v=20261027-reviewed';
 import {mountProductContentPreview} from './product-content-preview-admin.js?v=20261027-images';
@@ -1502,7 +1503,8 @@ supabase.auth.getSession().then(({data:{session}})=>session?(passwordSetupMode?v
         }
       } else {
         const importedBrand = state.brands.find((brand) => brand.is_active && txt(brand.name) === txt(row.vendor));
-        const payload = { ...inventory, price: row.hasPrice ? row.price : 0, stock_quantity: row.hasStock ? row.stock : 0, in_stock: row.hasStock && row.stock > 0, availability_status: row.availabilityStatus || (row.hasStock && row.stock > 0 ? 'in_stock' : 'out_of_stock'), name: row.name, slug: newSlug(row.name, row.sku, usedSlugs), sku: row.sku, brand_id: importedBrand?.id || null, brand: importedBrand?.name || row.vendor || null, description: row.description || null, specifications: row.specifications, is_active: publishNew && row.hasPrice && Number(row.price)>0 };
+        const content=supplierProductContent(row,category);
+        const payload = { ...inventory, price: row.hasPrice ? row.price : 0, stock_quantity: row.hasStock ? row.stock : 0, in_stock: row.hasStock && row.stock > 0, availability_status: row.availabilityStatus || (row.hasStock && row.stock > 0 ? 'in_stock' : 'out_of_stock'), name: content.name, slug: newSlug(content.name, row.sku, usedSlugs), sku: row.sku, brand_id: importedBrand?.id || null, brand: importedBrand?.name || content.brand || null, description: content.description || null, specifications: content.specifications, is_active: publishNew && row.hasPrice && Number(row.price)>0 };
         const result = await writeImportProduct(supabase,runId,null,payload,{supplier:row.supplier});
         if (result.error) fail(row, result.error.message || result.error.code);
         else {

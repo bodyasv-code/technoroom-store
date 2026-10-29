@@ -1,13 +1,15 @@
 import {mergeImportedSpecifications} from './import-specification-rules.js?v=20261017-customer-content';
 import {cleanCustomerText} from './product-content-policy.js?v=20261017-customer-content-3';
 import {manualFields,preserveManualSpecifications,manualImportConflicts} from './product-manual-overrides.js?v=20261027-reviewed';
+import {supplierProductContent} from './supplier-product-content.js?v=20261029-shared';
 const same=(left,right)=>JSON.stringify(left??null)===JSON.stringify(right??null);
 export const importUpdateDefaults={price:true,stock:true,specifications:true,images:false,category:false,description:true};
 export function buildImportChangePlan(row,current,options={},category='') {
   const settings={...importUpdateDefaults,...options},patch={},changes=[],preserved=[];
   const change=(key,label,value)=>{if(!same(current?.[key],value)){patch[key]=value;changes.push({key,label,before:current?.[key]??null,after:value});}};
   if(!current){
-    for(const [key,label,value] of [['name','Назва',row.name],['brand','Бренд',row.vendor],['category','Категорія',category],['price','Ціна, ₴',row.hasPrice?row.price:0],['stock_quantity','Залишок, шт.',row.hasStock?row.stock:0],['is_active','Публікувати',Boolean(settings.publish&&row.hasPrice&&Number(row.price)>0)],['description','Опис',cleanCustomerText(row.description||'')],['specifications','Характеристики',row.specifications||{}]])change(key,label,value);
+    const content=supplierProductContent(row,category);
+    for(const [key,label,value] of [['name','Назва',content.name],['brand','Бренд',content.brand],['category','Категорія',category],['price','Ціна, ₴',row.hasPrice?row.price:0],['stock_quantity','Залишок, шт.',row.hasStock?row.stock:0],['is_active','Публікувати',Boolean(settings.publish&&row.hasPrice&&Number(row.price)>0)],['description','Опис',content.description],['specifications','Характеристики',content.specifications]])change(key,label,value);
     if(settings.images&&row.images?.length)changes.push({key:'images',label:'Фото',before:null,after:row.images});
     return {isNew:true,patch:{},changes,preserved:['Новий товар: ціна й залишок беруться з джерела; перемикачі оновлень захищають наявні товари'],images:settings.images&&row.images?.length?'add':'preserve'};
   }

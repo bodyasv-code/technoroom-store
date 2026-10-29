@@ -1,3 +1,4 @@
+import {renderProjectorSpecificationHelp} from './projector-specification-help.js?v=20261029-help';
 // Product-detail presentation only. No supplier records are rewritten.
 const labelKey = value => String(value ?? '').normalize('NFKC').trim().toLocaleLowerCase('uk-UA')
   .replace(/[’ʼ`]/gu,"'").replace(/\s+/gu,' ').replace(/\s*[:：]+$/u,'')
@@ -50,10 +51,10 @@ export function groupProductSpecifications(entries, {projector = false, printer 
 }
 
 const escape = value => String(value ?? '').replace(/[&<>"']/gu,char=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
-export function renderProductSpecificationGroups(groups) {
+export function renderProductSpecificationGroups(groups, {projector=false}={}) {
   return groups.map(group => '<section class="product-specification-group" aria-labelledby="product-spec-group-'+escape(group.id)+'">'
     + '<h3 id="product-spec-group-'+escape(group.id)+'">'+escape(group.title)+'</h3><dl class="specs">'
-    + group.entries.map(([key,value])=>'<div><dt>'+escape(key)+'</dt><dd>'+escape(Array.isArray(value)?value.join(' · '):value)+'</dd></div>').join('')
+    + group.entries.map(([key,value])=>'<div><dt>'+escape(key)+(projector?renderProjectorSpecificationHelp(key):'')+'</dt><dd>'+escape(Array.isArray(value)?value.join(' · '):value)+'</dd></div>').join('')
     + '</dl></section>').join('');
 }
 

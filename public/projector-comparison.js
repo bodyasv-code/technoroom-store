@@ -1,3 +1,4 @@
+import {renderProjectorSpecificationHelp} from './projector-specification-help.js?v=20261029-help';
 const storageKey = 'technoroom-projector-comparison-v1';
 const escape = value => String(value ?? '').replace(/[&<>"']/gu, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 export function comparisonIds(values) {
@@ -37,7 +38,7 @@ export function comparisonButton(item) {
 }
 export function comparisonTable(items) {
   const heading = items.map(item => '<th scope="col"><button type="button" data-comparison-remove="'+Number(item.id)+'" aria-label="Прибрати '+escape(item.name)+'">Прибрати ×</button><a href="product.html?id='+Number(item.id)+'">'+escape(item.name)+'</a><small>'+escape(item.sku || '')+'</small><strong>'+escape(item.priceLabel)+'</strong><span>'+escape(item.stockLabel)+'</span></th>').join('');
-  return '<p class="comparison-scroll-hint">Гортайте таблицю вбік, щоб переглянути всі моделі →</p><div class="projector-comparison-scroll" role="region" aria-label="Таблиця порівняння проєкторів" tabindex="0"><table><thead><tr><th scope="col">Характеристика</th>'+heading+'</tr></thead><tbody>'+projectorComparisonRows(items).map(([label,values])=>'<tr><th scope="row">'+escape(label)+'</th>'+values.map(value=>'<td>'+escape(value)+'</td>').join('')+'</tr>').join('')+'</tbody></table></div>';
+  return '<p class="comparison-scroll-hint">Гортайте таблицю вбік, щоб переглянути всі моделі →</p><div class="projector-comparison-scroll" role="region" aria-label="Таблиця порівняння проєкторів" tabindex="0"><table><thead><tr><th scope="col">Характеристика</th>'+heading+'</tr></thead><tbody>'+projectorComparisonRows(items).map(([label,values])=>'<tr><th scope="row">'+escape(label)+renderProjectorSpecificationHelp(label)+'</th>'+values.map(value=>'<td>'+escape(value)+'</td>').join('')+'</tr>').join('')+'</tbody></table></div>';
 }
 export function mountProjectorComparison({doc=document,storage,loadItems}) {
   let ids=[];

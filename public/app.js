@@ -26,10 +26,10 @@ import {resolveProjectorSpecifications, isProjectorProduct, normalizeProjectorLi
 import {normalizeSpecificationEntries, normalizeSpecifications} from './specification-normalization.js?v=20261017-customer-content';
 import {hasSpecificationCode} from './specification-values.js?v=20261028-semicolons';
 import {productSectionNavigation,productServiceSections,mountProductPageLayout} from './product-page-layout.js?v=20261024-groups';
-import {groupProductSpecifications,renderProductSpecificationGroups,specificationCountLabel} from './product-specification-groups.js?v=20261028-consumables';
+import {groupProductSpecifications,renderProductSpecificationGroups,specificationCountLabel} from './product-specification-groups.js?v=20261029-help';
 import {renderProductHighlights} from './product-highlights.js?v=20261024-highlights';
 import {renderProductCompatibility,loadCompatibleProductRows} from './product-compatibility.js?v=20261028-canon075';
-import {comparisonButton,mountProjectorComparison} from './projector-comparison.js?v=20261029-compare';
+import {comparisonButton,mountProjectorComparison} from './projector-comparison.js?v=20261029-help';
 
 const supabase = createClient(window.TECHNOROOM_SUPABASE.url, window.TECHNOROOM_SUPABASE.publishableKey);
 const catalogImageStyles = document.createElement('style');
@@ -40,7 +40,7 @@ const saleStyle=document.createElement('style');saleStyle.textContent='.product{
 // Never present demo IDs, prices or stock while the real catalog is loading.
 let products = [];
 const comparisonStyles=document.createElement('link');
-comparisonStyles.rel='stylesheet';comparisonStyles.href='projector-comparison.css?v=20261029-compare';document.head.append(comparisonStyles);
+comparisonStyles.rel='stylesheet';comparisonStyles.href='projector-comparison.css?v=20261029-help';document.head.append(comparisonStyles);
 const projectorComparison=mountProjectorComparison({loadItems:async(ids)=>{
   if(!ids.length)return [];
   const {data,error}=await supabase.from('products').select('*').in('id',ids).eq('is_active',true);
@@ -1232,7 +1232,7 @@ product = function () {
   const hasDescription = articleHasContent(item.descriptionContent||item.description);
   const highlights = renderProductHighlights(specEntries,{projector:isProjectorProduct(item),printer:isPrinterDevice(item),screen:!isProjectorProduct(item)&&(/екран|screen/iu.test(item.type||'')||item.type==='erc-display-06')});
   const specGroups = groupProductSpecifications([['Виробник',titleItem.brand || item.brand || 'TECHNOROOM'],...specEntries],{projector:isProjectorProduct(item),printer:isPrinterDevice(item)});
-  const specs = renderProductSpecificationGroups(specGroups);
+  const specs = renderProductSpecificationGroups(specGroups,{projector:isProjectorProduct(item)});
   const specCount = specGroups.reduce((count,group)=>count+group.entries.length,0);
   const variantChoices = [];
   const labels = new Map();

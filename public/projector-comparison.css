@@ -16,7 +16,9 @@
 .projector-comparison-scroll{overflow:auto;max-height:64dvh;border:1px solid #dce6f2;border-radius:12px}
 .comparison-scroll-hint{display:none}
 .projector-spec-help{margin-top:7px;text-transform:none;font-weight:400;font-size:12px;letter-spacing:normal;max-width:360px}
-.projector-spec-help summary{display:list-item;color:#1559a8;cursor:pointer;font-size:12px;line-height:1.6;min-height:32px;padding:5px 0;box-sizing:border-box}
+.projector-spec-help summary{display:list-item;color:#1559a8;cursor:pointer;font-size:12px;line-height:1.6;min-height:44px;padding:10px 0;box-sizing:border-box}
+.store-modern .specs .projector-spec-help-row{grid-column:1/-1;text-align:left;margin:0;max-width:none;width:100%}
+.projector-spec-help-row .projector-spec-help{max-width:none}
 .projector-spec-help summary:focus-visible{outline:3px solid #0878ed;outline-offset:3px;border-radius:4px}
 .projector-spec-help p,.projector-comparison-dialog .projector-spec-help p{margin:6px 0 0;padding:10px;background:#eef5ff;border-radius:8px;color:#344c68;font:400 13px/1.65 Manrope,sans-serif;overflow-wrap:anywhere}
 @media(max-width:650px){.comparison-scroll-hint{display:block}}

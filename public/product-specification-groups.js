@@ -54,7 +54,7 @@ const escape = value => String(value ?? '').replace(/[&<>"']/gu,char=>({'&':'&am
 export function renderProductSpecificationGroups(groups, {projector=false}={}) {
   return groups.map(group => '<section class="product-specification-group" aria-labelledby="product-spec-group-'+escape(group.id)+'">'
     + '<h3 id="product-spec-group-'+escape(group.id)+'">'+escape(group.title)+'</h3><dl class="specs">'
-    + group.entries.map(([key,value])=>'<div><dt>'+escape(key)+(projector?renderProjectorSpecificationHelp(key):'')+'</dt><dd>'+escape(Array.isArray(value)?value.join(' · '):value)+'</dd></div>').join('')
+    + group.entries.map(([key,value])=>{const help=projector?renderProjectorSpecificationHelp(key):'';return '<div><dt>'+escape(key)+'</dt><dd>'+escape(Array.isArray(value)?value.join(' · '):value)+'</dd>'+(help?'<dd class="projector-spec-help-row">'+help+'</dd>':'')+'</div>';}).join('')
     + '</dl></section>').join('');
 }
 

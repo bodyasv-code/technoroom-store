@@ -1,4 +1,4 @@
-const manufacturers=['2E','Acer','ASUS','Dell','DIGITUS','EPOS','FSP','Legrand','LEDVANCE','LG','MSI','OnePlus','Philips','Samsung','Sony','TCL','HP','Epson','Canon','Ricoh','Xerox','Brother','Lenovo'];
+const manufacturers=['2E','Acer','ASUS','BenQ','ViewSonic','Dell','DIGITUS','EPOS','FSP','Legrand','LEDVANCE','LG','MSI','OnePlus','Philips','Samsung','Sony','TCL','HP','Epson','Canon','Ricoh','Xerox','Brother','Lenovo'];
 const names=new Map(manufacturers.map(name=>[name.toLowerCase(),name]));
 const suffix=/\s+(?:photo\s+video|accessories|audio|displays|energy(?:\s+ups)?|gaming|lfd|mobile|monitors|mounts|multimedia|projectors|printers|printing|peripherals|peripheras|peripheral|supplies|paper|gmo|channels|retail|screens|scs|tv|ups)(?:\s+(?:accessories|peripherals|supplies|paper|printers|projectors))*\s*$/iu;
 export function canonicalBrandName(value='') {

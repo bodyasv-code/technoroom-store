@@ -41,6 +41,7 @@ import {createQualityAudit, mountQualityPanel} from './catalog-quality.js?v=2026
 import {createImportAudit, auditEligible, auditMarkup, showImportReview} from './import-audit.js?v=20261029-shared';
 import {buildImportChangePlan,showImportChangePlans,importSnapshot} from './import-change-plan.js?v=20261029-shared';
 import {supplierProductContent} from './supplier-product-content.js?v=20261029-shared';
+import {mountMtiPricePreview} from './mti-price-admin.js?v=20261029-mti';
 import {startImportRun,writeImportProduct,finishImportRun,mountImportHistory} from './import-history.js?v=20261020-suppliers';
 import {manualOverrideSummary} from './product-manual-overrides.js?v=20261027-reviewed';
 import {mountProductContentPreview} from './product-content-preview-admin.js?v=20261027-images';
@@ -1822,6 +1823,7 @@ renderAll = () => { renderAllWithCatalogAudit(); renderCatalogAudit(); renderCat
 })();
 
 // Import panels are inserted above. Mount routing after every section exists.
+mountMtiPricePreview(document.querySelector('#supplierImport'),()=>state.catalogReady?state.products:null);
 document.querySelector('.admin-main').prepend(appNotice);
 mountAdminUsers(supabase);
 mountAdminNavigation();

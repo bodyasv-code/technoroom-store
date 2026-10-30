@@ -18,7 +18,7 @@ import {productNameWithSku, officeSupplyCategoryPlan, isSpecializedPrinterName} 
 import {createCategoryTree,categoryOptions} from './category-tree.js?v=20261019-nested';
 import {rankAdminProducts as rankAdminProductMatches} from './admin-product-search.js?v=20261020-ranking-exact';
 import {supplierImportBlock} from './product-suppliers.js?v=20261020-suppliers';
-import {mountSupplierAdmin,supplierFilteredProducts} from './product-suppliers-admin.js?v=20261020-suppliers';
+import {mountSupplierAdmin,supplierFilteredProducts} from './product-suppliers-admin.js?v=20261030-offers';
 const supplierRegistry={ready:false,links:[],exclusions:[]};
 const rankAdminProducts=(products,query)=>rankAdminProductMatches(supplierFilteredProducts(products,supplierRegistry,document.querySelector('#supplierFilter')?.value),query);
 import {adminCatalogMessage,adminRead,loadAdminDataGroups} from './admin-data-loading.js?v=20261020-loading';
@@ -41,7 +41,7 @@ import {createQualityAudit, mountQualityPanel} from './catalog-quality.js?v=2026
 import {createImportAudit, auditEligible, auditMarkup, showImportReview} from './import-audit.js?v=20261029-shared';
 import {buildImportChangePlan,showImportChangePlans,importSnapshot} from './import-change-plan.js?v=20261029-shared';
 import {supplierProductContent} from './supplier-product-content.js?v=20261029-shared';
-import {mountMtiPricePreview} from './mti-price-admin.js?v=20261029-mti';
+import {mountMtiPricePreview} from './mti-price-admin.js?v=20261030-offers';
 import {startImportRun,writeImportProduct,finishImportRun,mountImportHistory} from './import-history.js?v=20261020-suppliers';
 import {manualOverrideSummary} from './product-manual-overrides.js?v=20261027-reviewed';
 import {mountProductContentPreview} from './product-content-preview-admin.js?v=20261027-images';
@@ -1823,7 +1823,7 @@ renderAll = () => { renderAllWithCatalogAudit(); renderCatalogAudit(); renderCat
 })();
 
 // Import panels are inserted above. Mount routing after every section exists.
-mountMtiPricePreview(document.querySelector('#supplierImport'),()=>state.catalogReady?state.products:null);
+mountMtiPricePreview(document.querySelector('#supplierImport'),()=>state.catalogReady?state.products:null,{client:supabase,onImported:loadData});
 document.querySelector('.admin-main').prepend(appNotice);
 mountAdminUsers(supabase);
 mountAdminNavigation();

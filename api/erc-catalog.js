@@ -1,5 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
 import {handleProductContentPreview} from '../server/product-content-preview.js';
+import {handleSupplierContentDraft} from '../server/supplier-content-draft.js';
 
 const supabase = createClient(
   process.env.SUPABASE_URL,
@@ -29,6 +30,7 @@ const parseResponse = (value) => {
 
 export default async function handler(request, response) {
   if (request.method !== 'POST') return response.status(405).end();
+  if(request.body?.action==='supplier-content-draft')return handleSupplierContentDraft(request,response,{db:supabase});
   if(['content-status','content-preview'].includes(request.body?.action))return handleProductContentPreview({method:request.method,headers:request.headers,body:{...request.body,action:request.body.action==='content-status'?'status':'preview'}},response,{db:supabase});
   if (!await requireAdmin(request, response)) return;
 

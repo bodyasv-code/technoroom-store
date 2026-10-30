@@ -1,6 +1,6 @@
 import {buildContentPreview} from '../public/product-content-preview.js';
 const endpoint='https://live.icecat.biz/api';
-async function limitedJson(response){
+export async function limitedJson(response){
   if(Number(response.headers.get('content-length'))>2_000_000)throw new Error('oversize');
   if(!response.body)throw new Error('empty');
   const reader=response.body.getReader(),chunks=[];let length=0;

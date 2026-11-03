@@ -1,4 +1,4 @@
-import {matchMtiPriceRows} from './mti-price.js?v=20261030-offers';
+import {matchMtiPriceRows} from './mti-price.js?v=20261102-stock';
 import {articleContentMarker} from './article-format.js?v=20261027-content-format';
 
 export function mtiDraftContent(row,preview){
@@ -25,7 +25,7 @@ export function prepareMtiOfferBatch(rows,products,previews=new Map(),excludedSk
   for(const row of assessed){
     const reasons=[...row.issues];
     if(excluded.has(row.sku.toUpperCase()))reasons.push('Товар виключено з імпорту.');
-    if(!row.hasPrice||!row.hasStock||row.stockDetail.kind!=='exact'||row.reserved!==0)reasons.push('Ціну або точний залишок потрібно перевірити.');
+    if(!row.hasPrice||((!row.hasStock||row.stockDetail.kind!=='exact')&&row.stockDetail.kind!=='needs_confirmation')||row.reserved!==0)reasons.push('Ціну або точний залишок потрібно перевірити.');
     if(row.supplierSku.trim().toUpperCase()!==row.sku.trim().toUpperCase())reasons.push('Потрібне підтвердження кодів товару.');
     const candidates=products.filter(p=>String(p.sku||'').trim().toUpperCase()===row.sku.toUpperCase());
     if(candidates.some(p=>p.parent_product_id||p.parentProductId))reasons.push('У каталозі є модифікація з цим артикулом.');
@@ -35,7 +35,7 @@ export function prepareMtiOfferBatch(rows,products,previews=new Map(),excludedSk
     ready.push({key:row.key,offer:{supplierSku:row.supplierSku.trim().toUpperCase(),supplierId:row.supplierId,
       manufacturerSku:row.sku.trim().toUpperCase(),brand:row.vendor,category:row.category,
       expectedProductId:row.matchedProductId??null,retailPrice:row.price,supplierPrice:row.supplierPrice,
-      currency:'UAH',priceBasis:'rrp',quantity:row.stock,stockKind:'exact',reserved:0,reviewRequired:false,sourceRow:row.sourceRow,
+      currency:'UAH',priceBasis:'rrp',quantity:row.stockDetail.kind==='needs_confirmation'?null:row.stock,stockKind:row.stockDetail.kind,reserved:0,reviewRequired:false,sourceRow:row.sourceRow,
       draft:row.matchedProductId?null:{name:content.name,description:content.description,specifications:content.specifications},
       contentEvidence:row.matchedProductId?{status:'existing-content-preserved',photosImported:false}:content.evidence}});
   }

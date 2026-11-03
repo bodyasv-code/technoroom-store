@@ -15,6 +15,7 @@ export function mtiNumber(value){
 }
 export function mtiStock(value){
   const raw=text(value),atLeast=/^(\d+)\s+і\s+більше$/iu.exec(raw);
+  if(/^потребує\s+уточнення$/iu.test(raw))return {kind:'needs_confirmation',quantity:null,minimum:null,label:'Наявність уточнюється'};
   if(atLeast)return {kind:'at_least',quantity:null,minimum:Number(atLeast[1]),label:raw};
   const amount=mtiNumber(value);
   return amount!==null&&Number.isInteger(amount)?{kind:'exact',quantity:amount,minimum:amount,label:String(amount)}:

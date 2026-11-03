@@ -27,6 +27,42 @@ create table if not exists public.supplier_offers (
   content_evidence jsonb not null default '{}'::jsonb,
   primary key(supplier,supplier_sku)
 );
+-- Unknown stock is a distinct supplier state, never a fabricated zero.
+alter table public.supplier_offers add column if not exists stock_kind text not null default 'exact';
+alter table public.supplier_offers alter column stock_quantity drop not null;
+alter table public.products add column if not exists supplier_stock_uncertain boolean not null default false;
+do $$ begin
+  if not exists(select 1 from pg_constraint where conrelid='public.supplier_offers'::regclass and conname='supplier_offers_stock_state_check') then
+    alter table public.supplier_offers add constraint supplier_offers_stock_state_check check (
+      (stock_kind='exact' and stock_quantity is not null and stock_quantity>=0)
+      or (stock_kind='needs_confirmation' and stock_quantity is null));
+  end if;
+end $$;
+-- Keep only a public availability signal on products; dealer prices stay private.
+-- Confirmed catalog stock wins over this signal in the storefront.
+create or replace function public.refresh_supplier_stock_uncertain()
+returns trigger language plpgsql security definer set search_path=public as $$
+begin
+  if TG_OP<>'INSERT' then
+    update products p set supplier_stock_uncertain=exists(
+      select 1 from supplier_offers o where o.product_id=p.id and o.stock_kind='needs_confirmation')
+      where p.id=OLD.product_id;
+  end if;
+  if TG_OP<>'DELETE' then
+    update products p set supplier_stock_uncertain=exists(
+      select 1 from supplier_offers o where o.product_id=p.id and o.stock_kind='needs_confirmation')
+      where p.id=NEW.product_id;
+  end if;
+  return null;
+end $$;
+revoke all on function public.refresh_supplier_stock_uncertain() from public,anon,authenticated;
+create or replace trigger supplier_stock_uncertain_refresh
+  after insert or update or delete on public.supplier_offers
+  for each row execute function public.refresh_supplier_stock_uncertain();
+update public.products p set supplier_stock_uncertain=exists(
+  select 1 from public.supplier_offers o where o.product_id=p.id and o.stock_kind='needs_confirmation')
+  where p.supplier_stock_uncertain is distinct from exists(
+    select 1 from public.supplier_offers o where o.product_id=p.id and o.stock_kind='needs_confirmation');
 create table if not exists public.supplier_offer_changes (
   run_id uuid not null references public.supplier_offer_runs(id),
   supplier text not null,
@@ -78,12 +114,12 @@ begin
       or source_sku is distinct from mpn or coalesce(length(btrim(row_data->>'supplierId')),0) not between 1 and 120
       then raise exception 'Unverified manufacturer or supplier identity'; end if;
     if row_data->>'currency' is distinct from 'UAH' or row_data->>'priceBasis' is distinct from 'rrp'
-      or row_data->>'stockKind' is distinct from 'exact' or row_data->'reserved' is distinct from '0'::jsonb
+      or coalesce(row_data->>'stockKind','') not in ('exact','needs_confirmation') or row_data->'reserved' is distinct from '0'::jsonb
       or row_data->'reviewRequired' is distinct from 'false'::jsonb then raise exception 'Offer requires review'; end if;
     if row_data->>'category' not in ('projectors','erc-display-06','erc-display-10') or row_data->>'category' is null then raise exception 'Unsupported category'; end if;
     if jsonb_typeof(row_data->'retailPrice') is distinct from 'number'
-      or jsonb_typeof(row_data->'quantity') is distinct from 'number'
-      or coalesce(row_data->>'quantity','') !~ '^\d+$' then raise exception 'Invalid price or exact stock'; end if;
+      or (row_data->>'stockKind'='exact' and (jsonb_typeof(row_data->'quantity') is distinct from 'number' or coalesce(row_data->>'quantity','') !~ '^\d+$'))
+      or (row_data->>'stockKind'='needs_confirmation' and row_data->'quantity' is distinct from 'null'::jsonb) then raise exception 'Invalid price or exact stock'; end if;
     retail:=(row_data->>'retailPrice')::numeric;quantity:=(row_data->>'quantity')::integer;
     if retail<=0 or retail>999999999999 or quantity not between 0 and 1000000 then raise exception 'Invalid price or exact stock'; end if;
     if row_data->'supplierPrice' is not null and row_data->'supplierPrice'<>'null'::jsonb and jsonb_typeof(row_data->'supplierPrice')<>'number' then raise exception 'Invalid supplier price'; end if;
@@ -107,17 +143,17 @@ begin
         or length(coalesce(draft->>'description',''))>40000 or jsonb_typeof(draft->'specifications') is distinct from 'object'
         or octet_length((draft->'specifications')::text)>100000 then raise exception 'Invalid new product draft'; end if;
       insert into products(name,slug,sku,brand,category,price,stock_quantity,in_stock,availability_status,description,specifications,is_active)
-        values(draft->>'name','mti-'||substr(md5(lower(manufacturer)||':'||mpn),1,24),mpn,manufacturer,row_data->>'category',retail,quantity,quantity>0,
+        values(draft->>'name','mti-'||substr(md5(lower(manufacturer)||':'||mpn),1,24),mpn,manufacturer,row_data->>'category',retail,coalesce(quantity,0),coalesce(quantity>0,false),
           case when quantity>0 then 'in_stock' else 'out_of_stock' end,nullif(draft->>'description',''),draft->'specifications',false)
         returning * into found_product;
       created_id:=found_product.id;created_count:=created_count+1;
     end if;
     select * into old_offer from supplier_offers where supplier='MTI' and supplier_sku=source_sku for update;
     if found and (old_offer.product_id<>found_product.id or old_offer.manufacturer_sku<>mpn or lower(old_offer.brand)<>lower(manufacturer)) then raise exception 'Supplier code already linked to another product'; end if;
-    insert into supplier_offers(supplier,supplier_sku,supplier_product_id,manufacturer_sku,brand,product_id,retail_price,supplier_price,currency,stock_quantity,source_row,run_id,content_evidence)
-      values('MTI',source_sku,row_data->>'supplierId',mpn,manufacturer,found_product.id,retail,cost,'UAH',quantity,(row_data->>'sourceRow')::integer,p_request,coalesce(row_data->'contentEvidence','{}'::jsonb))
+    insert into supplier_offers(supplier,supplier_sku,supplier_product_id,manufacturer_sku,brand,product_id,retail_price,supplier_price,currency,stock_quantity,stock_kind,source_row,run_id,content_evidence)
+      values('MTI',source_sku,row_data->>'supplierId',mpn,manufacturer,found_product.id,retail,cost,'UAH',quantity,row_data->>'stockKind',(row_data->>'sourceRow')::integer,p_request,coalesce(row_data->'contentEvidence','{}'::jsonb))
       on conflict(supplier,supplier_sku) do update set supplier_product_id=excluded.supplier_product_id,retail_price=excluded.retail_price,
-        supplier_price=excluded.supplier_price,stock_quantity=excluded.stock_quantity,source_row=excluded.source_row,observed_at=now(),run_id=excluded.run_id,content_evidence=excluded.content_evidence
+        supplier_price=excluded.supplier_price,stock_quantity=excluded.stock_quantity,stock_kind=excluded.stock_kind,source_row=excluded.source_row,observed_at=now(),run_id=excluded.run_id,content_evidence=excluded.content_evidence
       returning * into new_offer;
     insert into supplier_offer_changes(run_id,supplier,supplier_sku,before_values,after_values,created_product_id)
       values(p_request,'MTI',source_sku,case when old_offer.supplier is null then null else to_jsonb(old_offer) end,to_jsonb(new_offer),created_id);

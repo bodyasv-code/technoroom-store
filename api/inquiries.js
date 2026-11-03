@@ -25,7 +25,7 @@ export default async function handler(request, response) {
     .single();
   if (productError || !product?.is_active) return response.status(404).json({ error: 'Товар не знайдено' });
 
-  const comment = ['Запит на товар під замовлення. Потрібно уточнити строк постачання.', customer.comment?.trim()]
+  const comment = ['Запит на уточнення наявності товару. Потрібно підтвердити наявність і строк постачання.', customer.comment?.trim()]
     .filter(Boolean).join(' ');
   const { data: order, error: orderError } = await supabase
     .from('orders')

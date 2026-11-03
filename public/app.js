@@ -1,3 +1,4 @@
+import {supplierStockNeedsConfirmation} from './supplier-availability.js?v=20261102';
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
 import {reportCommerce,commerceItems,ANALYTICS_READY} from './store-commerce-events.js?v=20261021-commerce';
 import {renderArticleContent,articleHasContent} from './article-format.js?v=20261011-article-links';
@@ -432,12 +433,12 @@ schema.textContent = JSON.stringify({
 document.head.appendChild(schema); const specs = item.specifications ? Object.entries(item.specifications).map(([key, value]) => `<div><dt>${key}</dt><dd>${value}</dd></div>`).join('') : `<div><dt>Характеристики</dt><dd>${item.details || 'Уточнюйте у менеджера'}</dd></div>`; root.innerHTML = `<div class="product-detail-visual ${item.type}"><div class="product-image ${item.type}">${image(item)}</div></div><div class="product-detail-copy"><p class="eyebrow">${item.brand || ''}</p><h1>${item.name}</h1><p class="product-description">${item.description || ''}</p><p class="availability">${item.stock ? 'В наявності' : 'Немає в наявності'}</p><strong class="detail-price">${money(salePrice(item))}</strong><div class="detail-actions"><button class="button primary" data-add="${item.id}" ${item.stock ? '' : 'disabled'}>${item.stock ? 'Додати в кошик' : 'Немає в наявності'}</button><a class="button outline" href="catalog.html">До каталогу</a></div><dl class="specs"><div><dt>Виробник</dt><dd>${item.brand || '—'}</dd></div>${specs}</dl></div>`; bind(root); }
 function checkout() { const form = document.getElementById('checkoutForm'); if (!form) return; const items = cart.map(get).filter(Boolean), total = items.reduce((sum, item) => sum + item.price, 0), root = document.getElementById('checkoutSummary'); root.innerHTML = items.length ? items.map((item) => `<div><span>${item.name}</span><strong>${money(salePrice(item))}</strong></div>`).join('') + `<div class="checkout-total"><span>Разом</span><strong>${money(total)}</strong></div>` : '<p>Ваш кошик порожній. <a href="catalog.html">Перейти до каталогу</a></p>'; form.onsubmit = async (event) => { event.preventDefault(); if (items.some((item) => !item.stock)) return alert('У кошику є недоступний товар.'); const data = Object.fromEntries(new FormData(form)), button = form.querySelector('button'); button.disabled = true; try { const response = await fetch('/api/orders', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ customer: { name: data.name, phone: data.phone, email: data.email }, delivery: { city: data.city, address: data.address, comment: data.comment }, items: cart.map((productId) => ({ productId, quantity: 1 })) }) }); if (!response.ok) throw new Error(); localStorage.removeItem('technoroom-cart'); cart.length = 0; renderCart(); document.getElementById('checkoutNotice').hidden = false; button.textContent = 'Замовлення прийнято'; } catch { button.disabled = false; alert('Не вдалося створити замовлення. Спробуйте ще раз.'); } }; }
 function mount() { renderCart(); home(); catalog(); product(); checkout(); refreshStorefrontRecommendations(); restoreScrollPosition(); const drawer = document.getElementById('cartDrawer'), overlay = document.getElementById('overlay'), close = () => { drawer?.classList.remove('open'); if (overlay) overlay.hidden = true; }; document.getElementById('cartButton')?.addEventListener('click', () => { drawer?.classList.add('open'); if (overlay) overlay.hidden = false; }); document.getElementById('closeCart')?.addEventListener('click', close); overlay?.addEventListener('click', close); document.getElementById('checkoutButton')?.addEventListener('click', () => location.href = 'checkout.html'); }
-const storeProductFromRow = (rawItem) => { const item=applyCustomerProductPolicy(rawItem); return ({ id: item.id, sku: readableText(item.sku), name: compactProductName(item.name, item.sku, item.brand), descriptionContent:item.description, description: readableText(String(item.description||'').replace(/<!--technoroom-rich-text:v1-->/g,'').replace(/<[^>]*>/g,' ')), price: Number(item.price), type: item.category, brand: readableText(item.brand), brand_id:item.brand_id, parentProductId:item.parent_product_id, variantLabel:readableText(item.variant_label), specifications: isProjectorProduct(item)?resolveProjectorSpecifications(item):normalizeSpecifications(item.specifications), availabilityStatus: item.availability_status, stockQuantity: Number(item.stock_quantity || 0), stock: item.in_stock && Number(item.stock_quantity || 0) > 0, image: item.image_path, imagePaths: item.image_paths, createdAt:item.created_at }); };
+const storeProductFromRow = (rawItem) => { const item=applyCustomerProductPolicy(rawItem); return ({ id: item.id, sku: readableText(item.sku), name: compactProductName(item.name, item.sku, item.brand), descriptionContent:item.description, description: readableText(String(item.description||'').replace(/<!--technoroom-rich-text:v1-->/g,'').replace(/<[^>]*>/g,' ')), price: Number(item.price), type: item.category, brand: readableText(item.brand), brand_id:item.brand_id, parentProductId:item.parent_product_id, variantLabel:readableText(item.variant_label), specifications: isProjectorProduct(item)?resolveProjectorSpecifications(item):normalizeSpecifications(item.specifications), availabilityStatus: item.availability_status, supplierStockUncertain:item.supplier_stock_uncertain, stockQuantity: Number(item.stock_quantity || 0), stock: item.in_stock && Number(item.stock_quantity || 0) > 0, image: item.image_path, imagePaths: item.image_paths, createdAt:item.created_at }); };
 
 async function lookupStoreSearch(query) {
   if (!isProductPage && !productsHydrating && catalogProductScope==='all') return null;
   let request = supabase.from('products')
-    .select('id,sku,name,brand,price,description,category,image_path,in_stock,stock_quantity,availability_status')
+    .select('id,sku,name,brand,price,description,category,image_path,in_stock,stock_quantity,availability_status,supplier_stock_uncertain')
     .eq('is_active', true).is('parent_product_id', null);
   const words = normalizeSearch(query).split(' ').filter(Boolean);
   const clauses = words.map(word => 'or(' + ['name','sku','brand','description']
@@ -557,7 +558,7 @@ async function loadProducts() { let renderedFromCache = false, renderedFirstScre
     return;
   }
   catalogProductScope=catalogRequestScope(location.search,Boolean(document.getElementById('catalogGrid')));
-  const catalogColumns = 'id,sku,name,description,price,category,brand,brand_id,parent_product_id,variant_label,specifications,availability_status,stock_quantity,in_stock,image_path,created_at';
+  const catalogColumns = 'id,sku,name,description,price,category,brand,brand_id,parent_product_id,variant_label,specifications,availability_status,supplier_stock_uncertain,stock_quantity,in_stock,image_path,created_at';
   const cartIds=cartProductIds(cart);
   const cartRowsPromise=cartIds.length ? supabase.from('products').select(catalogColumns).in('id',cartIds).eq('is_active',true) : Promise.resolve({data:[],error:null});
   const cachedRows = await readStorefrontProductCache(catalogProductScope);
@@ -731,6 +732,7 @@ async function mountMegaCatalog() {
 }
 /* Статус «Під замовлення»: товар можна оформити без складського залишку. */
 function availability(product) {
+  if (supplierStockNeedsConfirmation(product)) return { label: 'Наявність уточнюється', button: 'Уточнити наявність', orderable: false, inquiry: true };
   if (product.availabilityStatus === 'limited_stock') return { label: 'Є в наявності — закінчується', button: 'У кошик', orderable: true };
   if (product.availabilityStatus === 'under_order') return { label: 'Під замовлення — уточнюйте термін', button: 'Уточнити наявність', orderable: false, inquiry: true };
   if (product.stock) return { label: 'В наявності', button: 'У кошик', orderable: true };
@@ -750,9 +752,9 @@ function openInquiry(id) {
   const name = catalogCardEscape(compactProductName(item.name, item.sku, item.brand));
   dialog.innerHTML = '<form method="dialog" class="inquiry-form">'
     + '<button class="inquiry-close" value="cancel" aria-label="Закрити">×</button>'
-    + '<p class="section-kicker">Товар під замовлення</p><h2>Уточнити наявність</h2>'
+    + '<p class="section-kicker">Запит щодо товару</p><h2>Уточнити наявність</h2>'
     + '<p class="inquiry-product"><b>' + name + '</b><span>SKU: ' + catalogCardEscape(item.sku || '—') + '</span></p>'
-    + '<p>Залиште контакти — менеджер уточнить строк постачання та підтвердить ціну.</p>'
+    + '<p>Залиште контакти — менеджер уточнить наявність, строк постачання та підтвердить ціну.</p>'
     + '<label>Ім’я<input name="name" required autocomplete="name" placeholder="Ваше ім’я"></label>'
     + '<label>Телефон<input name="phone" required autocomplete="tel" inputmode="tel" placeholder="+380 …"></label>'
     + '<label>Email <small>(необов’язково)</small><input name="email" type="email" autocomplete="email" placeholder="name@email.com"></label>'

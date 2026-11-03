@@ -1375,13 +1375,13 @@ const recommendationCard = product => {
   const id = Number(product.id);
   const name = recommendationEscape(product.name);
   const brand = recommendationEscape(product.brand || 'TECHNOROOM');
-  const availability = product.stock === false ? 'Немає в наявності' : 'В наявності';
+  const availabilityLabel = availability(product).label;
   return '<article class="storefront-recommendation-card">'
     + '<a class="storefront-recommendation-image" href="product.html?id=' + id + '" aria-label="Відкрити ' + name + '">' + recommendationImage(product) + '</a>'
     + '<div class="storefront-recommendation-content">'
     + '<p class="storefront-recommendation-brand">' + brand + '</p>'
     + '<a class="storefront-recommendation-name" href="product.html?id=' + id + '">' + name + '</a>'
-    + '<div class="storefront-recommendation-meta"><span class="storefront-recommendation-price">' + money(salePrice(product)) + '</span><span class="storefront-recommendation-stock">' + availability + '</span></div>'
+    + '<div class="storefront-recommendation-meta"><span class="storefront-recommendation-price">' + money(salePrice(product)) + '</span><span class="storefront-recommendation-stock">' + availabilityLabel + '</span></div>'
     + '</div></article>';
 };
 const renderStorefrontRecommendations = () => {

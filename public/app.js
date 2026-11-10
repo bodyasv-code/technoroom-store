@@ -733,7 +733,7 @@ async function mountMegaCatalog() {
 /* Статус «Під замовлення»: товар можна оформити без складського залишку. */
 function availability(product) {
   if (supplierStockNeedsConfirmation(product)) return { label: 'Наявність уточнюється', button: 'Уточнити наявність', orderable: false, inquiry: true };
-  if (product.availabilityStatus === 'limited_stock') return { label: 'Є в наявності — закінчується', button: 'У кошик', orderable: true };
+  if (product.stock && product.availabilityStatus === 'limited_stock') return { label: 'Є в наявності — закінчується', button: 'У кошик', orderable: true };
   if (product.availabilityStatus === 'under_order') return { label: 'Під замовлення — уточнюйте термін', button: 'Уточнити наявність', orderable: false, inquiry: true };
   if (product.stock) return { label: 'В наявності', button: 'У кошик', orderable: true };
   return { label: 'Немає в наявності', button: 'Немає', orderable: false };

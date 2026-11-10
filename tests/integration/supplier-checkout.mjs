@@ -176,9 +176,26 @@ try {
     throw rollback;
    });}catch(e){if(e!==rollback)throw e;}
   });
+  await db.exec(await sql('supplier-inventory-cancellation.sql'));
+  await check('cancellation releases exact allocations once and blocks unreserved reopening',async()=>{
+   try {await db.transaction(async tx=>{
+    await tx.exec("update products set stock_quantity=0,in_stock=false,supplier_reserved_quantity=0 where id=2;insert into supplier_offers values(2,1,'exact')");
+    const id=await call(tx,payload([{productId:2,quantity:1,expectedUnitPrice:100}]));
+    await tx.query("update orders set status='cancelled' where id=$1",[id]);
+    let p=(await tx.query('select * from products where id=2')).rows[0];
+    assert.equal(p.stock_quantity,0);assert.equal(p.supplier_reserved_quantity,0);assert.equal(p.supplier_available_quantity,1);
+    await tx.query("update orders set status='cancelled' where id=$1",[id]);
+    assert.equal((await tx.query('select supplier_available_quantity from products where id=2')).rows[0].supplier_available_quantity,1);
+    assert.equal((await tx.query('select released from order_inventory_allocations where order_id=$1',[id])).rows[0].released,true);
+    await assert.rejects(()=>tx.query("update orders set status='new' where id=$1",[id]),/inventory was released/);
+    throw rollback;
+   });}catch(e){if(e!==rollback)throw e;}
+  });
   console.log(`${passed} database checks passed. Orders: 0; order items: 0; stock restored.`);
   console.log('Isolated local database: '+dataDir);
   console.log('Production Supabase was not accessed. Sequence gaps after rollback are normal.');
 } finally {await db.close();}
+
+
 
 

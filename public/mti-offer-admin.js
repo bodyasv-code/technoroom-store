@@ -1,3 +1,4 @@
+import {mountMtiStockObservations} from './mti-stock-observation-admin.js?v=20261112';
 import {prepareMtiOfferBatch,mtiOfferSnapshot,applyMtiOfferBatch} from './mti-offer-import.js?v=20261102-stock';
 const escape=value=>String(value??'').replace(/[&<>"']/gu,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 export function mtiOfferReviewMarkup(plan){
@@ -14,6 +15,7 @@ function review(plan){
   });
 }
 export function mountMtiOfferImport(panel,{client,getRows,getCatalog,getSourceName,onImported=()=>{}}){
+  const observations=mountMtiStockObservations(panel,{client,getRows,getSourceName,onImported});
   const controls=document.createElement('div');controls.className='import-report';
   controls.innerHTML='<h3>Зберегти пропозиції МТІ</h3><p>Зберігаються лише позиції без зауважень. Ціни й залишки МТІ обліковуються окремо від ERC. Нові картки завжди створюються прихованими; контент Icecat потребує редакторської перевірки.</p><button type="button" data-prepare>Підготувати пропозиції й контент Icecat</button> <button type="button" data-write disabled>Переглянути зміни та зберегти</button><p role="status" data-offer-message></p><div data-offer-plan></div>';
   panel.querySelector('[data-mti-results]').before(controls);
@@ -24,11 +26,11 @@ export function mountMtiOfferImport(panel,{client,getRows,getCatalog,getSourceNa
     savedResult.textContent='Завантажую пропозиції…';
     const response=await client.from('supplier_offers').select('supplier_sku,brand,product_id,retail_price,supplier_price,stock_quantity,stock_kind,observed_at').eq('supplier','MTI').order('observed_at',{ascending:false}).limit(200);
     if(response.error){savedResult.textContent='Не вдалося прочитати пропозиції. Перевірте оновлення бази та права доступу.';return;}
-    savedResult.innerHTML='<p>Показано останніх пропозицій: '+response.data.length+' (до 200).</p><div class="table-wrap"><table><thead><tr><th>Артикул</th><th>Картка</th><th>РРЦ МТІ, ₴</th><th>Ціна МТІ, ₴</th><th>Залишок МТІ</th></tr></thead><tbody>'+response.data.map(row=>'<tr><td>'+escape(row.brand)+' '+escape(row.supplier_sku)+'</td><td>'+escape(row.product_id)+'</td><td>'+escape(row.retail_price)+'</td><td>'+escape(row.supplier_price??'Не вказано')+'</td><td>'+escape(row.stock_kind==='needs_confirmation'?'Наявність уточнюється':row.stock_quantity)+'</td></tr>').join('')+'</tbody></table></div>';
+    savedResult.innerHTML='<p>Показано останніх пропозицій: '+response.data.length+' (до 200).</p><div class="table-wrap"><table><thead><tr><th>Артикул</th><th>Картка</th><th>РРЦ МТІ, ₴</th><th>Ціна МТІ, ₴</th><th>Залишок МТІ</th></tr></thead><tbody>'+response.data.map(row=>'<tr><td>'+escape(row.brand)+' '+escape(row.supplier_sku)+'</td><td>'+escape(row.product_id)+'</td><td>'+escape(row.retail_price)+'</td><td>'+escape(row.supplier_price??'Не вказано')+'</td><td>'+escape(['needs_confirmation','unknown'].includes(row.stock_kind)?'Наявність уточнюється':row.stock_quantity)+'</td></tr>').join('')+'</tbody></table></div>';
   }
   saved.querySelector('button').onclick=()=>loadSaved().catch(()=>{savedResult.textContent='Не вдалося прочитати пропозиції.';});
   let prepared=null,sourceRows=null,exclusions=[],previews=new Map(),generation=0,busy=false,requestId=null,abort=null;
-  const reset=()=>{generation++;abort?.abort();prepared=null;requestId=null;previews=new Map();write.disabled=true;message.textContent='';result.replaceChildren();};
+  const reset=()=>{observations.reset();generation++;abort?.abort();prepared=null;requestId=null;previews=new Map();write.disabled=true;message.textContent='';result.replaceChildren();};
   async function readExclusions(){
     const values=[];
     for(let offset=0;;offset+=1000){const response=await client.from('product_import_exclusions').select('sku').eq('is_active',true).order('sku').range(offset,offset+999);if(response.error)throw new Error('Не вдалося перевірити виключення імпорту: '+response.error.message);values.push(...response.data.map(row=>row.sku));if(response.data.length<1000)return values;}
@@ -80,3 +82,5 @@ export function mountMtiOfferImport(panel,{client,getRows,getCatalog,getSourceNa
   };
   return {reset};
 }
+
+

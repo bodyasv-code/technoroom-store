@@ -1,0 +1,16 @@
+import assert from 'node:assert/strict';
+import {planMtiStockInvalidations as plan} from '../public/mti-stock-invalidation.js';
+const row={vendor:'Epson',sku:'ABC',supplierSku:'ABC',supplierId:'1',sourceRow:3,stockDetail:{kind:'unknown'}};
+const offer={supplier:'MTI',supplier_sku:'ABC',manufacturer_sku:'ABC',brand:'Epson',supplier_product_id:'1',product_id:7,observed_at:'2026-10-30T00:00:00Z',stock_kind:'exact',stock_quantity:3};
+const options={sourceObservedAt:'2026-11-10T10:00:00Z'};
+const result=plan([row],[offer],options);assert.equal(result.ready.length,1);assert.equal(result.ready[0].quantity,null);assert.equal(result.ready[0].expectedQuantity,3);
+assert.equal(plan([row],[{...offer,observed_at:'2026-11-12T00:00:00Z'}],options).ready.length,0);
+for(const modified of [{supplier_product_id:'2'},{brand:'Canon'},{supplier:'ERC'},{manufacturer_sku:'ABCD'},{observed_at:null}])assert.equal(plan([row],[{...offer,...modified}],options).ready.length,0);
+assert.equal(plan([row,row],[offer],options).ready.length,0);
+assert.equal(plan([row],[offer,offer],options).ready.length,0);
+assert.equal(plan([row],[offer],{...options,excludedSkus:['abc']}).ready.length,0);
+assert.equal(plan([{...row,stockDetail:{kind:'exact',quantity:0}}],[offer],options).ready.length,0);
+assert.equal(plan([{...row,supplierSku:'OTHER'}],[offer],options).ready.length,0);
+assert.throws(()=>plan([row],[offer]),/дата/);
+assert.equal(offer.stock_quantity,3);
+console.log('PASS: unknown preserves null, guards identity/duplicates/exclusions/newer observations and never mutates offers');

@@ -35,6 +35,36 @@ try{
   await assert.rejects(()=>call('dddddddd-dddd-4ddd-dddd-dddddddddddd',[offer('ROLLBACK')]),/offer failure/);
   assert.equal((await db.query("select count(*)::int n from products where sku='ROLLBACK'")).rows[0].n,0);
   assert.equal((await db.query("select count(*)::int n from supplier_offer_runs where id='dddddddd-dddd-4ddd-dddd-dddddddddddd'")).rows[0].n,0);
+  await db.exec('reset role;drop trigger reject_offer_test on supplier_offers;');
+  const separation=await readFile(new URL('../supabase/mti-draft-stock-separation.sql',import.meta.url),'utf8');
+  await assert.rejects(()=>db.exec(separation),/Apply supplier-inventory-upgrade.sql first/);
+  await db.exec('rollback;');
+  const inventory=await readFile(new URL('../supabase/supplier-inventory-upgrade.sql',import.meta.url),'utf8');
+  await db.exec(inventory.split('-- Run in Supabase SQL Editor')[0]);
+  await db.exec(separation);await db.exec(separation);
+  await db.exec('set role authenticated;');
+  await call('ffffffff-ffff-4fff-ffff-ffffffffffff',[offer('SEPARATE')]);
+  let separated=(await db.query("select * from products where sku='SEPARATE'")).rows[0];
+  assert.equal(separated.stock_quantity,0);assert.equal(separated.supplier_available_quantity,2);assert.equal(separated.is_active,false);
+  await call('ffffffff-ffff-4fff-ffff-fffffffffff1',[{...offer('SEPARATE',separated.id),quantity:0}]);
+  separated=(await db.query("select * from products where sku='SEPARATE'")).rows[0];
+  assert.equal(separated.stock_quantity,0);assert.equal(separated.supplier_available_quantity,0);
+  assert.equal((await db.query('select stock_quantity from products where id=1')).rows[0].stock_quantity,7);
+  await db.exec('reset role;');
+  await db.exec(await readFile(new URL('../supabase/mti-stock-observations-upgrade.sql',import.meta.url),'utf8'));
+  await db.exec('set role authenticated;');
+  const oldOffer=(await db.query("select * from supplier_offers where supplier_sku='NEW'")).rows[0];
+  const unknown={supplierSku:'NEW',productId:oldOffer.product_id,brand:oldOffer.brand,manufacturerSku:oldOffer.manufacturer_sku,supplierId:oldOffer.supplier_product_id,expectedObservedAt:oldOffer.observed_at,expectedStockKind:oldOffer.stock_kind,expectedQuantity:oldOffer.stock_quantity,stockKind:'unknown',quantity:null};
+  await db.exec("reset role;update supplier_offers set observed_at='2020-01-01T00:00:00Z' where supplier_sku='NEW';set role authenticated;");
+  unknown.expectedObservedAt='2020-01-01T00:00:00Z';
+  const observationId='12345678-1234-4234-8234-123456789012';
+  const observe=rows=>db.query('select apply_mti_stock_observations($1,$2,$3,$4::jsonb) value',[observationId,'price.xlsx','2021-01-01T00:00:00Z',JSON.stringify(rows)]);
+  await observe([unknown]);await observe([unknown]);
+  const changedProduct=(await db.query('select * from products where id=$1',[oldOffer.product_id])).rows[0];
+  assert.equal(changedProduct.supplier_available_quantity,0);assert.equal(changedProduct.supplier_stock_uncertain,true);
+  assert.equal((await db.query("select stock_quantity from supplier_offers where supplier_sku='NEW'")).rows[0].stock_quantity,null);
+  assert.equal((await db.query('select jsonb_array_length(before_values) n from mti_stock_observation_runs')).rows[0].n,1);
+  await assert.rejects(()=>observe([{...unknown,productId:1}]),/Request key reused/);
   await db.exec(`set request.jwt.claim.sub='${other}';`);
   assert.equal((await db.query('select * from supplier_offers')).rows.length,0);
   assert.equal((await db.query('select * from supplier_offer_changes')).rows.length,0);
@@ -42,3 +72,6 @@ try{
   await db.exec('reset role;set role anon;');await assert.rejects(()=>db.query('select supplier_price from supplier_offers'),/permission denied/);
   console.log('Supplier offers: isolated prices/stock, hidden drafts, immutable existing cards, idempotency, stale identity, exclusions, backups, atomic rollback and private costs PASS');
 }finally{await db.close();}
+
+
+

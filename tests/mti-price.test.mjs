@@ -31,7 +31,7 @@ test('MTI columns are mapped by headers, retail uses RRP and all source identifi
 test('missing RRP never falls back to supplier price or order quantity',()=>{
   const row=parse([source({11:'',16:'-'})]).rows[0];
   assert.equal(row.hasPrice,false);assert.equal(row.price,0);assert.equal(row.supplierPrice,10000);
-  assert.equal(row.hasStock,false);assert.equal(row.stockDetail.quantity,null);
+  assert.equal(row.hasStock,true);assert.equal(row.stockDetail.quantity,0);
   assert.ok(row.issues.length);
   assert.equal(mtiNumber('-4'),null);assert.equal(mtiNumber('1 200,50'),1200.5);
   assert.equal(mtiNumber('1e5'),null);assert.equal(mtiNumber('9'.repeat(500)),null);
@@ -39,7 +39,8 @@ test('missing RRP never falls back to supplier price or order quantity',()=>{
 
 test('at-least stock and reservations are preserved as uncertain, never invented exact stock',()=>{
   assert.deepEqual(mtiStock('10 і більше'),{kind:'at_least',quantity:null,minimum:10,label:'10 і більше'});
-  for(const value of ['-',null,'yes','2.5'])assert.equal(mtiStock(value).kind,'unknown');
+  assert.deepEqual(mtiStock('-'),{kind:'exact',quantity:0,minimum:0,label:'Немає в наявності'});
+  for(const value of [null,'','yes','2.5'])assert.equal(mtiStock(value).kind,'unknown');
   const row=parse([source({16:'10 і більше',17:2})]).rows[0];
   assert.equal(row.hasStock,false);assert.equal(row.stockDetail.minimum,10);
   assert.equal(row.reserved,2);assert.equal(row.stock,0);assert.ok(row.issues.some(i=>i.includes('резерву')));
@@ -72,3 +73,5 @@ test('preview escapes supplier text and has no product-writing capability',()=>{
     assert.doesNotMatch(code,/\.rpc\(|\.from\(|\.insert\(|\.update\(|\.upload\(/);
   }
 });
+
+

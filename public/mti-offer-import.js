@@ -1,4 +1,4 @@
-import {matchMtiPriceRows} from './mti-price.js?v=20261102-stock';
+import {matchMtiPriceRows} from './mti-price.js?v=20261112-dash-zero';
 import {articleContentMarker} from './article-format.js?v=20261027-content-format';
 
 export function mtiDraftContent(row,preview){
@@ -49,3 +49,4 @@ export async function applyMtiOfferBatch(client,plan,{requestId,sourceName}){
   if(!data||data.offers!==plan.ready.length||data.published!==0)throw new Error('Неочікувана відповідь імпорту. Перевірте журнал перед повторним записом.');
   return data;
 }
+

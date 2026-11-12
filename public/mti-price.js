@@ -15,6 +15,7 @@ export function mtiNumber(value){
 }
 export function mtiStock(value){
   const raw=text(value),atLeast=/^(\d+)\s+і\s+більше$/iu.exec(raw);
+  if(raw==='-')return {kind:'exact',quantity:0,minimum:0,label:'Немає в наявності'};
   if(/^потребує\s+уточнення$/iu.test(raw))return {kind:'needs_confirmation',quantity:null,minimum:null,label:'Наявність уточнюється'};
   if(atLeast)return {kind:'at_least',quantity:null,minimum:Number(atLeast[1]),label:raw};
   const amount=mtiNumber(value);
@@ -104,3 +105,4 @@ export async function readMtiPriceFile(file){
   if(results.length!==1)throw new Error('Потрібен один аркуш прайсу МТІ з розпізнаними колонками.');
   return results[0];
 }
+

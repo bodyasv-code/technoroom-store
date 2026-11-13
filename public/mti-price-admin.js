@@ -1,4 +1,4 @@
-import {readMtiPriceFile,matchMtiPriceRows} from './mti-price.js?v=20261112-dash-zero';
+import {readMtiPriceFile,matchMtiPriceRows} from './mti-price.js?v=20261113-identities';
 import {mountMtiOfferImport} from './mti-offer-admin.js?v=20261112-observations';
 const esc=value=>String(value??'').replace(/[&<>"']/gu,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const money=value=>value===null?'Не вказано':Number(value).toLocaleString('uk-UA',{maximumFractionDigits:2})+' ₴';
@@ -34,5 +34,6 @@ export function mountMtiPricePreview(anchor,getCatalog,{client,onImported}={}){
     catch(error){if(request===generation)status.textContent=error.message||'Не вдалося прочитати прайс МТІ.';}
   });
 }
+
 
 

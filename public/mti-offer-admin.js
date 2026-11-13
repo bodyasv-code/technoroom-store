@@ -1,5 +1,5 @@
 import {mountMtiStockObservations} from './mti-stock-observation-admin.js?v=20261112';
-import {prepareMtiOfferBatch,mtiOfferSnapshot,applyMtiOfferBatch} from './mti-offer-import.js?v=20261102-stock';
+import {prepareMtiOfferBatch,mtiOfferSnapshot,applyMtiOfferBatch} from './mti-offer-import.js?v=20261113-identities';
 const escape=value=>String(value??'').replace(/[&<>"']/gu,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 export function mtiOfferReviewMarkup(plan){
   const deferred=plan.deferred.length?'<details><summary>Чому відкладено: '+plan.deferred.length+'</summary><p>Ці рядки не записуються. Попередні пропозиції МТІ залишаються без оновлення. Позначка «-» у прайсі МТІ означає нульовий залишок. Порожня клітинка залишається невизначеною.</p><div class="table-wrap"><table><thead><tr><th>Артикул</th><th>Причини</th></tr></thead><tbody>'+plan.deferred.map(row=>'<tr><td>'+escape(row.sku)+'</td><td>'+row.reasons.map(escape).join('<br>')+'</td></tr>').join('')+'</tbody></table></div></details>':'';
@@ -82,6 +82,7 @@ export function mountMtiOfferImport(panel,{client,getRows,getCatalog,getSourceNa
   };
   return {reset};
 }
+
 
 
 

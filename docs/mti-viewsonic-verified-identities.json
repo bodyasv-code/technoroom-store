@@ -1,0 +1,14 @@
+{
+ "verifiedAt":"2026-11-13",
+ "scope":"MTI ViewSonic exact model + regulatory number pairs; never regulatory number alone",
+ "pairs":[
+ {"brand":"ViewSonic","model":"PA503S","partNumber":"VS16905","source":"https://support.viewsonic.com/en/support/solutions/articles/33000287832-what-is-the-duration-of-security-update-support-for-viewsonic-consumer-projectors-"},
+ {"brand":"ViewSonic","model":"PA700X","partNumber":"VS19343","source":"https://manuals.viewsonic.com/PA700X_Specifications"},
+ {"brand":"ViewSonic","model":"PA700S","partNumber":"VS19341","source":"https://manuals.viewsonic.com/PA700S_Full_Guide"},
+ {"brand":"ViewSonic","model":"PX700HDH","partNumber":"VS20135","source":"https://www.viewsonic.com/be/products/agec/PX700HDH"},
+ {"brand":"ViewSonic","model":"PX704HD","partNumber":"VS19746","source":"https://manuals.viewsonic.com/PX704HD_Specifications"},
+ {"brand":"ViewSonic","model":"LSD400HD-ST","partNumber":"VS20642","source":"https://www.rra.go.kr/ko/license/A_b_popup_keyno.do?key_no=R-R-VIE-VS20642"},
+ {"brand":"ViewSonic","model":"LSD300W-ST","partNumber":"VS20579","source":"https://support.viewsonic.com/en/support/solutions/articles/33000287832-what-is-the-duration-of-security-update-support-for-viewsonic-consumer-projectors-"},
+ {"brand":"ViewSonic","model":"LSD600W","partNumber":"VS20996","source":"https://www.cqc.com.cn/www/upload/file/2026-02/1771911435798.pdf"}
+ ]
+}

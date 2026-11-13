@@ -1,3 +1,4 @@
+import {verifiedMtiIdentity} from './mti-identities.js?v=20261113';
 import {canonicalBrandName} from './brand-normalization.js?v=20261029-mti';
 import {supplierProductContent} from './supplier-product-content.js?v=20261029-shared';
 const text=value=>String(value??'').replace(/\s+/gu,' ').trim();
@@ -42,7 +43,7 @@ export function parseMtiPriceRows(matrix){
     const price=mtiNumber(value('rrp')),supplierPrice=mtiNumber(value('supplierPrice')),reserved=mtiNumber(value('reserved'));
     if(!mpn||!manufacturer)issues.push('Не вказано бренд або партномер виробника.');
     if(!supplierSku||!text(value('supplierId')))issues.push('Не вказано код товару МТІ.');
-    if(key(supplierSku)!==key(mpn))issues.push('Код постачальника відрізняється від партномера: перевірити модель перед зіставленням.');
+    if(!verifiedMtiIdentity({supplierSku,sku:mpn,vendor:manufacturer,model:text(value('model'))}))issues.push('Код постачальника відрізняється від партномера: перевірити модель перед зіставленням.');
     if(!category)issues.push('Категорію потрібно зіставити вручну.');
     if(price===null||price<=0)issues.push('Немає додатної РРЦ у гривнях.');
     if(stock.kind==='unknown')issues.push('Залишок не визначено; наявний залишок не можна обнулювати.');
@@ -105,4 +106,5 @@ export async function readMtiPriceFile(file){
   if(results.length!==1)throw new Error('Потрібен один аркуш прайсу МТІ з розпізнаними колонками.');
   return results[0];
 }
+
 

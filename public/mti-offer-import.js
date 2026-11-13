@@ -1,4 +1,5 @@
-import {matchMtiPriceRows} from './mti-price.js?v=20261112-dash-zero';
+import {verifiedMtiIdentity} from './mti-identities.js?v=20261113';
+import {matchMtiPriceRows} from './mti-price.js?v=20261113-identities';
 import {articleContentMarker} from './article-format.js?v=20261027-content-format';
 
 export function mtiDraftContent(row,preview){
@@ -26,14 +27,14 @@ export function prepareMtiOfferBatch(rows,products,previews=new Map(),excludedSk
     const reasons=[...row.issues];
     if(excluded.has(row.sku.toUpperCase()))reasons.push('Товар виключено з імпорту.');
     if(!row.hasPrice||((!row.hasStock||row.stockDetail.kind!=='exact')&&row.stockDetail.kind!=='needs_confirmation')||row.reserved!==0)reasons.push('Ціну або точний залишок потрібно перевірити.');
-    if(row.supplierSku.trim().toUpperCase()!==row.sku.trim().toUpperCase())reasons.push('Потрібне підтвердження кодів товару.');
+    if(!verifiedMtiIdentity(row))reasons.push('Потрібне підтвердження кодів товару.');
     const candidates=products.filter(p=>String(p.sku||'').trim().toUpperCase()===row.sku.toUpperCase());
     if(candidates.some(p=>p.parent_product_id||p.parentProductId))reasons.push('У каталозі є модифікація з цим артикулом.');
     if(candidates.some(p=>p.category&&p.category!==row.category))reasons.push('Категорія збереженого товару відрізняється від прайсу.');
     if(reasons.length){deferred.push({key:row.key,sku:row.sku,reasons:[...new Set(reasons)]});continue;}
     const content=mtiDraftContent(row,previews.get(row.key));
     ready.push({key:row.key,offer:{supplierSku:row.supplierSku.trim().toUpperCase(),supplierId:row.supplierId,
-      manufacturerSku:row.sku.trim().toUpperCase(),brand:row.vendor,category:row.category,
+      manufacturerSku:row.sku.trim().toUpperCase(),brand:row.vendor,model:row.model,category:row.category,
       expectedProductId:row.matchedProductId??null,retailPrice:row.price,supplierPrice:row.supplierPrice,
       currency:'UAH',priceBasis:'rrp',quantity:row.stockDetail.kind==='needs_confirmation'?null:row.stock,stockKind:row.stockDetail.kind,reserved:0,reviewRequired:false,sourceRow:row.sourceRow,
       draft:row.matchedProductId?null:{name:content.name,description:content.description,specifications:content.specifications},
@@ -49,4 +50,6 @@ export async function applyMtiOfferBatch(client,plan,{requestId,sourceName}){
   if(!data||data.offers!==plan.ready.length||data.published!==0)throw new Error('Неочікувана відповідь імпорту. Перевірте журнал перед повторним записом.');
   return data;
 }
+
+
 

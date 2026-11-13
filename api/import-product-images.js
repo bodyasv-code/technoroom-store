@@ -8,6 +8,7 @@ const supabase = createClient(
 );
 
 const trustedHosts = new Set([
+  'static.mti.ua',
   'www.tradeinn.com', 'www.audiotrends.com.au', 'static-ecapac.acer.com', 'media4home.com.pl',
   'media.sonos.com', 'images.samsung.com', 'assets2.razerzone.com', 'd7qztf2ityad6.cloudfront.net',
   'hp.widen.net', 'img06.en25.com', 'koss.com.ua', 'ssl-product-images.www8-hp.com', 'www.3ona51.com',
@@ -113,3 +114,4 @@ export default async function handler(request, response) {
   if (updateError) return response.status(500).json({ error: updateError.message });
   return response.status(200).json({ uploaded: uploaded.length });
 }
+

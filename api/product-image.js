@@ -7,6 +7,7 @@ const supabase = createClient(
 );
 
 const trustedHosts = new Set([
+  'static.mti.ua',
   'www.tradeinn.com',
   'www.audiotrends.com.au',
   'static-ecapac.acer.com',
@@ -76,4 +77,5 @@ export default async function handler(request, response) {
     return response.status(502).end('Image unavailable');
   }
 }
+
 

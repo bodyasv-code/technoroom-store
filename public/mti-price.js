@@ -39,7 +39,7 @@ export function parseMtiPriceRows(matrix){
     const source=matrix[index],value=field=>source[positions[field]]??'';
     if(!['brand','model','supplierSku','mpn'].some(field=>text(value(field))))continue;
     const issues=[],supplierSku=text(value('supplierSku')),mpn=text(value('mpn')),manufacturer=brand(value('brand'));
-    const category=categories[key(value('categoryCode'))]||'',stock=mtiStock(value('stock'));
+    const category=manufacturer==='Epson'&&['V12H758040','V12H757040','V12H759040'].includes(key(mpn))?'erc-display-08':categories[key(value('categoryCode'))]||'',stock=mtiStock(value('stock'));
     const price=mtiNumber(value('rrp')),supplierPrice=mtiNumber(value('supplierPrice')),reserved=mtiNumber(value('reserved'));
     if(!mpn||!manufacturer)issues.push('Не вказано бренд або партномер виробника.');
     if(!supplierSku||!text(value('supplierId')))issues.push('Не вказано код товару МТІ.');
@@ -106,5 +106,6 @@ export async function readMtiPriceFile(file){
   if(results.length!==1)throw new Error('Потрібен один аркуш прайсу МТІ з розпізнаними колонками.');
   return results[0];
 }
+
 
 

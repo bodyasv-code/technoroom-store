@@ -37,7 +37,7 @@ begin
     if row_data->>'currency' is distinct from 'UAH' or row_data->>'priceBasis' is distinct from 'rrp'
       or coalesce(row_data->>'stockKind','') not in ('exact','needs_confirmation') or row_data->'reserved' is distinct from '0'::jsonb
       or row_data->'reviewRequired' is distinct from 'false'::jsonb then raise exception 'Offer requires review'; end if;
-    if row_data->>'category' not in ('projectors','erc-display-06','erc-display-10') or row_data->>'category' is null then raise exception 'Unsupported category'; end if;
+    if row_data->>'category' not in ('projectors','erc-display-06','erc-display-10','erc-display-08') or row_data->>'category' is null then raise exception 'Unsupported category'; end if;
     if jsonb_typeof(row_data->'retailPrice') is distinct from 'number'
       or (row_data->>'stockKind'='exact' and (jsonb_typeof(row_data->'quantity') is distinct from 'number' or coalesce(row_data->>'quantity','') !~ '^\d+$'))
       or (row_data->>'stockKind'='needs_confirmation' and row_data->'quantity' is distinct from 'null'::jsonb) then raise exception 'Invalid price or exact stock'; end if;
@@ -90,5 +90,6 @@ grant execute on function public.apply_mti_offer_batch(uuid,text,jsonb) to authe
 
 notify pgrst,'reload schema';
 commit;
+
 
 

@@ -9,6 +9,7 @@ const supabase = createClient(
 
 const trustedHosts = new Set([
   'static.mti.ua',
+  'region-resource.optoma.com',
   'www.tradeinn.com', 'www.audiotrends.com.au', 'static-ecapac.acer.com', 'media4home.com.pl',
   'media.sonos.com', 'images.samsung.com', 'assets2.razerzone.com', 'd7qztf2ityad6.cloudfront.net',
   'hp.widen.net', 'img06.en25.com', 'koss.com.ua', 'ssl-product-images.www8-hp.com', 'www.3ona51.com',
@@ -38,7 +39,7 @@ const fetchTrustedImage = async (url, redirectsLeft = 2) => {
     headers: {
       'User-Agent': 'Mozilla/5.0 (compatible; TECHNOROOM catalog importer)',
       Accept: 'image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8',
-      Referer: 'https://www.erc.ua/',
+      Referer: url.hostname==='region-resource.optoma.com'?'https://www.optomausa.com/':'https://www.erc.ua/',
     },
     redirect: 'manual',
   });
@@ -114,4 +115,5 @@ export default async function handler(request, response) {
   if (updateError) return response.status(500).json({ error: updateError.message });
   return response.status(200).json({ uploaded: uploaded.length });
 }
+
 

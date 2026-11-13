@@ -8,6 +8,7 @@ const supabase = createClient(
 
 const trustedHosts = new Set([
   'static.mti.ua',
+  'region-resource.optoma.com',
   'www.tradeinn.com',
   'www.audiotrends.com.au',
   'static-ecapac.acer.com',
@@ -33,7 +34,7 @@ const isTrustedHost = (hostname = '') => trustedHosts.has(hostname) || hostname 
 
 const fetchTrustedImage = async (url, redirectsLeft = 2) => {
   const upstream = await fetch(url, {
-    headers: { 'User-Agent': 'TECHNOROOM image service' },
+    headers: { 'User-Agent': 'Mozilla/5.0 (compatible; TECHNOROOM image service)', ...(url.hostname==='region-resource.optoma.com'?{Referer:'https://www.optomausa.com/'}:{}) },
     redirect: 'manual',
   });
 
@@ -77,5 +78,6 @@ export default async function handler(request, response) {
     return response.status(502).end('Image unavailable');
   }
 }
+
 
 

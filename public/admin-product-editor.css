@@ -1,0 +1,65 @@
+/* Keep dense product editing separate from the other admin dialogs. */
+#productDialog{box-sizing:border-box;width:min(1380px,calc(100vw - 28px));max-height:calc(100dvh - 28px);overflow:auto;padding:0}
+#productDialog form{box-sizing:border-box;width:100%;padding:0 22px;background:#fff}
+#productDialog .dialog-heading{position:sticky;top:0;z-index:4;margin:0 -22px 10px;padding:12px 22px;background:#fff;border-bottom:1px solid #e4eaf2;gap:16px}
+#productDialog .dialog-heading h2{font-size:22px;letter-spacing:-.03em}
+#productDialog .dialog-heading>button{width:36px;height:36px}
+#productDialog label{min-width:0;margin:0;font-size:12px;line-height:1.4}
+#productDialog input,#productDialog select,#productDialog textarea{box-sizing:border-box;max-width:100%;margin-top:4px;padding:8px 10px;font-size:13px;min-height:36px}
+#productDialog :is(input[type=checkbox],input[type=radio]){min-height:0;width:auto;margin:0;padding:0}
+#productDialog small{display:block;margin-top:4px;font-size:11px;font-weight:400;line-height:1.4;color:#65758a}
+#productDialog [data-manual-overrides]{margin:0 0 10px;font-size:12px;line-height:1.5;color:#53647c}
+#productDialog [data-manual-overrides]:empty{display:none}
+#productDialog [data-supplier-editor]{display:grid;grid-template-columns:1fr auto;gap:5px 14px;margin:0 0 14px;padding:8px 12px;min-width:0}
+#productDialog [data-supplier-editor] legend{font-size:12px;font-weight:800;padding:0 5px}
+#productDialog [data-product-supplier-hint]{grid-column:1/-1;margin:0;font-size:11px;line-height:1.4;color:#65758a}
+#productDialog [data-product-supplier-choices]{display:flex;align-items:center;flex-wrap:wrap;gap:6px 16px}
+#productDialog [data-supplier-editor] label{margin:0;gap:6px}
+#productDialog [data-supplier-editor] button{margin:0;padding:7px 12px;font:600 12px Manrope,Arial,sans-serif}
+#productDialog .product-editor-top{display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:18px;align-items:start}
+#productDialog .dialog-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px 14px;align-items:start}
+#productDialog .product-field-wide{grid-column:span 2}
+#productDialog .product-editor-media{min-width:0;padding:12px;border:1px solid #dce4ef;border-radius:12px;background:#f8fafd}
+#productDialog .product-editor-media h3{display:flex;justify-content:space-between;align-items:center;margin:0 0 8px;font:800 13px Manrope,Arial,sans-serif;letter-spacing:0}
+#productDialog #productGalleryCount{color:#65758a;font-size:11px;font-weight:500}
+#productDialog .product-photo-grid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:6px;max-height:220px;overflow-y:auto;padding:2px;margin:0 0 10px}
+#productDialog .product-photo-grid:empty{display:none}
+#productDialog .product-photo-tile{position:relative;aspect-ratio:1;min-width:0;overflow:hidden;padding:4px;border:1px solid #dce4ef;border-radius:7px;background:#fff;cursor:zoom-in}
+#productDialog .product-photo-tile.is-main{border-color:#0875e9;box-shadow:0 0 0 1px #0875e9}
+#productDialog .product-photo-tile img{display:block;width:100%;height:100%;object-fit:contain}
+#productDialog .product-photo-badge{position:absolute;bottom:0;left:0;right:0;padding:2px;background:#eaf3ff;color:#1260b8;font:700 9px/1.2 Manrope,Arial,sans-serif;text-align:center}
+#productDialog .product-photo-fallback{font:500 10px/1.3 Manrope,Arial,sans-serif;color:#65758a}
+#productDialog .product-photo-empty{margin:4px 0 12px;font-size:12px;color:#65758a}
+#productDialog .product-editor-media label+label{display:block;margin-top:10px}
+#productDialog .product-editor-media input[type=file]{font-size:11px;padding:6px;min-height:34px}
+#productDialog .product-editor-text{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,1fr);gap:12px 18px;margin:14px 0}
+#productDialog .product-editor-text>.projector-editor-fields{grid-column:1/-1}
+#productDialog .article-editor-field{min-width:0;margin:0}
+#productDialog .article-editor-label{font-size:12px}
+#productDialog .article-editor-toolbar{padding:6px;gap:4px}
+#productDialog .article-editor-toolbar :is(button,select){min-height:28px;margin:0;padding:5px 7px;font-size:11px}
+#productDialog :is(.article-editor-body,.article-editor-preview){min-height:210px;max-height:360px;padding:12px;font-size:14px}
+#productDialog textarea{min-height:260px;resize:vertical;line-height:1.55}
+#productDialog .projector-editor-fields{min-width:0;margin:0;padding:10px 12px;border:1px solid #dbe6f3;border-radius:10px;background:#f8fbff}
+#productDialog .projector-editor-fields legend{padding:0 6px;font-size:13px;font-weight:800;color:#102d53}
+#productDialog .projector-editor-fields__grid{display:grid;grid-template-columns:2fr 1fr;gap:10px 16px;align-items:start}
+#productDialog .projector-editor-fields__options{display:flex;flex-wrap:wrap;gap:6px 12px;margin-top:6px}
+#productDialog .projector-editor-fields__options label{display:flex;align-items:center;gap:6px;font-size:12px}
+#productDialog .projector-editor-fields small{margin-top:6px}
+#productDialog .product-editor-footer{position:sticky;bottom:0;z-index:4;display:flex;align-items:center;flex-wrap:wrap;gap:8px 16px;margin:0 -22px;padding:10px 22px;background:#fff;border-top:1px solid #e4eaf2}
+#productDialog .product-editor-footer .check{margin-right:auto}
+#productDialog .dialog-actions{flex-direction:row;gap:8px;margin:0}
+#productDialog .dialog-actions .button{flex:none;min-height:36px;padding:9px 18px;font-size:12px;width:auto}
+#productDialog #productFormMessage{flex-basis:100%;margin:0;font-size:12px}
+#productDialog :is(button,input,select,textarea):focus-visible{outline:2px solid #0875e9;outline-offset:2px}
+#productPhotoPreview{box-sizing:border-box;width:min(1050px,calc(100vw - 24px));max-height:calc(100dvh - 24px);padding:14px;background:#fff}
+#productPhotoPreview .product-photo-preview-header{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:10px}
+#productPhotoPreview h3{font:700 15px Manrope,Arial,sans-serif;letter-spacing:0;margin:0}
+#productPhotoPreview .product-photo-preview-controls{display:flex;gap:6px}
+#productPhotoPreview button{min-width:38px;min-height:38px;padding:6px;border:1px solid #dce4ef;border-radius:8px;background:#f4f7fc;color:#10243e;font-size:18px;cursor:pointer}
+#productPhotoPreview button:disabled{opacity:.4;cursor:default}
+#productPhotoPreview img{display:block;max-height:calc(100dvh - 125px);max-width:100%;width:auto;height:auto;object-fit:contain;margin:auto}
+#productPhotoPreview [data-photo-error]{text-align:center;color:#65758a}
+@media(max-width:1100px){#productDialog .product-editor-top{grid-template-columns:minmax(0,1fr) 260px}#productDialog .dialog-grid{grid-template-columns:repeat(2,minmax(0,1fr))}#productDialog .product-field-wide{grid-column:span 2}}
+@media(max-width:800px){#productDialog .product-editor-top,#productDialog .product-editor-text{grid-template-columns:minmax(0,1fr)}#productDialog .product-photo-grid{grid-template-columns:repeat(auto-fill,minmax(62px,1fr));max-height:160px}#productDialog .product-editor-media{padding:10px}#productDialog .projector-editor-fields__grid{grid-template-columns:1fr}#productDialog .product-editor-footer .check{flex-basis:100%}}
+@media(max-width:520px){#productDialog{width:calc(100vw - 12px);max-height:calc(100dvh - 12px)}#productDialog form{padding:0 12px}#productDialog .dialog-heading{margin-inline:-12px;padding-inline:12px}#productDialog .dialog-heading h2{font-size:19px}#productDialog .dialog-grid{grid-template-columns:minmax(0,1fr)}#productDialog .product-field-wide{grid-column:auto}#productDialog [data-supplier-editor]{grid-template-columns:minmax(0,1fr)}#productDialog [data-supplier-editor] button{justify-self:start}#productDialog .product-editor-footer{margin-inline:-12px;padding-inline:12px}#productDialog .dialog-actions{width:100%}#productDialog .dialog-actions .button{flex:1;padding-inline:10px}#productDialog .article-editor-toolbar :is(button,select){min-height:34px}}

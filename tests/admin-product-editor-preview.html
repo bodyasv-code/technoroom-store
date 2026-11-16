@@ -1,0 +1,26 @@
+<!doctype html><html lang="uk"><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Компактна картка — локальна перевірка</title>
+<link rel="stylesheet" href="/public/styles.css"><link rel="stylesheet" href="/public/admin-modern.css"><link rel="stylesheet" href="/public/product-suppliers.css"><link rel="stylesheet" href="/public/article-editor.css"><link rel="stylesheet" href="/public/admin-product-editor.css">
+<body class="admin-body admin-modern"><p>Локальна перевірка: дані не зберігаються в базу.</p><button id="open">Відкрити редактор</button><pre id="checks" role="status"></pre>
+<script type="module">
+import {mountProductGallery} from '/public/admin-product-gallery.js';
+import {createArticleEditor} from '/public/article-editor.js';
+const html=await (await fetch('/public/admin.html')).text();
+const parsed=new DOMParser().parseFromString(html,'text/html');
+document.body.append(document.importNode(parsed.querySelector('#productDialog'),true));
+const dialog=document.querySelector('#productDialog'),form=dialog.querySelector('form');
+const suppliers=document.createElement('fieldset');suppliers.dataset.supplierEditor='';suppliers.innerHTML='<legend>Постачальники товару</legend><p data-product-supplier-hint>Окрема прив’язка до постачальників.</p><div data-product-supplier-choices><label><input type="checkbox"> ASBIS</label><label><input type="checkbox"> ERC</label><label><input type="checkbox" checked> MTI</label></div><button type="button">Зберегти постачальників</button>';
+form.querySelector('.dialog-heading').after(suppliers);
+const gallery=mountProductGallery({form,host:document.querySelector('#productPhotoGallery'),storageUrl:path=>new URL('/public/favicon.svg?photo='+encodeURIComponent(path),location.href).href});
+const editor=createArticleEditor(form.elements.description,{label:'Опис товару',uploadImage:async()=>new URL('/public/favicon.svg',location.href).href});
+const samples=Array.from({length:13},(_,index)=>'products/photo-'+(index+1)+'.png');
+const sample={image_path:samples[0],image_paths:[...samples,samples[0]]};
+const log=message=>document.querySelector('#checks').textContent=message;
+const controls=document.createElement('span');controls.innerHTML='<button type="button" data-fixture-empty>Порожня картка</button> <button type="button" data-fixture-full>13 фото</button>';form.querySelector('.dialog-heading').append(controls);
+function fill(product=sample){form.reset();form.elements.name.value='Проєктор ViewSonic LSD400HD-ST';form.elements.sku.value='VS20642';form.elements.slug.value='viewsonic-lsd400hd-st';form.elements.price.value='56250';form.elements.category.innerHTML='<option>Проєктори та екрани / Проєктори</option>';form.elements.brand_id.innerHTML='<option>ViewSonic</option>';form.elements.image_path.value=product.image_path||'';editor.setValue('Проєктор для презентацій.');form.elements.specifications_text.value='Джерело світла: Лазер\nРоздільна здатність: Full HD\nГарантія: 36 міс.';gallery.setProduct(product);}
+controls.querySelector('[data-fixture-empty]').onclick=()=>fill({});controls.querySelector('[data-fixture-full]').onclick=()=>fill();
+form.querySelectorAll('[data-close-dialog]').forEach(button=>button.onclick=()=>dialog.close());
+document.querySelector('#open').onclick=()=>{fill();dialog.showModal();};
+form.onsubmit=event=>{event.preventDefault();const values=new FormData(form);log(values.get('sku')==='VS20642'?'PASS: поля форми збережені в локальному перегляді; запитів до бази немає.':'FAIL');};
+fill();document.querySelector('#productDialogTitle').textContent='Редагування товару';dialog.showModal();
+log(document.querySelectorAll('.product-photo-tile').length===13?'PASS: 13 мініатюр; головне фото без дублювання.':'FAIL');
+</script>

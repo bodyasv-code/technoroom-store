@@ -17,4 +17,4 @@ At preparation time, browser access to MTI was rejected by automatic approval re
 
 Remaining: exact HZ147X/HZ151X photos; the two brightness disputes; deferred BenQ import; a clean T120UWH product photo instead of the temporary manufacturer diagram. The existing GP520 description is preserved. Other fields not explicitly included in this batch have not been reverified.
 
-Deployment and production application: pending verification.
+Production application verified: 14 backups and 36 protected fields. A full before/after comparison confirmed all unrelated columns, including inventory, prices, publication and suppliers, were preserved. Vercel deployment for commit b908267 succeeded. Public MH560C and LSD600W photos loaded through the image service; Epson EB-815E shows native Full HD plus a separate 4K Enhancement field. After-audit: 93 matched cards, gaps reduced from 16 cards to 4 (two photos and two disputed brightness values). See mti-projection-content-after-20261116.json.

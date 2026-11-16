@@ -23,19 +23,19 @@ export function screenDiagonalValues(product) {
   }).filter(Boolean))];
 }
 export function screenConstructionValues(product) {
-  const source=[...specs(product,/тип екран[уа]|конструкці/iu),text(product.name)].join(' ');
+  const source=[...specs(product,/тип екран[уа]|конструкці|привід/iu),text(product.name)].join(' ');
   if(/триноз|штатив|tripod/iu.test(source))return ['На тринозі'];
   if(/фіксован|рамн|fixed|frame/iu.test(source))return ['Рамний'];
-  if(/настін|стельов|підвіс|рулон|моториз|електроприв|пружин/iu.test(source))return ['Рулонний'];
+  if(/настін|стельов|підвіс|рулон|моториз|електроприв|електрич|electric|motori[sz]ed|пружин|ручн|manual/iu.test(source))return ['Рулонний'];
   return [];
 }
 export function screenMountValues(product) {
-  const source=specs(product,/установка|встановлення|монтаж|тип екран[уа]/iu).join(' ');
+  const source=specs(product,/установка|встановлення|монтаж|тип екран[уа]|конструкці/iu).join(' ');
   return [...(/настін/iu.test(source)?['Настінний']:[]),...(/стельов/iu.test(source)?['Стельовий']:[]),...(/підлог|триноз|штатив/iu.test(source)?['Підлоговий']:[])];
 }
 export function screenDriveValues(product) {
   const source=[...specs(product,/тип екран[уа]|привід/iu),text(product.name)].join(' ');
-  return /моториз|електроприв/iu.test(source)?['Моторизований']:/ручн|пружин/iu.test(source)?['Ручний']:[];
+  return /моториз|електроприв|електрич|electric|motori[sz]ed/iu.test(source)?['Моторизований']:/ручн|пружин|manual/iu.test(source)?['Ручний']:[];
 }
 export const screenFacetDefinitions=[
   {id:'diagonal',label:'Діагональ, дюйми',values:screenDiagonalValues},

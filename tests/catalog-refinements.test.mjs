@@ -10,4 +10,17 @@ assert.deepEqual(screenDiagonalValues({specifications:{'Діагональ':'254
 assert.deepEqual(screenDiagonalValues({specifications:{'Діагональ':'100"'}}),['100″']);
 const screen={name:'Екран моторизований 2E',specifications:{'Тип екрану':'настінний, стельовий, з електроприводом','Монтаж':'настінний, стельовий'}};
 assert.deepEqual(screenConstructionValues(screen),['Рулонний']);assert.deepEqual(screenMountValues(screen),['Настінний','Стельовий']);assert.deepEqual(screenDriveValues(screen),['Моторизований']);
+const electric={name:'Екран ELITE SCREENS Electric100XH',specifications:{'Привід':'Електричний'}};
+assert.deepEqual(screenDriveValues(electric),['Моторизований']);
+assert.deepEqual(screenConstructionValues(electric),['Рулонний']);
+const manual={specifications:{'Привід':'Ручний'}};
+assert.deepEqual(screenConstructionValues(manual),['Рулонний']);
+assert.deepEqual(screenDriveValues(manual),['Ручний']);
+const tripod={specifications:{'Тип конструкції':'На тринозі','Привід':'Ручний'}};
+assert.deepEqual(screenMountValues(tripod),['Підлоговий']);
+assert.deepEqual(screenConstructionValues(tripod),['На тринозі']);
+assert.deepEqual(screenConstructionValues({specifications:{'Тип конструкції':'Переносний рамний','Привід':'Ручний'}}),['Рамний']);
+const multi={specifications:{'Співвідношення сторін':['16:9','16:10','4:3'],'Діагональ':['80″','74″','65″']}};
+assert.deepEqual(screenAspectValues(multi),['16:9','16:10','4:3']);
+assert.deepEqual(screenDiagonalValues(multi),['80″','74″','65″']);
 console.log('Clean facets: printer kinds, ratio aliases, invalid values, independent screen construction/mount/drive: PASS');

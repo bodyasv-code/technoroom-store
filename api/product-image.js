@@ -1,3 +1,4 @@
+import {isReviewedProjectorImageUrl} from '../server/reviewed-projector-image-sources.js';
 import {isEliteScreenImageUrl} from '../server/elite-screen-image-source.js';
 import { createClient } from '@supabase/supabase-js';
 
@@ -45,7 +46,7 @@ const fetchTrustedImage = async (url, redirectsLeft = 2) => {
   const location = upstream.headers.get('location');
   if (!location) return null;
   const next = new URL(location, url);
-  if (next.protocol !== 'https:' || !(isTrustedHost(next.hostname)||isEliteScreenImageUrl(next))) return null;
+  if (next.protocol !== 'https:' || !(isTrustedHost(next.hostname)||isEliteScreenImageUrl(next)||isReviewedProjectorImageUrl(next))) return null;
   return fetchTrustedImage(next, redirectsLeft - 1);
 };
 
@@ -64,7 +65,7 @@ export default async function handler(request, response) {
 
   let url;
   try { url = new URL(product.image_path); } catch { return response.status(404).end('Image not found'); }
-  if (url.protocol !== 'https:' || !(isTrustedHost(url.hostname)||isEliteScreenImageUrl(url))) return response.status(403).end('Image source not allowed');
+  if (url.protocol !== 'https:' || !(isTrustedHost(url.hostname)||isEliteScreenImageUrl(url)||isReviewedProjectorImageUrl(url))) return response.status(403).end('Image source not allowed');
 
   try {
     const upstream = await fetchTrustedImage(url);

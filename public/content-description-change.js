@@ -1,3 +1,4 @@
+import {manualFields} from './product-manual-overrides.js?v=20261116-reviewed-fields';
 import {startImportRun,finishImportRun,historySetupMessage} from './import-history.js?v=20261020-manual';
 import {articleContentMarker} from './article-format.js?v=20261027-content-format';
 const columns='id,name,sku,brand,description,manual_overrides';
@@ -7,7 +8,7 @@ const escape=value=>String(value??'').replace(/[&<>"']/gu,c=>({'&':'&amp;','<':'
 const uuid=value=>/^[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12}$/iu.test(String(value||''));
 const descriptionOnly=value=>value&&typeof value==='object'&&!Array.isArray(value)&&Object.keys(value).length===1&&Object.hasOwn(value,'description');
 const snapshot=row=>Object.fromEntries(['sku','brand','name','description','manual_overrides'].map(key=>[key,row[key]??null]));
-const protectedDescription=row=>Boolean(row.manual_overrides?.description);
+const protectedDescription=row=>Boolean(manualFields(row).description);
 export function descriptionDraftText(draft){return [...(draft.paragraphs||[]),'',(draft.bullets||[]).map(text=>'- '+text).join('\n')].join('\n\n').trim();}
 export function reviewedDescriptionHtml(text,reviewed){
   if(reviewed!==true)throw new Error('Підтвердьте перевірку української мови й технічних даних.');

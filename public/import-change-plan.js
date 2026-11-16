@@ -1,6 +1,6 @@
 import {mergeImportedSpecifications} from './import-specification-rules.js?v=20261017-customer-content';
 import {cleanCustomerText} from './product-content-policy.js?v=20261017-customer-content-3';
-import {manualFields,preserveManualSpecifications,manualImportConflicts} from './product-manual-overrides.js?v=20261027-reviewed';
+import {manualFields,preserveManualSpecifications,manualImportConflicts} from './product-manual-overrides.js?v=20261116-reviewed-fields';
 import {supplierProductContent} from './supplier-product-content.js?v=20261029-shared';
 const same=(left,right)=>JSON.stringify(left??null)===JSON.stringify(right??null);
 export const importUpdateDefaults={price:true,stock:true,specifications:true,images:false,category:false,description:true};

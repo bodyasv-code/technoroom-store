@@ -1,3 +1,4 @@
+import {manualFields} from './product-manual-overrides.js?v=20261116-reviewed-fields';
 // Plain-text source -> escaped preview. Never execute or retain supplier HTML/URLs.
 const escape=value=>String(value??'').replace(/[&<>"']/gu,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const key=value=>String(value).normalize('NFKC').toLocaleLowerCase('uk-UA').replace(/\s+/gu,' ').trim();
@@ -70,9 +71,9 @@ export function buildIcecatDescriptionDraft(product,general){
   if(/Керівництво/iu.test(combined))warnings.push('Є неоднозначне «Керівництво». Не публікувати без перевірки оригіналу: це може бути помилковий переклад Manual.');
   const languages=[description.Language,bulletBlock.Language].filter(Boolean).map(value=>String(value).toUpperCase());
   if(languages.some(language=>!['UK','UA'].includes(language)))warnings.push('Окремі частини джерела мають іншу мовну позначку. Потрібен переклад і редактура.');
-  if(product.manual_overrides?.description)warnings.push('Поточний опис редагувався вручну: автоматична заміна заборонена.');
+  if(manualFields(product).description)warnings.push('Поточний опис редагувався вручну: автоматична заміна заборонена.');
   if(excludedBullets.length)warnings.push('Виключено некоректно побудований пункт про кабель і потужність. Потрібна технічна перевірка джерела; правильне значення не підставлялось.');
   return {available:Boolean(combined),readOnly:true,automatic:false,status:'editorial-review',source,paragraphs,bullets,translation,languages,
-    manualProtected:Boolean(product.manual_overrides?.description),warnings,excludedBullets,
+    manualProtected:Boolean(manualFields(product).description),warnings,excludedBullets,
     html:paragraphs.map(value=>'<p>'+escape(value)+'</p>').join('')+(bullets.length?'<ul>'+bullets.map(value=>'<li>'+escape(value)+'</li>').join('')+'</ul>':'')};
 }

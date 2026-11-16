@@ -1,7 +1,7 @@
 // Evidence-only comparison. This module deliberately has no write/apply API.
-import {manualSpecIdentity} from './product-manual-overrides.js?v=20261020-manual';
+import {manualFields,manualSpecIdentity} from './product-manual-overrides.js?v=20261116-reviewed-fields';
 import {mapContentFeature,mappedContentKey,contentComparisonValue,contentTechnicalNotes,relatedContentFields} from './content-feature-mapping.js?v=20261025-expanded';
-import {buildIcecatDescriptionDraft} from './icecat-description-draft.js';
+import {buildIcecatDescriptionDraft} from './icecat-description-draft.js?v=20261116-reviewed-fields';
 const plain=value=>String(value??'').normalize('NFKC').replace(/\s+/gu,' ').trim();
 const identity=value=>plain(value).toLocaleLowerCase('uk-UA');
 const comparable=value=>identity(Array.isArray(value)?value.join(' · '):value).replace(/(\d)\s*[xх×]\s*(?=\d)/gu,'$1×');
@@ -16,7 +16,7 @@ export function buildContentPreview(product,icecat,{requestedLanguage='UK'}={}){
   if(data.ContentErrors?.length||icecat.ContentErrors?.length){result.status='incomplete-response';result.warnings.push('Icecat повідомив про невідомі розділи відповіді.');return result;}
   result.status='review';result.icecatId=general.IcecatId;
   result.warnings.push('Точний артикул не гарантує правильності кожного параметра. Збереження в цій перевірці відсутнє.');
-  const saved=Object.entries(product.specifications||{}),manual=Object.keys(product.manual_overrides?.specifications||{});
+  const saved=Object.entries(product.specifications||{}),manual=Object.keys(manualFields(product).specifications||{});
   for(const group of Array.isArray(data.FeaturesGroups)?data.FeaturesGroups:[]){
     for(const feature of Array.isArray(group.Features)?group.Features:[]){
       if(result.rows.length>=500){result.warnings.push('Показано не більше 500 полів; відповідь потребує звуження.');break;}
@@ -28,7 +28,7 @@ export function buildContentPreview(product,icecat,{requestedLanguage='UK'}={}){
       const token=manualSpecIdentity(canonical,product);
       const existing=saved.filter(([key])=>manualSpecIdentity(mappedContentKey(key,product),product)===token);
       const context=relatedContentFields(canonical,product.specifications).filter(field=>!existing.some(([key])=>key===field.name));
-      const protectedField=manual.some(key=>manualSpecIdentity(mappedContentKey(key,product),product)===token)||relatedContentFields(canonical,product.manual_overrides?.specifications).length>0;
+      const protectedField=manual.some(key=>manualSpecIdentity(mappedContentKey(key,product),product)===token)||relatedContentFields(canonical,manualFields(product).specifications).length>0;
       const reasons=[];
       if(protectedField)reasons.push('manual-protected');
       if(context.length)reasons.push('composite-context');

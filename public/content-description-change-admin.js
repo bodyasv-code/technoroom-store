@@ -1,4 +1,4 @@
-import {descriptionDraftText,prepareDescriptionChange,prepareDescriptionRollback,commitDescriptionChange} from './content-description-change.js?v=20261027-format';
+import {descriptionDraftText,prepareDescriptionChange,prepareDescriptionRollback,commitDescriptionChange} from './content-description-change.js?v=20261116-reviewed-fields';
 
 // The comparison remains read-only. Writes require a separate reviewed plan and confirmation.
 export function mountDescriptionReview({host,client,preview}){

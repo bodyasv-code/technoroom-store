@@ -1,4 +1,4 @@
-import {bulkContentColumns,prepareBulkProductContent,commitBulkProductContent} from './bulk-product-content.js?v=20261030-bulk';
+import {bulkContentColumns,prepareBulkProductContent,commitBulkProductContent} from './bulk-product-content.js?v=20261116-reviewed-fields';
 const esc=value=>String(value??'').replace(/[&<>"']/gu,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 export function mountBulkProductContent({client,getSelectedIds,onSaved,root=document}){
   const button=root.querySelector('#fillSelectedProductContent');if(!button)return;

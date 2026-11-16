@@ -1,5 +1,5 @@
 import {mtiDraftContent} from './mti-offer-import.js?v=20261030-offers';
-import {manualSpecIdentity} from './product-manual-overrides.js?v=20261020-manual';
+import {manualFields,manualSpecIdentity} from './product-manual-overrides.js?v=20261116-reviewed-fields';
 import {startImportRun,finishImportRun} from './import-history.js?v=20261020-manual';
 
 export const bulkContentColumns='id,name,sku,brand,category,description,specifications,manual_overrides,is_active';
@@ -16,10 +16,10 @@ export function prepareBulkProductContent(product,preview){
     base.notes.push('Не отримано підтвердженого контенту для точного бренду й артикула.');return base;
   }
   const content=mtiDraftContent({sku:preview.product.sku,vendor:product.brand,content:{name:product.name,specifications:{}}},preview);
-  if(!String(product.description??'').trim()&&!product.manual_overrides?.description&&content.description)base.patch.description=content.description;
+  if(!String(product.description??'').trim()&&!manualFields(product).description&&content.description)base.patch.description=content.description;
   else base.notes.push(product.description?'Наявний опис збережено.':'Український опис недоступний або захищений.');
   const specs={...(product.specifications||{})},added={};
-  const occupied=new Set([...Object.keys(specs),...Object.keys(product.manual_overrides?.specifications||{})].map(key=>manualSpecIdentity(key,product)));
+  const occupied=new Set([...Object.keys(specs),...Object.keys(manualFields(product).specifications||{})].map(key=>manualSpecIdentity(key,product)));
   const candidates=new Map();
   for(const field of preview.rows||[]){
     if(product.manual_overrides?.verified_specifications||field.status!=='new'||!field.mapping||(field.reasons||[]).length||(field.relatedCurrent||[]).length||(field.current||[]).length||!['UK','UA'].includes(field.language)||!safe(field.canonical)||!safe(field.value))continue;

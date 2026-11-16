@@ -4,7 +4,14 @@ import {isProjectorProduct} from './projector-specs.js?v=20261013-spec-colons';
 import {duplexKey} from './printer-duplex.js?v=20261016-import-guards-2';
 import {printFormatKey} from './verified-printer-rules.js?v=20261016-import-guards-2';
 const own=(object,key)=>Object.hasOwn(object||{},key);
-export const manualFields=product=>product?.manual_overrides||{};
+export function manualFields(product){
+  const fields=product?.manual_overrides||{};
+  const reviewed=Array.isArray(fields.reviewed_specifications)?fields.reviewed_specifications:[];
+  if(!reviewed.length&&!fields.reviewed_description)return fields;
+  const specifications={...fields.specifications};
+  for(const key of reviewed)if(typeof key==='string')Object.defineProperty(specifications,key,{value:true,enumerable:true});
+  return {...fields,specifications,...(fields.reviewed_description?{description:true}:{})};
+}
 export function manualSpecIdentity(key,product={}) {
   if(duplexKey.test(key))return 'duplex';
   if(printFormatKey.test(key))return 'print-format';
@@ -51,5 +58,6 @@ export function manualOverrideSummary(product) {
   if(product&&!own(product,'manual_overrides'))return 'Облік ручних правок ще не підключено до бази.';
   const fields=manualFields(product),labels=[fields.category?'категорія':'',fields.brand?'бренд':'',...Object.keys(fields.specifications||{}).map(key=>'«'+key+'»')].filter(Boolean);
   if(fields.verified_specifications)return 'Характеристики перевірено: імпорт зберігає всю таблицю. Ручне редагування доступне.'+(fields.description?' Опис також захищено від імпорту.':'');
+  if(fields.reviewed_specifications)return 'Захищені від імпорту поля: '+labels.join(', ')+'. Інші характеристики можна доповнювати.'+(fields.description?' Опис також захищено.':'');
   return labels.length?'Виправлено вручну: '+labels.join(', ')+'. Імпорт не змінює ці поля.':'Нові ручні зміни категорії, бренду та характеристик буде захищено від імпорту після збереження.';
 }

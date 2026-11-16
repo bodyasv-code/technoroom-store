@@ -1,3 +1,4 @@
+import {isEliteScreenImageUrl} from '../server/elite-screen-image-source.js';
 import { createClient } from '@supabase/supabase-js';
 import {handleIcecatProductImages} from '../server/icecat-product-images.js';
 
@@ -19,7 +20,7 @@ const isTrustedHost = (hostname = '') => trustedHosts.has(hostname) || hostname 
 // ERC redirects some official product images through this legacy HTTP-only
 // image gateway. It is permitted only as a redirect target, never as a user
 // supplied image URL.
-const isAllowedRedirect = (url) => (url.protocol === 'https:' && isTrustedHost(url.hostname)) || (url.protocol === 'http:' && url.hostname === 'service-fw.erc.ua');
+const isAllowedRedirect = (url) => (url.protocol === 'https:' && (isTrustedHost(url.hostname)||isEliteScreenImageUrl(url))) || (url.protocol === 'http:' && url.hostname === 'service-fw.erc.ua');
 
 const extensionFor = (contentType) => ({
   'image/jpeg': 'jpg', 'image/png': 'png', 'image/webp': 'webp',
@@ -28,7 +29,7 @@ const extensionFor = (contentType) => ({
 const safeUrl = (value) => {
   try {
     const url = new URL(value);
-    return url.protocol === 'https:' && isTrustedHost(url.hostname) ? url : null;
+    return url.protocol === 'https:' && (isTrustedHost(url.hostname)||isEliteScreenImageUrl(url)) ? url : null;
   } catch {
     return null;
   }

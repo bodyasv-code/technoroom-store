@@ -1,5 +1,5 @@
-import {contentPreviewMarkup} from './product-content-preview.js?v=20261025-description';
-import {mountDescriptionReview} from './content-description-change-admin.js?v=20261027-format';
+import {contentPreviewMarkup} from './product-content-preview.js?v=20261116-reviewed-fields';
+import {mountDescriptionReview} from './content-description-change-admin.js?v=20261116-reviewed-fields';
 import {mountIcecatImages} from './icecat-images-admin.js?v=20261027-images';
 export function mountProductContentPreview({root=document,client}={}){
   const host=root.querySelector('#ercCatalogApi');if(!host||root.querySelector('#productContentPreview'))return;

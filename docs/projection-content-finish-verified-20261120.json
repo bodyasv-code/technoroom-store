@@ -1,0 +1,67 @@
+{
+  "verifiedOn": "2026-11-20",
+  "operation": "projection-content-finish-20261120",
+  "commit": "cea3403",
+  "deployment": "success",
+  "appliedCards": 4,
+  "backups": 4,
+  "unrelatedProductColumnsPreserved": true,
+  "earlierReviewsPreserved": true,
+  "acerUnchanged": true,
+  "cards": [
+    {
+      "id": 6141,
+      "sku": "E3P7PK1E123",
+      "photoCount": 5,
+      "brightness": "4000 ISO лм",
+      "active": true
+    },
+    {
+      "id": 6142,
+      "sku": "E3P7PR1E113H",
+      "photoCount": 6,
+      "brightness": "5000 ISO лм",
+      "active": true
+    },
+    {
+      "id": 6162,
+      "sku": "T120UWH",
+      "photoCount": 2,
+      "brightness": null,
+      "active": false
+    },
+    {
+      "id": 6177,
+      "sku": "VS16905",
+      "photoCount": 9,
+      "brightness": "3800 лм",
+      "active": false
+    }
+  ],
+  "newReview": {
+    "sku": "VS16905",
+    "brand": "ViewSonic",
+    "source": "https://www.viewsonic.com/media/wysiwyg/pdfs/US_MSRP_040124.pdf",
+    "operation": "projection-content-finish-20261120",
+    "product_id": 6177,
+    "reviewed_at": "2026-11-20T06:41:04.435512+00:00",
+    "specification_keys": [
+      "Яскравість"
+    ],
+    "protect_description": true
+  },
+  "checksPassed": 13,
+  "remaining": [
+    {
+      "id": 6176,
+      "field": "Яскравість",
+      "reason": "Manufacturer part page says 3600 in the summary and 4000 in the detailed table."
+    }
+  ],
+  "browserProof": {
+    "hz147x": "All five gallery images loaded; main image 1500 pixels wide.",
+    "hz151x": "All six gallery images loaded; main image 1500 pixels wide.",
+    "t120uwh": "Two thumbnails visible in the compact editor; screen photo first, exact dimensional drawing second.",
+    "pa503s": "Editor displays 3800 lm and import protection for brightness and description."
+  }
+}

@@ -1,0 +1,15 @@
+[
+  {
+    "id": 6176,
+    "sku": "MR.JQU11.001",
+    "model": "Acer S1386WH",
+    "gtin": "4713883722711",
+    "field": "Яскравість",
+    "status": "source-conflict",
+    "source": "https://www.acer.com/si-en/projectors/classroom/pdp/MR.JQU11.001",
+    "summaryBrightness": "3600 lm",
+    "detailedBrightness": "4000 ANSI Lumens (Standard), 2880 ANSI Lumens (ECO)",
+    "supplierPriceBrightness": "4000 lm",
+    "decision": "Same exact manufacturer part and GTIN have conflicting manufacturer facts. Leave brightness unset; require written manufacturer clarification or a document tied to the supplied hardware revision. Preserve the entire card."
+  }
+]

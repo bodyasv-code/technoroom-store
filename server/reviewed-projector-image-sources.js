@@ -1,5 +1,17 @@
-// Exact manufacturer gallery files reviewed visually on 2026-11-16.
+// Exact manufacturer gallery files and extracted assets reviewed in November 2026.
 const sources=new Set([
+  "https://www.technoroom.com.ua/product-content/qt12-white-20261120.png",
+  "https://cdn.pdx.stibosystems.com/submitted/assets/73fc40d2-58cf-334d-a8ab-be4ebec69b2e/54209d80-6938-5091-abfc-f33e0a60a2e0/54209d80-6938-5091-abfc-f33e0a60a2e0_m_jpg_1.jpg?v=1762944247428",
+  "https://cdn.pdx.stibosystems.com/submitted/assets/73fc40d2-58cf-334d-a8ab-be4ebec69b2e/f14ca371-3673-5291-a8da-198f4b4543aa/f14ca371-3673-5291-a8da-198f4b4543aa_m_jpg_1.jpg?v=1762944247584",
+  "https://cdn.pdx.stibosystems.com/submitted/assets/73fc40d2-58cf-334d-a8ab-be4ebec69b2e/1c82a727-9ee8-58e9-8af1-749dc74f3d2c/1c82a727-9ee8-58e9-8af1-749dc74f3d2c_m_png_1.png?v=1762959235280",
+  "https://cdn.pdx.stibosystems.com/submitted/assets/73fc40d2-58cf-334d-a8ab-be4ebec69b2e/264ed23f-097d-5a65-b16d-105a5143c821/264ed23f-097d-5a65-b16d-105a5143c821_m_jpg_1.jpg?v=1762959235306",
+  "https://cdn.pdx.stibosystems.com/submitted/assets/73fc40d2-58cf-334d-a8ab-be4ebec69b2e/1bbb8a24-4388-5c93-b797-53a54c6ebf71/1bbb8a24-4388-5c93-b797-53a54c6ebf71_m_jpg_1.jpg?v=1762959235272",
+  "https://cdn.pdx.stibosystems.com/submitted/assets/73fc40d2-58cf-334d-a8ab-be4ebec69b2e/7fc686cd-54ef-51c8-9d0f-02bf6541cdc9/7fc686cd-54ef-51c8-9d0f-02bf6541cdc9_m_jpg_1.jpg?v=1778102628701",
+  "https://cdn.pdx.stibosystems.com/submitted/assets/73fc40d2-58cf-334d-a8ab-be4ebec69b2e/a10037a8-c399-50ca-92cf-0776b96faad5/a10037a8-c399-50ca-92cf-0776b96faad5_m_jpg_1.jpg?v=1778102628717",
+  "https://cdn.pdx.stibosystems.com/submitted/assets/73fc40d2-58cf-334d-a8ab-be4ebec69b2e/b749285a-bdc1-5efe-bf4f-bddfe23e0742/b749285a-bdc1-5efe-bf4f-bddfe23e0742_m_jpg_1.jpg?v=1778581992228",
+  "https://cdn.pdx.stibosystems.com/submitted/assets/73fc40d2-58cf-334d-a8ab-be4ebec69b2e/6b6e1b0b-5b91-502d-96d2-7495abf9693e/6b6e1b0b-5b91-502d-96d2-7495abf9693e_m_png_1.png?v=1762959193904",
+  "https://cdn.pdx.stibosystems.com/submitted/assets/73fc40d2-58cf-334d-a8ab-be4ebec69b2e/21a97269-ee32-5013-b590-4f83db50f3f0/21a97269-ee32-5013-b590-4f83db50f3f0_m_png_1.png?v=1762959193866",
+  "https://cdn.pdx.stibosystems.com/submitted/assets/73fc40d2-58cf-334d-a8ab-be4ebec69b2e/3acaff8c-9bd7-5d2f-9d19-904667e6fd88/3acaff8c-9bd7-5d2f-9d19-904667e6fd88_m_png_1.png?v=1762959193881",
   "https://www.optomaeurope.com/ContentStorage/Media/bc10f78f-572f-430e-b519-c03b32dc8e9e.jpg",
   "https://www.optomaeurope.com/ContentStorage/Media/7c6cd615-4898-478c-b734-8dbee73842ce.jpg",
   "https://www.optomaeurope.com/ContentStorage/Media/ce1c9cea-2828-4549-984b-ff5c84ff6022.jpg",

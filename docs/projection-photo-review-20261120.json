@@ -1,0 +1,181 @@
+{
+  "reviewedOn": "2026-11-20",
+  "scope": {
+    "sharedGroups": 7,
+    "sharedCards": 16,
+    "smallPhotoCards": [
+      50,
+      238
+    ]
+  },
+  "groups": [
+    {
+      "ids": [
+        106,
+        108
+      ],
+      "models": [
+        "Проєктор Acer P1357 WXGA (MR.JYZ11.001)",
+        "Проєктор Acer P1557 FHD (MR.JZ011.001)"
+      ],
+      "assessment": "consistent shared front housing",
+      "action": "keep",
+      "sources": [
+        "https://www.acer.com/es-es/projectors/meeting-room/pdp/MR.JYZ11.001",
+        "https://www.acer.com/es-es/projectors/meeting-room/pdp/MR.JZ011.001"
+      ],
+      "evidence": "Both exact-part official pages show the same white housing geometry; existing shared front view is consistent."
+    },
+    {
+      "ids": [
+        107,
+        105
+      ],
+      "models": [
+        "Проєктор Acer P1358i WXGA (MR.JYG11.001)",
+        "Проєктор Acer P1258i XGA (MR.JYF11.001)"
+      ],
+      "assessment": "manufacturer shared model-family imagery",
+      "action": "keep",
+      "sources": [
+        "https://www.acer.com/fr-fr/projectors/meeting-room/pdp/MR.JYG11.001",
+        "https://www.acer.com/fr-fr/projectors/meeting-room/pdp/MR.JYF11.001"
+      ],
+      "evidence": "Both official galleries use assets explicitly named P1258i-P1358i; existing view matches this family."
+    },
+    {
+      "ids": [
+        128,
+        147
+      ],
+      "models": [
+        "Проєктор Acer X1123 SVGA (MR.JXL11.001)",
+        "Проєктор Acer X1329 WXGA (MR.JX711.001)"
+      ],
+      "assessment": "consistent shared housing in Ukrainian manufacturer manual",
+      "action": "keep",
+      "sources": [
+        "https://www.acer.com/ua-uk/support/product-support/X1123",
+        "https://www.acer.com/ua-uk/support/product-support/X1329"
+      ],
+      "evidence": "Manufacturer manual linked by Ukrainian support lists X1123 and X1329 on the cover; PDF page 13 front/top drawing matches existing black rounded housing. Connectors are model-dependent and were not inferred from the shared front photo."
+    },
+    {
+      "ids": [
+        134,
+        141
+      ],
+      "models": [
+        "Проєктор Acer X119H SVGA (MR.JTG11.00P)",
+        "Проєктор Acer X129H XGA (MR.JTH11.00Q)"
+      ],
+      "assessment": "consistent shared housing in Ukrainian manufacturer manual",
+      "action": "keep",
+      "sources": [
+        "https://www.acer.com/ua-uk/support/product-support/X119H",
+        "https://www.acer.com/ua-uk/support/product-support/X129H"
+      ],
+      "evidence": "Shared manufacturer manual lists these models in its SVGA/XGA or WXGA family; PDF page 16 front/top drawing matches the existing black housing. No claim of identical ports or internals."
+    },
+    {
+      "ids": [
+        142,
+        144,
+        148
+      ],
+      "models": [
+        "Проєктор Acer X1328 WXGA (MR.JX611.001)",
+        "Проєктор Acer X1328ic WXGA (MR.JX611.002)",
+        "Проєктор Acer X139 WXGA (MR.JX611.00Z)"
+      ],
+      "assessment": "consistent shared housing in Ukrainian manufacturer manual",
+      "action": "keep",
+      "sources": [
+        "https://www.acer.com/ua-uk/support/product-support/X1328",
+        "https://www.acer.com/ua-uk/support/product-support/X1328ic",
+        "https://www.acer.com/ua-uk/support/product-support/X139"
+      ],
+      "evidence": "Shared manufacturer manual lists these models in its SVGA/XGA or WXGA family; PDF page 16 front/top drawing matches the existing black housing. No claim of identical ports or internals."
+    },
+    {
+      "ids": [
+        192,
+        193
+      ],
+      "models": [
+        "Проєктор Epson EB-L890E WUXGA (V11HB24080)",
+        "Проєктор Epson EB-L890U WUXGA (V11HB27080)"
+      ],
+      "assessment": "identical images explicitly reused by manufacturer",
+      "action": "keep",
+      "sources": [
+        "https://www.epson.ua/projectors/professional/business-education/eb-l890e-v11hb24080",
+        "https://www.epson.ua/projectors/professional/business-education/eb-l890u-v11hb27080"
+      ],
+      "evidence": "The two exact-SKU Ukrainian pages serve the same three image files, with identical full-file hashes."
+    },
+    {
+      "ids": [
+        247,
+        251,
+        250
+      ],
+      "models": [
+        "Проєктор Epson EB-994F FHD (V11HB60042)",
+        "Проєктор Epson EB-FH54 FHD (V11HB59042)",
+        "Проєктор Epson EB-FH08 FHD (V11HB54042)"
+      ],
+      "assessment": "dedicated manufacturer galleries required",
+      "action": "replace-galleries",
+      "sources": [
+        "https://www.epson.ua/projectors/professional/business-education/eb-994f-v11hb60042",
+        "https://www.epson.ua/projectors/professional/business-education/eb-fh08-v11hb54042",
+        "https://www.epson.ua/projectors/professional/business-education/eb-fh54-v11hb59042"
+      ],
+      "evidence": "EB-994F has a different front grille and lens surround from the common file used by all three cards. Dedicated Ukrainian galleries selected for EB-994F, EB-FH08 and EB-FH54."
+    }
+  ],
+  "replacementBatch": "projection-photo-repair-20261120",
+  "plannedCards": [
+    50,
+    238,
+    247,
+    250,
+    251
+  ],
+  "smallPhotoReplacements": [
+    {
+      "id": 50,
+      "before": [
+        300,
+        206
+      ],
+      "after": [
+        901,
+        1021
+      ],
+      "source": "https://www.farnell.com/datasheets/4794665.pdf",
+      "manufacturer": "AOpen Fire Legend QT12",
+      "part": "MR.P0U11.004",
+      "gtin": "4711474957290",
+      "identityAssociation": "https://cpc.farnell.com/aopen-by-acer/mr-p0u11-004/projector-qt12-lcd-720p-6500led/dp/SB08829",
+      "note": "Manufacturer-authored datasheet supplied by distributor. White embedded product image extracted unretouched. Official Ukrainian Acer support currently redirects to its general support page; its displayed notice says the support site is being migrated."
+    },
+    {
+      "id": 238,
+      "before": [
+        384,
+        131
+      ],
+      "after": [
+        1280,
+        854
+      ],
+      "source": "https://www.epson.ua/proektory/biznes-osvita/eb-815e-v11ha99180"
+    }
+  ],
+  "notes": [
+    "Matching file bytes across models are a review signal, not proof of a wrong photo.",
+    "Ukrainian manufacturer product pages take priority; official EU exact-part pages and manufacturer manuals were used when Ukrainian galleries were absent."
+  ]
+}

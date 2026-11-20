@@ -8,7 +8,7 @@ import {isEliteScreenImageUrl} from '../server/elite-screen-image-source.js';
 import {buildImportChangePlan} from '../public/import-change-plan.js';
 const plans=JSON.parse(await readFile(new URL('../docs/projection-content-finish-plan-20261120.json',import.meta.url),'utf8'));
 const unresolved=JSON.parse(await readFile(new URL('../docs/projection-content-unresolved-20261120.json',import.meta.url),'utf8'));
-async function fixture(){
+async function fixture(seed=plans){
  const db=await PGlite.create();
  await db.exec(`set timezone='UTC';create role anon;create role authenticated;create schema auth;create schema technoroom_maintenance;
  create function auth.uid() returns uuid language sql as $$select null::uuid$$;create function is_admin() returns boolean language sql as $$select false$$;
@@ -16,7 +16,7 @@ async function fixture(){
  create table technoroom_maintenance.product_repair_backup(operation text,product_id bigint,before_row jsonb,backed_up_at timestamptz,primary key(operation,product_id));alter table technoroom_maintenance.product_repair_backup enable row level security;`);
  const manual=await readFile(new URL('../supabase/product-manual-overrides-upgrade.sql',import.meta.url),'utf8'),end='for each row execute function public.track_product_manual_overrides();';
  await db.exec(manual.slice(0,manual.indexOf(end)+end.length)+'\ncommit;');await db.exec(await readFile(new URL('../supabase/reviewed-content-guard-upgrade.sql',import.meta.url),'utf8'));
- for(const p of plans){
+ for(const p of seed){
   await db.query('insert into products(id,name,sku,brand,description,specifications,manual_overrides,image_path,image_paths) values($1,$2,$3,$4,$5,$6,$7,$8,$9)',[p.id,p.name,p.sku,p.brand,p.before.description,p.before.specifications,p.before.manual_overrides,p.before.image_path,p.before.image_paths]);
   // Seed historical provenance after the INSERT trigger, as the production rows were imported earlier.
   await db.exec('alter table products disable trigger track_product_manual_overrides;alter table products disable trigger zz_guard_reviewed_product_content;');
@@ -69,5 +69,31 @@ test('Stale last card cancels all photos and backups; recovery rejects later pho
   await db.exec(projectionFinishSql(plans));await db.exec("update products set image_path='later photo' where id=6141");
   await assert.rejects(db.exec(projectionFinishSql(plans,{restore:true})),/changed since repair/);await db.exec('rollback');
   assert.equal((await db.query('select count(*)::int n from technoroom_maintenance.reviewed_product_content')).rows[0].n,4);
+ }finally{await db.close();}
+});
+test('Reusable photo-only batch preserves reviews and content; recovery keeps later commercial edits',async()=>{
+ const db=await fixture();try{
+  const photos=plans.filter(p=>[6141,6162].includes(p.id)).map(p=>({...p,patch:{image_path:p.patch.image_path,image_paths:p.patch.image_paths}}));
+  const options={photoOperation:'projection-photo-reusable-test'};
+  const bad=structuredClone(photos);bad[0].patch.description='forbidden';assert.throws(()=>projectionFinishSql(bad,options),/photo-only/);
+  assert.throws(()=>projectionFinishSql(photos,{photoOperation:"projection-photo-';drop"}),/photo-only/);
+  await db.exec(projectionFinishSql(photos,options));
+  for(const row of(await db.query('select * from products')).rows){const p=plans.find(p=>p.id===row.id);assert.equal(row.description,p.before.description);assert.deepEqual(row.specifications,p.before.specifications);}
+  assert.equal((await db.query('select count(*)::int n from technoroom_maintenance.reviewed_product_content')).rows[0].n,3);
+  await db.exec('update products set price=250,stock_quantity=9;');await db.exec(projectionFinishSql(photos,{...options,restore:true}));
+  for(const row of(await db.query('select * from products')).rows){const p=plans.find(p=>p.id===row.id);assert.equal(row.image_path,p.before.image_path);assert.deepEqual(row.image_paths,p.before.image_paths);assert.equal(Number(row.price),250);assert.equal(row.stock_quantity,9);}
+ }finally{await db.close();}
+});
+test('Actual five-card photo batch retains legacy whole-table reviews and every non-photo field',async()=>{
+ const manifest=JSON.parse(await readFile(new URL('../docs/projection-photo-repair-plan-20261120.json',import.meta.url),'utf8'));
+ const db=await fixture(manifest.cards);try{
+  const options={photoOperation:manifest.operation};
+  assert.equal(await readFile(new URL('../supabase/projection-photo-repair-20261120.sql',import.meta.url),'utf8'),projectionFinishSql(manifest.cards,options));
+  assert.equal(await readFile(new URL('../supabase/projection-photo-repair-20261120-restore.sql',import.meta.url),'utf8'),projectionFinishSql(manifest.cards,{...options,restore:true}));
+  for(const p of manifest.cards)for(const url of p.patch.image_paths){assert.equal(isReviewedProjectorImageUrl(new URL(url)),true);assert.equal(isReviewedProjectorImageUrl(new URL(url+'#unreviewed')),false);}
+  await db.exec(projectionFinishSql(manifest.cards,options));
+  for(const row of(await db.query('select * from products')).rows){const p=manifest.cards.find(p=>p.id===row.id);assert.deepEqual(row.image_paths,p.patch.image_paths);assert.equal(row.description,p.before.description);assert.deepEqual(row.specifications,p.before.specifications);assert.deepEqual(row.manual_overrides,p.before.manual_overrides);assert.equal(row.is_active,false);}
+  await db.exec('update products set price=175,stock_quantity=6');await db.exec(projectionFinishSql(manifest.cards,{...options,restore:true}));
+  for(const row of(await db.query('select * from products')).rows){const p=manifest.cards.find(p=>p.id===row.id);assert.deepEqual(row.image_paths,p.before.image_paths);assert.equal(row.image_path,p.before.image_path);assert.equal(Number(row.price),175);assert.equal(row.stock_quantity,6);}
  }finally{await db.close();}
 });

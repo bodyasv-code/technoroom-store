@@ -1,8 +1,11 @@
-const operation='projection-content-finish-20261120';
+const defaultOperation='projection-content-finish-20261120';
 const literal=value=>"'"+JSON.stringify(value).replaceAll("'","''")+"'::jsonb";
 const ids=[6141,6142,6162,6177];
-export function projectionFinishSql(plans,{restore=false}={}){
- if(!Array.isArray(plans)||plans.length!==4||JSON.stringify(plans.map(p=>p.id).sort((a,b)=>a-b))!==JSON.stringify(ids))throw Error('Expected four reviewed projection cards');
+export function projectionFinishSql(plans,{restore=false,photoOperation}={}){
+ const operation=photoOperation||defaultOperation;
+ if(photoOperation){
+  if(!/^projection-photo-[a-z0-9-]{1,48}$/.test(photoOperation)||!Array.isArray(plans)||plans.length<1||plans.length>200||new Set(plans.map(p=>p.id)).size!==plans.length||plans.some(p=>!Number.isSafeInteger(p.id)||p.id<1||p.newReview||Object.keys(p.patch||{}).some(k=>!['image_path','image_paths'].includes(k))||!Array.isArray(p.patch?.image_paths)||!p.patch.image_paths.length||p.patch.image_path!==p.patch.image_paths[0]))throw Error('Invalid photo-only batch');
+ }else if(!Array.isArray(plans)||plans.length!==4||JSON.stringify(plans.map(p=>p.id).sort((a,b)=>a-b))!==JSON.stringify(ids))throw Error('Expected four reviewed projection cards');
  for(const p of plans){
   if(!p.sku||!p.brand||!p.source||!p.before||Object.keys(p.patch).some(k=>!['description','specifications','image_path','image_paths'].includes(k)))throw Error('Invalid content-only plan');
   if(p.newReview&&(p.reviewBefore!==null||p.id!==6177||p.newReview.keys.join()!=='Яскравість'))throw Error('Unexpected review enrollment');
@@ -41,7 +44,7 @@ begin
    insert into technoroom_maintenance.reviewed_product_content(product_id,sku,brand,source,protect_description,specification_keys,operation) values((item->>'id')::bigint,item->>'sku',item->>'brand',item->>'source',true,array(select jsonb_array_elements_text(item->'newReview'->'keys')),'${operation}');
   end if;
   `}
-  update public.products set description=expected->>'description',specifications=expected->'specifications',image_path=expected->>'image_path',image_paths=expected->'image_paths' where id=(item->>'id')::bigint;
+  update public.products set ${photoOperation?'':"description=expected->>'description',specifications=expected->'specifications',"}image_path=expected->>'image_path',image_paths=expected->'image_paths' where id=(item->>'id')::bigint;
   select to_jsonb(p) into new_row from public.products p where id=(item->>'id')::bigint;
   if exists(select 1 from jsonb_each(expected) e where new_row->e.key is distinct from e.value) or (new_row-array['description','specifications','image_path','image_paths','manual_overrides','updated_at']) is distinct from (old_row-array['description','specifications','image_path','image_paths','manual_overrides','updated_at']) then raise exception 'Unexpected projection side effect';end if;
  end loop;

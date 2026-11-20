@@ -1,0 +1,16 @@
+{
+  "verifiedOn": "2026-11-20",
+  "operation": "acer-ua-brightness-20261120",
+  "id": 6176,
+  "sku": "MR.JQU11.001",
+  "brightness": "4000 ANSI лм",
+  "source": "https://www.acer.com/ua-uk/projectors/classroom/pdp/MR.JQU11.001",
+  "backups": 1,
+  "unrelatedColumnsPreserved": true,
+  "protectedKeys": [
+    "Яскравість"
+  ],
+  "previousDeferralResolved": true,
+  "decision": "Official Ukrainian exact-part specification takes priority for the Ukrainian catalog, as explicitly directed by the owner.",
+  "testsPassed": 3
+}

@@ -1,0 +1,38 @@
+{
+  "id": 6176,
+  "sku": "MR.JQU11.001",
+  "brand": "Acer",
+  "source": "https://www.acer.com/ua-uk/projectors/classroom/pdp/MR.JQU11.001",
+  "reviewBefore": null,
+  "beforeSpecifications": {
+    "Гарантія": "36 міс.",
+    "Призначення": "Короткофокусний",
+    "Джерело світла": "Лампа",
+    "Роздільна здатність": "1280 × 800",
+    "Технологія проєкції": "DLP",
+    "Проєкційне співвідношення": "0,52"
+  },
+  "beforeManualOverrides": {
+    "brand": true,
+    "category": true,
+    "specifications": {
+      "Гарантія": true
+    }
+  },
+  "afterSpecifications": {
+    "Гарантія": "36 міс.",
+    "Призначення": "Короткофокусний",
+    "Джерело світла": "Лампа",
+    "Роздільна здатність": "1280 × 800",
+    "Технологія проєкції": "DLP",
+    "Проєкційне співвідношення": "0,52",
+    "Яскравість": "4000 ANSI лм"
+  },
+  "evidence": {
+    "market": "Ukraine",
+    "manufacturerSummary": "Standard brightness 4000 lm",
+    "manufacturerTable": "4000 ANSI Lumens (Standard), 2880 ANSI Lumens (ECO)",
+    "supplierPrice": "4000 lm",
+    "decision": "Use the official Ukrainian page for the exact part as requested by the owner. Summary and detailed standard-mode brightness agree. Other inconsistent fields on the page are outside this change."
+  }
+}

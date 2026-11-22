@@ -1,5 +1,16 @@
 // Exact manufacturer gallery files and extracted assets reviewed in November 2026.
 const sources=new Set([
+  "https://www.technoroom.com.ua/product-content/epson-238-1-20261122.jpg",
+  "https://www.technoroom.com.ua/product-content/epson-238-2-20261122.jpg",
+  "https://www.technoroom.com.ua/product-content/epson-247-1-20261122.png",
+  "https://www.technoroom.com.ua/product-content/epson-247-2-20261122.jpg",
+  "https://www.technoroom.com.ua/product-content/epson-247-3-20261122.jpg",
+  "https://www.technoroom.com.ua/product-content/epson-250-1-20261122.jpg",
+  "https://www.technoroom.com.ua/product-content/epson-250-2-20261122.jpg",
+  "https://www.technoroom.com.ua/product-content/epson-250-3-20261122.jpg",
+  "https://www.technoroom.com.ua/product-content/epson-251-1-20261122.png",
+  "https://www.technoroom.com.ua/product-content/epson-251-2-20261122.png",
+  "https://www.technoroom.com.ua/product-content/epson-251-3-20261122.png",
   "https://www.technoroom.com.ua/product-content/qt12-white-20261120.png",
   "https://cdn.pdx.stibosystems.com/submitted/assets/73fc40d2-58cf-334d-a8ab-be4ebec69b2e/54209d80-6938-5091-abfc-f33e0a60a2e0/54209d80-6938-5091-abfc-f33e0a60a2e0_m_jpg_1.jpg?v=1762944247428",
   "https://cdn.pdx.stibosystems.com/submitted/assets/73fc40d2-58cf-334d-a8ab-be4ebec69b2e/f14ca371-3673-5291-a8da-198f4b4543aa/f14ca371-3673-5291-a8da-198f4b4543aa_m_jpg_1.jpg?v=1762944247584",

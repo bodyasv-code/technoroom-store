@@ -1,0 +1,587 @@
+{
+  "operation": "projection-photo-host-20261122",
+  "reason": "Direct manufacturer CDN gallery requests failed in the customer browser; serve byte-identical reviewed originals from our own site.",
+  "cards": [
+    {
+      "id": 238,
+      "sku": "V11HA99180",
+      "brand": "Epson",
+      "name": "Проєктор ультракороткофокусний Epson EB-815E, 4K Enhancement (V11HA99180)",
+      "source": "https://www.epson.ua/proektory/biznes-osvita/eb-815e-v11ha99180",
+      "reviewBefore": {
+        "sku": "V11HA99180",
+        "brand": "Epson",
+        "source": "https://asm.epson.eu/es_ES/productos/projector/distancia-ultracorta/eb-815e-super-ultra-short-throw-projector/p/41719",
+        "operation": "mti-projector-content-20261116",
+        "product_id": 238,
+        "reviewed_at": "2026-11-16T18:54:49.969958+00:00",
+        "specification_keys": [
+          "Роздільна здатність",
+          "Покращення роздільної здатності"
+        ],
+        "protect_description": true
+      },
+      "before": {
+        "description": "Epson EB-815E — ультракороткофокусний лазерний проєктор 3LCD із яскравістю 5000 лм. Власна роздільна здатність становить Full HD 1920 × 1080; технологія 4K Enhancement підвищує деталізацію зображення. Проєктор формує зображення діагоналлю 80–160 дюймів при встановленні поблизу поверхні проєкції.",
+        "specifications": {
+          "Вхід": "HDMI x2, USB Type A x2, RS232, RJ45, HDBT, WiFi",
+          "Вихід": "HDMI, mini jack, USB Type mini B",
+          "Шум (дБ)": "35/26",
+          "Вага (кг)": "12.5",
+          "Контраст": "2500000:1",
+          "Яскравість": "5000 лм",
+          "Динамік (Вт)": "8 x2",
+          "Яркість (лм)": "5000/3500",
+          "Призначення": "Лазерний · Короткофокусний · Ультракороткофокусний",
+          "Фокусування": "ручне",
+          "Габарити (мм)": "695 x 341 x 156",
+          "Джерело світла": "Лазер",
+          "Роздільна здатність": "1920 × 1080",
+          "Технологія проекції": "3LCD",
+          "Енергоспоживання (Вт)": "380",
+          "Співвідношення сторін": "16:9",
+          "Проекційне співвідношення": "0.16:1",
+          "Оптичний трансфокатор (зум)": "-",
+          "Покращення роздільної здатності": "4K Enhancement",
+          "Джерело світла (тип, термін служби)": "LASER, 20000",
+          "Корекция трапецеїдальных спотворень": "V= ±3° H= ±3°"
+        },
+        "manual_overrides": {
+          "reviewed_description": true,
+          "reviewed_specifications": [
+            "Роздільна здатність",
+            "Покращення роздільної здатності"
+          ]
+        },
+        "image_path": "https://cdn.pdx.stibosystems.com/submitted/assets/73fc40d2-58cf-334d-a8ab-be4ebec69b2e/54209d80-6938-5091-abfc-f33e0a60a2e0/54209d80-6938-5091-abfc-f33e0a60a2e0_m_jpg_1.jpg?v=1762944247428",
+        "image_paths": [
+          "https://cdn.pdx.stibosystems.com/submitted/assets/73fc40d2-58cf-334d-a8ab-be4ebec69b2e/54209d80-6938-5091-abfc-f33e0a60a2e0/54209d80-6938-5091-abfc-f33e0a60a2e0_m_jpg_1.jpg?v=1762944247428",
+          "https://cdn.pdx.stibosystems.com/submitted/assets/73fc40d2-58cf-334d-a8ab-be4ebec69b2e/f14ca371-3673-5291-a8da-198f4b4543aa/f14ca371-3673-5291-a8da-198f4b4543aa_m_jpg_1.jpg?v=1762944247584"
+        ]
+      },
+      "patch": {
+        "image_path": "https://www.technoroom.com.ua/product-content/epson-238-1-20261122.jpg",
+        "image_paths": [
+          "https://www.technoroom.com.ua/product-content/epson-238-1-20261122.jpg",
+          "https://www.technoroom.com.ua/product-content/epson-238-2-20261122.jpg"
+        ]
+      },
+      "evidence": {
+        "photos": [
+          {
+            "id": 238,
+            "source": "https://www.epson.ua/proektory/biznes-osvita/eb-815e-v11ha99180",
+            "url": "https://cdn.pdx.stibosystems.com/submitted/assets/73fc40d2-58cf-334d-a8ab-be4ebec69b2e/54209d80-6938-5091-abfc-f33e0a60a2e0/54209d80-6938-5091-abfc-f33e0a60a2e0_m_jpg_1.jpg?v=1762944247428",
+            "index": 1,
+            "file": ".photo-review/audit-20261120/manufacturer/238-1.jpg",
+            "status": 200,
+            "bytes": 31713,
+            "sha256": "8be28f56c55e90460c37628e2c32516d0293371f826c95823ea0953c42ea154d",
+            "width": 1280,
+            "height": 854
+          },
+          {
+            "id": 238,
+            "source": "https://www.epson.ua/proektory/biznes-osvita/eb-815e-v11ha99180",
+            "url": "https://cdn.pdx.stibosystems.com/submitted/assets/73fc40d2-58cf-334d-a8ab-be4ebec69b2e/f14ca371-3673-5291-a8da-198f4b4543aa/f14ca371-3673-5291-a8da-198f4b4543aa_m_jpg_1.jpg?v=1762944247584",
+            "index": 3,
+            "file": ".photo-review/audit-20261120/manufacturer/238-3.jpg",
+            "status": 200,
+            "bytes": 31870,
+            "sha256": "9191f47cad5bd2778d333c2dafffcfb7bcc9442666087b8b51e8f68e10773ca4",
+            "width": 1280,
+            "height": 854
+          }
+        ],
+        "reason": "Replace 384x131 thumbnail with official Ukrainian gallery. Lifestyle scene excluded.",
+        "originalImages": [
+          "https://cdn.pdx.stibosystems.com/submitted/assets/73fc40d2-58cf-334d-a8ab-be4ebec69b2e/54209d80-6938-5091-abfc-f33e0a60a2e0/54209d80-6938-5091-abfc-f33e0a60a2e0_m_jpg_1.jpg?v=1762944247428",
+          "https://cdn.pdx.stibosystems.com/submitted/assets/73fc40d2-58cf-334d-a8ab-be4ebec69b2e/f14ca371-3673-5291-a8da-198f4b4543aa/f14ca371-3673-5291-a8da-198f4b4543aa_m_jpg_1.jpg?v=1762944247584"
+        ],
+        "hostedWithoutModification": true
+      }
+    },
+    {
+      "id": 247,
+      "sku": "V11HB60042",
+      "brand": "Epson",
+      "name": "Проєктор Epson EB-994F FHD (V11HB60042)",
+      "source": "https://www.epson.ua/projectors/professional/business-education/eb-994f-v11hb60042",
+      "reviewBefore": {
+        "sku": "V11HB60042",
+        "brand": "Epson",
+        "source": "https://www.epson-africa.com/projectors/professional/business-education/eb-994f-v11hb60042",
+        "operation": "reviewed-content-pilot-20261027",
+        "product_id": 247,
+        "reviewed_at": "2026-10-27T21:50:44.722119+00:00",
+        "specification_keys": null,
+        "protect_description": true
+      },
+      "before": {
+        "description": "<!--technoroom-rich-text:v1--><p>Epson EB-994F (V11HB60042) — білий проєктор для презентацій із технологією 3LCD та рідною роздільною здатністю Full HD 1920 × 1080. Кольоровий світловий потік становить 4100 лм, контрастність — 16 000:1.</p><p>Лампове джерело світла має ресурс до 6500 годин у звичайному режимі та до 17 000 годин в економічному. Фокусування — ручне. Фокусна відстань об’єктива — 18,2–29,1 мм, діафрагма — F/1,51–1,77.</p><p>Кольорові режими: «Класна дошка», «Кіно», «Динамічний», «Презентація» та sRGB. Послідовний інтерфейс — RS-232C, сервісний порт — USB Type-A.</p><ul><li>Діагональ проєкції: 31–304 дюйми (787,4–7721,6 мм).</li><li>Співвідношення сторін: 16:9.</li><li>Відтворення кольорів: до 1,07 млрд кольорів.</li><li>Ручне фокусування та масштабування.</li><li>Мережеві підключення: Ethernet і Wi-Fi.</li><li>Вбудований динамік потужністю 16 Вт.</li></ul>",
+        "specifications": {
+          "Вхід": ": HDMI x2, WiFi",
+          "Вихід": ": stereo mini jack, USB Type A, USB Type B",
+          "Шум (дБ)": ": 37/28",
+          "Маса (кг)": ": 3.1",
+          "Контраст": ": 16000:1",
+          "Технологія": ": 3LCD",
+          "Яскравість": "4100 лм",
+          "Динамік (Вт)": ": 16",
+          "Призначення": "Універсальний",
+          "Фокусування": ": ручне",
+          "Габарити (мм)": "309 × 293 × 105 (Ш × Г × В)",
+          "Джерело світла": "Лампа",
+          "Світловий потік (лм)": ": 4100",
+          "Роздільна здатність": "1920 x 1080",
+          "Технологія проекції": "3LCD",
+          "Енергоспоживання (Вт)": "284 (звичайний режим)",
+          "Проекційне співвідношення": "1.3-2.09",
+          "Оптичний трансфокатор (зум)": ": x1.6",
+          "Енергоспоживання (екорежим)": "181 Вт",
+          "Ресурс джерела світла (екорежим)": "17000 год",
+          "Енергоспоживання (режим очікування)": "0,3 Вт",
+          "Корекція трапецеїдальних спотворень": ": V= ±30° H= ±30°",
+          "Ресурс джерела світла (звичайний режим)": "6500 год"
+        },
+        "manual_overrides": {
+          "description": true,
+          "verified_specifications": true
+        },
+        "image_path": "https://cdn.pdx.stibosystems.com/submitted/assets/73fc40d2-58cf-334d-a8ab-be4ebec69b2e/1c82a727-9ee8-58e9-8af1-749dc74f3d2c/1c82a727-9ee8-58e9-8af1-749dc74f3d2c_m_png_1.png?v=1762959235280",
+        "image_paths": [
+          "https://cdn.pdx.stibosystems.com/submitted/assets/73fc40d2-58cf-334d-a8ab-be4ebec69b2e/1c82a727-9ee8-58e9-8af1-749dc74f3d2c/1c82a727-9ee8-58e9-8af1-749dc74f3d2c_m_png_1.png?v=1762959235280",
+          "https://cdn.pdx.stibosystems.com/submitted/assets/73fc40d2-58cf-334d-a8ab-be4ebec69b2e/264ed23f-097d-5a65-b16d-105a5143c821/264ed23f-097d-5a65-b16d-105a5143c821_m_jpg_1.jpg?v=1762959235306",
+          "https://cdn.pdx.stibosystems.com/submitted/assets/73fc40d2-58cf-334d-a8ab-be4ebec69b2e/1bbb8a24-4388-5c93-b797-53a54c6ebf71/1bbb8a24-4388-5c93-b797-53a54c6ebf71_m_jpg_1.jpg?v=1762959235272"
+        ]
+      },
+      "patch": {
+        "image_path": "https://www.technoroom.com.ua/product-content/epson-247-1-20261122.png",
+        "image_paths": [
+          "https://www.technoroom.com.ua/product-content/epson-247-1-20261122.png",
+          "https://www.technoroom.com.ua/product-content/epson-247-2-20261122.jpg",
+          "https://www.technoroom.com.ua/product-content/epson-247-3-20261122.jpg"
+        ]
+      },
+      "evidence": {
+        "photos": [
+          {
+            "id": 247,
+            "source": "https://www.epson.ua/projectors/professional/business-education/eb-994f-v11hb60042",
+            "url": "https://cdn.pdx.stibosystems.com/submitted/assets/73fc40d2-58cf-334d-a8ab-be4ebec69b2e/1c82a727-9ee8-58e9-8af1-749dc74f3d2c/1c82a727-9ee8-58e9-8af1-749dc74f3d2c_m_png_1.png?v=1762959235280",
+            "index": 1,
+            "file": ".photo-review/audit-20261120/manufacturer/247-1.png",
+            "status": 200,
+            "bytes": 269222,
+            "sha256": "a50f594ee9cfc50ac973a25f8d06be017bc032f0de9435c31f1dbcf016ba6141",
+            "width": 1280,
+            "height": 854
+          },
+          {
+            "id": 247,
+            "source": "https://www.epson.ua/projectors/professional/business-education/eb-994f-v11hb60042",
+            "url": "https://cdn.pdx.stibosystems.com/submitted/assets/73fc40d2-58cf-334d-a8ab-be4ebec69b2e/264ed23f-097d-5a65-b16d-105a5143c821/264ed23f-097d-5a65-b16d-105a5143c821_m_jpg_1.jpg?v=1762959235306",
+            "index": 2,
+            "file": ".photo-review/audit-20261120/manufacturer/247-2.jpg",
+            "status": 200,
+            "bytes": 49529,
+            "sha256": "f15cfa9d798820f8f792ac67484ff306bdb37571f7eb66a53dff3aba3c67beeb",
+            "width": 1280,
+            "height": 854
+          },
+          {
+            "id": 247,
+            "source": "https://www.epson.ua/projectors/professional/business-education/eb-994f-v11hb60042",
+            "url": "https://cdn.pdx.stibosystems.com/submitted/assets/73fc40d2-58cf-334d-a8ab-be4ebec69b2e/1bbb8a24-4388-5c93-b797-53a54c6ebf71/1bbb8a24-4388-5c93-b797-53a54c6ebf71_m_jpg_1.jpg?v=1762959235272",
+            "index": 3,
+            "file": ".photo-review/audit-20261120/manufacturer/247-3.jpg",
+            "status": 200,
+            "bytes": 45614,
+            "sha256": "6e227711012fd019edf0517717787a39bd9b62c4a4432ccf4cb5fdb1dcc0c026",
+            "width": 1280,
+            "height": 854
+          }
+        ],
+        "reason": "Use each exact model official Ukrainian gallery instead of a file shared by three cards.",
+        "originalImages": [
+          "https://cdn.pdx.stibosystems.com/submitted/assets/73fc40d2-58cf-334d-a8ab-be4ebec69b2e/1c82a727-9ee8-58e9-8af1-749dc74f3d2c/1c82a727-9ee8-58e9-8af1-749dc74f3d2c_m_png_1.png?v=1762959235280",
+          "https://cdn.pdx.stibosystems.com/submitted/assets/73fc40d2-58cf-334d-a8ab-be4ebec69b2e/264ed23f-097d-5a65-b16d-105a5143c821/264ed23f-097d-5a65-b16d-105a5143c821_m_jpg_1.jpg?v=1762959235306",
+          "https://cdn.pdx.stibosystems.com/submitted/assets/73fc40d2-58cf-334d-a8ab-be4ebec69b2e/1bbb8a24-4388-5c93-b797-53a54c6ebf71/1bbb8a24-4388-5c93-b797-53a54c6ebf71_m_jpg_1.jpg?v=1762959235272"
+        ],
+        "hostedWithoutModification": true
+      }
+    },
+    {
+      "id": 250,
+      "sku": "V11HB54042",
+      "brand": "Epson",
+      "name": "Проєктор Epson EB-FH08 FHD (V11HB54042)",
+      "source": "https://www.epson.ua/projectors/professional/business-education/eb-fh08-v11hb54042",
+      "reviewBefore": null,
+      "before": {
+        "description": "Технологія: 3LCD Роздільна здатність: 1920 x 1080 (Full HD) Світловий потік (лм): 3600/2200 Контраст: 16000:1 Оптичний трансфокатор (зум): x1.2 Проекційне відношення: 1.21-1.45 Фокусування: ручне Джерело світла (тип, термін роботи): UHP 210W, 6000/12000 Енергоспоживання (Вт): 332 Вхід: HDMI x2, stereo mini jack Вихід: USB Type A, USB Type B Динамік (Вт): 2 Корекція трапецеїдальних спотворень: V= ±30° H= ±30° Шум (дБ): 37/28 Маса (кг): 2.7 Габарити (мм): 302‎ x 252 x 92",
+        "specifications": {
+          "Вхід": "HDMI x2, stereo mini jack",
+          "Вхід:": "HDMI x2, stereo mini jack",
+          "Вихід": "USB Type A, USB Type B",
+          "Вихід:": "USB Type A, USB Type B",
+          "Шум (дБ)": "37/28",
+          "Шум (дБ):": "37/28",
+          "Маса (кг)": "2.7",
+          "Контраст": "16000:1",
+          "Маса (кг):": "2.7",
+          "Контраст:": "16000:1",
+          "Технологія": "3LCD",
+          "Яскравість": "3600/2200",
+          "Динамік (Вт)": "2",
+          "Технологія:": "3LCD",
+          "Динамік (Вт):": "2",
+          "Призначення": "Універсальний",
+          "Фокусування": "ручне",
+          "Габарити (мм)": "302‎ x 252 x 92",
+          "Фокусування:": "ручне",
+          "Габарити (мм):": "302‎ x 252 x 92",
+          "Джерело світла": "UHP 210W, 6000/12000",
+          "Роздільна здатність": "1920 x 1080 (Full HD)",
+          "Світловий потік (лм):": "3600/2200",
+          "Роздільна здатність:": "1920 x 1080 (Full HD)",
+          "Енергоспоживання (Вт)": "332",
+          "Енергоспоживання (Вт):": "332",
+          "Проекційне відношення:": "1.21-1.45",
+          "Проекційне співвідношення": "1.21-1.45",
+          "Оптичний трансфокатор (зум)": "x1.2",
+          "Оптичний трансфокатор (зум):": "x1.2",
+          "Джерело світла (тип, термін роботи):": "UHP 210W, 6000/12000",
+          "Корекція трапецеїдальних спотворень": "V= ±30° H= ±30°",
+          "Корекція трапецеїдальних спотворень:": "V= ±30° H= ±30°"
+        },
+        "manual_overrides": {},
+        "image_path": "https://cdn.pdx.stibosystems.com/submitted/assets/73fc40d2-58cf-334d-a8ab-be4ebec69b2e/7fc686cd-54ef-51c8-9d0f-02bf6541cdc9/7fc686cd-54ef-51c8-9d0f-02bf6541cdc9_m_jpg_1.jpg?v=1778102628701",
+        "image_paths": [
+          "https://cdn.pdx.stibosystems.com/submitted/assets/73fc40d2-58cf-334d-a8ab-be4ebec69b2e/7fc686cd-54ef-51c8-9d0f-02bf6541cdc9/7fc686cd-54ef-51c8-9d0f-02bf6541cdc9_m_jpg_1.jpg?v=1778102628701",
+          "https://cdn.pdx.stibosystems.com/submitted/assets/73fc40d2-58cf-334d-a8ab-be4ebec69b2e/a10037a8-c399-50ca-92cf-0776b96faad5/a10037a8-c399-50ca-92cf-0776b96faad5_m_jpg_1.jpg?v=1778102628717",
+          "https://cdn.pdx.stibosystems.com/submitted/assets/73fc40d2-58cf-334d-a8ab-be4ebec69b2e/b749285a-bdc1-5efe-bf4f-bddfe23e0742/b749285a-bdc1-5efe-bf4f-bddfe23e0742_m_jpg_1.jpg?v=1778581992228"
+        ]
+      },
+      "patch": {
+        "image_path": "https://www.technoroom.com.ua/product-content/epson-250-1-20261122.jpg",
+        "image_paths": [
+          "https://www.technoroom.com.ua/product-content/epson-250-1-20261122.jpg",
+          "https://www.technoroom.com.ua/product-content/epson-250-2-20261122.jpg",
+          "https://www.technoroom.com.ua/product-content/epson-250-3-20261122.jpg"
+        ]
+      },
+      "evidence": {
+        "photos": [
+          {
+            "id": 250,
+            "source": "https://www.epson.ua/projectors/professional/business-education/eb-fh08-v11hb54042",
+            "url": "https://cdn.pdx.stibosystems.com/submitted/assets/73fc40d2-58cf-334d-a8ab-be4ebec69b2e/7fc686cd-54ef-51c8-9d0f-02bf6541cdc9/7fc686cd-54ef-51c8-9d0f-02bf6541cdc9_m_jpg_1.jpg?v=1778102628701",
+            "index": 1,
+            "file": ".photo-review/audit-20261120/manufacturer/250-1.jpg",
+            "status": 200,
+            "bytes": 121469,
+            "sha256": "2b1a8b254847ccf6bc7c6e5b70508b2df3fec2ad0bb38d58e3c8409f4eb9615d",
+            "width": 1200,
+            "height": 800
+          },
+          {
+            "id": 250,
+            "source": "https://www.epson.ua/projectors/professional/business-education/eb-fh08-v11hb54042",
+            "url": "https://cdn.pdx.stibosystems.com/submitted/assets/73fc40d2-58cf-334d-a8ab-be4ebec69b2e/a10037a8-c399-50ca-92cf-0776b96faad5/a10037a8-c399-50ca-92cf-0776b96faad5_m_jpg_1.jpg?v=1778102628717",
+            "index": 2,
+            "file": ".photo-review/audit-20261120/manufacturer/250-2.jpg",
+            "status": 200,
+            "bytes": 158545,
+            "sha256": "9dad1cadea9097dc41029a2357d21324b15217ffda9d62a33b280b8f468d6336",
+            "width": 1280,
+            "height": 854
+          },
+          {
+            "id": 250,
+            "source": "https://www.epson.ua/projectors/professional/business-education/eb-fh08-v11hb54042",
+            "url": "https://cdn.pdx.stibosystems.com/submitted/assets/73fc40d2-58cf-334d-a8ab-be4ebec69b2e/b749285a-bdc1-5efe-bf4f-bddfe23e0742/b749285a-bdc1-5efe-bf4f-bddfe23e0742_m_jpg_1.jpg?v=1778581992228",
+            "index": 3,
+            "file": ".photo-review/audit-20261120/manufacturer/250-3.jpg",
+            "status": 200,
+            "bytes": 116732,
+            "sha256": "f590abf9c487f0626671ebb5ec49070b94336b63adf9a95feecb395cb607c1d7",
+            "width": 1200,
+            "height": 800
+          }
+        ],
+        "reason": "Use each exact model official Ukrainian gallery instead of a file shared by three cards.",
+        "originalImages": [
+          "https://cdn.pdx.stibosystems.com/submitted/assets/73fc40d2-58cf-334d-a8ab-be4ebec69b2e/7fc686cd-54ef-51c8-9d0f-02bf6541cdc9/7fc686cd-54ef-51c8-9d0f-02bf6541cdc9_m_jpg_1.jpg?v=1778102628701",
+          "https://cdn.pdx.stibosystems.com/submitted/assets/73fc40d2-58cf-334d-a8ab-be4ebec69b2e/a10037a8-c399-50ca-92cf-0776b96faad5/a10037a8-c399-50ca-92cf-0776b96faad5_m_jpg_1.jpg?v=1778102628717",
+          "https://cdn.pdx.stibosystems.com/submitted/assets/73fc40d2-58cf-334d-a8ab-be4ebec69b2e/b749285a-bdc1-5efe-bf4f-bddfe23e0742/b749285a-bdc1-5efe-bf4f-bddfe23e0742_m_jpg_1.jpg?v=1778581992228"
+        ],
+        "hostedWithoutModification": true
+      }
+    },
+    {
+      "id": 251,
+      "sku": "V11HB59042",
+      "brand": "Epson",
+      "name": "Проєктор Epson EB-FH54 FHD (V11HB59042)",
+      "source": "https://www.epson.ua/projectors/professional/business-education/eb-fh54-v11hb59042",
+      "reviewBefore": null,
+      "before": {
+        "description": "Технологія: 3LCD Роздільна здатність: 1920 x 1080 (Full HD) Світловий потік (лм): 4100 Контраст: 16000:1 Оптичний трансфокатор (зум): x1.6 Проекційне відношення: 1.3-2.09 Фокусування: ручне Джерело світла (тип, термін роботи): UHP 230W, 5500/17000 Енергоспоживання (Вт): 327 Вхід: VGA x2, HDMI x2, RCA, mini jack microphone, stereo RCA x2, RF45, WiFi Вихід: VGA, USB Type A, USB Type B Динамік (Вт): 16 Корекція трапецеїдальних спотворень: V= ±30° H= ±30° Шум (дБ): 37/28 Маса (кг): 3.1 Габарити (мм): 309‎ x 283 x 105",
+        "specifications": {
+          "Вхід": "VGA x2, HDMI x2, RCA, mini jack microphone, stereo RCA x2, RF45, WiFi",
+          "Вхід:": "VGA x2, HDMI x2, RCA, mini jack microphone, stereo RCA x2, RF45, WiFi",
+          "Вихід": "VGA, USB Type A, USB Type B",
+          "Вихід:": "VGA, USB Type A, USB Type B",
+          "Шум (дБ)": "37/28",
+          "Шум (дБ):": "37/28",
+          "Маса (кг)": "3.1",
+          "Контраст": "16000:1",
+          "Маса (кг):": "3.1",
+          "Контраст:": "16000:1",
+          "Технологія": "3LCD",
+          "Яскравість": "4100",
+          "Динамік (Вт)": "16",
+          "Технологія:": "3LCD",
+          "Динамік (Вт):": "16",
+          "Призначення": "Універсальний",
+          "Фокусування": "ручне",
+          "Габарити (мм)": "309‎ x 283 x 105",
+          "Фокусування:": "ручне",
+          "Габарити (мм):": "309‎ x 283 x 105",
+          "Джерело світла": "UHP 230W, 5500/17000",
+          "Роздільна здатність": "1920 x 1080 (Full HD)",
+          "Світловий потік (лм):": "4100",
+          "Роздільна здатність:": "1920 x 1080 (Full HD)",
+          "Енергоспоживання (Вт)": "327",
+          "Енергоспоживання (Вт):": "327",
+          "Проекційне відношення:": "1.3-2.09",
+          "Проекційне співвідношення": "1.3-2.09",
+          "Оптичний трансфокатор (зум)": "x1.6",
+          "Оптичний трансфокатор (зум):": "x1.6",
+          "Джерело світла (тип, термін роботи):": "UHP 230W, 5500/17000",
+          "Корекція трапецеїдальних спотворень": "V= ±30° H= ±30°",
+          "Корекція трапецеїдальних спотворень:": "V= ±30° H= ±30°"
+        },
+        "manual_overrides": {},
+        "image_path": "https://cdn.pdx.stibosystems.com/submitted/assets/73fc40d2-58cf-334d-a8ab-be4ebec69b2e/6b6e1b0b-5b91-502d-96d2-7495abf9693e/6b6e1b0b-5b91-502d-96d2-7495abf9693e_m_png_1.png?v=1762959193904",
+        "image_paths": [
+          "https://cdn.pdx.stibosystems.com/submitted/assets/73fc40d2-58cf-334d-a8ab-be4ebec69b2e/6b6e1b0b-5b91-502d-96d2-7495abf9693e/6b6e1b0b-5b91-502d-96d2-7495abf9693e_m_png_1.png?v=1762959193904",
+          "https://cdn.pdx.stibosystems.com/submitted/assets/73fc40d2-58cf-334d-a8ab-be4ebec69b2e/21a97269-ee32-5013-b590-4f83db50f3f0/21a97269-ee32-5013-b590-4f83db50f3f0_m_png_1.png?v=1762959193866",
+          "https://cdn.pdx.stibosystems.com/submitted/assets/73fc40d2-58cf-334d-a8ab-be4ebec69b2e/3acaff8c-9bd7-5d2f-9d19-904667e6fd88/3acaff8c-9bd7-5d2f-9d19-904667e6fd88_m_png_1.png?v=1762959193881"
+        ]
+      },
+      "patch": {
+        "image_path": "https://www.technoroom.com.ua/product-content/epson-251-1-20261122.png",
+        "image_paths": [
+          "https://www.technoroom.com.ua/product-content/epson-251-1-20261122.png",
+          "https://www.technoroom.com.ua/product-content/epson-251-2-20261122.png",
+          "https://www.technoroom.com.ua/product-content/epson-251-3-20261122.png"
+        ]
+      },
+      "evidence": {
+        "photos": [
+          {
+            "id": 251,
+            "source": "https://www.epson.ua/projectors/professional/business-education/eb-fh54-v11hb59042",
+            "url": "https://cdn.pdx.stibosystems.com/submitted/assets/73fc40d2-58cf-334d-a8ab-be4ebec69b2e/6b6e1b0b-5b91-502d-96d2-7495abf9693e/6b6e1b0b-5b91-502d-96d2-7495abf9693e_m_png_1.png?v=1762959193904",
+            "index": 1,
+            "file": ".photo-review/audit-20261120/manufacturer/251-1.png",
+            "status": 200,
+            "bytes": 344129,
+            "sha256": "aa88b4d594dbbf930b944d9288f118cd28ea809344461be350bd4431aacc2bca",
+            "width": 1280,
+            "height": 854
+          },
+          {
+            "id": 251,
+            "source": "https://www.epson.ua/projectors/professional/business-education/eb-fh54-v11hb59042",
+            "url": "https://cdn.pdx.stibosystems.com/submitted/assets/73fc40d2-58cf-334d-a8ab-be4ebec69b2e/21a97269-ee32-5013-b590-4f83db50f3f0/21a97269-ee32-5013-b590-4f83db50f3f0_m_png_1.png?v=1762959193866",
+            "index": 2,
+            "file": ".photo-review/audit-20261120/manufacturer/251-2.png",
+            "status": 200,
+            "bytes": 465210,
+            "sha256": "b1c8389c26a94a349fe914d240be18745cd636ece6639270376ed5510195e93f",
+            "width": 1280,
+            "height": 854
+          },
+          {
+            "id": 251,
+            "source": "https://www.epson.ua/projectors/professional/business-education/eb-fh54-v11hb59042",
+            "url": "https://cdn.pdx.stibosystems.com/submitted/assets/73fc40d2-58cf-334d-a8ab-be4ebec69b2e/3acaff8c-9bd7-5d2f-9d19-904667e6fd88/3acaff8c-9bd7-5d2f-9d19-904667e6fd88_m_png_1.png?v=1762959193881",
+            "index": 3,
+            "file": ".photo-review/audit-20261120/manufacturer/251-3.png",
+            "status": 200,
+            "bytes": 200329,
+            "sha256": "2e2ccc8a06749ff922071dfe1278f33f93ce4b4c780d49e860cfd8d4b1f89089",
+            "width": 1280,
+            "height": 854
+          }
+        ],
+        "reason": "Use each exact model official Ukrainian gallery instead of a file shared by three cards.",
+        "originalImages": [
+          "https://cdn.pdx.stibosystems.com/submitted/assets/73fc40d2-58cf-334d-a8ab-be4ebec69b2e/6b6e1b0b-5b91-502d-96d2-7495abf9693e/6b6e1b0b-5b91-502d-96d2-7495abf9693e_m_png_1.png?v=1762959193904",
+          "https://cdn.pdx.stibosystems.com/submitted/assets/73fc40d2-58cf-334d-a8ab-be4ebec69b2e/21a97269-ee32-5013-b590-4f83db50f3f0/21a97269-ee32-5013-b590-4f83db50f3f0_m_png_1.png?v=1762959193866",
+          "https://cdn.pdx.stibosystems.com/submitted/assets/73fc40d2-58cf-334d-a8ab-be4ebec69b2e/3acaff8c-9bd7-5d2f-9d19-904667e6fd88/3acaff8c-9bd7-5d2f-9d19-904667e6fd88_m_png_1.png?v=1762959193881"
+        ],
+        "hostedWithoutModification": true
+      }
+    }
+  ],
+  "assets": [
+    {
+      "id": 238,
+      "source": "https://www.epson.ua/proektory/biznes-osvita/eb-815e-v11ha99180",
+      "url": "https://cdn.pdx.stibosystems.com/submitted/assets/73fc40d2-58cf-334d-a8ab-be4ebec69b2e/54209d80-6938-5091-abfc-f33e0a60a2e0/54209d80-6938-5091-abfc-f33e0a60a2e0_m_jpg_1.jpg?v=1762944247428",
+      "index": 1,
+      "file": "public/product-content/epson-238-1-20261122.jpg",
+      "status": 200,
+      "bytes": 31713,
+      "sha256": "8be28f56c55e90460c37628e2c32516d0293371f826c95823ea0953c42ea154d",
+      "width": 1280,
+      "height": 854,
+      "originalFile": ".photo-review/audit-20261120/manufacturer/238-1.jpg",
+      "hosted": "https://www.technoroom.com.ua/product-content/epson-238-1-20261122.jpg"
+    },
+    {
+      "id": 238,
+      "source": "https://www.epson.ua/proektory/biznes-osvita/eb-815e-v11ha99180",
+      "url": "https://cdn.pdx.stibosystems.com/submitted/assets/73fc40d2-58cf-334d-a8ab-be4ebec69b2e/f14ca371-3673-5291-a8da-198f4b4543aa/f14ca371-3673-5291-a8da-198f4b4543aa_m_jpg_1.jpg?v=1762944247584",
+      "index": 3,
+      "file": "public/product-content/epson-238-2-20261122.jpg",
+      "status": 200,
+      "bytes": 31870,
+      "sha256": "9191f47cad5bd2778d333c2dafffcfb7bcc9442666087b8b51e8f68e10773ca4",
+      "width": 1280,
+      "height": 854,
+      "originalFile": ".photo-review/audit-20261120/manufacturer/238-3.jpg",
+      "hosted": "https://www.technoroom.com.ua/product-content/epson-238-2-20261122.jpg"
+    },
+    {
+      "id": 247,
+      "source": "https://www.epson.ua/projectors/professional/business-education/eb-994f-v11hb60042",
+      "url": "https://cdn.pdx.stibosystems.com/submitted/assets/73fc40d2-58cf-334d-a8ab-be4ebec69b2e/1c82a727-9ee8-58e9-8af1-749dc74f3d2c/1c82a727-9ee8-58e9-8af1-749dc74f3d2c_m_png_1.png?v=1762959235280",
+      "index": 1,
+      "file": "public/product-content/epson-247-1-20261122.png",
+      "status": 200,
+      "bytes": 269222,
+      "sha256": "a50f594ee9cfc50ac973a25f8d06be017bc032f0de9435c31f1dbcf016ba6141",
+      "width": 1280,
+      "height": 854,
+      "originalFile": ".photo-review/audit-20261120/manufacturer/247-1.png",
+      "hosted": "https://www.technoroom.com.ua/product-content/epson-247-1-20261122.png"
+    },
+    {
+      "id": 247,
+      "source": "https://www.epson.ua/projectors/professional/business-education/eb-994f-v11hb60042",
+      "url": "https://cdn.pdx.stibosystems.com/submitted/assets/73fc40d2-58cf-334d-a8ab-be4ebec69b2e/264ed23f-097d-5a65-b16d-105a5143c821/264ed23f-097d-5a65-b16d-105a5143c821_m_jpg_1.jpg?v=1762959235306",
+      "index": 2,
+      "file": "public/product-content/epson-247-2-20261122.jpg",
+      "status": 200,
+      "bytes": 49529,
+      "sha256": "f15cfa9d798820f8f792ac67484ff306bdb37571f7eb66a53dff3aba3c67beeb",
+      "width": 1280,
+      "height": 854,
+      "originalFile": ".photo-review/audit-20261120/manufacturer/247-2.jpg",
+      "hosted": "https://www.technoroom.com.ua/product-content/epson-247-2-20261122.jpg"
+    },
+    {
+      "id": 247,
+      "source": "https://www.epson.ua/projectors/professional/business-education/eb-994f-v11hb60042",
+      "url": "https://cdn.pdx.stibosystems.com/submitted/assets/73fc40d2-58cf-334d-a8ab-be4ebec69b2e/1bbb8a24-4388-5c93-b797-53a54c6ebf71/1bbb8a24-4388-5c93-b797-53a54c6ebf71_m_jpg_1.jpg?v=1762959235272",
+      "index": 3,
+      "file": "public/product-content/epson-247-3-20261122.jpg",
+      "status": 200,
+      "bytes": 45614,
+      "sha256": "6e227711012fd019edf0517717787a39bd9b62c4a4432ccf4cb5fdb1dcc0c026",
+      "width": 1280,
+      "height": 854,
+      "originalFile": ".photo-review/audit-20261120/manufacturer/247-3.jpg",
+      "hosted": "https://www.technoroom.com.ua/product-content/epson-247-3-20261122.jpg"
+    },
+    {
+      "id": 250,
+      "source": "https://www.epson.ua/projectors/professional/business-education/eb-fh08-v11hb54042",
+      "url": "https://cdn.pdx.stibosystems.com/submitted/assets/73fc40d2-58cf-334d-a8ab-be4ebec69b2e/7fc686cd-54ef-51c8-9d0f-02bf6541cdc9/7fc686cd-54ef-51c8-9d0f-02bf6541cdc9_m_jpg_1.jpg?v=1778102628701",
+      "index": 1,
+      "file": "public/product-content/epson-250-1-20261122.jpg",
+      "status": 200,
+      "bytes": 121469,
+      "sha256": "2b1a8b254847ccf6bc7c6e5b70508b2df3fec2ad0bb38d58e3c8409f4eb9615d",
+      "width": 1200,
+      "height": 800,
+      "originalFile": ".photo-review/audit-20261120/manufacturer/250-1.jpg",
+      "hosted": "https://www.technoroom.com.ua/product-content/epson-250-1-20261122.jpg"
+    },
+    {
+      "id": 250,
+      "source": "https://www.epson.ua/projectors/professional/business-education/eb-fh08-v11hb54042",
+      "url": "https://cdn.pdx.stibosystems.com/submitted/assets/73fc40d2-58cf-334d-a8ab-be4ebec69b2e/a10037a8-c399-50ca-92cf-0776b96faad5/a10037a8-c399-50ca-92cf-0776b96faad5_m_jpg_1.jpg?v=1778102628717",
+      "index": 2,
+      "file": "public/product-content/epson-250-2-20261122.jpg",
+      "status": 200,
+      "bytes": 158545,
+      "sha256": "9dad1cadea9097dc41029a2357d21324b15217ffda9d62a33b280b8f468d6336",
+      "width": 1280,
+      "height": 854,
+      "originalFile": ".photo-review/audit-20261120/manufacturer/250-2.jpg",
+      "hosted": "https://www.technoroom.com.ua/product-content/epson-250-2-20261122.jpg"
+    },
+    {
+      "id": 250,
+      "source": "https://www.epson.ua/projectors/professional/business-education/eb-fh08-v11hb54042",
+      "url": "https://cdn.pdx.stibosystems.com/submitted/assets/73fc40d2-58cf-334d-a8ab-be4ebec69b2e/b749285a-bdc1-5efe-bf4f-bddfe23e0742/b749285a-bdc1-5efe-bf4f-bddfe23e0742_m_jpg_1.jpg?v=1778581992228",
+      "index": 3,
+      "file": "public/product-content/epson-250-3-20261122.jpg",
+      "status": 200,
+      "bytes": 116732,
+      "sha256": "f590abf9c487f0626671ebb5ec49070b94336b63adf9a95feecb395cb607c1d7",
+      "width": 1200,
+      "height": 800,
+      "originalFile": ".photo-review/audit-20261120/manufacturer/250-3.jpg",
+      "hosted": "https://www.technoroom.com.ua/product-content/epson-250-3-20261122.jpg"
+    },
+    {
+      "id": 251,
+      "source": "https://www.epson.ua/projectors/professional/business-education/eb-fh54-v11hb59042",
+      "url": "https://cdn.pdx.stibosystems.com/submitted/assets/73fc40d2-58cf-334d-a8ab-be4ebec69b2e/6b6e1b0b-5b91-502d-96d2-7495abf9693e/6b6e1b0b-5b91-502d-96d2-7495abf9693e_m_png_1.png?v=1762959193904",
+      "index": 1,
+      "file": "public/product-content/epson-251-1-20261122.png",
+      "status": 200,
+      "bytes": 344129,
+      "sha256": "aa88b4d594dbbf930b944d9288f118cd28ea809344461be350bd4431aacc2bca",
+      "width": 1280,
+      "height": 854,
+      "originalFile": ".photo-review/audit-20261120/manufacturer/251-1.png",
+      "hosted": "https://www.technoroom.com.ua/product-content/epson-251-1-20261122.png"
+    },
+    {
+      "id": 251,
+      "source": "https://www.epson.ua/projectors/professional/business-education/eb-fh54-v11hb59042",
+      "url": "https://cdn.pdx.stibosystems.com/submitted/assets/73fc40d2-58cf-334d-a8ab-be4ebec69b2e/21a97269-ee32-5013-b590-4f83db50f3f0/21a97269-ee32-5013-b590-4f83db50f3f0_m_png_1.png?v=1762959193866",
+      "index": 2,
+      "file": "public/product-content/epson-251-2-20261122.png",
+      "status": 200,
+      "bytes": 465210,
+      "sha256": "b1c8389c26a94a349fe914d240be18745cd636ece6639270376ed5510195e93f",
+      "width": 1280,
+      "height": 854,
+      "originalFile": ".photo-review/audit-20261120/manufacturer/251-2.png",
+      "hosted": "https://www.technoroom.com.ua/product-content/epson-251-2-20261122.png"
+    },
+    {
+      "id": 251,
+      "source": "https://www.epson.ua/projectors/professional/business-education/eb-fh54-v11hb59042",
+      "url": "https://cdn.pdx.stibosystems.com/submitted/assets/73fc40d2-58cf-334d-a8ab-be4ebec69b2e/3acaff8c-9bd7-5d2f-9d19-904667e6fd88/3acaff8c-9bd7-5d2f-9d19-904667e6fd88_m_png_1.png?v=1762959193881",
+      "index": 3,
+      "file": "public/product-content/epson-251-3-20261122.png",
+      "status": 200,
+      "bytes": 200329,
+      "sha256": "2e2ccc8a06749ff922071dfe1278f33f93ce4b4c780d49e860cfd8d4b1f89089",
+      "width": 1280,
+      "height": 854,
+      "originalFile": ".photo-review/audit-20261120/manufacturer/251-3.png",
+      "hosted": "https://www.technoroom.com.ua/product-content/epson-251-3-20261122.png"
+    }
+  ]
+}

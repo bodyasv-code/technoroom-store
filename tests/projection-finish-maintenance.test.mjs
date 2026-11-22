@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
+import {createHash} from 'node:crypto';
 import {PGlite} from '@electric-sql/pglite';
 import {projectionFinishSql} from '../scripts/projection-finish-maintenance.mjs';
 import {isReviewedProjectorImageUrl} from '../server/reviewed-projector-image-sources.js';
@@ -95,5 +96,25 @@ test('Actual five-card photo batch retains legacy whole-table reviews and every 
   for(const row of(await db.query('select * from products')).rows){const p=manifest.cards.find(p=>p.id===row.id);assert.deepEqual(row.image_paths,p.patch.image_paths);assert.equal(row.description,p.before.description);assert.deepEqual(row.specifications,p.before.specifications);assert.deepEqual(row.manual_overrides,p.before.manual_overrides);assert.equal(row.is_active,false);}
   await db.exec('update products set price=175,stock_quantity=6');await db.exec(projectionFinishSql(manifest.cards,{...options,restore:true}));
   for(const row of(await db.query('select * from products')).rows){const p=manifest.cards.find(p=>p.id===row.id);assert.deepEqual(row.image_paths,p.before.image_paths);assert.equal(row.image_path,p.before.image_path);assert.equal(Number(row.price),175);assert.equal(row.stock_quantity,6);}
+ }finally{await db.close();}
+});
+
+test('Hosted Epson originals retain exact source bytes and apply and restore without changing product content',async()=>{
+ const manifest=JSON.parse(await readFile(new URL('../docs/projection-photo-host-plan-20261122.json',import.meta.url),'utf8'));
+ assert.equal(manifest.cards.length,4);assert.equal(manifest.assets.length,11);
+ for(const asset of manifest.assets){
+  const bytes=await readFile(new URL('../'+asset.file,import.meta.url));
+  assert.equal(createHash('sha256').update(bytes).digest('hex'),asset.sha256);
+  assert.equal(isReviewedProjectorImageUrl(new URL(asset.hosted)),true);
+  assert.equal(isReviewedProjectorImageUrl(new URL(asset.hosted+'?url=http://localhost')),false);
+ }
+ const db=await fixture(manifest.cards);try{
+  const options={photoOperation:manifest.operation};
+  assert.equal(await readFile(new URL('../supabase/projection-photo-host-20261122.sql',import.meta.url),'utf8'),projectionFinishSql(manifest.cards,options));
+  assert.equal(await readFile(new URL('../supabase/projection-photo-host-20261122-restore.sql',import.meta.url),'utf8'),projectionFinishSql(manifest.cards,{...options,restore:true}));
+  await db.exec(projectionFinishSql(manifest.cards,options));
+  for(const row of(await db.query('select * from products')).rows){const p=manifest.cards.find(p=>p.id===row.id);assert.deepEqual(row.image_paths,p.patch.image_paths);for(const key of ['description','specifications','manual_overrides'])assert.deepEqual(row[key],p.before[key]);assert.equal(row.is_active,false);}
+  await db.exec('update products set price=180,stock_quantity=7');await db.exec(projectionFinishSql(manifest.cards,{...options,restore:true}));
+  for(const row of(await db.query('select * from products')).rows){const p=manifest.cards.find(p=>p.id===row.id);assert.deepEqual(row.image_paths,p.before.image_paths);assert.equal(row.image_path,p.before.image_path);assert.equal(Number(row.price),180);assert.equal(row.stock_quantity,7);}
  }finally{await db.close();}
 });

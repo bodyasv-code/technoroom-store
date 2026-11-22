@@ -1,6 +1,7 @@
 import {verifiedMtiIdentity} from './mti-identities.js?v=20261113';
-import {matchMtiPriceRows} from './mti-price.js?v=20261113-identities';
+import {matchMtiPriceRows} from './mti-price.js?v=20261122-batches';
 import {articleContentMarker} from './article-format.js?v=20261027-content-format';
+import {importBatches} from './import-batches.js?v=20261122';
 
 export function mtiDraftContent(row,preview){
   const matched=preview?.status==='review'&&preview.product?.sku===row.sku&&String(preview.product?.brand||'').toLowerCase()===row.vendor.toLowerCase();
@@ -23,12 +24,14 @@ export function mtiDraftContent(row,preview){
 export function prepareMtiOfferBatch(rows,products,previews=new Map(),excludedSkus=[]){
   const excluded=new Set(excludedSkus.map(code=>String(code).trim().toUpperCase()));
   const assessed=matchMtiPriceRows(rows,products),ready=[],deferred=[];
+  const bySku=new Map();
+  for(const product of products){const key=String(product.sku||'').trim().toUpperCase();if(!bySku.has(key))bySku.set(key,[]);bySku.get(key).push(product);}
   for(const row of assessed){
     const reasons=[...row.issues];
     if(excluded.has(row.sku.toUpperCase()))reasons.push('Товар виключено з імпорту.');
     if(!row.hasPrice||((!row.hasStock||row.stockDetail.kind!=='exact')&&row.stockDetail.kind!=='needs_confirmation')||row.reserved!==0)reasons.push('Ціну або точний залишок потрібно перевірити.');
     if(!verifiedMtiIdentity(row))reasons.push('Потрібне підтвердження кодів товару.');
-    const candidates=products.filter(p=>String(p.sku||'').trim().toUpperCase()===row.sku.toUpperCase());
+    const candidates=bySku.get(row.sku.toUpperCase())||[];
     if(candidates.some(p=>p.parent_product_id||p.parentProductId))reasons.push('У каталозі є модифікація з цим артикулом.');
     if(candidates.some(p=>p.category&&p.category!==row.category))reasons.push('Категорія збереженого товару відрізняється від прайсу.');
     if(reasons.length){deferred.push({key:row.key,sku:row.sku,reasons:[...new Set(reasons)]});continue;}
@@ -49,6 +52,26 @@ export async function applyMtiOfferBatch(client,plan,{requestId,sourceName}){
   if(error)throw new Error(['42883','42P01','PGRST202','PGRST205'].includes(error.code)?'Потрібне оновлення бази supplier-offers-upgrade.sql. Нічого не записано.':error.message);
   if(!data||data.offers!==plan.ready.length||data.published!==0)throw new Error('Неочікувана відповідь імпорту. Перевірте журнал перед повторним записом.');
   return data;
+}
+
+export function createMtiOfferJob(plan,sourceName,uuid=()=>crypto.randomUUID()){
+  if(!plan.ready.length)throw new Error('Немає перевірених пропозицій для запису.');
+  return {sourceName,total:plan.ready.length,batches:importBatches(structuredClone(plan.ready)).map(ready=>({requestId:uuid(),ready,result:null}))};
+}
+export async function applyMtiOfferJob(client,job,{onProgress=()=>{}}={}){
+  const summary=()=>job.batches.reduce((total,batch)=>{
+    if(batch.result){total.offers+=batch.result.offers;total.createdDrafts+=batch.result.createdDrafts;total.linkedExisting+=batch.result.linkedExisting;total.runIds.push(batch.result.runId||batch.requestId);}
+    return total;
+  },{offers:0,createdDrafts:0,linkedExisting:0,published:0,runIds:[]});
+  onProgress({...summary(),total:job.total});
+  for(const batch of job.batches){
+    if(batch.result)continue;
+    // Keep the frozen payload and UUID when the reply is lost after commit.
+    // The database returns the original transaction result on retry.
+    batch.result=await applyMtiOfferBatch(client,batch,{requestId:batch.requestId,sourceName:job.sourceName});
+    onProgress({...summary(),total:job.total});
+  }
+  return summary();
 }
 
 

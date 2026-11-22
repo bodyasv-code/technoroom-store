@@ -1,0 +1,20 @@
+<!doctype html><html lang="uk"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Перевірка пакетного імпорту</title>
+<link rel="stylesheet" href="../public/admin.css"><link rel="stylesheet" href="../public/import-audit.css">
+<style>body{background:#f4f7fc;color:#16304f;font:15px Arial;padding:24px}main{max-width:1180px;margin:auto}details{background:white;padding:20px;border:1px solid #dce7f3;border-radius:12px;margin:14px 0}table{border-collapse:collapse;width:100%}td,th{text-align:left;padding:10px;border-bottom:1px solid #dce7f3}small{display:block}label{display:block;margin:14px 0}input,select,button{padding:10px;border:1px solid #c9daeb;border-radius:8px;background:white;color:#16304f}button{cursor:pointer}.table-wrap{max-height:310px;overflow:auto}[role=status]{padding:12px;background:#eaf3ff;line-height:1.5}.import-report{margin:14px 0}.admin-controls{display:flex;gap:12px}.import-review-dialog{max-width:1100px;width:90vw;max-height:85vh}.import-review-body{max-height:65vh;overflow:auto}.import-review-header,.import-review-footer{padding:14px}</style>
+<main><h1>Перевірка пакетного імпорту</h1><p>Демонстраційні дані. З’єднання з робочою базою немає. Другу порцію спеціально перервано після збереження, щоб перевірити продовження.</p><button id="load">Завантажити демонстраційний прайс</button><section id="anchor"></section><p id="outcome" role="status">Ще не записано жодної позиції.</p></main>
+<script type="module">
+import {mountMtiPricePreview} from '../public/mti-price-admin.js';
+const rows=Array.from({length:326},(_,i)=>({key:String(i),supplierId:'source-'+i,supplierSku:'TEST-'+i,sku:'TEST-'+i,manufacturerPartNumber:'TEST-'+i,vendor:'Epson',model:'Test '+i,name:'Проєктор Epson Test '+i,category:i===325?'printers':'projectors',issues:[],hasPrice:true,price:12000,supplierPrice:10000,hasStock:true,stock:3,stockDetail:{kind:'exact',quantity:3,label:'3'},reserved:0,sourceRow:i+5,sourceCategory:i===325?'Принтери':'Проєктори',content:{name:'Проєктор Epson Test '+i,specifications:{Гарантія:'24 міс.'}}}));
+const catalog=rows.map((r,i)=>({id:i+1,sku:r.sku,brand:r.vendor,category:r.category}));
+const commits=new Map();let fail=true,calls=0;
+const client={auth:{getSession(){throw Error('Content lookup must be optional');}},from(){const query={select(){return this;},eq(){return this;},order(){return this;},range(){return this;},limit(){return this;},then(resolve){return Promise.resolve({data:[],error:null}).then(resolve);}};return query;},async rpc(name,args){
+ if(name!=='apply_mti_offer_batch')throw Error('Unexpected RPC');calls++;
+ if(commits.has(args.p_request))return {data:commits.get(args.p_request)};
+ const result={runId:args.p_request,offers:args.p_rows.length,createdDrafts:0,linkedExisting:args.p_rows.length,published:0};commits.set(args.p_request,result);
+ if(commits.size===2&&fail){fail=false;throw Error('Демонстраційний обрив з’єднання');}
+ return {data:result};
+}};
+mountMtiPricePreview(document.querySelector('#anchor'),()=>catalog,{client,onImported:async()=>{document.querySelector('#outcome').textContent='PASS: '+[...commits.values()].reduce((n,r)=>n+r.offers,0)+' унікальних пропозицій, порцій '+commits.size+', запитів '+calls+'. Дублікатів немає.';},readPriceFile:async()=>({rows,headerRow:4,sheetName:'Тест'})});
+document.querySelector('details').open=true;
+document.querySelector('#load').onclick=()=>{const input=document.querySelector('[data-mti-file]'),transfer=new DataTransfer();transfer.items.add(new File(['demo'],'demo.xlsx'));input.files=transfer.files;input.dispatchEvent(new Event('change'));};
+</script></html>

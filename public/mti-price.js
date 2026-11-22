@@ -67,14 +67,26 @@ export function parseMtiPriceRows(matrix){
   return {headerRow:headerIndex+1,rows};
 }
 export function matchMtiPriceRows(rows,products){
+  const byIdentity=new Map(),brandsBySku=new Map();
+  for(const product of products){
+    const sku=key(product.sku),manufacturer=key(brand(product.brand));
+    if(!brandsBySku.has(sku))brandsBySku.set(sku,new Set());brandsBySku.get(sku).add(manufacturer);
+    if(product.parent_product_id||product.parentProductId)continue;
+    const id=identity(product.brand,product.sku);if(!byIdentity.has(id))byIdentity.set(id,[]);byIdentity.get(id).push(product);
+  }
   return rows.map(row=>{
-    const matches=products.filter(product=>!product.parent_product_id&&!product.parentProductId&&key(product.sku)===key(row.sku)&&key(brand(product.brand))===key(row.vendor));
+    const matches=byIdentity.get(identity(row.vendor,row.sku))||[];
     const issues=[...row.issues];
     if(matches.length>1)issues.push('У каталозі кілька карток цього бренду з однаковим артикулом.');
-    if(products.some(product=>key(product.sku)===key(row.sku)&&key(brand(product.brand))!==key(row.vendor)))issues.push('Такий артикул є в каталозі під іншим брендом.');
+    if([...(brandsBySku.get(key(row.sku))||[])].some(manufacturer=>manufacturer!==key(row.vendor)))issues.push('Такий артикул є в каталозі під іншим брендом.');
     return {...row,issues,matchedProductId:matches.length===1&&!issues.length?matches[0].id:null,
       matchLabel:issues.length?'Потрібна перевірка':matches.length===1?'Збіг бренду й артикула':'У каталозі не знайдено'};
   });
+}
+export function mtiScopeRows(rows,scope='projection'){
+  if(scope==='all')return rows;
+  const categories=scope==='projection'?['projectors','erc-display-06','erc-display-08','erc-display-10']:[scope];
+  return rows.filter(row=>categories.includes(row.category));
 }
 export function mtiWorksheetRange(sheet){
   // MTI exports can declare A1:Z4 even when product cells extend below row 4.

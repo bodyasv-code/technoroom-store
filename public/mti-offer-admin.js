@@ -1,5 +1,5 @@
 import {mountMtiStockObservations} from './mti-stock-observation-admin.js?v=20261112';
-import {prepareMtiOfferBatch,mtiOfferSnapshot,applyMtiOfferBatch} from './mti-offer-import.js?v=20261113-identities';
+import {prepareMtiOfferBatch,mtiOfferSnapshot,createMtiOfferJob,applyMtiOfferJob} from './mti-offer-import.js?v=20261122-batches';
 const escape=value=>String(value??'').replace(/[&<>"']/gu,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 export function mtiOfferReviewMarkup(plan){
   const deferred=plan.deferred.length?'<details><summary>Чому відкладено: '+plan.deferred.length+'</summary><p>Ці рядки не записуються. Попередні пропозиції МТІ залишаються без оновлення. Позначка «-» у прайсі МТІ означає нульовий залишок. Порожня клітинка залишається невизначеною.</p><div class="table-wrap"><table><thead><tr><th>Артикул</th><th>Причини</th></tr></thead><tbody>'+plan.deferred.map(row=>'<tr><td>'+escape(row.sku)+'</td><td>'+row.reasons.map(escape).join('<br>')+'</td></tr>').join('')+'</tbody></table></div></details>':'';
@@ -19,6 +19,8 @@ export function mountMtiOfferImport(panel,{client,getRows,getCatalog,getSourceNa
   const controls=document.createElement('div');controls.className='import-report';
   controls.innerHTML='<h3>Зберегти пропозиції МТІ</h3><p>Зберігаються лише позиції без зауважень. Ціни й залишки МТІ обліковуються окремо від ERC. Нові картки завжди створюються прихованими; контент Icecat потребує редакторської перевірки.</p><button type="button" data-prepare>Підготувати пропозиції й контент Icecat</button> <button type="button" data-write disabled>Переглянути зміни та зберегти</button><p role="status" data-offer-message></p><div data-offer-plan></div>';
   panel.querySelector('[data-mti-results]').before(controls);
+  controls.querySelector('[data-prepare]').textContent='Підготувати вибраний обсяг прайсу';
+  controls.querySelector('[data-prepare]').insertAdjacentHTML('beforebegin','<label class="check"><input type="checkbox" data-with-content> Шукати описи Icecat для нових товарів — повільніше</label><p>Ціни й наявність можна імпортувати без очікування описів. Увесь вибраний обсяг записується автоматичними порціями до 100 позицій. Після збою можна продовжити в цій вкладці.</p>');
   const prepare=controls.querySelector('[data-prepare]'),write=controls.querySelector('[data-write]'),message=controls.querySelector('[data-offer-message]'),result=controls.querySelector('[data-offer-plan]');
   const saved=document.createElement('details');saved.innerHTML='<summary>Збережені пропозиції МТІ</summary><button type="button">Оновити список</button><div data-saved-offers></div>';controls.append(saved);
   const savedResult=saved.querySelector('[data-saved-offers]');
@@ -29,8 +31,15 @@ export function mountMtiOfferImport(panel,{client,getRows,getCatalog,getSourceNa
     savedResult.innerHTML='<p>Показано останніх пропозицій: '+response.data.length+' (до 200).</p><div class="table-wrap"><table><thead><tr><th>Артикул</th><th>Картка</th><th>РРЦ МТІ, ₴</th><th>Ціна МТІ, ₴</th><th>Залишок МТІ</th></tr></thead><tbody>'+response.data.map(row=>'<tr><td>'+escape(row.brand)+' '+escape(row.supplier_sku)+'</td><td>'+escape(row.product_id)+'</td><td>'+escape(row.retail_price)+'</td><td>'+escape(row.supplier_price??'Не вказано')+'</td><td>'+escape(['needs_confirmation','unknown'].includes(row.stock_kind)?'Наявність уточнюється':row.stock_quantity)+'</td></tr>').join('')+'</tbody></table></div>';
   }
   saved.querySelector('button').onclick=()=>loadSaved().catch(()=>{savedResult.textContent='Не вдалося прочитати пропозиції.';});
-  let prepared=null,sourceRows=null,exclusions=[],previews=new Map(),generation=0,busy=false,requestId=null,abort=null;
-  const reset=()=>{observations.reset();generation++;abort?.abort();prepared=null;requestId=null;previews=new Map();write.disabled=true;message.textContent='';result.replaceChildren();};
+  let prepared=null,sourceRows=null,exclusions=[],previews=new Map(),generation=0,busy=false,job=null,abort=null;
+  const withContent=controls.querySelector('[data-with-content]');
+  let sourceLocks=[];
+  const lockSource=value=>{
+    if(value){sourceLocks=[...panel.querySelectorAll('[data-mti-file],[data-mti-scope],[data-with-content],[data-date],[data-plan],[data-apply]')].map(input=>[input,input.disabled]);sourceLocks.forEach(([input])=>input.disabled=true);}
+    else{sourceLocks.forEach(([input,disabled])=>input.disabled=disabled);sourceLocks=[];}
+  };
+  const reset=()=>{observations.reset();generation++;abort?.abort();prepared=null;job=null;previews=new Map();write.disabled=true;write.textContent='Переглянути зміни та зберегти';message.textContent='';result.replaceChildren();};
+  withContent.onchange=reset;
   async function readExclusions(){
     const values=[];
     for(let offset=0;;offset+=1000){const response=await client.from('product_import_exclusions').select('sku').eq('is_active',true).order('sku').range(offset,offset+999);if(response.error)throw new Error('Не вдалося перевірити виключення імпорту: '+response.error.message);values.push(...response.data.map(row=>row.sku));if(response.data.length<1000)return values;}
@@ -38,13 +47,14 @@ export function mountMtiOfferImport(panel,{client,getRows,getCatalog,getSourceNa
   prepare.onclick=async()=>{
     if(busy)return;reset();const token=++generation;sourceRows=getRows();
     if(!sourceRows?.length||!Array.isArray(getCatalog())){message.textContent='Спочатку прочитайте прайс і дочекайтеся завантаження каталогу.';return;}
-    busy=true;prepare.disabled=true;abort=new AbortController();
+    busy=true;prepare.disabled=true;lockSource(true);abort=new AbortController();
     try{
       const setup=await client.from('supplier_offers').select('supplier').limit(0);
       if(setup.error)throw new Error('Спочатку виконайте supplier-offers-upgrade.sql у Supabase SQL Editor. Імпорт не розпочато.');
       exclusions=await readExclusions();let plan=prepareMtiOfferBatch(sourceRows,getCatalog(),previews,exclusions);
-      if(!plan.ready.length||plan.ready.length>100)throw new Error('Для одного запуску потрібно від 1 до 100 позицій без зауважень.');
+      if(!plan.ready.length){result.innerHTML=mtiOfferReviewMarkup(plan);throw new Error('Немає позицій без зауважень. Причини відкладення наведено нижче.');}
       const fresh=plan.ready.filter(row=>!row.offer.expectedProductId);
+      if(withContent.checked&&fresh.length){
       const {data:{session}}=await client.auth.getSession();if(!session?.access_token)throw new Error('Увійдіть в адмінку повторно.');
       let fetched=0,unavailable=0;
       for(const row of fresh){
@@ -58,27 +68,29 @@ export function mountMtiOfferImport(panel,{client,getRows,getCatalog,getSourceNa
         }catch(error){if(token!==generation)return;if(/Доступ до контенту/.test(error.message))throw error;unavailable++;}
         fetched++;
       }
+      }
       if(token!==generation||sourceRows!==getRows())return;
-      prepared=prepareMtiOfferBatch(sourceRows,getCatalog(),previews,exclusions);requestId=crypto.randomUUID();
+      prepared=prepareMtiOfferBatch(sourceRows,getCatalog(),previews,exclusions);
       result.innerHTML=mtiOfferReviewMarkup(prepared);write.disabled=!prepared.ready.length;
       message.textContent='Готово до перегляду: '+prepared.ready.length+'. Відкладено: '+prepared.deferred.length+'. Контент нових карток без перевіреного джерела залишиться порожнім. Нічого не записано.';
     }catch(error){if(token===generation)message.textContent=error.message;}
-    finally{busy=false;prepare.disabled=false;}
+    finally{busy=false;prepare.disabled=false;lockSource(false);}
   };
   write.onclick=async()=>{
     if(busy||!prepared)return;
-    if(sourceRows!==getRows()||!Array.isArray(getCatalog())||mtiOfferSnapshot(prepared)!==mtiOfferSnapshot(prepareMtiOfferBatch(sourceRows,getCatalog(),previews,exclusions))){reset();message.textContent='Дані змінилися. Підготуйте перегляд повторно.';return;}
-    busy=true;prepare.disabled=true;write.disabled=true;
+    if(sourceRows!==getRows()||!Array.isArray(getCatalog())||(!job&&mtiOfferSnapshot(prepared)!==mtiOfferSnapshot(prepareMtiOfferBatch(sourceRows,getCatalog(),previews,exclusions)))){reset();message.textContent='Дані змінилися. Підготуйте перегляд повторно.';return;}
+    busy=true;prepare.disabled=true;write.disabled=true;lockSource(true);
     try{
-      if(!await review(prepared))return;
+      if(!job&&!await review(prepared))return;
+      job??=createMtiOfferJob(prepared,getSourceName());
       message.textContent='Записую пропозиції МТІ…';
-      const value=await applyMtiOfferBatch(client,prepared,{requestId,sourceName:getSourceName()});
-      prepared=null;result.replaceChildren();
-      message.textContent='Збережено пропозицій: '+value.offers+'. Прив’язано до наявних товарів: '+value.linkedExisting+'. Створено прихованих чернеток: '+value.createdDrafts+'. Опубліковано: 0. Журнал: '+value.runId;
+      const value=await applyMtiOfferJob(client,job,{onProgress:progress=>{message.textContent='Записано '+progress.offers+' із '+progress.total+'. Прихованих чернеток: '+progress.createdDrafts+'. Не закривайте вкладку.';}});
+      const deferred=prepared.deferred.length;prepared=null;job=null;result.replaceChildren();
+      message.textContent='Збережено пропозицій: '+value.offers+'. Прив’язано до наявних товарів: '+value.linkedExisting+'. Створено прихованих чернеток: '+value.createdDrafts+'. Опубліковано: 0. Порцій у журналі: '+value.runIds.length+'. Відкладено: '+deferred+'.';
       try{await onImported();}catch{message.textContent+=' Пропозиції збережено, але список товарів потрібно оновити.';}
       await loadSaved().catch(()=>{});
-    }catch(error){message.textContent=error.message;}
-    finally{busy=false;prepare.disabled=false;write.disabled=!prepared;}
+    }catch(error){const completed=job?.batches.reduce((n,b)=>n+(b.result?.offers||0),0)||0;message.textContent=error.message+(job?' Підтверджено '+completed+' із '+job.total+'. Натисніть «Продовжити імпорт» у цій вкладці; завершені порції не записуватимуться повторно.':'');}
+    finally{busy=false;prepare.disabled=false;write.disabled=!prepared;write.textContent=job?'Продовжити імпорт':'Переглянути зміни та зберегти';lockSource(false);}
   };
   return {reset};
 }

@@ -1,0 +1,210 @@
+{
+  "verifiedOn": "2026-11-22",
+  "status": "applied-and-verified",
+  "deploymentCommit": "ddfd5b6",
+  "operations": [
+    {
+      "operation": "projection-photo-repair-20261120",
+      "cards": 5,
+      "backups": 5,
+      "nonPhotoFieldsPreserved": true
+    },
+    {
+      "operation": "projection-photo-host-20261122",
+      "cards": 4,
+      "backups": 4,
+      "nonPhotoFieldsPreserved": true
+    }
+  ],
+  "reviewGuardsPreserved": true,
+  "testsPassed": 10,
+  "reasonForHosting": "Direct browser requests for supplementary manufacturer CDN images failed. Byte-identical reviewed originals now load from the store domain; no frontend or proxy permission changes were necessary.",
+  "sourceReview": "docs/projection-photo-review-20261120.json",
+  "cards": [
+    {
+      "id": 50,
+      "sku": "MR.P0U11.004",
+      "name": "Проєктор AOpen QT12 HD (MR.P0U11.004)",
+      "galleryPhotos": 1,
+      "main": "https://www.technoroom.com.ua/product-content/qt12-white-20261120.png",
+      "images": [
+        "https://www.technoroom.com.ua/product-content/qt12-white-20261120.png"
+      ],
+      "browserImages": [
+        {
+          "alt": "Проєктор AOpen QT12 HD (MR.P0U11.004)",
+          "height": 1021,
+          "loaded": true,
+          "src": "https://www.technoroom.com.ua/api/product-image?id=50",
+          "width": 901
+        }
+      ],
+      "allLoaded": true
+    },
+    {
+      "id": 238,
+      "sku": "V11HA99180",
+      "name": "Проєктор ультракороткофокусний Epson EB-815E, 4K Enhancement (V11HA99180)",
+      "galleryPhotos": 2,
+      "main": "https://www.technoroom.com.ua/product-content/epson-238-1-20261122.jpg",
+      "images": [
+        "https://www.technoroom.com.ua/product-content/epson-238-1-20261122.jpg",
+        "https://www.technoroom.com.ua/product-content/epson-238-2-20261122.jpg"
+      ],
+      "browserImages": [
+        {
+          "alt": "Проєктор ультракороткофокусний Epson EB-815E (V11HA99180)",
+          "height": 854,
+          "loaded": true,
+          "src": "https://www.technoroom.com.ua/api/product-image?id=238",
+          "width": 1280
+        },
+        {
+          "alt": "Проєктор ультракороткофокусний Epson EB-815E (V11HA99180) — фото 1",
+          "height": 854,
+          "loaded": true,
+          "src": "https://www.technoroom.com.ua/api/product-image?id=238",
+          "width": 1280
+        },
+        {
+          "alt": "Проєктор ультракороткофокусний Epson EB-815E (V11HA99180) — фото 2",
+          "height": 854,
+          "loaded": true,
+          "src": "https://www.technoroom.com.ua/product-content/epson-238-2-20261122.jpg",
+          "width": 1280
+        }
+      ],
+      "allLoaded": true
+    },
+    {
+      "id": 247,
+      "sku": "V11HB60042",
+      "name": "Проєктор Epson EB-994F FHD (V11HB60042)",
+      "galleryPhotos": 3,
+      "main": "https://www.technoroom.com.ua/product-content/epson-247-1-20261122.png",
+      "images": [
+        "https://www.technoroom.com.ua/product-content/epson-247-1-20261122.png",
+        "https://www.technoroom.com.ua/product-content/epson-247-2-20261122.jpg",
+        "https://www.technoroom.com.ua/product-content/epson-247-3-20261122.jpg"
+      ],
+      "browserImages": [
+        {
+          "alt": "Проєктор Epson EB-994F FHD (V11HB60042)",
+          "height": 854,
+          "loaded": true,
+          "src": "https://www.technoroom.com.ua/api/product-image?id=247",
+          "width": 1280
+        },
+        {
+          "alt": "Проєктор Epson EB-994F FHD (V11HB60042) — фото 1",
+          "height": 854,
+          "loaded": true,
+          "src": "https://www.technoroom.com.ua/api/product-image?id=247",
+          "width": 1280
+        },
+        {
+          "alt": "Проєктор Epson EB-994F FHD (V11HB60042) — фото 2",
+          "height": 854,
+          "loaded": true,
+          "src": "https://www.technoroom.com.ua/product-content/epson-247-2-20261122.jpg",
+          "width": 1280
+        },
+        {
+          "alt": "Проєктор Epson EB-994F FHD (V11HB60042) — фото 3",
+          "height": 854,
+          "loaded": true,
+          "src": "https://www.technoroom.com.ua/product-content/epson-247-3-20261122.jpg",
+          "width": 1280
+        }
+      ],
+      "allLoaded": true
+    },
+    {
+      "id": 250,
+      "sku": "V11HB54042",
+      "name": "Проєктор Epson EB-FH08 FHD (V11HB54042)",
+      "galleryPhotos": 3,
+      "main": "https://www.technoroom.com.ua/product-content/epson-250-1-20261122.jpg",
+      "images": [
+        "https://www.technoroom.com.ua/product-content/epson-250-1-20261122.jpg",
+        "https://www.technoroom.com.ua/product-content/epson-250-2-20261122.jpg",
+        "https://www.technoroom.com.ua/product-content/epson-250-3-20261122.jpg"
+      ],
+      "browserImages": [
+        {
+          "alt": "Проєктор Epson EB-FH08 FHD (V11HB54042)",
+          "height": 800,
+          "loaded": true,
+          "src": "https://www.technoroom.com.ua/api/product-image?id=250",
+          "width": 1200
+        },
+        {
+          "alt": "Проєктор Epson EB-FH08 FHD (V11HB54042) — фото 1",
+          "height": 800,
+          "loaded": true,
+          "src": "https://www.technoroom.com.ua/api/product-image?id=250",
+          "width": 1200
+        },
+        {
+          "alt": "Проєктор Epson EB-FH08 FHD (V11HB54042) — фото 2",
+          "height": 854,
+          "loaded": true,
+          "src": "https://www.technoroom.com.ua/product-content/epson-250-2-20261122.jpg",
+          "width": 1280
+        },
+        {
+          "alt": "Проєктор Epson EB-FH08 FHD (V11HB54042) — фото 3",
+          "height": 800,
+          "loaded": true,
+          "src": "https://www.technoroom.com.ua/product-content/epson-250-3-20261122.jpg",
+          "width": 1200
+        }
+      ],
+      "allLoaded": true
+    },
+    {
+      "id": 251,
+      "sku": "V11HB59042",
+      "name": "Проєктор Epson EB-FH54 FHD (V11HB59042)",
+      "galleryPhotos": 3,
+      "main": "https://www.technoroom.com.ua/product-content/epson-251-1-20261122.png",
+      "images": [
+        "https://www.technoroom.com.ua/product-content/epson-251-1-20261122.png",
+        "https://www.technoroom.com.ua/product-content/epson-251-2-20261122.png",
+        "https://www.technoroom.com.ua/product-content/epson-251-3-20261122.png"
+      ],
+      "browserImages": [
+        {
+          "alt": "Проєктор Epson EB-FH54 FHD (V11HB59042)",
+          "height": 854,
+          "loaded": true,
+          "src": "https://www.technoroom.com.ua/api/product-image?id=251",
+          "width": 1280
+        },
+        {
+          "alt": "Проєктор Epson EB-FH54 FHD (V11HB59042) — фото 1",
+          "height": 854,
+          "loaded": true,
+          "src": "https://www.technoroom.com.ua/api/product-image?id=251",
+          "width": 1280
+        },
+        {
+          "alt": "Проєктор Epson EB-FH54 FHD (V11HB59042) — фото 2",
+          "height": 854,
+          "loaded": true,
+          "src": "https://www.technoroom.com.ua/product-content/epson-251-2-20261122.png",
+          "width": 1280
+        },
+        {
+          "alt": "Проєктор Epson EB-FH54 FHD (V11HB59042) — фото 3",
+          "height": 854,
+          "loaded": true,
+          "src": "https://www.technoroom.com.ua/product-content/epson-251-3-20261122.png",
+          "width": 1280
+        }
+      ],
+      "allLoaded": true
+    }
+  ],
+  "screenshot": "projector-photo-repair-2026-11-22.jpg"
+}

@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
 import {analyticsPage} from '../public/store-analytics.js';
-const read=file=>readFile(new URL('../public/'+file,import.meta.url),'utf8');
+const read=file=>readFile(new URL(file==='product.html'?'../server/product-template.html':'../public/'+file,import.meta.url),'utf8');
 const html=await read('returns.html');
 for(const text of ['14 днів','статтею 9','статей 12–13','статті 8','покладаються на продавця','не потребує попереднього схвалення','м. Київ, вул. Мрії, 12Н, офіс 28','tel:+380443605539','mailto:office@tehnoroom.com.ua','не пізніше 7 днів'])assert.ok(html.includes(text),text);
 assert.match(html,/rel="canonical" href="https:\/\/www.technoroom.com.ua\/returns"/);

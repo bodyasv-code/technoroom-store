@@ -1,4 +1,5 @@
-import {supplierStockNeedsConfirmation,availableStockQuantity} from './supplier-availability.js?v=20261110';
+import {readableText,compactProductName,productAvailability,selectProductForPage,productSeoDetails,updateProductSeo,productBreadcrumbMarkup} from './product-seo.js?v=20261123-product-seo';
+import {availableStockQuantity} from './supplier-availability.js?v=20261110';
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
 import {reportCommerce,commerceItems,ANALYTICS_READY} from './store-commerce-events.js?v=20261021-commerce';
 import {renderArticleContent,articleHasContent} from './article-format.js?v=20261011-article-links';
@@ -22,7 +23,6 @@ import {catalogRequestScope, catalogCacheKey, mergeCatalogRows, applyCatalogScop
 import {matchingPromotion, discountedPrice} from './store-pricing.js?v=20261013-checkout-pricing';
 import {formatCheckoutPhone, validCheckoutPhone} from './checkout-phone.js?v=20261013-checkout-usability';
 import {attachStoreSearch, searchScore, normalizeSearch} from './store-search.js?v=20261012-search';
-import {productNameWithSku} from './product-identity.js?v=20261012-consumables-brands';
 import {resolveProjectorSpecifications, isProjectorProduct, normalizeProjectorLightSource, projectorResolutionLabel, projectorResolutionFilterValue, compareProjectorResolutions} from './projector-specs.js?v=20261013-spec-colons';
 import {normalizeSpecificationEntries, normalizeSpecifications} from './specification-normalization.js?v=20261017-customer-content';
 import {hasSpecificationCode} from './specification-values.js?v=20261028-semicolons';
@@ -52,6 +52,7 @@ const projectorComparison=mountProjectorComparison({loadItems:async(ids)=>{
   }));
 }});
 let productsLoaded = false;
+let productLoadFailed = false;
 let productsHydrating = false;
 let catalogLoadFailed = false;
 let catalogProductScope = 'all';
@@ -79,21 +80,6 @@ window.addEventListener('pagehide', rememberScrollPosition);
 const cart = JSON.parse(localStorage.getItem('technoroom-cart') || '[]');
 const money = (value) => `${new Intl.NumberFormat('uk-UA').format(value)} ₴`;
 const escapeHtml = (value = '') => String(value).replace(/[&<>"']/g, (char) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
-// Частина назв з XML постачальника приходить у застарілому %uXXXX-форматі.
-// Декодуємо його лише для показу, щоб навігація не перетворювалася на %u041F…
-const readableText = (value = '') => {
-  let text = String(value);
-  try { if (/%u[0-9a-f]{4}/i.test(text)) text = unescape(text); } catch {}
-  try { if (/%[0-9a-f]{2}/i.test(text)) text = decodeURIComponent(text); } catch {}
-  // Деякі постачальники кодують амперсанд двічі: G&amp;amp;G. Розкодовуємо
-  // кілька разів, але з обмеженням, щоб не зачепити звичайний текст.
-  for (let pass = 0; pass < 3; pass += 1) {
-    const decoded = text.replace(/&amp;/gi, '&').replace(/&quot;/gi, '"').replace(/&#39;|&apos;/gi, "'").replace(/&nbsp;/gi, ' ');
-    if (decoded === text) break;
-    text = decoded;
-  }
-  return text.replace(/\s+/g, ' ').trim();
-};
 // Це не категорії товару, а незалежні властивості. Тому, наприклад,
 // короткофокусний лазерний проєктор одночасно має обидва фільтри без дубля SKU.
 const projectorClassificationValues = (product) => {
@@ -618,6 +604,7 @@ async function loadProducts() { let renderedFromCache = false, renderedFirstScre
   document.dispatchEvent(new Event('technoroom:catalog-ready'));
 } catch (error) {
   console.warn('Не вдалося завантажити каталог із Supabase', error);
+  if(isProductPage)productLoadFailed=true;
   if(!isProductPage){
     catalogLoadFailed=true;productsHydrating=false;
     if(!renderedFromCache&&!renderedFirstScreen)products=[];
@@ -730,14 +717,8 @@ async function mountMegaCatalog() {
     categories:()=>cats, lookup:lookupStoreSearch,
   });
 }
-/* Статус «Під замовлення»: товар можна оформити без складського залишку. */
-function availability(product) {
-  if (supplierStockNeedsConfirmation(product)) return { label: 'Наявність уточнюється', button: 'Уточнити наявність', orderable: false, inquiry: true };
-  if (product.stock && Number(product.stockQuantity) >= 1 && Number(product.stockQuantity) <= 2) return { label: 'Закінчується', button: 'У кошик', orderable: true };
-  if (!product.stock && product.availabilityStatus === 'under_order') return { label: 'Під замовлення — уточнюйте термін', button: 'Уточнити наявність', orderable: false, inquiry: true };
-  if (product.stock) return { label: 'В наявності', button: 'У кошик', orderable: true };
-  return { label: 'Немає в наявності', button: 'Немає', orderable: false };
-}
+/* Єдині статуси для серверної сторінки й інтерактивної картки. */
+function availability(product) { return productAvailability(product); }
 
 function openInquiry(id) {
   const item = get(Number(id));
@@ -843,26 +824,6 @@ const specificationDisplayText = (value = '') => {
   // У деяких XML у поле характеристики помилково потрапляє CSS або код віджета.
   if (hasSpecificationCode(text)) return '';
   return text;
-};
-const compactProductName = (value = '', sku = '', brand = '') => {
-  let name = readableText(value).replace(/\s*[|•]\s*(?:код|sku|артикул|vendor code)\b.*$/iu, '').replace(/\s*\((?:код|sku|артикул)\s*[:#]?[^)]*\)/iu, '').replace(/\s{2,}/g, ' ').trim();
-  if (/^телевізор\b/iu.test(name)) {
-    const size = name.match(/\b(\d{2,3}(?:[.,]\d+)?)\s*(?:["″]|дюйм(?:ів|и|а)?\b)/iu)?.[1];
-    const technology = [
-      [/mini\s*-?\s*led/iu, 'miniLED'], [/oled/iu, 'OLED'], [/qled/iu, 'QLED'], [/\bled\b/iu, 'LED']
-    ].find(([pattern]) => pattern.test(name))?.[1];
-    const excludedModels = new Set(['4K', '8K', 'HDR', 'HDR10', 'HDMI', 'USB', 'WIFI', 'WI-FI', 'LED', 'OLED', 'QLED', 'MINILED', 'FULLHD']);
-    const model = [...name.matchAll(/\b[A-ZА-ЯІЇЄ]{1,6}(?:[-_ ]?[A-Z0-9]{2,})+\b/g)]
-      .map((match) => match[0]).find((candidate) => candidate.replace(/[-_ ]/g, '').length >= 5 && !excludedModels.has(candidate.replace(/[-_ ]/g, '').toUpperCase()));
-    const cleanBrand = readableText(brand).replace(/\s+(?:tv|телевізори)$/iu, '').trim();
-    const compact = ['Телевізор', size ? size.replace(',', '.') + '"' : '', cleanBrand, technology || '', model || ''].filter(Boolean).join(' ');
-    if (compact) name = compact;
-  }
-  const parts = name.split(/[;,]/).map((item) => item.trim()).filter(Boolean);
-  const startsWithProductType = /^(?:про[єе]ктор|телевізор|монітор|екран|саундбар|акустичн|гарнітур|навушник|мікрофон|портативн|зарядн|джерел|ноутбук|планшет|смартфон|годинник|принтер|роутер|камера|клавіатур|миша|кабель|адаптер|блокs+живлення|павербанк|powers*bank)/iu;
-  const technicalTail = /\b(?:usb|hdmi|wifi|wi-fi|bluetooth|bt\s*\d|led|oled|qled|mini\s*-?\s*led|fhd|uhd|4k|8k|ips|va|tn|rgb|hdr|гб|gb|тб|tb|гц|hz|вт|w|лм|lm|кг|kg|м|mm\b|чорн|білий|сірий|silver|black|white|gray|grey)\b/iu;
-  if (startsWithProductType.test(name) && parts.length >= 2 && (parts.length >= 3 || technicalTail.test(parts.slice(1).join(' ')))) name = parts[0];
-  return productNameWithSku(name || readableText(value), readableText(sku));
 };
 const fillBrandSelect = (select, source) => {
   if(!select)return;
@@ -1202,23 +1163,22 @@ product = function () {
   const root = document.getElementById('productView');
   if (!root) return;
   if (!productsLoaded) {
-    root.innerHTML = '<p class="empty-cart">Завантажуємо товар…</p>';
+    if(root.dataset.serverRendered!=='true')root.innerHTML = '<p class="empty-cart">Завантажуємо товар…</p>';
     return;
   }
   const query = new URLSearchParams(location.search);
   const requestedId = Number(query.get('id'));
   const requestedItem = requestedId ? get(requestedId) : products[0];
-  const baseItem = requestedItem?.parentProductId ? (get(Number(requestedItem.parentProductId)) || requestedItem) : requestedItem;
-  const variants = baseItem ? productVariantsFor(baseItem) : [];
-  const selectedVariantId = Number(query.get('variant'));
-  const item = (selectedVariantId && [baseItem, ...variants].find((entry) => Number(entry.id) === selectedVariantId)) || (variants.length ? preferredVariantFor(baseItem) : requestedItem || baseItem);
+  const selection = selectProductForPage(requestedItem,products,query.get('variant'));
+  const baseItem = selection?.base, variants = selection?.variants || [], item = selection?.item;
+  if(productLoadFailed && root.dataset.serverRendered==='true')return;
   if (!item) {
     root.innerHTML = productsLoaded
       ? '<div class="empty-cart"><b>Товар не знайдено або його приховано.</b><br><a href="catalog.html">Повернутися до каталогу →</a></div>'
       : '<p class="empty-cart">Завантажуємо товар…</p>';
     return;
   }
-  document.title = compactProductName(item.name, item.sku) + ' | TECHNOROOM';
+  updateProductSeo(document,productSeoDetails({base:baseItem,item,storageOrigin:window.TECHNOROOM_SUPABASE.url,promotions:activePromotions,promotionLinks:promotionProductIds}));
   let catalogReturnUrl = 'catalog.html';
   try {
     const savedCatalog = sessionStorage.getItem('technoroom-last-catalog-url');
@@ -1274,7 +1234,7 @@ product = function () {
     mountProductPageLayout(root);
   };
   renderProductGallery();
-  updateProductCategoryPath(item);
+  updateProductCategoryPath(titleItem);
 };
 
 
@@ -1462,19 +1422,15 @@ const storefrontCategoryMatches = (product, slug) => storefrontCategoryBranch(sl
 // Дані беруться з єдиного дерева категорій, тому перейменування в адмінці
 // автоматично відображається і тут.
 const updateProductCategoryPath = async (product) => {
-  const categories = await loadStorefrontCategories();
-  const leaf = categories.find((category) => category.slug === product?.type);
-  if (!leaf) return;
-  const path = storefrontTree.path(leaf.slug);
-  const links = path.map((category) => '<a href="catalog.html?category=' + encodeURIComponent(category.slug) + '">' + escapeHtml(category.name) + '</a>');
-  const pathMarkup = links.join('<span aria-hidden="true"> / </span>');
-  const productPathMarkup = links.join('<span aria-hidden="true"> › </span>');
-  const crumbs = document.querySelector('.breadcrumbs');
-  if (crumbs) {
-    crumbs.innerHTML = '<a href="index.html">Головна</a> / <a href="catalog.html">Каталог</a> / ' + pathMarkup + ' / Товар';
-  }
-  const categoryPath = document.querySelector('.product-category-path');
-  if (categoryPath) categoryPath.innerHTML = productPathMarkup;
+  const crumbs=document.querySelector('.breadcrumbs');
+  const name=compactProductName(product?.name,product?.sku,product?.brand);
+  if(crumbs)crumbs.innerHTML=productBreadcrumbMarkup([],name);
+  const categories=await loadStorefrontCategories();
+  const leaf=categories.find(category=>category.slug===product?.type);
+  const path=leaf?storefrontTree.path(leaf.slug):[];
+  if(crumbs)crumbs.innerHTML=productBreadcrumbMarkup(path,name);
+  const categoryPath=document.querySelector('.product-category-path');
+  if(categoryPath)categoryPath.innerHTML=path.map(category=>'<a href="/catalog?category='+encodeURIComponent(category.slug)+'">'+escapeHtml(category.name)+'</a>').join('<span aria-hidden="true"> › </span>');
 };
 
 const storefrontCategoryStyle = document.createElement('style');

@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
-const read=name=>readFile(new URL('../public/'+name,import.meta.url),'utf8');
+const read=name=>readFile(new URL(name==='product.html'?'../server/product-template.html':'../public/'+name,import.meta.url),'utf8');
 const html=await read('admin.html'),css=await read('admin-modern.css');
 assert.match(html,/<body class="admin-body admin-modern">/);
 assert.equal((html.match(/href="admin-modern\.css\?/g)||[]).length,1);

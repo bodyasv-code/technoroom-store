@@ -1,6 +1,7 @@
 import {createClient} from '@supabase/supabase-js';
 import {visibleCategoryRows} from '../public/category-tree.js';
 import merchantFeedHandler from '../server/merchant-feed.js';
+import productPageHandler from '../server/product-page.js';
 
 export const SITE_ORIGIN='https://www.technoroom.com.ua';
 const PAGE_SIZE=500;
@@ -22,13 +23,14 @@ async function readAll(client,table,columns,filter) {
 
 export async function sitemapUrls(client) {
   const [products,categories,articles]=await Promise.all([
-    readAll(client,'products','id',['is_active',true]),
+    readAll(client,'products','id,parent_product_id',['is_active',true]),
     readAll(client,'categories','id,slug,parent_id,is_active'),
     readAll(client,'articles','id,slug',['is_published',true])
   ]);
   const urls=[SITE_ORIGIN+'/',SITE_ORIGIN+'/catalog',SITE_ORIGIN+'/articles',SITE_ORIGIN+'/contacts',SITE_ORIGIN+'/delivery',SITE_ORIGIN+'/returns'];
   for(const category of visibleCategoryRows(categories))if(category.slug)urls.push(SITE_ORIGIN+'/catalog?category='+encodeURIComponent(category.slug));
-  for(const product of products)if(/^\d+$/.test(String(product.id)))urls.push(SITE_ORIGIN+'/product?id='+encodeURIComponent(product.id));
+  const activeIds=new Set(products.map(product=>Number(product.id)));
+  for(const product of products)if(/^\d+$/.test(String(product.id))&&(!product.parent_product_id||!activeIds.has(Number(product.parent_product_id))))urls.push(SITE_ORIGIN+'/product?id='+encodeURIComponent(product.id));
   for(const article of articles)if(article.slug)urls.push(SITE_ORIGIN+'/article?slug='+encodeURIComponent(article.slug));
   const unique=[...new Set(urls)];
   if(unique.length>50000)throw new Error('Sitemap index required');
@@ -41,6 +43,7 @@ export function sitemapXml(urls) {
 }
 
 export default async function handler(req,res) {
+  if(req.query?.view==='product')return productPageHandler(req,res);
   if(req.query?.format==='merchant')return merchantFeedHandler(req,res);
   if(!['GET','HEAD'].includes(req.method||'GET')){res.setHeader('Allow','GET, HEAD');return res.status(405).end();}
   try{

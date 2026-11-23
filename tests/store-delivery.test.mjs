@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
 import {analyticsPage} from '../public/store-analytics.js';
-const read=file=>readFile(new URL('../public/'+file,import.meta.url),'utf8');
+const read=file=>readFile(new URL(file==='product.html'?'../server/product-template.html':'../public/'+file,import.meta.url),'utf8');
 const html=await read('delivery.html');
 for(const text of ['Новою поштою','100% передоплата','протягом 1–2 днів','Строк перевезення','доставку оплачує покупець','за тарифами','2–7 робочих днів, включно з обробкою та перевезенням','після надходження оплати','від 50 000 грн включно доставка безкоштовна','мінімальної суми замовлення для доставки немає'])assert.ok(html.includes(text),text);
 assert.match(html,/rel="canonical" href="https:\/\/www.technoroom.com.ua\/delivery"/);

@@ -44,7 +44,7 @@ for(const data of ['invalid',JSON.stringify({choice:'granted',at:0}),JSON.string
 const blocked=fixture();blocked.win.localStorage.getItem=()=>{throw Error('blocked');};blocked.win.localStorage.setItem=()=>{throw Error('blocked');};
 const transient=createAnalyticsController(blocked.win,blocked.doc);assert.equal(blocked.scripts.length,0);transient.choose('granted');assert.equal(blocked.scripts.length,1);
 for(const name of ['index.html','catalog.html','product.html','articles.html','article.html','checkout.html']){
-  const html=await readFile(new URL('../public/'+name,import.meta.url),'utf8');
+  const html=await readFile(new URL(name==='product.html'?'../server/product-template.html':'../public/'+name,import.meta.url),'utf8');
   assert.equal((html.match(/src="store-analytics.js/g)||[]).length,1);
   assert.equal((html.match(/href="store-analytics.css/g)||[]).length,1);
   assert.ok(!html.includes('googletagmanager.com'));

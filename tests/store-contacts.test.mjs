@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
 import {analyticsPage} from '../public/store-analytics.js';
-const read=file=>readFile(new URL('../public/'+file,import.meta.url),'utf8');
+const read=file=>readFile(new URL(file==='product.html'?'../server/product-template.html':'../public/'+file,import.meta.url),'utf8');
 const html=await read('contacts.html');
 assert.match(html,/м\. Київ, вул\. Мрії, 12Н, офіс 28/);
 assert.match(html,/tel:\+380443605539/);

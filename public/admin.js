@@ -1,5 +1,6 @@
 import {supplierStockNeedsConfirmation,availableStockQuantity} from './supplier-availability.js?v=20261110';
 import {readImportProducts} from './import-batches.js?v=20261122';
+import {mountImportSource,sourceFactsFor} from './supplier-import-source.js?v=20261123';
 import {parseProductSpecificationText} from './admin-specification-text.js?v=20261116-types';
 import {mountProductGallery} from './admin-product-gallery.js?v=20261116-compact';
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
@@ -45,8 +46,8 @@ import {createQualityAudit, mountQualityPanel} from './catalog-quality.js?v=2026
 import {createImportAudit, auditEligible, auditMarkup, showImportReview} from './import-audit.js?v=20261029-shared';
 import {buildImportChangePlan,showImportChangePlans,importSnapshot} from './import-change-plan.js?v=20261116-reviewed-fields';
 import {supplierProductContent} from './supplier-product-content.js?v=20261029-shared';
-import {mountMtiPricePreview} from './mti-price-admin.js?v=20261122-batches';
-import {startImportRun,writeImportProduct,finishImportRun,mountImportHistory} from './import-history.js?v=20261020-suppliers';
+import {mountMtiPricePreview} from './mti-price-admin.js?v=20261123-source';
+import {startImportRun,writeImportProduct,finishImportRun,mountImportHistory} from './import-history.js?v=20261123-source';
 import {manualOverrideSummary} from './product-manual-overrides.js?v=20261116-reviewed-fields';
 import {mountBulkProductContent} from './bulk-product-content-admin.js?v=20261116-reviewed-fields';
 import {mountProductContentPreview} from './product-content-preview-admin.js?v=20261116-reviewed-fields';
@@ -460,6 +461,13 @@ supabase.auth.getSession().then(({data:{session}})=>session?(passwordSetupMode?v
   const reviewedImports = new Set();
   let importRunning = false;
   let importPreparing = false;
+  let importSourceController=null,sourceGeneration=0,apiSource=null;const sourceFiles=new Map();
+  const refreshImportSource=async()=>{
+    const files=[...sourceFiles].map(([role,file])=>({role,file}));
+    if(apiSource)return importSourceController.setApi(apiSource.items,apiSource.receivedAt,files);
+    files.sort((a,b)=>(a.role==='price'?-1:b.role==='price'?1:a.role.localeCompare(b.role)));
+    if(files.length)await importSourceController.setFiles(files,importer.rows[0]?.supplier||'ERC');
+  };
   let assessImport;
   const importAssessment = row => {const audit=(assessImport ||= createImportAudit(importer.rows,state.products))(row,{...importRowMeta(row),updateCategory:$('#supplierImportCategory')?.checked===true});const block=supplierImportBlock(supplierRegistry,row);return block?{...audit,blocked:true,issues:[...audit.issues,{code:'supplier-exclusion',level:'block',message:block}]}:audit;};
   const canImportRow = row => auditEligible(importAssessment(row),reviewedImports);
@@ -1440,6 +1448,7 @@ supabase.auth.getSession().then(({data:{session}})=>session?(passwordSetupMode?v
     assessImport = createImportAudit(importer.rows,state.products);
     const selectedRows = importer.rows.filter((row) => importer.selected.has(row.key));
     if (!selectedRows.length) return importerStatus('Виберіть хоча б один товар.', true);
+    let importSource;try{importSource=importSourceController.get();}catch(error){return importerStatus(error.message,true);}
     const unsafeRows = selectedRows.filter(row=>!canImportRow(row));
     if(unsafeRows.length) {
       renderImportPreview();
@@ -1454,6 +1463,7 @@ supabase.auth.getSession().then(({data:{session}})=>session?(passwordSetupMode?v
     importPreparing=true;
     try {
     if(!await showImportChangePlans(plans,esc,{confirm:true}))return;
+    if(JSON.stringify(importSource)!==JSON.stringify(importSourceController.get()))throw new Error('Дата або файл змінилися після перегляду. Підготуйте імпорт повторно.');
     const currentProducts=selectedRows.map(row=>existing.get(row.sku)).filter(Boolean);
     if(currentProducts.length){
       const live=await readImportProducts(supabase,currentProducts);
@@ -1461,7 +1471,7 @@ supabase.auth.getSession().then(({data:{session}})=>session?(passwordSetupMode?v
         await loadData();renderImportPreview();return importerStatus('Товари змінилися після попереднього перегляду. Перегляньте зміни повторно — імпорт не запущено.',true);
       }
     }
-    runId=await startImportRun(supabase,updateOptions,Math.min(selectedRows.length,100));runIds.push(runId);runOpen=true;
+    runId=await startImportRun(supabase,{...updateOptions,source:importSource},Math.min(selectedRows.length,100));runIds.push(runId);runOpen=true;
     } catch(error){return importerStatus(error.message,true)}
     finally {importPreparing=false}
     const failures = []; const fail = (row, reason) => failures.push({ key: row.key, sku: row.sku, reason }); let created = 0, updated = 0, unchanged = 0;
@@ -1479,7 +1489,7 @@ supabase.auth.getSession().then(({data:{session}})=>session?(passwordSetupMode?v
       if(index>0&&index%100===0){
         await finishImportRun(supabase,runId,{failures:failures.slice(chunkFailureStart),unchanged:unchanged-chunkUnchangedStart});runOpen=false;
         chunkFailureStart=failures.length;chunkUnchangedStart=unchanged;
-        runId=await startImportRun(supabase,updateOptions,Math.min(100,selectedRows.length-index));runIds.push(runId);runOpen=true;
+        runId=await startImportRun(supabase,{...updateOptions,source:importSource},Math.min(100,selectedRows.length-index));runIds.push(runId);runOpen=true;
       }
       attemptedKeys.add(row.key);activeRow=row;
       if (index === 0 || index % 5 === 0) importerStatus(`Імпорт: ${index} із ${selectedRows.length}. Порція ${Math.floor(index/100)+1} із ${Math.ceil(selectedRows.length/100)}. Створено: ${created}, оновлено: ${updated}.`);
@@ -1494,7 +1504,7 @@ supabase.auth.getSession().then(({data:{session}})=>session?(passwordSetupMode?v
         // Preview and writer share exactly the same preservation rules.
         const plan=buildImportChangePlan(row,current,updateOptions,category);
         const shouldImportImages=plan.images==='add';
-        const result=await writeImportProduct(supabase,runId,current,plan.patch,{supplier:row.supplier});
+        const result=await writeImportProduct(supabase,runId,current,plan.patch,{supplier:row.supplier,sourceFacts:sourceFactsFor(row,current,updateOptions)});
         if (result.error) fail(row, result.error.message || result.error.code);
         else {
           if(result.data?.unchanged&&!shouldImportImages)unchanged++;else updated += 1;
@@ -1506,7 +1516,7 @@ supabase.auth.getSession().then(({data:{session}})=>session?(passwordSetupMode?v
         const importedBrand = state.brands.find((brand) => brand.is_active && txt(brand.name) === txt(row.vendor));
         const content=supplierProductContent(row,category);
         const payload = { ...inventory, price: row.hasPrice ? row.price : 0, stock_quantity: row.hasStock ? row.stock : 0, in_stock: row.hasStock && row.stock > 0, availability_status: row.availabilityStatus || (row.hasStock && row.stock > 0 ? 'in_stock' : 'out_of_stock'), name: content.name, slug: newSlug(content.name, row.sku, usedSlugs), sku: row.sku, brand_id: importedBrand?.id || null, brand: importedBrand?.name || content.brand || null, description: content.description || null, specifications: content.specifications, is_active: publishNew && row.hasPrice && Number(row.price)>0 };
-        const result = await writeImportProduct(supabase,runId,null,payload,{supplier:row.supplier});
+        const result = await writeImportProduct(supabase,runId,null,payload,{supplier:row.supplier,sourceFacts:sourceFactsFor(row,null,updateOptions)});
         if (result.error) fail(row, result.error.message || result.error.code);
         else {
           created += 1;
@@ -1547,6 +1557,7 @@ supabase.auth.getSession().then(({data:{session}})=>session?(passwordSetupMode?v
     anchor.insertAdjacentHTML('afterend', `<section class="admin-section" id="supplierImport"><div class="admin-title"><div><h2>Імпорт ERC та ASBIS XML</h2><span>Товари, характеристики, ціни, залишки та посилання на фото від постачальників</span></div></div><p class="recovery-help"><b>ERC:</b> оберіть лише основний XML-файл — імпорт працює як раніше. <b>ASBIS:</b> оберіть <b>itemList.xml</b> і додатково <b>PriceAvail.xml</b>; вони з’єднаються за SKU. Позиції з дублікатами SKU або явними суперечностями заблоковано. Зміни категорії треба перевірити вручну. Товари без ціни створюються лише як приховані чернетки. Характеристики додаються лише до порожніх полів, а вручну внесені значення залишаються без змін. <b>Контент ERC Excel</b> лише доповнює вже вибрані позиції за SKU — не створює товарів або категорій.</p><div class="admin-controls"><label>Основний XML (ERC або ASBIS itemList) <input id="supplierImportFile" type="file" accept=".xml,application/xml,text/xml"></label><label>Ціни та наявність ASBIS — необов’язково <input id="supplierImportPriceFile" type="file" accept=".xml,application/xml,text/xml"></label><label>Контент ERC Excel — необов’язково <input id="supplierImportContentFile" type="file" accept=".xlsx,.xls,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel"></label><input id="supplierImportLimit" type="number" min="1" max="100" value="50" title="Товарів на сторінці попереднього перегляду"></div><div class="admin-controls"><label>Пошук у попередньому перегляді <input id="supplierImportSearch" type="search" placeholder="Назва, SKU, бренд або категорія" autocomplete="off"></label><label>Показати <select id="supplierImportStatus"><option value="all">Усі товари</option><option value="new">Нові товари</option><option value="update">Оновити наявні</option><option value="ready">Готові до імпорту</option><option value="problem">Потребують уваги</option></select></label></div><div class="admin-controls"><button class="button outline" type="button" id="supplierImportBrands">Створити відсутні бренди</button><button class="button outline" type="button" id="supplierImportSelectNew">Вибрати нові на сторінці</button><button class="button outline" type="button" id="supplierImportSelectVisible">Вибрати всі на сторінці</button><button class="button outline" type="button" id="supplierImportSelectMatched">Виділити всі знайдені (до 100)</button><button class="button outline" type="button" id="supplierImportClear">Очистити вибір</button><label class="check"><input id="supplierImportSpecifications" type="checkbox" checked> Додати відсутні характеристики</label><label class="check"><input id="supplierImportImages" type="checkbox"> Додати доступні фото</label><label class="check"><input id="supplierImportPublish" type="checkbox"> Публікувати нові товари</label><button class="button primary" type="button" id="supplierImportApply">Імпортувати вибрані</button></div><p class="admin-message" id="supplierImportMessage" hidden></p><p class="recovery-help" id="supplierImportSummary">Оберіть XML-файл для попереднього перегляду.</p><div id="supplierImportReport" class="import-report" hidden></div><div class="admin-controls" id="supplierImportPagination" hidden></div><div class="admin-table-wrap"><table><thead><tr><th></th><th>Товар / джерело</th><th>SKU</th><th>Категорія</th><th>Дані джерела</th><th>Дія</th></tr></thead><tbody id="supplierImportRows"></tbody></table></div></section>`);
     document.querySelector('.admin-nav').insertAdjacentHTML('beforeend', '<a href="#supplierImport">Імпорт ERC / ASBIS</a>');
     const section = $('#supplierImport');
+    importSourceController=mountImportSource($('#supplierImportFile').closest('.admin-controls'),{supplier:'ERC / ASBIS'});
     $('#supplierImportSelectMatched').textContent='Вибрати всі готові за фільтром';
     $('#supplierImportSearch').closest('label').insertAdjacentHTML('beforebegin','<label>Обсяг прайсу <select id="supplierImportScope"><option value="all">Усі категорії</option><option value="projection">Лише проєкційне обладнання</option></select></label>');
     $('#supplierImportSummary').insertAdjacentHTML('beforebegin','<p class="recovery-help">Весь вибраний обсяг імпортується одним запуском, автоматично порціями до 100 товарів. Кожна порція має окремий запис у журналі. Не закривайте вкладку до підсумкового звіту.</p>');
@@ -1582,22 +1593,29 @@ supabase.auth.getSession().then(({data:{session}})=>session?(passwordSetupMode?v
       importerStatus('Позицію позначено як перевірену. Тепер її можна вибрати для імпорту.');
     });
     $('#supplierImportFile').addEventListener('change', async (event) => {
+      const request=++sourceGeneration;importSourceController.invalidate();apiSource=null;sourceFiles.clear();importer.prices.clear();$('#supplierImportPriceFile').value='';$('#supplierImportContentFile').value='';
       const file = event.target.files?.[0]; if (!file) return;
       importerStatus('Читаю ' + file.name + '…');
-      try { parseFile(await file.text()); importerStatus('Файл прочитано: ' + importer.rows.length + ' товарів.'); renderImportPreview(); } catch (error) { importer.rows = []; renderImportPreview(); importerStatus(error.message || 'Не вдалося прочитати XML.', true); }
+      try { const text=await file.text();if(request!==sourceGeneration)return;parseFile(text);sourceFiles.set('main',file);await refreshImportSource();if(request!==sourceGeneration)return;importerStatus('Файл прочитано: ' + importer.rows.length + ' товарів. Перевірте дату джерела.'); renderImportPreview(); } catch (error) {if(request!==sourceGeneration)return;importer.rows = []; renderImportPreview(); importerStatus(error.message || 'Не вдалося прочитати XML.', true); }
     });
     $('#supplierImportPriceFile').addEventListener('change', async (event) => {
+      const request=++sourceGeneration;importSourceController.invalidate();
       const file = event.target.files?.[0]; if (!file) return;
       importerStatus('Читаю ціни та наявність з ' + file.name + '…');
       try {
         const main = $('#supplierImportFile').files?.[0];
+        if(!main)throw new Error('Спочатку оберіть основний XML, потім файл цін.');
         if (main && main.name === file.name && main.size === file.size) throw new Error('Ви вдруге обрали itemList.xml. Для цін і наявності потрібен окремий файл PriceAvail.xml.');
-        const count = parsePriceFile(await file.text());
+        const [mainText,priceText]=await Promise.all([main.text(),file.text()]);if(request!==sourceGeneration)return;
+        const selected=new Set(importer.selected);importer.prices.clear();parseFile(mainText);importer.selected=selected;
+        sourceFiles.delete('content');$('#supplierImportContentFile').value='';
+        const count = parsePriceFile(priceText);sourceFiles.set('price',file);await refreshImportSource();if(request!==sourceGeneration)return;
         renderImportPreview();
         importerStatus('Файл цін прочитано: ' + count + ' позицій. Дані з’єднано за SKU.');
       } catch (error) { importerStatus(error.message || 'Не вдалося прочитати XML цін.', true); }
     });
     $('#supplierImportContentFile').addEventListener('change', async (event) => {
+      const request=++sourceGeneration;importSourceController.invalidate();
       const file = event.target.files?.[0]; if (!file) return;
       importerStatus('Читаю контент ERC з ' + file.name + '…');
       try {
@@ -1609,7 +1627,9 @@ supabase.auth.getSession().then(({data:{session}})=>session?(passwordSetupMode?v
         if (!allowedSkus.size) throw new Error('Спочатку виділіть товари в основному XML або ERC API. Excel доповнює лише вибрані позиції за SKU.');
         await new Promise((resolve) => setTimeout(resolve, 0));
         const contentRows = await ercWorkbookRows(file, allowedSkus);
+        if(request!==sourceGeneration)return;
         const result = mergeErcWorkbookRows(contentRows);
+        sourceFiles.set('content',file);await refreshImportSource();if(request!==sourceGeneration)return;
         // Контентний Excel ERC містить посилання на фото, тому вмикаємо
         // завантаження автоматично. Користувач не має окремо згадувати про
         // цю опцію після вибору файлу з контентом.
@@ -1714,9 +1734,13 @@ supabase.auth.getSession().then(({data:{session}})=>session?(passwordSetupMode?v
       const sku = $('#ercApiSku').value.trim(), vendorIds = $('#ercApiVendors').value.trim(), categoryIds = $('#ercApiCategories').value.trim();
       if (!sku && !vendorIds && !categoryIds) { setErcMessage('Вкажіть SKU або код бренду чи категорії ERC.', true); return; }
       button.disabled = true; setErcMessage('Завантажую дані ERC…');
+      const request=++sourceGeneration;importSourceController.invalidate();
       try {
         const result = await ercRequest({ action: 'catalog', sku, vendorIds, categoryIds, onlyFree: $('#ercApiOnlyFree').checked, isNew: $('#ercApiNew').checked });
+        if(request!==sourceGeneration)return;
         importer.rows = (result.items || []).map(ercRow).filter((row) => row.sku && row.name);
+        sourceFiles.clear();importer.prices.clear();$('#supplierImportFile').value='';$('#supplierImportPriceFile').value='';$('#supplierImportContentFile').value='';
+        apiSource={items:result.items,receivedAt:result.sourceReceivedAt};await refreshImportSource();if(request!==sourceGeneration)return;
         importer.selected.clear(); importer.meta.clear(); importer.report = null; importer.page = 1;
         renderImportPreview();
         importerStatus('ERC: отримано ' + importer.rows.length + ' товарів. Перевірте їх у попередньому перегляді нижче перед імпортом.');

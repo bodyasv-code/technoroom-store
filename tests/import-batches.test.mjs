@@ -5,6 +5,7 @@ import {runInNewContext} from 'node:vm';
 import {importBatches,readImportProducts} from '../public/import-batches.js';
 import {createMtiOfferJob,applyMtiOfferJob} from '../public/mti-offer-import.js';
 import {mtiScopeRows} from '../public/mti-price.js';
+import {sourceFactsFor} from '../public/supplier-import-source.js';
 
 test('full selection is split without loss, truncation or oversized database queries',async()=>{
  const rows=Array.from({length:325},(_,id)=>({id}));
@@ -48,7 +49,7 @@ async function runErc(count,failAt){
  const products=rows.map((r,i)=>({id:i+1,sku:r.sku,category:'projectors',price:90}));
  const element={disabled:false,textContent:'',checked:false},section={querySelectorAll:()=>[]};
  const starts=[],finishes=[],writes=[];const importer={rows,selected:new Set(rows.map(r=>r.key)),meta:new Map(),report:null};
- const context={Map,Set,Math,Number,Boolean,console,importer,importRunning:false,importPreparing:false,
+ const context={Map,Set,Math,Number,Boolean,console,importer,importRunning:false,importPreparing:false,sourceFactsFor,importSourceController:{get:()=>({supplier:'ERC',hash:'a'.repeat(64),observedAt:'2020-01-01T00:00:00Z',name:'price.xml'})},
   state:{catalogReady:true,products,brands:[]},supabase:{},$:id=>id==='#supplierImport'?section:element,
   createImportAudit:()=>()=>({}),canImportRow:()=>true,importUpdateOptions:()=>({category:false}),
   knownBySku:()=>new Map(products.map(p=>[p.sku,p])),plannedImportChanges:()=>({}),showImportChangePlans:async()=>true,esc:v=>v,

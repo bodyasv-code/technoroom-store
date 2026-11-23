@@ -1,5 +1,6 @@
 import {readMtiPriceFile,matchMtiPriceRows,mtiScopeRows} from './mti-price.js?v=20261122-batches';
-import {mountMtiOfferImport} from './mti-offer-admin.js?v=20261122-batches';
+import {mountMtiOfferImport} from './mti-offer-admin.js?v=20261123-source';
+import {mountImportSource} from './supplier-import-source.js?v=20261123';
 const esc=value=>String(value??'').replace(/[&<>"']/gu,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const money=value=>value===null?'Не вказано':Number(value).toLocaleString('uk-UA',{maximumFractionDigits:2})+' ₴';
 export function mtiPreviewMarkup(rows){
@@ -16,7 +17,8 @@ export function mountMtiPricePreview(anchor,getCatalog,{client,onImported,readPr
   const status=panel.querySelector('[data-mti-status]'),results=panel.querySelector('[data-mti-results]'),search=panel.querySelector('[data-mti-search]'),scope=panel.querySelector('[data-mti-scope]');
   let parsed=null,generation=0;
   let sourceName='',scopedRows=null,page=1;
-  const importer=client?mountMtiOfferImport(panel,{client,getRows:()=>scopedRows,getCatalog,getSourceName:()=>sourceName,onImported}):null;
+  const sourceMeta=mountImportSource(panel.querySelector('[data-mti-file]').closest('label'),{supplier:'MTI',onChange:()=>importer?.reset()});
+  const importer=client?mountMtiOfferImport(panel,{client,getRows:()=>scopedRows,getCatalog,getSourceName:()=>sourceName,getSource:()=>sourceMeta.get(),onImported}):null;
   function render(){
     if(!parsed)return;
     const products=getCatalog(),ready=Array.isArray(products);
@@ -33,10 +35,10 @@ export function mountMtiPricePreview(anchor,getCatalog,{client,onImported,readPr
   scope.addEventListener('change',()=>{scopedRows=parsed?mtiScopeRows(parsed.rows,scope.value):null;page=1;importer?.reset();render();});
   document.addEventListener('technoroom:admin-catalog-loaded',render);
   panel.querySelector('[data-mti-file]').addEventListener('change',async event=>{
-    const request=++generation,file=event.target.files?.[0];parsed=null;scopedRows=null;page=1;sourceName=file?.name||'';importer?.reset();results.replaceChildren();pager.replaceChildren();search.value='';
+    const request=++generation,file=event.target.files?.[0];sourceMeta.invalidate();parsed=null;scopedRows=null;page=1;sourceName=file?.name||'';importer?.reset();results.replaceChildren();pager.replaceChildren();search.value='';
     if(!file){status.textContent='';return;}
     status.textContent='Читаю прайс МТІ…';
-    try{const value=await readPriceFile(file);if(request!==generation)return;parsed=value;scopedRows=mtiScopeRows(parsed.rows,scope.value);render();}
+    try{const [value]=await Promise.all([readPriceFile(file),sourceMeta.setFiles([{role:'main',file}])]);if(request!==generation)return;parsed=value;scopedRows=mtiScopeRows(parsed.rows,scope.value);render();}
     catch(error){if(request===generation)status.textContent=error.message||'Не вдалося прочитати прайс МТІ.';}
   });
 }

@@ -1,5 +1,5 @@
 import {mountMtiStockObservations} from './mti-stock-observation-admin.js?v=20261112';
-import {prepareMtiOfferBatch,mtiOfferSnapshot,createMtiOfferJob,applyMtiOfferJob} from './mti-offer-import.js?v=20261122-batches';
+import {prepareMtiOfferBatch,mtiOfferSnapshot,createMtiOfferJob,applyMtiOfferJob} from './mti-offer-import.js?v=20261123-source';
 const escape=value=>String(value??'').replace(/[&<>"']/gu,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 export function mtiOfferReviewMarkup(plan){
   const deferred=plan.deferred.length?'<details><summary>Чому відкладено: '+plan.deferred.length+'</summary><p>Ці рядки не записуються. Попередні пропозиції МТІ залишаються без оновлення. Позначка «-» у прайсі МТІ означає нульовий залишок. Порожня клітинка залишається невизначеною.</p><div class="table-wrap"><table><thead><tr><th>Артикул</th><th>Причини</th></tr></thead><tbody>'+plan.deferred.map(row=>'<tr><td>'+escape(row.sku)+'</td><td>'+row.reasons.map(escape).join('<br>')+'</td></tr>').join('')+'</tbody></table></div></details>':'';
@@ -14,7 +14,7 @@ function review(plan){
     dialog.addEventListener('close',()=>{dialog.remove();resolve(approved)},{once:true});document.body.append(dialog);dialog.showModal();
   });
 }
-export function mountMtiOfferImport(panel,{client,getRows,getCatalog,getSourceName,onImported=()=>{}}){
+export function mountMtiOfferImport(panel,{client,getRows,getCatalog,getSourceName,getSource=()=>{throw new Error('Оновіть сторінку імпорту.');},onImported=()=>{}}){
   const observations=mountMtiStockObservations(panel,{client,getRows,getSourceName,onImported});
   const controls=document.createElement('div');controls.className='import-report';
   controls.innerHTML='<h3>Зберегти пропозиції МТІ</h3><p>Зберігаються лише позиції без зауважень. Ціни й залишки МТІ обліковуються окремо від ERC. Нові картки завжди створюються прихованими; контент Icecat потребує редакторської перевірки.</p><button type="button" data-prepare>Підготувати пропозиції й контент Icecat</button> <button type="button" data-write disabled>Переглянути зміни та зберегти</button><p role="status" data-offer-message></p><div data-offer-plan></div>';
@@ -31,11 +31,11 @@ export function mountMtiOfferImport(panel,{client,getRows,getCatalog,getSourceNa
     savedResult.innerHTML='<p>Показано останніх пропозицій: '+response.data.length+' (до 200).</p><div class="table-wrap"><table><thead><tr><th>Артикул</th><th>Картка</th><th>РРЦ МТІ, ₴</th><th>Ціна МТІ, ₴</th><th>Залишок МТІ</th></tr></thead><tbody>'+response.data.map(row=>'<tr><td>'+escape(row.brand)+' '+escape(row.supplier_sku)+'</td><td>'+escape(row.product_id)+'</td><td>'+escape(row.retail_price)+'</td><td>'+escape(row.supplier_price??'Не вказано')+'</td><td>'+escape(['needs_confirmation','unknown'].includes(row.stock_kind)?'Наявність уточнюється':row.stock_quantity)+'</td></tr>').join('')+'</tbody></table></div>';
   }
   saved.querySelector('button').onclick=()=>loadSaved().catch(()=>{savedResult.textContent='Не вдалося прочитати пропозиції.';});
-  let prepared=null,sourceRows=null,exclusions=[],previews=new Map(),generation=0,busy=false,job=null,abort=null;
+  let prepared=null,preparedSource=null,sourceRows=null,exclusions=[],previews=new Map(),generation=0,busy=false,job=null,abort=null;
   const withContent=controls.querySelector('[data-with-content]');
   let sourceLocks=[];
   const lockSource=value=>{
-    if(value){sourceLocks=[...panel.querySelectorAll('[data-mti-file],[data-mti-scope],[data-with-content],[data-date],[data-plan],[data-apply]')].map(input=>[input,input.disabled]);sourceLocks.forEach(([input])=>input.disabled=true);}
+    if(value){sourceLocks=[...panel.querySelectorAll('[data-mti-file],[data-mti-scope],[data-with-content],[data-date],[data-plan],[data-apply],[data-source-date]')].map(input=>[input,input.disabled]);sourceLocks.forEach(([input])=>input.disabled=true);}
     else{sourceLocks.forEach(([input,disabled])=>input.disabled=disabled);sourceLocks=[];}
   };
   const reset=()=>{observations.reset();generation++;abort?.abort();prepared=null;job=null;previews=new Map();write.disabled=true;write.textContent='Переглянути зміни та зберегти';message.textContent='';result.replaceChildren();};
@@ -49,6 +49,7 @@ export function mountMtiOfferImport(panel,{client,getRows,getCatalog,getSourceNa
     if(!sourceRows?.length||!Array.isArray(getCatalog())){message.textContent='Спочатку прочитайте прайс і дочекайтеся завантаження каталогу.';return;}
     busy=true;prepare.disabled=true;lockSource(true);abort=new AbortController();
     try{
+      preparedSource=getSource();
       const setup=await client.from('supplier_offers').select('supplier').limit(0);
       if(setup.error)throw new Error('Спочатку виконайте supplier-offers-upgrade.sql у Supabase SQL Editor. Імпорт не розпочато.');
       exclusions=await readExclusions();let plan=prepareMtiOfferBatch(sourceRows,getCatalog(),previews,exclusions);
@@ -78,15 +79,16 @@ export function mountMtiOfferImport(panel,{client,getRows,getCatalog,getSourceNa
   };
   write.onclick=async()=>{
     if(busy||!prepared)return;
+    try{if(JSON.stringify(preparedSource)!==JSON.stringify(getSource()))throw new Error('Дата або файл змінилися. Повторіть підготовку.');}catch(error){reset();message.textContent=error.message;return;}
     if(sourceRows!==getRows()||!Array.isArray(getCatalog())||(!job&&mtiOfferSnapshot(prepared)!==mtiOfferSnapshot(prepareMtiOfferBatch(sourceRows,getCatalog(),previews,exclusions)))){reset();message.textContent='Дані змінилися. Підготуйте перегляд повторно.';return;}
     busy=true;prepare.disabled=true;write.disabled=true;lockSource(true);
     try{
       if(!job&&!await review(prepared))return;
-      job??=createMtiOfferJob(prepared,getSourceName());
+      job??=createMtiOfferJob(prepared,getSourceName(),undefined,preparedSource);
       message.textContent='Записую пропозиції МТІ…';
-      const value=await applyMtiOfferJob(client,job,{onProgress:progress=>{message.textContent='Записано '+progress.offers+' із '+progress.total+'. Прихованих чернеток: '+progress.createdDrafts+'. Не закривайте вкладку.';}});
+      const value=await applyMtiOfferJob(client,job,{onProgress:progress=>{message.textContent='Опрацьовано '+progress.offers+' із '+progress.total+'. Повторних без запису: '+progress.unchanged+'. Прихованих чернеток: '+progress.createdDrafts+'. Не закривайте вкладку.';}});
       const deferred=prepared.deferred.length;prepared=null;job=null;result.replaceChildren();
-      message.textContent='Збережено пропозицій: '+value.offers+'. Прив’язано до наявних товарів: '+value.linkedExisting+'. Створено прихованих чернеток: '+value.createdDrafts+'. Опубліковано: 0. Порцій у журналі: '+value.runIds.length+'. Відкладено: '+deferred+'.';
+      message.textContent='Опрацьовано пропозицій: '+value.offers+'. Змінено: '+value.written+'. Повторних без запису: '+value.unchanged+'. Прив’язано до наявних товарів: '+value.linkedExisting+'. Створено прихованих чернеток: '+value.createdDrafts+'. Опубліковано: 0. Порцій у журналі: '+value.runIds.length+'. Відкладено: '+deferred+'.';
       try{await onImported();}catch{message.textContent+=' Пропозиції збережено, але список товарів потрібно оновити.';}
       await loadSaved().catch(()=>{});
     }catch(error){const completed=job?.batches.reduce((n,b)=>n+(b.result?.offers||0),0)||0;message.textContent=error.message+(job?' Підтверджено '+completed+' із '+job.total+'. Натисніть «Продовжити імпорт» у цій вкладці; завершені порції не записуватимуться повторно.':'');}

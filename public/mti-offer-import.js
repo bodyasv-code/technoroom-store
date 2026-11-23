@@ -46,29 +46,29 @@ export function prepareMtiOfferBatch(rows,products,previews=new Map(),excludedSk
   return {ready,deferred};
 }
 export const mtiOfferSnapshot=plan=>JSON.stringify(plan.ready.map(row=>row.offer));
-export async function applyMtiOfferBatch(client,plan,{requestId,sourceName}){
+export async function applyMtiOfferBatch(client,plan,{requestId,sourceName,source}){
   if(!plan.ready.length||plan.ready.length>100)throw new Error('Оберіть від 1 до 100 перевірених позицій.');
-  const {data,error}=await client.rpc('apply_mti_offer_batch',{p_request:requestId,p_source_name:sourceName,p_rows:plan.ready.map(row=>row.offer)});
+  const {data,error}=await client.rpc('apply_mti_offer_batch',{p_request:requestId,p_source_name:sourceName,p_rows:plan.ready.map(row=>source?{...row.offer,source}:row.offer)});
   if(error)throw new Error(['42883','42P01','PGRST202','PGRST205'].includes(error.code)?'Потрібне оновлення бази supplier-offers-upgrade.sql. Нічого не записано.':error.message);
   if(!data||data.offers!==plan.ready.length||data.published!==0)throw new Error('Неочікувана відповідь імпорту. Перевірте журнал перед повторним записом.');
   return data;
 }
 
-export function createMtiOfferJob(plan,sourceName,uuid=()=>crypto.randomUUID()){
+export function createMtiOfferJob(plan,sourceName,uuid=()=>crypto.randomUUID(),source){
   if(!plan.ready.length)throw new Error('Немає перевірених пропозицій для запису.');
-  return {sourceName,total:plan.ready.length,batches:importBatches(structuredClone(plan.ready)).map(ready=>({requestId:uuid(),ready,result:null}))};
+  return {sourceName,source:source?structuredClone(source):null,total:plan.ready.length,batches:importBatches(structuredClone(plan.ready)).map(ready=>({requestId:uuid(),ready,result:null}))};
 }
 export async function applyMtiOfferJob(client,job,{onProgress=()=>{}}={}){
   const summary=()=>job.batches.reduce((total,batch)=>{
-    if(batch.result){total.offers+=batch.result.offers;total.createdDrafts+=batch.result.createdDrafts;total.linkedExisting+=batch.result.linkedExisting;total.runIds.push(batch.result.runId||batch.requestId);}
+    if(batch.result){total.offers+=batch.result.offers;total.written+=batch.result.written??batch.result.offers;total.unchanged+=batch.result.unchanged||0;total.createdDrafts+=batch.result.createdDrafts;total.linkedExisting+=batch.result.linkedExisting;total.runIds.push(batch.result.runId||batch.requestId);}
     return total;
-  },{offers:0,createdDrafts:0,linkedExisting:0,published:0,runIds:[]});
+  },{offers:0,written:0,unchanged:0,createdDrafts:0,linkedExisting:0,published:0,runIds:[]});
   onProgress({...summary(),total:job.total});
   for(const batch of job.batches){
     if(batch.result)continue;
     // Keep the frozen payload and UUID when the reply is lost after commit.
     // The database returns the original transaction result on retry.
-    batch.result=await applyMtiOfferBatch(client,batch,{requestId:batch.requestId,sourceName:job.sourceName});
+    batch.result=await applyMtiOfferBatch(client,batch,{requestId:batch.requestId,sourceName:job.sourceName,source:job.source});
     onProgress({...summary(),total:job.total});
   }
   return summary();

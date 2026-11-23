@@ -67,7 +67,7 @@ export default async function handler(request, response) {
     let items;
     try { items = parseResponse(raw); } catch { return response.status(502).json({ error: 'ERC повернув відповідь у неочікуваному форматі.' }); }
     if (items.length > 1000) return response.status(413).json({ error: 'ERC повернув понад 1000 товарів. Звузьте запит за SKU, брендом або категорією.' });
-    return response.status(200).json({ items, total: items.length });
+    return response.status(200).json({ items, total: items.length,sourceReceivedAt:new Date().toISOString() });
   } catch (error) {
     return response.status(502).json({ error: error.name === 'AbortError' ? 'ERC не відповів вчасно.' : 'Не вдалося з’єднатися з ERC.' });
   } finally { clearTimeout(timer); }

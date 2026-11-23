@@ -16,5 +16,5 @@ const client={auth:{getSession(){throw Error('Content lookup must be optional');
 }};
 mountMtiPricePreview(document.querySelector('#anchor'),()=>catalog,{client,onImported:async()=>{document.querySelector('#outcome').textContent='PASS: '+[...commits.values()].reduce((n,r)=>n+r.offers,0)+' унікальних пропозицій, порцій '+commits.size+', запитів '+calls+'. Дублікатів немає.';},readPriceFile:async()=>({rows,headerRow:4,sheetName:'Тест'})});
 document.querySelector('details').open=true;
-document.querySelector('#load').onclick=()=>{const input=document.querySelector('[data-mti-file]'),transfer=new DataTransfer();transfer.items.add(new File(['demo'],'demo.xlsx'));input.files=transfer.files;input.dispatchEvent(new Event('change'));};
+document.querySelector('#load').onclick=()=>{const input=document.querySelector('[data-mti-file]'),transfer=new DataTransfer();transfer.items.add(new File(['demo'],'Прайс-лист-2026-11-12 23_37_04.xlsx'));input.files=transfer.files;input.dispatchEvent(new Event('change'));};
 </script></html>

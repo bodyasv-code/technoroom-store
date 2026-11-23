@@ -43,6 +43,7 @@ test('first HTML response has unique product content, canonical, safe descriptio
     assert.match(html,/<span aria-current="page">[^<]+<\/span>/);
     assert.doesNotMatch(html,/\/ Товар<\/p>/);
     assert.ok(html.includes('data-server-rendered="true"'));
+    assert.ok(html.includes('<body class="store-modern product-layout-page">'),'Product layout is styled before client hydration');
   }
   assert.equal(schemaOf(pages[0]).offers.availability,'https://schema.org/InStock');
   assert.equal(schemaOf(pages[1]).offers.availability,'https://schema.org/OutOfStock');

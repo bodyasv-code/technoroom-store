@@ -1,0 +1,55 @@
+{
+  "verifiedOn": "2026-11-23",
+  "status": "applied-and-verified",
+  "deploymentCommit": "39d2518",
+  "testsPassed": 28,
+  "productsUnchanged": {
+    "count": 3276,
+    "signature": "2922a084b3f9cc8cb9b63b57b2502f22"
+  },
+  "offersUnchanged": {
+    "count": 115,
+    "signature": "950bbc3dc504e58a59688f1514f2d94d"
+  },
+  "functions": [
+    {
+      "name": "apply_mti_offer_batch",
+      "match": true
+    },
+    {
+      "name": "apply_product_supplier_import",
+      "match": true
+    },
+    {
+      "name": "apply_product_supplier_import",
+      "match": true
+    },
+    {
+      "name": "start_product_import",
+      "match": true
+    }
+  ],
+  "sourceTables": [
+    {
+      "rls": true,
+      "table": "supplier_import_sources",
+      "anonRead": false,
+      "authenticatedWrite": false
+    },
+    {
+      "rls": true,
+      "table": "supplier_source_facts",
+      "anonRead": false,
+      "authenticatedWrite": false
+    }
+  ],
+  "sourceRows": 0,
+  "factRows": 0,
+  "historicalDatesBackfilled": false,
+  "livePriceImported": false,
+  "uiFieldsVerified": [
+    "ERC / ASBIS source date in Kyiv",
+    "MTI source date in Kyiv"
+  ],
+  "screenshot": "supplier-source-date-guard-2026-11-23.jpg"
+}

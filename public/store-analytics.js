@@ -123,10 +123,10 @@ export function createAnalyticsController(win,doc,onChange=()=>{}) {
 export function mountStoreAnalytics(win=window,doc=document) {
   if(!analyticsPage(win.location.href,doc.referrer)||doc.getElementById('storeAnalyticsConsent'))return;
   const banner=doc.createElement('section');banner.id='storeAnalyticsConsent';banner.className='analytics-consent';
-  banner.setAttribute('aria-label','Налаштування аналітики');
-  banner.innerHTML='<div class="analytics-consent-copy"><strong>Аналітика магазину</strong><p>Дозволити Google Analytics вимірювати відвідування сайту? Це необов’язково: покупки працюють і без аналітики.</p><details><summary>Що збирається?</summary><p>Після вашої згоди Google отримує дані про переглянуті сторінки, додавання товарів у кошик, створені замовлення, джерело переходу (зокрема дозволені рекламні мітки), браузер і пристрій та використовує аналітичні cookies. Поля замовлення, телефон, email і текст пошуку не передаємо. Рекламну персоналізацію не вмикаємо. Вибір зберігаємо на цьому пристрої до 180 днів; його можна змінити кнопкою «Налаштування аналітики» внизу сторінки. <a href="https://policies.google.com/privacy?hl=uk" target="_blank" rel="noopener noreferrer">Конфіденційність Google</a>.</p></details></div><div class="analytics-consent-actions"><button type="button" data-analytics-choice="denied">Відхилити</button><button type="button" data-analytics-choice="granted">Дозволити</button></div>';
+  banner.setAttribute('aria-label','Налаштування cookies');
+  banner.innerHTML='<div class="analytics-consent-copy"><strong>Використання cookies</strong><p>За вашою згодою використовуємо cookies Google Analytics для статистики відвідувань. Ви можете відхилити аналітику — покупки працюватимуть як завжди.</p><details><summary>Докладніше</summary><p>Після вашої згоди Google отримує дані про переглянуті сторінки, додавання товарів у кошик, створені замовлення, джерело переходу (зокрема дозволені рекламні мітки), браузер і пристрій та використовує аналітичні cookies. Поля замовлення, телефон, email і текст пошуку не передаємо. Рекламну персоналізацію не вмикаємо. Вибір зберігаємо на цьому пристрої до 180 днів; його можна змінити через «Налаштування cookies» внизу сторінки. <a href="https://policies.google.com/privacy?hl=uk" target="_blank" rel="noopener noreferrer">Конфіденційність Google</a>.</p></details></div><div class="analytics-consent-actions"><button type="button" data-analytics-choice="denied">Відхилити</button><button type="button" data-analytics-choice="granted">Дозволити аналітику</button></div>';
   const footer=doc.createElement('div');footer.className='analytics-settings';
-  const settings=doc.createElement('button');settings.type='button';settings.textContent='Налаштування аналітики';
+  const settings=doc.createElement('button');settings.type='button';settings.textContent='Налаштування cookies';
   settings.setAttribute('aria-controls',banner.id);settings.setAttribute('aria-expanded','false');footer.append(settings);
   const diagnostics=doc.createElement('p');diagnostics.hidden=true;diagnostics.setAttribute('aria-live','polite');
   diagnostics.style.cssText='max-width:700px;margin:8px auto;font:12px/1.6 Arial,sans-serif;color:#173b62;overflow-wrap:anywhere';
@@ -138,6 +138,9 @@ export function mountStoreAnalytics(win=window,doc=document) {
   });
   settings.onclick=()=>{banner.hidden=false;settings.setAttribute('aria-expanded','true');banner.querySelector('button').focus({preventScroll:true});};
   banner.querySelectorAll('[data-analytics-choice]').forEach(button=>{button.onclick=()=>{controller.choose(button.dataset.analyticsChoice);settings.focus({preventScroll:true});};});
-  doc.body.append(footer,banner);
+  const footerHost=doc.querySelector('.store-footer .footer-bottom')||doc.querySelector('.store-footer');
+  if(footerHost)footerHost.append(footer);
+  else{footer.classList.add('analytics-settings--standalone');doc.body.append(footer);}
+  doc.body.append(banner);
 }
 if(typeof document!=='undefined')mountStoreAnalytics();

@@ -7,9 +7,12 @@
 .analytics-consent summary { cursor: pointer; color: #0969da; padding: 4px 0; }
 .analytics-consent a { color: #0969da; text-decoration: underline; }
 .analytics-consent-actions { display: flex; gap: 8px; flex-shrink: 0; }
-.analytics-consent-actions button,.analytics-settings button { min-height: 44px; padding: 10px 14px; box-sizing: border-box; border: 1px solid #b9cce2; border-radius: 9px; background: #f7faff; color: #164b88; font: 700 13px/1.4 Manrope,Arial,sans-serif; cursor: pointer; }
-.analytics-settings { padding: 12px 16px; text-align: center; background: #f6f8fb; }
-.analytics-settings button { font-size: 12px; background: #fff; }
+.analytics-consent-actions button { min-height: 44px; padding: 10px 14px; box-sizing: border-box; border: 1px solid #b9cce2; border-radius: 9px; background: #f7faff; color: #164b88; font: 700 13px/1.4 Manrope,Arial,sans-serif; cursor: pointer; }
+.analytics-settings { display: inline-flex; align-items: center; flex-wrap: wrap; gap: 8px; color: inherit; font: 12px/1.5 Manrope,Arial,sans-serif; }
+.analytics-settings button { display: inline-flex; align-items: center; min-height: 32px; padding: 4px 0; border: 0; border-radius: 2px; background: transparent; color: inherit; font: inherit; text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
+.analytics-settings button:hover { text-decoration-thickness: 2px; }
+.store-footer .footer-bottom { align-items: center; flex-wrap: wrap; gap: 8px 24px; }
+.analytics-settings--standalone { display: flex; justify-content: center; padding: 8px 16px; color: #164b88; }
 .analytics-consent :is(button,summary,a):focus-visible,.analytics-settings button:focus-visible { outline: 3px solid #0969da; outline-offset: 3px; }
 @media(max-width:700px) {
   .analytics-consent { inset: auto 10px max(10px,env(safe-area-inset-bottom)); padding: 14px; gap: 12px; flex-direction: column; align-items: stretch; }

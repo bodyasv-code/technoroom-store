@@ -1,6 +1,7 @@
 import {productNameWithSku} from './product-identity.js';
 import {availableStockQuantity,supplierStockNeedsConfirmation} from './supplier-availability.js';
 import {matchingPromotion,discountedPrice} from './store-pricing.js';
+import {merchantOfferPolicies} from './merchant-policies.js';
 
 export const STORE_ORIGIN='https://www.technoroom.com.ua';
 const readableText = (value = '') => {
@@ -100,7 +101,7 @@ export function productSeoDetails({base,item,storageOrigin,promotions=[],promoti
   if(brand)schema.brand={'@type':'Brand',name:brand};
   if(sku)schema.sku=sku;
   // Inquiry-only goods are not confirmed stock or preorders. Never invent an offer.
-  if(!state.inquiry&&Number.isFinite(price)&&price>0)schema.offers={'@type':'Offer',url:canonical,priceCurrency:'UAH',price:price.toFixed(2),availability:'https://schema.org/'+(state.orderable?'InStock':'OutOfStock')};
+  if(!state.inquiry&&Number.isFinite(price)&&price>0)schema.offers={'@type':'Offer',url:canonical,priceCurrency:'UAH',price:price.toFixed(2),availability:'https://schema.org/'+(state.orderable?'InStock':'OutOfStock'),...merchantOfferPolicies(price)};
   return {heading,title:heading+' | TECHNOROOM',description,metaDescription:[...description].slice(0,160).join(''),canonical,image,state,price,schema};
 }
 

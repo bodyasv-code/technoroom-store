@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
 import {mountCatalogLayout} from '../public/catalog-layout.js';
-const read=file=>readFile(new URL(file==='product.html'?'../server/product-template.html':'../public/'+file,import.meta.url),'utf8');
+const read=file=>readFile(new URL(file==='product.html'?'../server/product-template.html':file==='catalog.html'?'../server/catalog-template.html':'../public/'+file,import.meta.url),'utf8');
 const html=await read('catalog.html'),css=await read('catalog-modern.css');
 assert.match(html,/<details class="catalog-filter-panel" id="catalogFilterPanel" open>/);
 assert.ok(html.indexOf('catalog-modern.css')>html.indexOf('store-modern.css'));

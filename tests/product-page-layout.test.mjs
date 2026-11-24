@@ -55,7 +55,7 @@ rootListeners.get('load')({target:{tagName:'IMG',getBoundingClientRect:()=>({top
 assert.equal(scrollCall,null,'User interaction stops automatic re-alignment');
 deepCleanup();
 
-const read=name=>readFile(new URL(name==='product.html'?'../server/product-template.html':'../public/'+name,import.meta.url),'utf8');
+const read=name=>readFile(new URL(name==='product.html'?'../server/product-template.html':name==='catalog.html'?'../server/catalog-template.html':'../public/'+name,import.meta.url),'utf8');
 const html=await read('product.html'),css=await read('product-page-layout.css'),app=await read('app.js');
 assert.ok(html.indexOf('product-page-layout.css')>html.indexOf('product-modern.css'));
 for(const name of ['index.html','catalog.html','checkout.html','admin.html'])assert.ok(!(await read(name)).includes('product-page-layout.css'));

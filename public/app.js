@@ -1,4 +1,6 @@
-import {readableText,compactProductName,productAvailability,selectProductForPage,productSeoDetails,updateProductSeo,productBreadcrumbMarkup} from './product-seo.js?v=20261123-product-seo';
+import {catalogSeoDetails,updateCatalogSeo} from './catalog-seo.js?v=20261124-categories';
+import {catalogCategoryScope,canonicalCategorySlug} from './catalog-category-scope.js?v=20261124-categories';
+import {readableText,compactProductName,productAvailability,selectProductForPage,productSeoDetails,updateProductSeo,productBreadcrumbMarkup} from './product-seo.js?v=20261124-policies';
 import {availableStockQuantity} from './supplier-availability.js?v=20261110';
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
 import {reportCommerce,commerceItems,ANALYTICS_READY} from './store-commerce-events.js?v=20261021-commerce';
@@ -1382,19 +1384,6 @@ document.addEventListener('technoroom:catalog-ready',refreshStorefrontRecommenda
 let storefrontCategories = [];
 let storefrontTree = createCategoryTree();
 let storefrontCategoriesRequest = null;
-const legacyCategoryAliases = {
-  projector: 'cat-projectors', audio: 'cat-audio', tv: 'cat-displays',
-  'laser-proj': 'projectors', 'home-projectors': 'projectors',
-  'short-throw-projectors': 'projectors', 'installation-projectors': 'projectors',
-  'universal-projectors': 'projectors', 'erc-display-03': 'projectors',
-  'erc-display-11': 'projectors', 'erc-display-12': 'projectors', 'erc-display-13': 'projectors'
-};
-const legacyCategoryChildren = {
-  'cat-projectors': ['projector', 'laser-proj', 'home-projectors', 'short-throw-projectors', 'installation-projectors', 'universal-projectors', 'projection-screens'],
-  'cat-audio': ['audio'],
-  'cat-displays': ['tv']
-};
-
 const loadStorefrontCategories = async () => {
   if (storefrontCategoriesRequest) return storefrontCategoriesRequest;
   storefrontCategoriesRequest = supabase
@@ -1411,10 +1400,7 @@ const loadStorefrontCategories = async () => {
   return storefrontCategoriesRequest;
 };
 
-const storefrontCategoryBranch = (slug) => {
-  const resolved = legacyCategoryAliases[slug] || slug;
-  return new Set([slug,...storefrontTree.branch(resolved),...(legacyCategoryChildren[resolved] || [])]);
-};
+const storefrontCategoryBranch = slug => catalogCategoryScope(storefrontTree,slug);
 
 const storefrontCategoryMatches = (product, slug) => storefrontCategoryBranch(slug).has(product.type);
 
@@ -1474,6 +1460,7 @@ const renderStorefrontCategoryNavigation = (filters, selectedCategory) => {
 catalog = function () {
   const root = document.getElementById('catalogGrid');
   const filters = document.querySelector('.filters');
+  if(catalogLoadFailed&&root?.dataset.serverRendered==='true'&&!products.length)return;
   if (root) {
     try { sessionStorage.setItem('technoroom-last-catalog-url', location.pathname + location.search); } catch {}
   }
@@ -1948,7 +1935,7 @@ catalog = function () {
     return Number.isFinite(value) && (!selectedLuminousFlux.min || value >= Number(selectedLuminousFlux.min)) && (!selectedLuminousFlux.max || value <= Number(selectedLuminousFlux.max));
   };
   let page = savedFilters.page;
-  let category = legacyCategoryAliases[params.get('category')] || params.get('category') || 'all';
+  let category = canonicalCategorySlug(params.get('category') || 'all');
   if (params.get('search')) search.value = params.get('search');
   const projectorCollection = params.get('projector');
   const projectorCollectionLabels = { laser: 'Лазерний', short: 'Короткофокусний', ultra: 'Ультракороткофокусний' };
@@ -1989,7 +1976,7 @@ catalog = function () {
     const heading = document.getElementById('catalogTitle');
     const breadcrumbs = document.getElementById('catalogBreadcrumbs');
     if (!heading || !breadcrumbs) return;
-    const current = storefrontCategories.find((item) => item.slug === category);
+    const current = storefrontCategories.find((item) => item.slug === canonicalCategorySlug(category));
     let subcategories=document.getElementById('catalogSubcategories');
     if(!subcategories){subcategories=document.createElement('nav');subcategories.id='catalogSubcategories';subcategories.className='catalog-subcategories';subcategories.setAttribute('aria-label','Підкатегорії');heading.after(subcategories);}
     const children=current?storefrontTree.children(current.id):[];
@@ -2085,6 +2072,8 @@ catalog = function () {
       if(url.href!==location.href)history.replaceState(history.state,'',url);
       try{sessionStorage.setItem('technoroom-last-catalog-url',url.pathname+url.search)}catch{}
     }
+    const seoCategory=storefrontCategories.find(entry=>entry.slug===canonicalCategorySlug(category));
+    updateCatalogSeo(document,catalogSeoDetails({category:seoCategory,params:new URLSearchParams(location.search),items:visible}));
   };
 
   root._catalogDraw = draw;

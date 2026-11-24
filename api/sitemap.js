@@ -2,6 +2,8 @@ import {createClient} from '@supabase/supabase-js';
 import {visibleCategoryRows} from '../public/category-tree.js';
 import merchantFeedHandler from '../server/merchant-feed.js';
 import productPageHandler from '../server/product-page.js';
+import catalogPageHandler from '../server/catalog-page.js';
+import {canonicalCategorySlug} from '../public/catalog-category-scope.js';
 
 export const SITE_ORIGIN='https://www.technoroom.com.ua';
 const PAGE_SIZE=500;
@@ -28,7 +30,8 @@ export async function sitemapUrls(client) {
     readAll(client,'articles','id,slug',['is_published',true])
   ]);
   const urls=[SITE_ORIGIN+'/',SITE_ORIGIN+'/catalog',SITE_ORIGIN+'/articles',SITE_ORIGIN+'/contacts',SITE_ORIGIN+'/delivery',SITE_ORIGIN+'/returns'];
-  for(const category of visibleCategoryRows(categories))if(category.slug)urls.push(SITE_ORIGIN+'/catalog?category='+encodeURIComponent(category.slug));
+  const visibleCategories=visibleCategoryRows(categories),visibleSlugs=new Set(visibleCategories.map(category=>category.slug));
+  for(const category of visibleCategories){const slug=canonicalCategorySlug(category.slug);if(slug&&visibleSlugs.has(slug))urls.push(SITE_ORIGIN+'/catalog?category='+encodeURIComponent(slug));}
   const activeIds=new Set(products.map(product=>Number(product.id)));
   for(const product of products)if(/^\d+$/.test(String(product.id))&&(!product.parent_product_id||!activeIds.has(Number(product.parent_product_id))))urls.push(SITE_ORIGIN+'/product?id='+encodeURIComponent(product.id));
   for(const article of articles)if(article.slug)urls.push(SITE_ORIGIN+'/article?slug='+encodeURIComponent(article.slug));
@@ -44,6 +47,7 @@ export function sitemapXml(urls) {
 
 export default async function handler(req,res) {
   if(req.query?.view==='product')return productPageHandler(req,res);
+  if(req.query?.view==='catalog')return catalogPageHandler(req,res);
   if(req.query?.format==='merchant')return merchantFeedHandler(req,res);
   if(!['GET','HEAD'].includes(req.method||'GET')){res.setHeader('Allow','GET, HEAD');return res.status(405).end();}
   try{

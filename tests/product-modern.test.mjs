@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
-const read=name=>readFile(new URL(name==='product.html'?'../server/product-template.html':'../public/'+name,import.meta.url),'utf8');
+const read=name=>readFile(new URL(name==='product.html'?'../server/product-template.html':name==='catalog.html'?'../server/catalog-template.html':'../public/'+name,import.meta.url),'utf8');
 const html=await read('product.html'),css=await read('product-modern.css');
 assert.ok(html.indexOf('product-modern.css')>html.indexOf('store-modern.css'));
 for(const page of ['index.html','catalog.html','admin.html','checkout.html'])assert.ok(!(await read(page)).includes('product-modern.css'));

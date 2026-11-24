@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
-const read=name=>readFile(new URL(name==='product.html'?'../server/product-template.html':'../public/'+name,import.meta.url),'utf8');
+const read=name=>readFile(new URL(name==='product.html'?'../server/product-template.html':name==='catalog.html'?'../server/catalog-template.html':'../public/'+name,import.meta.url),'utf8');
 const css=await read('store-modern.css');
 assert.ok(css.includes('grid-template-areas: "logo catalog search cart"'));
 assert.ok(css.includes('grid-template-areas: "logo catalog cart" "search search search"'));

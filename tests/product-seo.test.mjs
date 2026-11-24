@@ -136,6 +136,6 @@ test('sitemap excludes variant duplicates, retains active orphans; production ro
   assert.ok(config.rewrites.some(r=>r.source==='/product'&&r.destination==='/api/sitemap?view=product'));
   assert.ok(config.redirects.some(r=>r.source==='/product.html'&&r.destination==='/product'&&r.permanent));
   await assert.rejects(readFile(new URL('../public/product.html',import.meta.url)),{code:'ENOENT'});
-  assert.ok(config.functions['api/sitemap.js'].includeFiles.includes('server/product-template.html'));
+  assert.ok(config.functions['api/sitemap.js'].includeFiles.includes('server/*-template.html'));
   assert.ok((await readdir(new URL('../api',import.meta.url))).filter(name=>name.endsWith('.js')).length<=12,'Stay within the existing function budget');
 });

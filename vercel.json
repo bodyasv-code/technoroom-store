@@ -1,11 +1,11 @@
 {
   "cleanUrls": true,
-  "redirects": [{"source":"/product.html","destination":"/product","permanent":true}],
-  "rewrites": [{"source":"/product","destination":"/api/sitemap?view=product"},{"source":"/sitemap.xml","destination":"/api/sitemap"},{"source":"/google-merchant.xml","destination":"/api/sitemap?format=merchant"}],
+  "redirects": [{"source":"/product.html","destination":"/product","permanent":true},{"source":"/catalog.html","destination":"/catalog","permanent":true}],
+  "rewrites": [{"source":"/product","destination":"/api/sitemap?view=product"},{"source":"/catalog","destination":"/api/sitemap?view=catalog"},{"source":"/sitemap.xml","destination":"/api/sitemap"},{"source":"/google-merchant.xml","destination":"/api/sitemap?format=merchant"}],
   "functions": {
     "api/erc-catalog.js": {"includeFiles": "public/**/*.js", "maxDuration": 30},
     "api/import-product-images.js": {"maxDuration": 60},
-    "api/sitemap.js": {"includeFiles":"{server/product-template.html,public/**/*.js}","maxDuration": 60},
+    "api/sitemap.js": {"includeFiles":"{server/*-template.html,public/**/*.js}","maxDuration": 60},
     "api/admin-users.js": {"maxDuration": 60},
     "api/orders.js": {"maxDuration": 60},
     "api/test-order-mail.js": {"maxDuration": 60},

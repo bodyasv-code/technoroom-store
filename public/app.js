@@ -4,6 +4,7 @@ import {readableText,compactProductName,productAvailability,selectProductForPage
 import {availableStockQuantity} from './supplier-availability.js?v=20261110';
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
 import {reportCommerce,commerceItems,ANALYTICS_READY} from './store-commerce-events.js?v=20261021-commerce';
+import {reportLead,normalizeLead} from './store-lead-events.js?v=20261127-leads';
 import {renderArticleContent,articleHasContent} from './article-format.js?v=20261011-article-links';
 import {icecatImageCredit} from './icecat-image-credit.js?v=20261027-images-footer';
 import {screenFacetDefinitions,printerKindValues} from './catalog-refinements.js?v=20261023-facets';
@@ -735,7 +736,7 @@ function openInquiry(id) {
   }
   const name = catalogCardEscape(compactProductName(item.name, item.sku, item.brand));
   dialog.innerHTML = '<form method="dialog" class="inquiry-form">'
-    + '<button class="inquiry-close" value="cancel" aria-label="Закрити">×</button>'
+    + '<button class="inquiry-close" type="button" aria-label="Закрити">×</button>'
     + '<p class="section-kicker">Запит щодо товару</p><h2>' + availability(item).button + '</h2>'
     + '<p class="inquiry-product"><b>' + name + '</b><span>SKU: ' + catalogCardEscape(item.sku || '—') + '</span></p>'
     + '<p>Залиште контакти — менеджер уточнить наявність, строк постачання та підтвердить ціну.</p>'
@@ -746,8 +747,12 @@ function openInquiry(id) {
     + '<p class="inquiry-message" aria-live="polite"></p><button class="button product-buy" type="submit">Надіслати запит</button>'
     + '</form>';
   const form = dialog.querySelector('form');
+  form.querySelector('.inquiry-close').onclick = () => dialog.close();
+  let pending = false, completed = false;
   form.addEventListener('submit', async (event) => {
     event.preventDefault();
+    if (pending || completed) return;
+    pending = true;
     const button = form.querySelector('[type="submit"]');
     const message = form.querySelector('.inquiry-message');
     const data = Object.fromEntries(new FormData(form));
@@ -756,12 +761,19 @@ function openInquiry(id) {
     try {
       const response = await fetch('/api/inquiries', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ productId: item.id, customer: data }) });
       const result = await response.json().catch(() => ({}));
-      if (!response.ok) throw new Error(result.error || 'Не вдалося надіслати запит');
-      message.textContent = 'Запит №' + result.orderId + ' надіслано. Менеджер зв’яжеться з вами для уточнення ціни та постачання.';
+      if (!response.ok) throw new Error(result?.error || 'Не вдалося надіслати запит');
+      completed = true;
+      const lead = normalizeLead({ productId: item.id, inquiryId: result?.orderId });
+      if (lead) reportLead({ productId: item.id, inquiryId: lead.inquiryId });
+      message.textContent = lead
+        ? 'Запит №' + lead.inquiryId + ' надіслано. Менеджер зв’яжеться з вами для уточнення ціни та постачання.'
+        : 'Не отримали номер запиту. Перед повторним надсиланням зв’яжіться з нами для перевірки.';
       form.querySelectorAll('input, textarea, button:not(.inquiry-close)').forEach((control) => { control.disabled = true; });
     } catch (error) {
       message.textContent = error.message || 'Не вдалося надіслати запит. Спробуйте ще раз.';
       button.disabled = false;
+    } finally {
+      pending = false;
     }
   });
   dialog.showModal();

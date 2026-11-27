@@ -1,4 +1,5 @@
 import {COMMERCE_EVENT,ANALYTICS_READY,normalizeCommerce} from './store-commerce-events.js?v=20261021-commerce';
+import {LEAD_EVENT,normalizeLead} from './store-lead-events.js?v=20261127-leads';
 import {attributionParameters} from './analytics-attribution.js?v=20261028-attribution';
 // GA4 basic consent: no Google script or request before explicit analytics opt-in.
 export const MEASUREMENT_ID='G-L3NG1R28PY';
@@ -38,6 +39,7 @@ export function createAnalyticsController(win,doc,onChange=()=>{}) {
   const notify=()=>onChange(choice,{debug,diagnostic,sdkStatus});
   let checkoutTracked=false;
   const transactions=new Set();
+  const inquiries=new Set();
   const stored=()=>{
     try{
       const current=win.localStorage.getItem(CONSENT_KEY);
@@ -116,6 +118,21 @@ export function createAnalyticsController(win,doc,onChange=()=>{}) {
       }
     }catch{diagnostic=label+': помилка виклику тега.';notify();}
   });
+  doc.addEventListener?.(LEAD_EVENT,event=>{
+    if(choice!=='granted'||win[disableKey]||typeof win.gtag!=='function')return;
+    const lead=normalizeLead(event.detail);
+    if(!lead)return;
+    const key='technoroom-ga-lead-'+lead.inquiryId;
+    if(inquiries.has(lead.inquiryId))return;
+    try{if(win.sessionStorage.getItem(key)==='sent')return;}catch{}
+    try{
+      // A request is not a purchase: omit product price, revenue and contact details.
+      win.gtag('event','generate_lead',{...lead.payload,...context,send_to:MEASUREMENT_ID,...(debug?{debug_mode:true}:{})});
+      inquiries.add(lead.inquiryId);
+      try{win.sessionStorage.setItem(key,'sent');}catch{}
+      diagnostic='generate_lead: передано тегу ('+new Date().toLocaleTimeString('uk-UA')+'). Це ще не підтвердження отримання Google.';notify();
+    }catch{diagnostic='generate_lead: помилка виклику тега.';notify();}
+  });
   apply(stored());
   return {choose,getChoice:()=>choice,getDiagnostics:()=>({debug,diagnostic,sdkStatus})};
 }
@@ -124,7 +141,7 @@ export function mountStoreAnalytics(win=window,doc=document) {
   if(!analyticsPage(win.location.href,doc.referrer)||doc.getElementById('storeAnalyticsConsent'))return;
   const banner=doc.createElement('section');banner.id='storeAnalyticsConsent';banner.className='analytics-consent';
   banner.setAttribute('aria-label','Налаштування cookies');
-  banner.innerHTML='<div class="analytics-consent-copy"><strong>Використання cookies</strong><p>За вашою згодою використовуємо cookies Google Analytics для статистики відвідувань. Ви можете відхилити аналітику — покупки працюватимуть як завжди.</p><details><summary>Докладніше</summary><p>Після вашої згоди Google отримує дані про переглянуті сторінки, додавання товарів у кошик, створені замовлення, джерело переходу (зокрема дозволені рекламні мітки), браузер і пристрій та використовує аналітичні cookies. Поля замовлення, телефон, email і текст пошуку не передаємо. Рекламну персоналізацію не вмикаємо. Вибір зберігаємо на цьому пристрої до 180 днів; його можна змінити через «Налаштування cookies» внизу сторінки. <a href="https://policies.google.com/privacy?hl=uk" target="_blank" rel="noopener noreferrer">Конфіденційність Google</a>.</p></details></div><div class="analytics-consent-actions"><button type="button" data-analytics-choice="denied">Відхилити</button><button type="button" data-analytics-choice="granted">Дозволити аналітику</button></div>';
+  banner.innerHTML='<div class="analytics-consent-copy"><strong>Використання cookies</strong><p>За вашою згодою використовуємо cookies Google Analytics для статистики відвідувань. Ви можете відхилити аналітику — покупки працюватимуть як завжди.</p><details><summary>Докладніше</summary><p>Після вашої згоди Google отримує дані про переглянуті сторінки, додавання товарів у кошик, створені замовлення, успішні запити ціни й наявності, джерело переходу (зокрема дозволені рекламні мітки), браузер і пристрій та використовує аналітичні cookies. Поля форм, ім’я, телефон, email, коментарі й текст пошуку не передаємо. Рекламну персоналізацію не вмикаємо. Вибір зберігаємо на цьому пристрої до 180 днів; його можна змінити через «Налаштування cookies» внизу сторінки. <a href="https://policies.google.com/privacy?hl=uk" target="_blank" rel="noopener noreferrer">Конфіденційність Google</a>.</p></details></div><div class="analytics-consent-actions"><button type="button" data-analytics-choice="denied">Відхилити</button><button type="button" data-analytics-choice="granted">Дозволити аналітику</button></div>';
   const footer=doc.createElement('div');footer.className='analytics-settings';
   const settings=doc.createElement('button');settings.type='button';settings.textContent='Налаштування cookies';
   settings.setAttribute('aria-controls',banner.id);settings.setAttribute('aria-expanded','false');footer.append(settings);

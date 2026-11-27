@@ -6,11 +6,23 @@ export function specificationRepairSql(plans,{operation='spec-duplicate-tails-20
     for(const row of [p.before,p.after])if(Object.keys(row).some(k=>!['specifications','manual_overrides'].includes(k))||!row.specifications||Array.isArray(row.specifications)||!Object.hasOwn(row,'manual_overrides'))throw Error('Only specifications and their protection marks may change');
     if(JSON.stringify(p.before)===JSON.stringify(p.after))throw Error('Unchanged repair');
   }
+  // The SQL editor/browser bridge has a message-size limit. Send the complete
+  // before snapshot once and reconstruct the exact after snapshot from a patch.
+  const compact=plans.map(p=>{
+    const keys=[...new Set([...Object.keys(p.before.specifications),...Object.keys(p.after.specifications)])]
+      .filter(key=>JSON.stringify(p.before.specifications[key])!==JSON.stringify(p.after.specifications[key]));
+    return {id:p.id,sku:p.sku,brand:p.brand,name:p.name,category:p.category,before:p.before,
+      after:{manual_overrides:p.after.manual_overrides},
+      patch:Object.fromEntries(keys.filter(key=>Object.hasOwn(p.after.specifications,key)).map(key=>[key,p.after.specifications[key]])),
+      removed:keys.filter(key=>!Object.hasOwn(p.after.specifications,key))};
+  });
   return `begin;
 set local lock_timeout='5s';set local statement_timeout='60s';set local technoroom.import_write='true';
 create temporary table spec_tail_plan(payload jsonb) on commit drop;
 alter table spec_tail_plan enable row level security;
-insert into spec_tail_plan values(${json(plans)});
+insert into spec_tail_plan
+select jsonb_agg((item-array['patch','removed'])||jsonb_build_object('after',(item->'after')||jsonb_build_object('specifications',((item->'before'->'specifications')-array(select jsonb_array_elements_text(item->'removed')))||(item->'patch'))))
+from jsonb_array_elements(${json(compact)}) item;
 do $repair$
 declare item jsonb;original jsonb;expected jsonb;actual jsonb;restored jsonb;
 begin

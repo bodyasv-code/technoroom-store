@@ -19,3 +19,9 @@ export function discountedPrice(price, promotion) {
     ?base*(1-discount/100):base-discount;
   return Math.round((Math.max(0,value)+Number.EPSILON)*100)/100;
 }
+
+export const PRICE_ON_REQUEST='Ціна за запитом';
+export const hasProductPrice=value=>(typeof value==='number'||typeof value==='string')&&Number.isFinite(Number(value))&&Number(value)>0;
+export function formatProductPrice(value,format=price=>new Intl.NumberFormat('uk-UA').format(price)+' ₴') {
+  return hasProductPrice(value)?format(Number(value)):PRICE_ON_REQUEST;
+}

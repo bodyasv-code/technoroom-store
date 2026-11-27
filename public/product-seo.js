@@ -1,6 +1,6 @@
 import {productNameWithSku} from './product-identity.js';
 import {availableStockQuantity,supplierStockNeedsConfirmation} from './supplier-availability.js';
-import {matchingPromotion,discountedPrice} from './store-pricing.js';
+import {matchingPromotion,discountedPrice,hasProductPrice} from './store-pricing.js?v=20261127-price-request';
 import {merchantOfferPolicies} from './merchant-policies.js';
 
 export const STORE_ORIGIN='https://www.technoroom.com.ua';
@@ -54,13 +54,14 @@ export function productPlainText(value='') {
   }).replace(/\s+/gu,' ').trim();
 }
 
-export function productAvailability(product={}) {
+export function productAvailability(product={},price=product.price) {
   const quantity=availableStockQuantity(product);
-  if(supplierStockNeedsConfirmation(product))return {label:'Наявність уточнюється',button:'Уточнити наявність',orderable:false,inquiry:true};
-  if(quantity>=1&&quantity<=2)return {label:'Закінчується',button:'У кошик',orderable:true};
-  if(!quantity&&(product.availabilityStatus??product.availability_status)==='under_order')return {label:'Під замовлення — уточнюйте термін',button:'Уточнити наявність',orderable:false,inquiry:true};
-  if(quantity>0)return {label:'В наявності',button:'У кошик',orderable:true};
-  return {label:'Немає в наявності',button:'Немає',orderable:false};
+  const state=supplierStockNeedsConfirmation(product)?{label:'Наявність уточнюється',button:'Уточнити наявність',orderable:false,inquiry:true}
+    :quantity>=1&&quantity<=2?{label:'Закінчується',button:'У кошик',orderable:true}
+    :!quantity&&(product.availabilityStatus??product.availability_status)==='under_order'?{label:'Під замовлення — уточнюйте термін',button:'Уточнити наявність',orderable:false,inquiry:true}
+    :quantity>0?{label:'В наявності',button:'У кошик',orderable:true}
+    :{label:'Немає в наявності',button:'Немає',orderable:false};
+  return hasProductPrice(product.price)&&hasProductPrice(price)?state:{...state,button:'Уточнити ціну',orderable:false,inquiry:true,priceInquiry:true};
 }
 
 const parentId=row=>Number(row?.parentProductId??row?.parent_product_id)||null;
@@ -92,9 +93,9 @@ export function productSeoDetails({base,item,storageOrigin,promotions=[],promoti
   const description=productPlainText(item.descriptionContent??item.description)||name+' — купити в TECHNOROOM.';
   const canonical=STORE_ORIGIN+'/product?id='+encodeURIComponent(base.id);
   const image=productImageUrl(item,storageOrigin);
-  const state=productAvailability(item);
   const priced={...item,parentProductId:parentId(item)};
-  const price=discountedPrice(item.price,matchingPromotion(priced,promotions,promotionLinks,now));
+  const price=hasProductPrice(item.price)?discountedPrice(item.price,matchingPromotion(priced,promotions,promotionLinks,now)):0;
+  const state=productAvailability(item,price);
   const schema={'@context':'https://schema.org','@type':'Product','@id':canonical+'#product',name,description,url:canonical};
   if(image)schema.image=[image];
   const brand=productPlainText(item.brand||base.brand),sku=productPlainText(item.sku);

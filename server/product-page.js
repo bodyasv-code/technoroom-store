@@ -11,6 +11,7 @@ import {orderSpecificationEntries} from '../public/specification-order.js';
 import {groupProductSpecifications,renderProductSpecificationGroups,specificationCountLabel} from '../public/product-specification-groups.js';
 import {productSectionNavigation,productServiceSections} from '../public/product-page-layout.js';
 import {htmlEscape as e,productPlainText,productSeoDetails,productHeadMarkup,productBreadcrumbMarkup,selectProductForPage} from '../public/product-seo.js';
+import {formatProductPrice,hasProductPrice} from '../public/store-pricing.js';
 
 // Explicit public projection: never serialize internal notes, costs or supplier metadata.
 export const PUBLIC_PRODUCT_COLUMNS='id,name,sku,brand,brand_id,category,parent_product_id,variant_label,description,specifications,price,stock_quantity,in_stock,availability_status,supplier_available_quantity,supplier_stock_uncertain,image_path,image_paths,is_active';
@@ -78,15 +79,15 @@ export function renderProductPage(template,data,{storageOrigin,now=Date.now()}={
   const groups=groupProductSpecifications([['Виробник',item.brand||base.brand||'TECHNOROOM'],...specs],{projector:isProjectorProduct(item),printer:isPrinterDevice(item)});
   const count=groups.reduce((sum,group)=>sum+group.entries.length,0);
   const description=productPlainText(item.description);
-  const money=new Intl.NumberFormat('uk-UA').format(details.price)+' ₴';
+  const money=formatProductPrice(details.price);
   const variantMarkup=variants.length?'<div class="product-variants"><b>Оберіть варіант</b><div>'+variants.map(row=>'<a class="product-variant'+(row.id===item.id?' is-selected':'')+'" href="/product?id='+base.id+'&amp;variant='+row.id+'">'+e(row.variant_label||row.name)+'</a>').join('')+'</div></div>':'';
   const view='<section class="product-showcase"><div class="product-gallery-panel"><div class="product-detail-visual"><div class="product-image" style="position:static;width:100%;min-height:320px;display:flex;align-items:center;justify-content:center">'
     +(details.image?'<img src="'+e(details.image)+'" alt="'+e(details.heading)+'" style="position:static;width:100%;height:480px;object-fit:contain">':'<div class="product-placeholder">Фото товару з’явиться незабаром</div>')
     +'</div></div></div><div class="product-overview"><div class="product-topline"><span class="product-category-path">'+path.map(category=>'<a href="/catalog?category='+encodeURIComponent(category.slug)+'">'+e(category.name)+'</a>').join(' › ')+'</span><span class="product-code">SKU: '+e(item.sku||'—')+' · Код: '+item.id+'</span></div>'
     +'<p class="product-brand">'+e(base.brand||item.brand||'TECHNOROOM')+'</p><h1>'+e(details.heading)+'</h1>'+variantMarkup
     +'<div class="product-buy-card"><div class="product-availability '+(details.state.orderable||details.state.inquiry?'is-available':'is-unavailable')+'"><i></i><span>'+e(details.state.label)+'</span></div>'
-    +'<strong class="detail-price">'+e(money)+'</strong><p class="product-price-note">Ціна вказана за 1 одиницю товару</p><div class="detail-actions">'
-    +(details.state.inquiry?'<a class="button product-buy" href="/contacts">Уточнити наявність</a>':'<button type="button" class="button product-buy" disabled>'+(details.state.orderable?'Додати в кошик':'Немає в наявності')+'</button>')
+    +'<strong class="detail-price">'+e(money)+'</strong>'+(hasProductPrice(details.price)?'<p class="product-price-note">Ціна вказана за 1 одиницю товару</p>':'')+'<div class="detail-actions">'
+    +(details.state.inquiry?'<a class="button product-buy" href="/contacts">'+e(details.state.button)+'</a>':'<button type="button" class="button product-buy" disabled>'+(details.state.orderable?'Додати в кошик':'Немає в наявності')+'</button>')
     +'<a class="button product-back" href="/catalog">До каталогу</a></div><div class="product-service-grid"><div><b>Доставка</b><span>Підберемо зручний спосіб</span></div><div><b>Гарантія</b><span>Офіційна техніка</span></div><div><b>Консультація</b><span>Допоможемо з вибором</span></div></div></div></div></section>'
     +productSectionNavigation(Boolean(description))+'<section class="product-content-grid">'
     +(description?'<article class="product-description-card" id="product-description" tabindex="-1" aria-labelledby="product-description-title"><p class="section-kicker">Про товар</p><h2 id="product-description-title">Опис</h2><div class="product-description-rich"><p>'+e(description)+'</p></div></article>':'')

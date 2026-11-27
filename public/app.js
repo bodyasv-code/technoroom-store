@@ -1,6 +1,6 @@
 import {catalogSeoDetails,updateCatalogSeo} from './catalog-seo.js?v=20261124-categories';
 import {catalogCategoryScope,canonicalCategorySlug} from './catalog-category-scope.js?v=20261124-categories';
-import {readableText,compactProductName,productAvailability,selectProductForPage,productSeoDetails,updateProductSeo,productBreadcrumbMarkup} from './product-seo.js?v=20261124-policies';
+import {readableText,compactProductName,productAvailability,selectProductForPage,productSeoDetails,updateProductSeo,productBreadcrumbMarkup} from './product-seo.js?v=20261127-price-request';
 import {availableStockQuantity} from './supplier-availability.js?v=20261110';
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
 import {reportCommerce,commerceItems,ANALYTICS_READY} from './store-commerce-events.js?v=20261021-commerce';
@@ -22,9 +22,9 @@ import {orderSpecificationEntries} from './specification-order.js?v=20261013-pri
 import {isPrinterDevice, printerDisplayEntries} from './printer-display.js?v=20261017-customer-content';
 import {catalogResultState} from './catalog-loading-state.js?v=20261013-catalog-loading';
 import {catalogRequestScope, catalogCacheKey, mergeCatalogRows, applyCatalogScope, cartProductIds} from './catalog-scope.js?v=20261013-cart-ids';
-import {matchingPromotion, discountedPrice} from './store-pricing.js?v=20261013-checkout-pricing';
+import {matchingPromotion,discountedPrice,hasProductPrice,formatProductPrice,PRICE_ON_REQUEST} from './store-pricing.js?v=20261127-price-request';
 import {formatCheckoutPhone, validCheckoutPhone} from './checkout-phone.js?v=20261013-checkout-usability';
-import {attachStoreSearch, searchScore, normalizeSearch} from './store-search.js?v=20261012-search';
+import {attachStoreSearch, searchScore, normalizeSearch} from './store-search.js?v=20261127-price-request';
 import {resolveProjectorSpecifications, isProjectorProduct, normalizeProjectorLightSource, projectorResolutionLabel, projectorResolutionFilterValue, compareProjectorResolutions} from './projector-specs.js?v=20261013-spec-colons';
 import {normalizeSpecificationEntries, normalizeSpecifications} from './specification-normalization.js?v=20261017-customer-content';
 import {hasSpecificationCode} from './specification-values.js?v=20261028-semicolons';
@@ -50,7 +50,7 @@ const projectorComparison=mountProjectorComparison({loadItems:async(ids)=>{
   if(error)throw error;
   return (data||[]).map(storeProductFromRow).filter(isProjectorProduct).map(item=>({
     id:item.id,name:item.name,sku:item.sku,entries:displaySpecificationEntries(item),
-    priceLabel:Number(item.price)>0?money(salePrice(item)):'Ціну уточнюйте',stockLabel:availability(item).label
+    priceLabel:productMoney(item),stockLabel:availability(item).label
   }));
 }});
 let productsLoaded = false;
@@ -126,7 +126,8 @@ function promotionFor(product){
   return matchingPromotion(product,activePromotions,promotionProductIds);
 }
 function promotionByProductLink(product){for(const p of activePromotions){if(promotionProductIds.get(Number(p.id))?.has(Number(product.id)))return p}return null}
-function salePrice(product){return discountedPrice(product.price,promotionFor(product));}
+function salePrice(product){return hasProductPrice(product.price)?discountedPrice(product.price,promotionFor(product)):0;}
+function productMoney(product,quantity=1){return formatProductPrice(salePrice(product)*quantity,money);}
 function card(product) { const promo=promotionFor(product)||promotionByProductLink(product),price=promo?Math.max(0,promo.discount_type==='percent'?Number(product.price)*(1-Number(promo.discount_value)/100):Number(product.price)-Number(promo.discount_value)):Number(product.price),badge=promo?'<span class="sale-badge">'+(promo.discount_type==='percent'?'-'+Number(promo.discount_value)+'%':'АКЦІЯ')+'</span>':'',promoName=promo?'<div class="promotion-name">🏷 Акція: <b>'+escapeHtml(promo.name||'Спеціальна пропозиція')+'</b></div>':''; return `<article class="product">${badge}<div class="product-image ${product.type}">${image(product)}</div>${promoName}<h3><a href="product.html?id=${product.id}">${product.name}</a></h3><p class="availability">${product.stock ? 'В наявності' : 'Немає в наявності'}</p><p>${product.description || ''}</p><div class="product-footer"><div>${promo?'<del class="old-price">'+money(product.price)+'</del>':''}<strong class="price">${money(price)}</strong></div><button class="add-button" data-add="${product.id}" ${product.stock ? '' : 'disabled'}>${product.stock ? 'У кошик' : 'Немає'}</button></div></article>`; }
 // Card images are navigation links, not zoom controls. Detail-page zoom is
 // handled separately by the delegated .product-detail-visual listener below.
@@ -720,7 +721,7 @@ async function mountMegaCatalog() {
   });
 }
 /* Єдині статуси для серверної сторінки й інтерактивної картки. */
-function availability(product) { return productAvailability(product); }
+function availability(product) { return productAvailability(product,salePrice(product)); }
 
 function openInquiry(id) {
   const item = get(Number(id));
@@ -735,7 +736,7 @@ function openInquiry(id) {
   const name = catalogCardEscape(compactProductName(item.name, item.sku, item.brand));
   dialog.innerHTML = '<form method="dialog" class="inquiry-form">'
     + '<button class="inquiry-close" value="cancel" aria-label="Закрити">×</button>'
-    + '<p class="section-kicker">Запит щодо товару</p><h2>Уточнити наявність</h2>'
+    + '<p class="section-kicker">Запит щодо товару</p><h2>' + availability(item).button + '</h2>'
     + '<p class="inquiry-product"><b>' + name + '</b><span>SKU: ' + catalogCardEscape(item.sku || '—') + '</span></p>'
     + '<p>Залиште контакти — менеджер уточнить наявність, строк постачання та підтвердить ціну.</p>'
     + '<label>Ім’я<input name="name" required autocomplete="name" placeholder="Ваше ім’я"></label>'
@@ -756,7 +757,7 @@ function openInquiry(id) {
       const response = await fetch('/api/inquiries', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ productId: item.id, customer: data }) });
       const result = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(result.error || 'Не вдалося надіслати запит');
-      message.textContent = 'Запит №' + result.orderId + ' надіслано. Менеджер зв’яжеться з вами для уточнення терміну.';
+      message.textContent = 'Запит №' + result.orderId + ' надіслано. Менеджер зв’яжеться з вами для уточнення ціни та постачання.';
       form.querySelectorAll('input, textarea, button:not(.inquiry-close)').forEach((control) => { control.disabled = true; });
     } catch (error) {
       message.textContent = error.message || 'Не вдалося надіслати запит. Спробуйте ще раз.';
@@ -795,9 +796,9 @@ renderCart = () => {
     <div class="cart-item cart-item-rich">
       <a class="cart-thumb" href="product.html?id=${product.id}">${src?`<img src="${src}" alt="${catalogCardEscape(product.name)}">`:'<span>Фото</span>'}</a>
       <div class="cart-item-main"><a href="product.html?id=${product.id}" class="cart-item-name">${catalogCardEscape(product.name)}</a><span class="cart-item-stock">${state.label}</span><div class="cart-qty"><button type="button" data-cart-minus="${index}" aria-label="Зменшити">−</button><input type="number" min="1" max="99" value="${quantity}" data-cart-qty="${index}"><button type="button" data-cart-plus="${index}" aria-label="Збільшити">+</button></div></div>
-      <div class="cart-item-side"><strong>${money(salePrice(product)*quantity)}</strong><small>${money(salePrice(product))} / шт.</small><button type="button" class="cart-remove" data-cart-remove="${index}">Видалити</button></div>
+      <div class="cart-item-side"><strong>${productMoney(product,quantity)}</strong><small>${productMoney(product)}${hasProductPrice(salePrice(product))?' / шт.':''}</small><button type="button" class="cart-remove" data-cart-remove="${index}">Видалити</button></div>
     </div>`}).join(''):'<div class="cart-empty-state"><b>Кошик порожній</b><span>Додайте товари з каталогу</span><a href="catalog.html">Перейти до каталогу →</a></div>';
-  const sum=items.reduce((acc,x)=>acc+salePrice(x.product)*x.quantity,0); if(total)total.textContent=money(sum); if(checkoutButton)checkoutButton.disabled=!items.length;
+  const sum=items.reduce((acc,x)=>acc+salePrice(x.product)*x.quantity,0); if(total)total.textContent=items.some(x=>!hasProductPrice(salePrice(x.product)))?PRICE_ON_REQUEST:money(sum); if(checkoutButton)checkoutButton.disabled=!items.length||items.some(x=>!availability(x.product).orderable);
   const updateQty=(i,q)=>{if(!cart[i])return;cart[i].quantity=Math.max(1,Math.min(99,Number(q)||1));save();renderCart()};
   root.querySelectorAll('[data-cart-minus]').forEach(b=>b.onclick=()=>updateQty(Number(b.dataset.cartMinus),Number(cart[Number(b.dataset.cartMinus)]?.quantity||1)-1));
   root.querySelectorAll('[data-cart-plus]').forEach(b=>b.onclick=()=>updateQty(Number(b.dataset.cartPlus),Number(cart[Number(b.dataset.cartPlus)]?.quantity||1)+1));
@@ -866,7 +867,7 @@ card = (product) => {
   const variants = productVariantsFor(product);
   const displayProduct = variants.length ? preferredVariantFor(product) : product;
   const state = availability(displayProduct);
-  const promotion = promotionFor(displayProduct);
+  const promotion = hasProductPrice(displayProduct.price)&&hasProductPrice(salePrice(displayProduct))?promotionFor(displayProduct):null;
   const name = catalogCardEscape(compactProductName(product.name, product.sku, product.brand));
   const brand = catalogCardEscape(product.brand || 'TECHNOROOM');
   const source = imageUrl(product) || imageUrl(displayProduct);
@@ -874,7 +875,7 @@ card = (product) => {
     ? `<img src="${source}" alt="${name}" loading="lazy" draggable="false">`
     : '<div class="product-placeholder"><span>Фото товару<br>з’явиться незабаром</span></div>';
 
-  const currentPrice = promotion ? salePrice(displayProduct) : Number(displayProduct.price);
+  const currentPrice = salePrice(displayProduct);
   const promotionBadge = promotion ? '<span class="sale-badge">' + (promotion.discount_type === 'percent' ? '-' + Number(promotion.discount_value) + '%' : 'АКЦІЯ') + '</span>' : '';
   const variantsCount = variants.length;
   const variantsNote = variantsCount ? '<span class="product-variants-note">Варіантів: ' + variantsCount + '</span>' : '';
@@ -891,7 +892,7 @@ card = (product) => {
     <a class="product-card-hover-title" href="product.html?id=${product.id}">${name}</a>
     <span class="product-card-hover-payment">▣ <span>Безпечна<br>оплата</span></span>
     <span class="product-card-hover-review">◯ &nbsp; залишити відгук</span>
-    <span class="product-card-hover-bottom"><span>${promotion ? '<del>' + money(displayProduct.price) + '</del>' : ''}<b>${money(currentPrice)}</b></span>${hoverAction}</span>
+    <span class="product-card-hover-bottom"><span>${promotion ? '<del>' + money(displayProduct.price) + '</del>' : ''}<b>${formatProductPrice(currentPrice,money)}</b></span>${hoverAction}</span>
     ${previewSpecs ? '<ul>' + previewSpecs + '</ul>' : ''}
   </aside>`;
   return `<article class="product product-card">
@@ -900,7 +901,7 @@ card = (product) => {
       <div class="product-card-meta"><span>${brand}</span><span class="availability">${state.label}</span></div>
       <h3><a href="product.html?id=${product.id}">${name}</a></h3>${variantsNote}
       ${promotion ? '<div class="promotion-name">🏷 Акція: <b>' + catalogCardEscape(promotion.name || 'Спеціальна пропозиція') + '</b></div>' : ''}
-      <div class="product-footer"><div>${promotion ? '<del class="old-price">' + money(displayProduct.price) + '</del>' : ''}<strong class="price">${money(currentPrice)}</strong></div>${state.inquiry ? '<button class="add-button" data-inquiry="' + displayProduct.id + '">' + state.button + '</button>' : '<button class="add-button" data-add="' + displayProduct.id + '" ' + (state.orderable ? '' : 'disabled') + '>' + state.button + '</button>'}</div>
+      <div class="product-footer"><div>${promotion ? '<del class="old-price">' + money(displayProduct.price) + '</del>' : ''}<strong class="price">${formatProductPrice(currentPrice,money)}</strong></div>${state.inquiry ? '<button class="add-button" data-inquiry="' + displayProduct.id + '">' + state.button + '</button>' : '<button class="add-button" data-add="' + displayProduct.id + '" ' + (state.orderable ? '' : 'disabled') + '>' + state.button + '</button>'}</div>
       ${isProjectorProduct(product)?comparisonButton(product):''}
     </div>${hoverPreview}
   </article>`;
@@ -971,11 +972,12 @@ checkout = () => {
   const renderSummary=()=>{
     const items=cart.map((entry,index)=>({product:get(Number(entry.productId)),quantity:Number(entry.quantity||1),index})).filter(x=>x.product);
     const total=items.reduce((sum,x)=>sum+salePrice(x.product)*x.quantity,0);
+    const totalLabel=items.some(x=>!hasProductPrice(salePrice(x.product)))?PRICE_ON_REQUEST:money(total);
     root.innerHTML=items.length?items.map(({product,quantity,index})=>{const src=imageUrl(product);return `<div class="checkout-item checkout-item-editable">
       <a class="checkout-item-thumb" href="product.html?id=${product.id}">${src?`<img src="${src}" alt="${catalogCardEscape(product.name)}">`:'<span>Фото</span>'}</a>
-      <div class="checkout-item-info"><a href="product.html?id=${product.id}">${catalogCardEscape(product.name)}</a><small>${money(salePrice(product))} / шт.</small><div class="checkout-mini-qty"><button type="button" data-checkout-minus="${index}">−</button><b>${quantity}</b><button type="button" data-checkout-plus="${index}">+</button></div></div>
-      <div class="checkout-item-price"><strong>${money(salePrice(product)*quantity)}</strong><button type="button" data-checkout-remove="${index}" aria-label="Видалити">✕</button></div>
-    </div>`}).join('')+`<div class="checkout-summary-count"><span>Товари (${items.reduce((n,x)=>n+x.quantity,0)})</span><b>${money(total)}</b></div><div class="checkout-total"><span>До сплати</span><strong>${money(total)}</strong></div>`:'<div class="checkout-empty"><b>Кошик порожній</b><a href="catalog.html">Перейти до каталогу →</a></div>';
+      <div class="checkout-item-info"><a href="product.html?id=${product.id}">${catalogCardEscape(product.name)}</a><small>${productMoney(product)}${hasProductPrice(salePrice(product))?' / шт.':''}</small><div class="checkout-mini-qty"><button type="button" data-checkout-minus="${index}">−</button><b>${quantity}</b><button type="button" data-checkout-plus="${index}">+</button></div></div>
+      <div class="checkout-item-price"><strong>${productMoney(product,quantity)}</strong><button type="button" data-checkout-remove="${index}" aria-label="Видалити">✕</button></div>
+    </div>`}).join('')+`<div class="checkout-summary-count"><span>Товари (${items.reduce((n,x)=>n+x.quantity,0)})</span><b>${totalLabel}</b></div><div class="checkout-total"><span>До сплати</span><strong>${totalLabel}</strong></div>`:'<div class="checkout-empty"><b>Кошик порожній</b><a href="catalog.html">Перейти до каталогу →</a></div>';
     const setQty=(i,q)=>{if(!cart[i])return;cart[i].quantity=Math.max(1,Math.min(99,q));save();renderCart();renderSummary()};
     root.querySelectorAll('[data-checkout-minus]').forEach(b=>b.onclick=()=>setQty(+b.dataset.checkoutMinus,Number(cart[+b.dataset.checkoutMinus].quantity||1)-1));
     root.querySelectorAll('[data-checkout-plus]').forEach(b=>b.onclick=()=>setQty(+b.dataset.checkoutPlus,Number(cart[+b.dataset.checkoutPlus].quantity||1)+1));
@@ -1220,8 +1222,8 @@ product = function () {
       + '<div class="product-overview"><div class="product-topline"><span class="product-category-path"><a href="catalog.html?category=' + encodeURIComponent(item.type || '') + '" class="product-category-link">Каталог</a></span><span class="product-code">SKU: ' + safe(item.sku || '—') + ' · Код: ' + item.id + '</span></div>'
       + '<p class="product-brand">' + safeBrand + '</p><h1>' + safeName + '</h1>' + variantMarkup
       + '<div class="product-buy-card"><div class="product-availability ' + (state.orderable || state.inquiry ? 'is-available' : 'is-unavailable') + '"><i></i><span>' + state.label + '</span></div>'
-      + '<strong class="detail-price">' + money(salePrice(item)) + '</strong><p class="product-price-note">Ціна вказана за 1 одиницю товару</p>'
-      + '<div class="detail-actions">' + (state.inquiry ? '<button class="button product-buy" data-inquiry="' + item.id + '">Уточнити наявність</button>' : '<button class="button product-buy" data-add="' + item.id + '" ' + (state.orderable ? '' : 'disabled') + '>' + (state.orderable ? 'Додати в кошик' : 'Немає в наявності') + '</button>') + '<a class="button product-back" href="' + catalogCardEscape(catalogReturnUrl) + '">До каталогу</a></div>'
+      + '<strong class="detail-price">' + productMoney(item) + '</strong>' + (hasProductPrice(salePrice(item))?'<p class="product-price-note">Ціна вказана за 1 одиницю товару</p>':'')
+      + '<div class="detail-actions">' + (state.inquiry ? '<button class="button product-buy" data-inquiry="' + item.id + '">' + state.button + '</button>' : '<button class="button product-buy" data-add="' + item.id + '" ' + (state.orderable ? '' : 'disabled') + '>' + (state.orderable ? 'Додати в кошик' : 'Немає в наявності') + '</button>') + '<a class="button product-back" href="' + catalogCardEscape(catalogReturnUrl) + '">До каталогу</a></div>'
       + (isProjectorProduct(item)?comparisonButton(item):'')
       + highlights
       + '<div class="product-service-grid"><div><b>Доставка</b><span>Підберемо зручний спосіб</span></div><div><b>Гарантія</b><span>Офіційна техніка</span></div><div><b>Консультація</b><span>Допоможемо з вибором</span></div></div></div></div></section>'
@@ -1343,7 +1345,7 @@ const recommendationCard = product => {
     + '<div class="storefront-recommendation-content">'
     + '<p class="storefront-recommendation-brand">' + brand + '</p>'
     + '<a class="storefront-recommendation-name" href="product.html?id=' + id + '">' + name + '</a>'
-    + '<div class="storefront-recommendation-meta"><span class="storefront-recommendation-price">' + money(salePrice(product)) + '</span><span class="storefront-recommendation-stock">' + availabilityLabel + '</span></div>'
+    + '<div class="storefront-recommendation-meta"><span class="storefront-recommendation-price">' + productMoney(product) + '</span><span class="storefront-recommendation-stock">' + availabilityLabel + '</span></div>'
     + '</div></article>';
 };
 const renderStorefrontRecommendations = () => {

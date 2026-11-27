@@ -1,3 +1,5 @@
+import {formatProductPrice} from './store-pricing.js?v=20261127-price-request';
+
 export const normalizeSearch = (value = '') => String(value).normalize('NFKC')
   .toLocaleLowerCase('uk-UA').replace(/є/g, 'е')
   .replace(/[^\p{L}\p{N}]+/gu, ' ').trim().replace(/\s+/g, ' ');
@@ -94,7 +96,7 @@ export function attachStoreSearch(input, button, options) {
           + '<span class="store-search-copy"><b>' + escape(product.name) + '</b><small>'
           + escape(text(product.brand) || 'TECHNOROOM') + (product.sku ? ' · Арт. ' + escape(product.sku) : '')
           + '</small><span class="store-search-stock' + (!stock.orderable ? ' is-unavailable' : '') + '">' + escape(stock.label) + '</span></span>'
-          + '<strong class="store-search-price">' + (Number(product.price) > 0 ? price(product.price) : 'Ціну уточнюйте') + '</strong></a>';
+          + '<strong class="store-search-price">' + escape(formatProductPrice(product.price,price)) + '</strong></a>';
       }).join('') : '<div class="store-search-empty"><b>Не знайшли «' + escape(query) + '»</b><p>Спробуйте коротшу назву, модель або артикул з упаковки. Наприклад: Epson, MF664Cdw чи 6928C008.</p></div>')
       + '<button class="store-search-all" type="button">' + (all.length ? 'Усі результати пошуку →' : 'Відкрити пошук у каталозі →') + '</button>';
     panel.querySelector('button').addEventListener('click', run);

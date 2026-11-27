@@ -5,6 +5,7 @@ export function specificationRepairSql(plans,{operation='spec-duplicate-tails-20
     if(!Number.isSafeInteger(p.id)||p.id<1||!p.sku||!p.name||!p.category||!p.before||!p.after)throw Error('Missing identity or snapshot');
     for(const row of [p.before,p.after])if(Object.keys(row).some(k=>!['specifications','manual_overrides'].includes(k))||!row.specifications||Array.isArray(row.specifications)||!Object.hasOwn(row,'manual_overrides'))throw Error('Only specifications and their protection marks may change');
     if(JSON.stringify(p.before)===JSON.stringify(p.after))throw Error('Unchanged repair');
+    if(p.reviewed&&(!/^https:\/\//.test(p.reviewed.source)||!Array.isArray(p.reviewed.keys)||!p.reviewed.keys.length||p.reviewed.keys.some(key=>typeof key!=='string'||(!Object.hasOwn(p.before.specifications,key)&&!Object.hasOwn(p.after.specifications,key)))))throw Error('Invalid manufacturer review');
   }
   // The SQL editor/browser bridge has a message-size limit. Send the complete
   // before snapshot once and reconstruct the exact after snapshot from a patch.
@@ -12,7 +13,7 @@ export function specificationRepairSql(plans,{operation='spec-duplicate-tails-20
     const keys=[...new Set([...Object.keys(p.before.specifications),...Object.keys(p.after.specifications)])]
       .filter(key=>JSON.stringify(p.before.specifications[key])!==JSON.stringify(p.after.specifications[key]));
     return {id:p.id,sku:p.sku,brand:p.brand,name:p.name,category:p.category,before:p.before,
-      after:{manual_overrides:p.after.manual_overrides},
+      after:{manual_overrides:p.after.manual_overrides},...(p.reviewed?{reviewed:p.reviewed}:{}),
       patch:Object.fromEntries(keys.filter(key=>Object.hasOwn(p.after.specifications,key)).map(key=>[key,p.after.specifications[key]])),
       removed:keys.filter(key=>!Object.hasOwn(p.after.specifications,key))};
   });
@@ -34,12 +35,22 @@ begin
   if exists(select 1 from jsonb_each(item->'${restore?'after':'before'}') e where original->e.key is distinct from e.value) then raise exception 'Snapshot changed';end if;
   ${restore?`select before_row into restored from technoroom_maintenance.product_repair_backup where operation='${operation}' and product_id=(item->>'id')::bigint;
   if restored is null or exists(select 1 from jsonb_each(item->'before') e where restored->e.key is distinct from e.value) then raise exception 'Backup missing or changed';end if;
+  if item?'reviewed' then
+   delete from technoroom_maintenance.reviewed_product_content where product_id=(item->>'id')::bigint and operation='${operation}' and sku=item->>'sku' and brand=item->>'brand';
+   if not found then raise exception 'Review enrollment changed';end if;
+  end if;
   expected:=original||jsonb_build_object('specifications',restored->'specifications','manual_overrides',restored->'manual_overrides');`:`if exists(select 1 from technoroom_maintenance.product_repair_backup where operation='${operation}' and product_id=(item->>'id')::bigint) then raise exception 'Operation already backed up';end if;
   insert into technoroom_maintenance.product_repair_backup(operation,product_id,before_row,backed_up_at) values('${operation}',(item->>'id')::bigint,original,now());
+  if item?'reviewed' then
+   if not(select relrowsecurity from pg_class where oid='technoroom_maintenance.reviewed_product_content'::regclass) then raise exception 'Private review registry required';end if;
+   if exists(select 1 from technoroom_maintenance.reviewed_product_content where product_id=(item->>'id')::bigint) then raise exception 'Product already reviewed';end if;
+   insert into technoroom_maintenance.reviewed_product_content(product_id,sku,brand,source,protect_description,specification_keys,operation) values((item->>'id')::bigint,item->>'sku',item->>'brand',item->'reviewed'->>'source',false,array(select jsonb_array_elements_text(item->'reviewed'->'keys')),'${operation}');
+  end if;
   expected:=original||(item->'after');`}
+  perform set_config('technoroom.import_write',case when item?'reviewed' then 'false' else 'true' end,true);
   update public.products set specifications=expected->'specifications',manual_overrides=expected->'manual_overrides' where id=(item->>'id')::bigint;
   select to_jsonb(p) into actual from public.products p where p.id=(item->>'id')::bigint;
-  if (actual-'updated_at') is distinct from (expected-'updated_at') then raise exception 'Unexpected fields changed';end if;
+  if (actual-'updated_at') is distinct from (expected-'updated_at') then raise exception 'Unexpected fields changed for %: %',item->>'id',(select string_agg(e.key,', ') from jsonb_each(actual) e where e.key<>'updated_at' and actual->e.key is distinct from expected->e.key);end if;
  end loop;
 end $repair$;
 select '${operation}' operation,${plans.length} expected_products,

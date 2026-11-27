@@ -6,11 +6,13 @@ import {verifiedPrinterRule,applyVerifiedPrinterRule,printFormatKey,scannerOnly}
 import {applyWideFormatRule} from './wide-format-printers.js?v=20261017-customer-content';
 import {productInterfaceValues} from './product-connectivity.js?v=20261017-customer-content';
 import {applyCustomerProductPolicy} from './product-content-policy.js?v=20261017-customer-content';
+import {planDuplicateSpecificationTails} from './specification-duplicate-tails.js?v=20261127-cleanup';
 
 export function normalizeImportedProductSpecifications(product) {
   product=applyCustomerProductPolicy(product);
   const projector=isProjectorProduct(product);
   let specs=normalizeSpecifications(product.specifications||{},{projector});
+  specs=planDuplicateSpecificationTails({...product,specifications:specs}).after;
   if(isPrinterDevice(product)||scannerOnly(product)){
     const interfaces=productInterfaceValues({...product,specifications:specs});
     if(interfaces.includes('Wi‑Fi')&&!String(specs['Інтерфейси']||'').trim())specs['Інтерфейси']=interfaces.join(', ');

@@ -6,7 +6,7 @@ import {isSpecializedPrinterName,officeSupplyCategoryPlan} from './product-ident
 import {printerDuplexMode} from './printer-duplex.js?v=20261016-duplex';
 import {readPrinterEditorFormat} from './printer-format-editor.js?v=20261017-customer-content';
 import {hasProductImage,qualityScopeMatches,isModelFamily,familyContentIssue} from './product-quality-rules.js?v=20261023-quality';
-import {specificationContentProblems} from './supplier-specification-parser.js?v=20261024-office';
+import {specificationContentProblems} from './supplier-specification-parser.js?v=20261127-cleanup';
 
 export const qualityLabels = {duplicate_sku:'Повтор SKU', conflict:'Суперечливі характеристики', specifications:'Перевірити характеристики', no_brand:'Без бренду', no_image:'Без фото', no_price:'Без ціни', category:'Перевірити категорію', filters:'Неповні фільтри'};
 const text = value => String(value ?? '').trim();

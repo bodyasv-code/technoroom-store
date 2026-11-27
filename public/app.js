@@ -1017,7 +1017,12 @@ checkout = () => {
   const updateDelivery=()=>{const method=form.querySelector('[name="deliveryMethod"]:checked')?.value; const input=addressLabel?.querySelector('input'); if(!addressLabel||!input)return; if(method==='nova_poshta'){addressLabel.firstChild.textContent='Відділення / поштомат *';input.placeholder='№ відділення або поштомату';input.required=true;if(deliveryHelp)deliveryHelp.textContent='Вкажіть номер відділення або поштомату Нової пошти.'}else if(method==='courier'){addressLabel.firstChild.textContent='Адреса доставки *';input.placeholder='Вулиця, будинок, квартира';input.required=true;if(deliveryHelp)deliveryHelp.textContent='Вкажіть повну адресу для кур’єрської доставки.'}else{addressLabel.firstChild.textContent='Деталі самовивозу';input.placeholder='Необов’язково';input.required=false;if(deliveryHelp)deliveryHelp.textContent='Менеджер погодить місце та час самовивозу після замовлення.'}};
   deliveryRadios.forEach(r=>r.onchange=updateDelivery); updateDelivery();
   if(companyToggle)companyToggle.onchange=()=>{companyFields.hidden=!companyToggle.checked;companyFields.querySelectorAll('input').forEach(i=>i.required=companyToggle.checked)};
-  const paymentLabels={cod:'При отриманні',invoice:'За рахунком',card:'Карткою онлайн'},deliveryLabels={nova_poshta:'Нова пошта',courier:'Кур’єр',pickup:'Самовивіз'},paymentNote=document.getElementById('paymentNote');
+  const unavailablePayment=form.querySelector('[name="paymentMethod"][value="card"]');
+  if(unavailablePayment){unavailablePayment.disabled=true;unavailablePayment.checked=false;}
+  if(!form.querySelector('[name="paymentMethod"]:checked:not(:disabled)')){
+    const fallback=form.querySelector('[name="paymentMethod"][value="cod"]');if(fallback)fallback.checked=true;
+  }
+  const paymentLabels={cod:'При отриманні',invoice:'За рахунком'},deliveryLabels={nova_poshta:'Нова пошта',courier:'Кур’єр',pickup:'Самовивіз'},paymentNote=document.getElementById('paymentNote');
   const updateReview=()=>{const name=[form.elements.name?.value,form.elements.lastName?.value].filter(Boolean).join(' ')||'Заповніть контактні дані';const dm=form.querySelector('[name="deliveryMethod"]:checked')?.value,pm=form.querySelector('[name="paymentMethod"]:checked')?.value;const city=form.elements.city?.value.trim(),address=form.elements.address?.value.trim();document.getElementById('reviewCustomer').textContent=name+(form.elements.phone?.value?' · '+form.elements.phone.value:'');document.getElementById('reviewDelivery').textContent=[deliveryLabels[dm],city,address].filter(Boolean).join(' · ')||'Оберіть спосіб доставки';document.getElementById('reviewPayment').textContent=paymentLabels[pm]||'—';if(paymentNote){const notes={cod:['Оплата при отриманні','Сплатите замовлення після огляду товару.'],invoice:['Оплата за рахунком','Менеджер перевірить реквізити та надішле рахунок.'],card:['Оплата карткою онлайн','Онлайн-оплату підключимо після інтеграції платіжного сервісу.']};const n=notes[pm]||notes.cod;paymentNote.innerHTML='<b>'+n[0]+'</b><span>'+n[1]+'</span>'}};
   form.querySelectorAll('input,textarea').forEach(el=>{el.addEventListener('input',updateReview);el.addEventListener('change',updateReview)});updateReview();
 
@@ -1034,6 +1039,8 @@ checkout = () => {
       Object.fromEntries(
         new FormData(form)
       );
+
+    if(data.paymentMethod==='card')return alert('Онлайн-оплата тимчасово недоступна. Оберіть оплату при отриманні або за рахунком.');
 
     const button =
       form.querySelector('button');

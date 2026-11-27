@@ -1,11 +1,12 @@
 const text=value=>typeof value==='string'?value.trim():'';
 export function normalizeOrder(body={}) {
   const customer=body.customer||{}, delivery=body.delivery||{}, payment=body.payment||{};
+  if(payment.method==='card')throw new Error('Онлайн-оплата тимчасово недоступна. Оберіть оплату при отриманні або за рахунком.');
   const phone=text(customer.phone).replace(/\D/g,'');
   if(!text(customer.name)||!text(customer.lastName)||!/^380\d{9}$/.test(phone)
     ||body.consent!==true||!text(delivery.city)
     ||!['nova_poshta','courier','pickup'].includes(delivery.method)
-    ||!['cod','invoice','card'].includes(payment.method)
+    ||!['cod','invoice'].includes(payment.method)
     ||(delivery.method!=='pickup'&&!text(delivery.address))) throw new Error('Invalid order data');
   if(!Array.isArray(body.items)||!body.items.length||body.items.length>100) throw new Error('Invalid items');
   const quantities=new Map();

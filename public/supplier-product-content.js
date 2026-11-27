@@ -1,5 +1,5 @@
 import {canonicalBrandName} from './brand-normalization.js';
-import {normalizeImportedProductSpecifications} from './import-specification-rules.js?v=20261017-customer-content';
+import {normalizeImportedProductSpecifications} from './import-specification-rules.js?v=20261127-cleanup';
 import {cleanCustomerText} from './product-content-policy.js?v=20261017-customer-content-3';
 
 // Supplier adapters must map their own fields to this common row first.

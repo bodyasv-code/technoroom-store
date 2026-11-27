@@ -65,7 +65,7 @@ export function specificationContentProblems(specifications={}) {
     const labelProblem=specificationLabelProblem(label);
     if(labelProblem)problems.push({key,reason:labelProblem});
     else if(/<\/?(?:br|p|div|span|b|strong)(?:\s|\/?>)/iu.test(label+' '+value))problems.push({key,reason:'markup'});
-    else if(/(?:^|\s)(?:Дуплекс|Інтерфейс(?:и)?|Глибина кольору|Пам.?ять|Лотки|ОС|Панель управління|Навантаження)\s*:\s*\S/iu.test(value))problems.push({key,reason:'flattened'});
+    else if(/(?:^|\s)(?:Дуплекс|Інтерфейс(?:и)?|Глибина кольору|Пам.?ять|Лотки(?: подачі)?|ОС|Панель (?:управління|керування)|Навантаження|Процесор|Накопичувач|Можливості сканування|Макс(?:имальна)? кількість копій|Тип та розмір екрану|Витратні матеріали|Рекомендуємо придбати)\s*:\s*\S/iu.test(value))problems.push({key,reason:'flattened'});
   }
   return problems;
 }

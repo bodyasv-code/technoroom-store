@@ -538,6 +538,7 @@ body{overflow-x:hidden}.store-shared-header{position:sticky!important;top:0!impo
 }
 /* Keep invisible choice inputs within their labels, not beyond the viewport. */
 .checkout-choice{position:relative;min-width:0}
+.checkout-choice:has(input:disabled){opacity:.6;cursor:not-allowed;background:#f4f7fb}
 .checkout-page #checkoutForm .checkout-choice>input{width:1px!important;height:1px;padding:0;margin:0;left:0;top:0;clip-path:inset(50%)}
 .checkout-layout>*{min-width:0}
 .checkout-page #checkoutForm label{min-width:0}
